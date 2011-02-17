@@ -44,3 +44,4 @@ class POD(BPOD):
         # TO DO: add name for saving build coefficients?
         print 'Computing POD decomposition.'
         BPOD.computeDecomp(self)
+        

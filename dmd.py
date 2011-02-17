@@ -1,5 +1,6 @@
 # Parent class
 from modaldecomp import ModalDecomp
+from pod import POD
 
 # Common functions
 import util
@@ -28,7 +29,7 @@ class DMD(ModalDecomp):
         print 'DMD constructor.'
         
     def computeDecomp(self, snaps=None, snapPaths=None, innerProduct=None, 
-		ritzEigvalsPath=None, ritzVecNormsPath=None):
+		podObj=None, ritzEigvalsPath=None, ritzVecNormsPath=None):
         """
         Compute DMD decomposition
         
