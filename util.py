@@ -73,19 +73,19 @@ def get_file_list(dir,fileExtension=''):
         filename=''
     return fileList
   
-class MyMPI(object):
+class MPI(object):
     """Simple container for information about how many processors there are.
     It ensures no failure in case mpi4py is not installed or running serial."""
-    def __init__(self,numCPUs=0):
+    def __init__(self,numCPUs=None):
         try:
             import mpi4py
             self.comm = mpi4py.COMM_WORLD
-            if numCPUs == 0 or numCPUs > self.comm.Get_size(): #then use all that are available
+            if numCPUs is None or numCPUs > self.comm.Get_size(): #use all available
                 self.numCPUs = self.comm.Get_size()
-            else: #requested to use fewer CPUs than are available. Sure why not.
+            else: #use fewer CPUs than are available
                 self.numCPUs = numCPUs      
             self.rank = self.comm.Get_rank()
-        except:
+        except ImportError:
             self.numCPUs=1
             self.rank=0
             self.comm = None
