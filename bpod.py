@@ -28,8 +28,8 @@ class BPOD(ModalDecomp):
         print 'BPOD constructor.'
         
     def computeDecomp(self, directSnaps=None, directSnapPaths=None, 
-        adjointSnaps=None, adjointSnapPaths=None, LSingVecsPath=None,
-        singValsPath=None, RSingVecsPath=None):
+        adjointSnaps=None, adjointSnapPaths=None, innerProduct=None, 
+		LSingVecsPath=None, singValsPath=None, RSingVecsPath=None):
         """
         Compute BPOD decomposition
         
@@ -37,6 +37,7 @@ class BPOD(ModalDecomp):
         directSnapPaths - List of paths to files containing direct snapshots.
         adjointSnaps - Iterable container of adjoint snapshots.
         adjointSnapPaths - List of paths to files containing adjoint snapshots.
+		innerProduct - Function returning inner product of two snapshots.
         LSingVecsPath - Output path for matrix of left singular vectors from 
             Hankel matrix SVD.
         singValsPath - Output path for singular values from Hankel matrix SVD.

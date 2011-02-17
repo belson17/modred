@@ -26,13 +26,14 @@ class POD(BPOD):
         # TO DO: set default values for various data members.
         print 'POD constructor.'
         
-    def computeDecomp(self, snaps=None, snapPaths=None, LSingVecsPath=None,
-        singValsPath=None):
+    def computeDecomp(self, snaps=None, snapPaths=None, innerProduct=None, 
+		LSingVecsPath=None, singValsPath=None):
         """
         Compute POD decomposition
         
         snaps - Iterable container of snapshots.
         snapPaths - List of paths to files containing snapshots.
+		innerProduct - Function returning inner product of two snapshots.
         LSingVecsPath - Output path for matrix of left singular vectors from 
             correlation matrix SVD.
         singValsPath - Output path for singular values from correlation matrix 

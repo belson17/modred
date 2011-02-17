@@ -27,13 +27,14 @@ class DMD(ModalDecomp):
         # TO DO: DMD objects should contain an internal POD object.
         print 'DMD constructor.'
         
-    def computeDecomp(self, snaps=None, snapPaths=None, ritzEigvalsPath=None,
-        ritzVecNormsPath=None):
+    def computeDecomp(self, snaps=None, snapPaths=None, innerProduct=None, 
+		ritzEigvalsPath=None, ritzVecNormsPath=None):
         """
         Compute DMD decomposition
         
         snaps - Iterable container of snapshots.
         snapPaths - List of paths to files containing snapshots.
+		innerProduct - Function returning inner product of two snapshots.
         ritzEigvalsPath - Output path for Ritz eigenvalues.
         ritzVecNormsPath - Output path for matrix of Ritz vectors.
             
