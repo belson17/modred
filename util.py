@@ -45,17 +45,9 @@ def find_file_type(filename):
     while abs(n)<l and filename[n]!='.':
         n-=1
     fileExtension = filename[n+1:]
-    
-    if fileExtension=='h5' or fileExtension=='hdf5':
-        return 'hdf5'
-    elif fileExtension == 'u':
-        return 'bla'
-    elif fileExtension == 'pickle':
-        return 'pickle'
-    else:
-        return fileExtension
+    return fileExtension
 
-def get_file_list(dir,fileExtension=''):
+def get_file_list(dir,fileExtension=None):
     """ Finds all files in the given directory that have the given file extension"""
     filesRaw = SP.Popen(['ls',dir],stdout=SP.PIPE).communicate()[0]
     #files separated by endlines
@@ -66,11 +58,11 @@ def get_file_list(dir,fileExtension=''):
         if c!='\n':
             filename+=c
         else: #completed file name
-            if fileExtension != '' and filename[-len(fileExtension):] == fileExtension:
+            if fileExtension is not None and filename[-len(fileExtension):] == fileExtension:
                 fileList.append(filename)
-            else:
-                pass #fileList.append(dir+filename)
-        filename=''
+            elif fileExtension is None:
+                fileList.append(filename)
+            filename=''
     return fileList
   
 class MPI(object):
@@ -80,7 +72,7 @@ class MPI(object):
         try:
             import mpi4py
             self.comm = mpi4py.COMM_WORLD
-            if numCPUs is None or numCPUs > self.comm.Get_size(): #use all available
+            if numCPUs is None or numCPUs > self.comm.Get_size(): 
                 self.numCPUs = self.comm.Get_size()
             else: #use fewer CPUs than are available
                 self.numCPUs = numCPUs      

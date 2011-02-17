@@ -1,8 +1,3 @@
-#This module has the functions that find ROMs
-
-#When completed, it should replace bpod.py and findHankelParallel
-# as it is more general and parallelized to some extent (only the parts
-#that I currently need as it takes some time).
 
 import numpy as N
 import util
