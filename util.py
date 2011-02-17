@@ -4,9 +4,9 @@ import subprocess as SP
 import numpy as N
 
 def write_mat_text(A,filename,delimiter=','):
-	"""
-	Writes a matrix to file, 1D or 2D, in plain text with commas separating the 
-	values.
+    """
+    Writes a matrix to file, 1D or 2D, in plain text with commas separating the 
+    values.
     """
     s = N.shape(A)
     fid = open(filename,'w')
@@ -56,7 +56,7 @@ def find_file_type(filename):
         return fileExtension
 
 def get_file_list(dir,fileExtension=''):
-	""" Finds all files in the given directory that have the given file extension"""
+    """ Finds all files in the given directory that have the given file extension"""
     filesRaw = SP.Popen(['ls',dir],stdout=SP.PIPE).communicate()[0]
     #files separated by endlines
     filename= ''
