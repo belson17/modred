@@ -14,7 +14,7 @@ class BPOD(ModalDecomp):
     
     """
     
-    def __init__(self,loadSnap=None,saveMode=None,saveMat=util.writeMatToText):
+    def __init__(self,loadSnap=None,saveMode=None,saveMat=util.write_mat_text):
         """
         BPOD constructor
         
@@ -27,7 +27,7 @@ class BPOD(ModalDecomp):
         # TO DO: Set default values for various data members.
         print 'BPOD constructor.'
         
-    def computeDecomp(self, directSnaps=None, directSnapPaths=None, 
+    def compute_decomp(self, directSnaps=None, directSnapPaths=None, 
         adjointSnaps=None, adjointSnapPaths=None, innerProduct=None, 
 		LSingVecsPath=None, singValsPath=None, RSingVecsPath=None):
         """

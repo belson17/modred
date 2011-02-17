@@ -21,7 +21,7 @@ class ModalDecomp:
         # TO DO: Set default values for various data members.
         print 'Modal decomposition constructor.'
         
-    def computeModes(self, modeNumList, modePath, indexFrom=1, snaps=None,
+    def compute_modes(self, modeNumList, modePath, indexFrom=1, snaps=None,
         snapPaths=None, coeffMat=None, coeffMatPath=None):
         """
         A common method to compute modes from snapshots.

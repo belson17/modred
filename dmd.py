@@ -14,7 +14,7 @@ class DMD(ModalDecomp):
     
     """
     
-    def __init__(self,loadSnap=None,saveMode=None,saveMat=util.writeMatToText):
+    def __init__(self,loadSnap=None,saveMode=None,saveMat=util.write_mat_text):
         """
         DMD constructor
         
@@ -28,8 +28,8 @@ class DMD(ModalDecomp):
         # TO DO: DMD objects should contain an internal POD object.
         print 'DMD constructor.'
         
-    def computeDecomp(self, snaps=None, snapPaths=None, innerProduct=None, 
-		podObj=None, ritzEigvalsPath=None, ritzVecNormsPath=None):
+    def compute_decomp(self, snaps=None, snapPaths=None, innerProduct=None, 
+		ritzEigvalsPath=None, ritzVecNormsPath=None):
         """
         Compute DMD decomposition
         

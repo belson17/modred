@@ -12,13 +12,13 @@ if __name__=='__main__':
     dmdObj = DMD()
     
     # Test decomposition
-    bpodObj.computeDecomp()
-    podObj.computeDecomp()
-    dmdObj.computeDecomp()
+    bpodObj.compute_decomp()
+    podObj.compute_decomp()
+    dmdObj.compute_decomp()
     
     # Test mode construction
-    bpodObj.computeModes(1,'')
-    podObj.computeModes(1,'')
-    dmdObj.computeModes(1,'')
+    bpodObj.compute_modes(1,'')
+    podObj.compute_modes(1,'')
+    dmdObj.compute_modes(1,'')
     
     # TO DO: replace this file with unittests

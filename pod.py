@@ -13,7 +13,7 @@ class POD(BPOD):
     
     """
     
-    def __init__(self,loadSnap=None,saveMode=None,saveMat=util.writeMatToText):
+    def __init__(self,loadSnap=None,saveMode=None,saveMat=util.write_mat_text):
         """
         POD constructor
         
@@ -26,7 +26,7 @@ class POD(BPOD):
         # TO DO: set default values for various data members.
         print 'POD constructor.'
         
-    def computeDecomp(self, snaps=None, snapPaths=None, innerProduct=None, 
+    def compute_decomp(self, snaps=None, snapPaths=None, innerProduct=None, 
 		LSingVecsPath=None, singValsPath=None):
         """
         Compute POD decomposition
@@ -43,5 +43,4 @@ class POD(BPOD):
         # TO DO: add load/save functions as optional arguments here?
         # TO DO: add name for saving build coefficients?
         print 'Computing POD decomposition.'
-        BPOD.computeDecomp(self)
-        
+        BPOD.compute_decomp(self)
