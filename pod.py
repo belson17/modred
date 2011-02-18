@@ -16,7 +16,7 @@ class POD(BPOD):
         
     def __init__(self, load_snap=None, save_mode=None, 
         save_mat=util.write_mat_text, inner_product=None, snapPaths=None,
-        singVals=None, singVecs=None):
+        singVals=None, singVecs=None, correlationMat=None):
         """
         POD constructor
         
@@ -40,6 +40,7 @@ class POD(BPOD):
         # Data members that will be set after computation
         self.singVecs = singVecs
         self.singVals = singVals
+        self.correlationMat = correlationMat
 
         print 'POD constructor.'    
         
@@ -55,8 +56,12 @@ class POD(BPOD):
         # Compute Hankel matrix decomposition, using dir snaps as adj snaps
         # Then save the decomposition matrices as needed, to file/data members
         # Only one set of sing vecs needs to be saved for POD (symmetry)
-        self.LSingVecs, self.singVals, self.RSingVecs = self._compute_decomp( 
-            self.snapPaths, self.snapPaths )
+        self.correlationMat = self._compute_hankel(self.snapPaths,
+            self.snapPaths)
+                                              
+        self.singVecs, self.singVals, dummy = self._svd( 
+            self.correlationMat )
+        del dummy
         
         print 'Computing POD decomposition.'
 

@@ -1,8 +1,8 @@
-# Common functions
+
 import util
 
 # Base class
-class ModalDecomp:
+class ModalDecomp(object):
     """
     Modal Decomposition base class
 
@@ -14,7 +14,8 @@ class ModalDecomp:
 
     """
     
-    def __init__(self,load_snap=None, save_mode=None, save_mat=None, inner_product=None):
+    def __init__(self,load_snap=None, save_mode=None, save_mat=None, inner_product=None,
+                maxSnapsInMem=100,numCPUs=1):
         """
         Modal decomposition constructor.
     
@@ -28,6 +29,8 @@ class ModalDecomp:
         self.save_mode = save_mode
         self.save_mat = save_mat
         self.inner_product = inner_product
+        self.maxSnapsInMem=maxSnapsInMem
+        self.mpi = util.MPI(numCPUs=numCPUs)
         
     # Common method for computing modes from snapshots and coefficients
     def _compute_modes(self,modeNumList,modePath,snapPaths,buildCoeffMat,
@@ -58,10 +61,10 @@ class ModalDecomp:
         #Pass the work to individual processors. Each computes and saves
         #the mode numbers from rowNumProcAssigments[n] (a list of mode numbers)
         # There is no required mpi.gather command, modes are saved to file directly.
-        self._compute_modes_chunk(rowNumProcAssignments(self.mpi.rank),
-                                  snapPaths,buildCoeffMat)
+        self._compute_modes_chunk(rowNumProcAssignments[self.mpi.rank],
+            modePath,snapPaths,buildCoeffMat)
   
-    def _compute_modes_chunk(self,modeNumList,snapPaths,buildCoeffMat):
+    def _compute_modes_chunk(self,modeNumList,modePath,snapPaths,buildCoeffMat):
         """
         Computes a given set of modes in memory-efficient chunks.
         
@@ -73,14 +76,15 @@ class ModalDecomp:
        
         numDirectSnaps = len(directSnapPaths)
         numAdjointSnaps = len(adjointSnapPaths)
+        numModes = len(modeNumList)
         
         #The truncated matrices, not sure where they belong right now.
         #V1 = N.mat(Vstar[0:numModes,:]).H
         #E1 = E[0:numModes]
         #U1 = N.mat(U[:,0:numModes])
         
-        if numModes >= self.maxSnaps: #more modes than can be in memory
-            numModesPerChunk = self.maxSnap - 1
+        if numModes >= self.maxSnapsInMem: #more modes than can be in memory
+            numModesPerChunk = self.maxSnapsInMem - 1
         else:
             numModesPerChunk = numModes
        
@@ -89,7 +93,7 @@ class ModalDecomp:
             numModesPerChunk = numModes
         else:
             numSnapsPerChunk = 1
-            numModesPerChunk = self.maxSnaps-numSnapsPerChunk
+            numModesPerChunk = self.maxSnapsInMem-numSnapsPerChunk
         
         #Loop over each chunk
         startModeNum=0
@@ -116,6 +120,7 @@ class ModalDecomp:
                 # This process is repeated until all modes are done.
                 for snapNum,snapPath in enumerate(snapPaths[startSnapNum:endSnapNum]):
                     snap = self.load_snap(snapPath)
+                    #Might be able to eliminate this loop for array multiplication (after tested)
                     for modeNum in xrange(startModeNum,endModeNum):
                         if snapNum==0: 
                             #the mode list is empty, must be created with appends
@@ -128,7 +133,9 @@ class ModalDecomp:
                 startSnapNum = endSnapsPerChunk
             
             for modeNum in xrange(startModeNum,endModeNum):
-                self.write_mode(modesChunk[modeNum],modeNum) #interface might be wrong!
-            startModeNum = endModeNum   
+                self.write_mode(modesChunk[modeNum],modePath%modeNum) #interface might be wrong!
+            startModeNum = endModeNum
+            
+            
         
         

@@ -1,8 +1,6 @@
-# Parent class
 from modaldecomp import ModalDecomp
-
-# Common functions
 import util
+import numpy as N
 
 # Derived class
 class BPOD(ModalDecomp):
@@ -16,7 +14,8 @@ class BPOD(ModalDecomp):
     
     def __init__(self, load_snap=None, save_mode=None, 
         save_mat=util.write_mat_text, inner_product=None, directSnapPaths=None, 
-        adjointSnapPaths=None, LSingVecs=None, singVals=None, RSingVecs=None):
+        adjointSnapPaths=None, LSingVecs=None, singVals=None, RSingVecs=None,
+        hankelMat=None):
         """
         BPOD constructor
         
@@ -41,6 +40,7 @@ class BPOD(ModalDecomp):
         self.LSingVecs = LSingVecs
         self.singVals = singVals
         self.RSingVecs = RSingVecs
+        self.hankelMat = hankelMat
 
         print 'BPOD constructor.'
         
@@ -62,7 +62,7 @@ class BPOD(ModalDecomp):
                                               self.adjointSnapPaths)
                                               
         self.LSingVecs, self.singVals, self.RSingVecs = self._svd( 
-            self.directSnapPaths, self.adjointSnapPaths )
+            self.hankelMat )
         
         print 'Computing BPOD decomposition.'
             
@@ -84,56 +84,59 @@ class BPOD(ModalDecomp):
             indexFrom=indexFrom )
         print 'Implemented to compute adjoint modes.'
 
-    def _compute_hankel(directSnapPaths,adjointSnapPaths):
+    def _compute_hankel(self,directSnapPaths,adjointSnapPaths):
         """ Computes the hankel matrix (in parallel) and returns it.
         
         This method assigns the task of computing the Hankel matrix
         into pieces for each processor, then passes this on to
         self._compute_hankel_chunk(...)."""
         
-        numDirectSnaps = len(directSnaps)
-        numAdjointSnaps = len(adjointSnaps)
+        numDirectSnaps = len(directSnapPaths)
+        numAdjointSnaps = len(adjointSnapPaths)
         
         numRows = numAdjointSnaps
         numCols = numDirectSnaps
         
-        rowNumProcAssignments = self.mpi.findConsecProcAssigments(numRows)
-        numRowsPerProc = rowNumProcAssigments[1]-rowNumProcAssigments[0]
+        rowNumProcAssignments = self.mpi.findConsecProcAssignments(numRows)
+        numRowsPerProc = rowNumProcAssignments[1]-rowNumProcAssignments[0]
         
         if self.mpi.rank == 0:
             print 'Each processor is responsible for',numRowsPerProc
             print 'rows. The assignments are',rowNumProcAssignments
       
-            if numRowsPerProc > self.maxSnaps:
+            if numRowsPerProc > self.maxSnapsInMem:
                 print 'Each processor will have to read the number of direct'
                 print 'snapshots = ',str(numForwardSnapshots),'multiple times,'
-                print 'increase num CPUs to',int(N.ceil(numRows/self.self.maxSnaps))
+                print 'increase num CPUs to',int(N.ceil(numRows/self.maxSnapsInMem))
                 print 'to avoid this and get a big speedup'
          
         #Find all chunks of the Hankel matrix (if one proc, the whole matrix)
         hankelMatChunk=self._compute_hankel_chunk(directSnapPaths,
-                              adjointSnapPaths[rowList[rank]:rowList[rank+1]])
+            adjointSnapPaths[rowNumProcAssignments[self.mpi.rank]:\
+            rowNumProcAssignments[self.mpi.rank+1]])
                        
         #Gather list of chunks from each processor, ordered by rank
-        hankelMatChunkList = self.mpi.comm.gather(hankelMatChunk,root=0) 
+        hankelMatChunkList = self.mpi.comm.gather(hankelMatChunk,root=0)
         if self.mpi.rank==0:
-            self._hankelMat = N.zeros((numAdjointSnaps,numDirectSnaps))
+            hankelMat = N.zeros((numAdjointSnaps,numDirectSnaps))
             for CPUNum in xrange(self.mpi.numCPUs):
             #concatenate the chunks of Hankel matrix
-                self._hankelMat[rowNumProcAssignments[CPUNum]:\
+                hankelMat[rowNumProcAssignments[CPUNum]:\
                     rowNumProcAssignments[CPUNum+1],:] = \
-                    hankelMatChunkList[CPUNum]          
+                    hankelMatChunkList[CPUNum]
+        return hankelMat
     
-    def _svd():
-        self._LSingVecs,self._singVals,RingSingVecsStar = \
-            N.linalg.svd(self._hankelMat,full_matrices=0)
-        self._LSingVecs = N.matrix(self._LSingVecs)
-        self._RSingVecs = N.matrix(RSingVecsStar).H
-        if (len(self._singVals) < numModes): 
+    def _svd(self,hankelMat):
+        LSingVecs,singVals,RSingVecsStar = \
+            N.linalg.svd(hankelMat,full_matrices=0)
+        LSingVecs = N.matrix(LSingVecs)
+        RSingVecs = N.matrix(RSingVecsStar).H
+        if (len(singVals) < numModes): 
             #the min is in case there are diff nums of snapshots
             raise RuntimeError('Too few non-zero singular values for the number'+\
               'of modes!')
-        self._singVals = N.matrix(self._singVals)
+        singVals = N.matrix(singVals)
+        return LSingVecs,singVals,RSingVecs
                
         #truncated matrices
         #V1 = N.mat(Vstar[0:numModes,:]).H
@@ -141,7 +144,7 @@ class BPOD(ModalDecomp):
         #U1 = N.mat(U[:,0:numModes])
   
         
-    def _compute_hankel_chunk(directSnapPaths,adjointSnapPaths):
+    def _compute_hankel_chunk(self,directSnapPaths,adjointSnapPaths):
         """ Computes a chunk of the Hankel matrix prescribed by the path lists.
         
         A helper function that actually does the inner products and forms 
@@ -151,19 +154,19 @@ class BPOD(ModalDecomp):
         It returns a matrix with the above dimensions.
         """
         
-        numForwardSnaps = len(forwardPaths)
-        numAdjointSnaps = len(adjointPaths)
+        numDirectSnaps = len(directSnapPaths)
+        numAdjointSnaps = len(adjointSnapPaths)
         
         #easier to think in terms of rows and cols
         numRows = numAdjointSnaps
-        numCols = numForwardSnaps
+        numCols = numDirectSnaps
         
         #These two variables set the chunks of the X and Y matrices that are read in
         #at each step.
-        if self.self.maxSnapsInList > numAdjointSnaps:
+        if self.maxSnapsInMem > numAdjointSnaps:
             numRowsPerChunk = numAdjointSnaps
         else:
-            numRowsPerChunk = self.maxSnaps - 1 #adjoint snapshots
+            numRowsPerChunk = self.maxSnapsInMem - 1 #adjoint snapshots
         numColsPerChunk = 1 #forward snapshots per chunk in memory at once
         
         hankelMatChunk = N.mat(N.zeros((numRows,numCols)))
@@ -196,13 +199,13 @@ class BPOD(ModalDecomp):
                 #With the chunks of the "X" and "Y" matrices, find chunk of hankel
                 for rowNum in range(startRowNum,endRowNum):
                     for colNum in range(startColNum,endColNum):
-                        hankelMatChunk[rowNum,colNum] = self._innerProduct( \
+                        hankelMatChunk[rowNum,colNum] = self.inner_product( \
                         adjointSnaps[rowNum-startRowNum],
                         directSnaps[colNum-startColNum])
                         #print 'formed H['+str(rowNum)+','+str(colNum)+'] of'+
                         #  'H['+str(numRows)+','+str(numCols)+']'
        
             print '---- Formed a',numRows,'by',numCols,'chunk of the Hankel matrix ----'
-            return hankelMatChunk
+        return hankelMatChunk
   
   

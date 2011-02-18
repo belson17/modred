@@ -70,8 +70,8 @@ class MPI(object):
     It ensures no failure in case mpi4py is not installed or running serial."""
     def __init__(self,numCPUs=None):
         try:
-            import mpi4py
-            self.comm = mpi4py.COMM_WORLD
+            from mpi4py import MPI as MPI_mod
+            self.comm = MPI_mod.COMM_WORLD
             if numCPUs is None or numCPUs > self.comm.Get_size(): 
                 self.numCPUs = self.comm.Get_size()
             else: #use fewer CPUs than are available
@@ -82,7 +82,7 @@ class MPI(object):
             self.rank=0
             self.comm = None
    
-    def findConsecProcAssignments(numTasks):
+    def findConsecProcAssignments(self,numTasks):
         """Finds the tasks for each processor, giving the tasks numbers
         from 0 to numTasks-1. 
         
@@ -91,15 +91,16 @@ class MPI(object):
         the assignments as:
         Proc n has tasks taskProcAssignments[n:(n+1)]
         """
+        taskProcAssignments=[]
         numTasksPerProc = int(N.ceil(numTasks/self.numCPUs))
         for procNum in range(self.numCPUs+1):
             if procNum*numTasksPerProc <= numTasks:
                 taskProcAssignments.append(procNum*numTasksPerProc)
             else:
                 taskProcAssignments.append(numTasks)
-        return taskProcAssigments
+        return taskProcAssignments
         
-    def findProcAssignments(tasksList):
+    def findProcAssignments(self,tasksList):
       """ Finds the breakdown of tasks for each processor, evenly
       breaking up the tasks in the taskList. It returns a list
       that has numCPUs+1 entries. 
