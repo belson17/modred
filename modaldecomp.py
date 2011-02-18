@@ -56,7 +56,7 @@ class ModalDecomp(object):
         if indexFrom != 1: 
             raise UndefinedError('Not supported, set indexFrom to 1 please')
         #Determine the processor mode assignments.
-        rowNumProcAssignments = self.mpi.findProcAssignments(modeNumList)
+        rowNumProcAssignments = self.mpi.find_proc_assignments(modeNumList)
         
         #Pass the work to individual processors. Each computes and saves
         #the mode numbers from rowNumProcAssigments[n] (a list of mode numbers)

@@ -97,7 +97,7 @@ class BPOD(ModalDecomp):
         numRows = numAdjointSnaps
         numCols = numDirectSnaps
         
-        rowNumProcAssignments = self.mpi.findConsecProcAssignments(numRows)
+        rowNumProcAssignments = self.mpi.find_consec_proc_assignments(numRows)
         numRowsPerProc = rowNumProcAssignments[1]-rowNumProcAssignments[0]
         
         if self.mpi.rank == 0:

@@ -2,41 +2,45 @@
 
 import subprocess as SP
 import numpy as N
-
+import csv
 def write_mat_text(A,filename,delimiter=','):
     """
-    Writes a matrix to file, 1D or 2D, in plain text with commas separating the 
-    values.
+    Writes a matrix to file, 1D or 2D, in text with delimeter and a space
+    seperating the elements.
     """
-    s = N.shape(A)
-    fid = open(filename,'w')
-    if len(s) == 1:
-        for r in range(s[0]):
-            fid.write(str(A[r])+'\n')
-    elif len(s) ==2:
-        for r in range(s[0]):
-            for c in range(s[1]-1):
-                fid.write(str(A[r,c])+delimiter+' ')
-                fid.write(str(A[r,-1])+'\n')
-    else:
-        raise RuntimeError('Can only save a 1D or 2D array, you gave a '+\
-            str(len(s))+' dimensional array')    
-    fid.close() 
 
-def read_mat_text(filename,delimeter=','):
+    if len(N.shape(A))>2:
+        raise RuntimeError('Can only write matrices with 1 or 2 dimensions')
+        
+    A = N.mat(A)
+    numRows,numCols = N.shape(A) #must be 2D since it is a matrix
+
+    writer = csv.writer(open(filename,'w'),delimiter=delimiter)
+    
+    #def genStringElement(
+    
+    for rowNum in range(numRows):
+        row=[]
+        for colNum in range(numCols):
+            row.append(str(A[rowNum,colNum]))
+        writer.writerow(row)
+    
+def read_mat_text(filename,delimiter=','):
     """ Reads a matrix written by write_mat_text, plain text"""
     import csv
     f = open(filename,'r')
-    matReader = csv.reader(f,delimiter=',')
+    matReader = csv.reader(f,delimiter=delimiter)
     #read the entire file first to get dimensions.
-    for i,line in enumerate(matReader):
-        pass
-  
+    numLines = 0
+    for line in matReader:
+        numLines+=1
+        if numLines ==1:
+            lineLength = len(line)
     #rewind to beginning of file and read again
     f.seek(0)
-    A = N.zeros((i+1,len(line)))
+    A = N.zeros((numLines,lineLength))
     for i,line in enumerate(matReader):
-        A[i,:] =  [float(j) for j in line]
+        A[i,:] =  N.array([float(j) for j in line])
     return A
 
 def find_file_type(filename):
@@ -72,7 +76,8 @@ class MPI(object):
         try:
             from mpi4py import MPI as MPI_mod
             self.comm = MPI_mod.COMM_WORLD
-            if numCPUs is None or numCPUs > self.comm.Get_size(): 
+            if (numCPUs is None) or (numCPUs > self.comm.Get_size()) or \
+            (numCPUs<=0): 
                 self.numCPUs = self.comm.Get_size()
             else: #use fewer CPUs than are available
                 self.numCPUs = numCPUs      
@@ -82,7 +87,7 @@ class MPI(object):
             self.rank=0
             self.comm = None
    
-    def findConsecProcAssignments(self,numTasks):
+    def find_consec_proc_assignments(self,numTasks):
         """Finds the tasks for each processor, giving the tasks numbers
         from 0 to numTasks-1. 
         
@@ -92,7 +97,11 @@ class MPI(object):
         Proc n has tasks taskProcAssignments[n:(n+1)]
         """
         taskProcAssignments=[]
-        numTasksPerProc = int(N.ceil(numTasks/self.numCPUs))
+        #In the future it would be better to reevaulate
+        #how many tasks per proc formula. When there are more than
+        #half as many procs as tasks, almost half of the procs do 
+        # nothing. Must change tests if this is done
+        numTasksPerProc = int(N.ceil(numTasks/(1.*self.numCPUs)))
         for procNum in range(self.numCPUs+1):
             if procNum*numTasksPerProc <= numTasks:
                 taskProcAssignments.append(procNum*numTasksPerProc)
@@ -100,7 +109,7 @@ class MPI(object):
                 taskProcAssignments.append(numTasks)
         return taskProcAssignments
         
-    def findProcAssignments(self,tasksList):
+    def find_proc_assignments(self,taskList):
       """ Finds the breakdown of tasks for each processor, evenly
       breaking up the tasks in the taskList. It returns a list
       that has numCPUs+1 entries. 
@@ -109,11 +118,11 @@ class MPI(object):
       they were in the original taskList)
       """
       
-      numTasks = len(tasksList)
-      numTasksPerProc = int(N.ceil(numTasks/self.numCPUs))
+      numTasks = len(taskList)
+      numTasksPerProc = int(N.ceil(numTasks/(1.*self.numCPUs)))
       taskProcAssignments= []
-      for procNum in range(self.mpi.numCPUs+1):
-          if (procNum+1)*numTasksPerProc <= numTasks:
+      for procNum in range(self.numCPUs):
+          if (procNum+1)*numTasksPerProc < numTasks:
               taskProcAssignments.append(\
                 taskList[procNum*numTasksPerProc:(procNum+1)*numTasksPerProc])
           else:
