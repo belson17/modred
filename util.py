@@ -3,7 +3,7 @@
 import subprocess as SP
 import numpy as N
 import csv
-def write_mat_text(A,filename,delimiter=','):
+def save_mat_text(A,filename,delimiter=','):
     """
     Writes a matrix to file, 1D or 2D, in text with delimeter and a space
     seperating the elements.
@@ -25,7 +25,7 @@ def write_mat_text(A,filename,delimiter=','):
             row.append(str(A[rowNum,colNum]))
         writer.writerow(row)
     
-def read_mat_text(filename,delimiter=','):
+def load_mat_text(filename,delimiter=','):
     """ Reads a matrix written by write_mat_text, plain text"""
     import csv
     f = open(filename,'r')
@@ -42,32 +42,10 @@ def read_mat_text(filename,delimiter=','):
     for i,line in enumerate(matReader):
         A[i,:] =  N.array([float(j) for j in line])
     return A
-
-def find_file_type(filename):
-    l = len(filename)
-    n=-1
-    while abs(n)<l and filename[n]!='.':
-        n-=1
-    fileExtension = filename[n+1:]
-    return fileExtension
-
-def get_file_list(dir,fileExtension=None):
-    """ Finds all files in the given directory that have the given file extension"""
-    filesRaw = SP.Popen(['ls',dir],stdout=SP.PIPE).communicate()[0]
-    #files separated by endlines
-    filename= ''
-    fileList=[]
-    #print 'filesRaw is ',filesRaw
-    for c in filesRaw:
-        if c!='\n':
-            filename+=c
-        else: #completed file name
-            if fileExtension is not None and filename[-len(fileExtension):] == fileExtension:
-                fileList.append(filename)
-            elif fileExtension is None:
-                fileList.append(filename)
-            filename=''
-    return fileList
+    
+def inner_product(snap1,snap2):
+    """ A default inner product for n-dimensional numpy arrays """
+    return N.sum(snap1*snap2)
   
 class MPI(object):
     """Simple container for information about how many processors there are.
@@ -130,7 +108,31 @@ class MPI(object):
       return taskProcAssignments
       
 
+def find_file_type(filename):
+    l = len(filename)
+    n=-1
+    while abs(n)<l and filename[n]!='.':
+        n-=1
+    fileExtension = filename[n+1:]
+    return fileExtension
 
+def get_file_list(dir,fileExtension=None):
+    """ Finds all files in the given directory that have the given file extension"""
+    filesRaw = SP.Popen(['ls',dir],stdout=SP.PIPE).communicate()[0]
+    #files separated by endlines
+    filename= ''
+    fileList=[]
+    #print 'filesRaw is ',filesRaw
+    for c in filesRaw:
+        if c!='\n':
+            filename+=c
+        else: #completed file name
+            if fileExtension is not None and filename[-len(fileExtension):] == fileExtension:
+                fileList.append(filename)
+            elif fileExtension is None:
+                fileList.append(filename)
+            filename=''
+    return fileList
 
         
   

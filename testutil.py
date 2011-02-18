@@ -22,7 +22,7 @@ class TestUtil(unittest.TestCase):
             print 'WARNING - no mpi4py module, no parallel functionality tested'
             self.mpi4py=False
   
-    def test_read_write_mat_text(self):
+    def test_load_save_mat_text(self):
         """Test that can read/write text matrices"""
         tol = 8
         maxNumRows = 20
@@ -33,8 +33,8 @@ class TestUtil(unittest.TestCase):
             for numRows in range(1,maxNumRows):
                 for numCols in range(1,maxNumCols):
                     mat=N.random.random((numRows,numCols))
-                    util.write_mat_text(mat,matPath,delimiter=delimiter)
-                    matRead = util.read_mat_text(matPath,delimiter=delimiter)
+                    util.save_mat_text(mat,matPath,delimiter=delimiter)
+                    matRead = util.load_mat_text(matPath,delimiter=delimiter)
                     N.testing.assert_array_almost_equal(mat,matRead,decimal=tol)
         SP.call(['rm',matPath])
         
