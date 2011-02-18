@@ -11,9 +11,9 @@ if __name__=='__main__':
     bpodObj = BPOD()
     bpodObj.directSnapPaths=[]
     bpodObj.adjointSnapPaths=[]
-    bpodObj.compute_decomp()
-    bpodObj.compute_direct_modes(1,'')
-    bpodObj.compute_adjoint_modes(1,'')
+    #bpodObj.compute_decomp()
+    #bpodObj.compute_direct_modes(1,'')
+    #bpodObj.compute_adjoint_modes(1,'')
    
     # Test POD class
     print '\n% --- Testing POD class: --- %'
