@@ -81,6 +81,44 @@ class MPI(object):
             self.numCPUs=1
             self.rank=0
             self.comm = None
+   
+    def findConsecProcAssignments(numTasks):
+        """Finds the tasks for each processor, giving the tasks numbers
+        from 0 to numTasks-1. 
+        
+        It assumes the tasks can be numbered consecutively,
+        hence the name. The returned list is numCPUs+1 long and contains
+        the assignments as:
+        Proc n has tasks taskProcAssignments[n:(n+1)]
+        """
+        numTasksPerProc = int(N.ceil(numTasks/self.numCPUs))
+        for procNum in range(self.numCPUs+1):
+            if procNum*numTasksPerProc <= numTasks:
+                taskProcAssignments.append(procNum*numTasksPerProc)
+            else:
+                taskProcAssignments.append(numTasks)
+        return taskProcAssigments
+        
+    def findProcAssignments(tasksList):
+      """ Finds the breakdown of tasks for each processor, evenly
+      breaking up the tasks in the taskList. It returns a list
+      that has numCPUs+1 entries. 
+      Proc n is responsible for taskProcAssignments[n][...]
+      where the 2nd dimension of the 2D list contains the tasks (whatever
+      they were in the original taskList)
+      """
+      
+      numTasks = len(tasksList)
+      numTasksPerProc = int(N.ceil(numTasks/self.numCPUs))
+      taskProcAssignments= []
+      for procNum in range(self.mpi.numCPUs+1):
+          if (procNum+1)*numTasksPerProc <= numTasks:
+              taskProcAssignments.append(\
+                taskList[procNum*numTasksPerProc:(procNum+1)*numTasksPerProc])
+          else:
+              taskProcAssignments.append(taskList[procNum*numTasksPerProc:])
+      return taskProcAssignments
+      
 
 
 

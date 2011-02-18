@@ -223,7 +223,7 @@ class ERA(object):
         """
   
   
-    def _form_hankel(self):
+    def _compute_hankel(self):
         """ Computes the Hankel and A*Hankel matrix (H and H' in Ma 2010).
         It puts them in self._hankelMat and self._hankelMat2.
         """
