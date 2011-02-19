@@ -1,5 +1,7 @@
 
 import util
+import numpy as N
+
 
 # Base class
 class ModalDecomp(object):
@@ -15,7 +17,7 @@ class ModalDecomp(object):
     """
     
     def __init__(self,load_snap=None, save_mode=None, save_mat=None, inner_product=None,
-                maxSnapsInMem=100,numCPUs=1):
+                maxSnapsInMem=100,numCPUs=None):
         """
         Modal decomposition constructor.
     
@@ -23,15 +25,91 @@ class ModalDecomp(object):
         derived classes.  All derived classes should be sure to invoke this
         constructor explicitly.
         """
-        # TO DO: Set default values for various data members.
-        print 'Modal decomposition constructor.'
         self.load_snap = load_snap
         self.save_mode = save_mode
         self.save_mat = save_mat
         self.inner_product = inner_product
         self.maxSnapsInMem=maxSnapsInMem
         self.mpi = util.MPI(numCPUs=numCPUs)
+    
+    def _compute_inner_product_chunk(self,rowSnapPaths,colSnapPaths):
+        """ Computes the inner products of snapshots in memory-efficient chunks
         
+        The 'chunk' refers to the fact that within this method, the snapshots
+        are read in memory-efficient ways such that they are not all in memory at 
+        once. This results in finding 'chunks' of the eventual matrix 
+        that is returned. 
+        It is also true that this function is meant to be 
+        used in parallel - individually on each processor. In this case,
+        each processor has different lists of snapshots to take inner products
+        of.
+        rows = number of row snapshot files passed in (BPOD adjoint snaps)
+        columns = number column snapshot files passed in (BPOD direct snaps)
+        Currently this method only supports finding rectangular chunks.
+        In the future this method can be expanded to find more general shapes
+        of the matrix.
+        It returns a matrix with the above number of rows and columns.
+        """
+        
+        numRowSnaps = len(rowSnapPaths)
+        numColSnaps = len(colSnapPaths)
+        #enforce that there are more columns than rows for efficiency
+        if numRowSnaps > numColSnaps:
+            transpose = True
+            temp = rowSnapPaths
+            rowSnapPaths = colSnapPaths
+            colSnapPaths = temp
+            temp = numRowSnaps
+            numRowSnaps = numColSnaps
+            numColSnaps = temp
+                
+        #These two variables set the chunks of the X and Y matrices that are read in
+        #at each step.
+        if self.maxSnapsInMem > numrowSnaps:
+            numRowsPerChunk = numrowSnaps
+        else:
+            numRowsPerChunk = self.maxSnapsInMem - 1 #row snapshots
+        numColsPerChunk = 1 #forward snapshots per chunk in memory at once
+        
+        innerProductMatChunk = N.mat(N.zeros((numRows,numCols)))
+         
+        startColNum = 0
+        startRowNum = 0
+         
+        while startRowNum < numrowSnaps: #read in another set of snaps
+            if startRowNum + numRowsPerChunk > numrowSnapshots:
+                #then a typical "chunk" is too large, go only to the end.
+                endRowNum = numRows
+            else:
+                endRowNum = startRowNum + numRowsPerChunk
+          
+            #load in the snapshots from startColNum
+            rowSnaps = [] # a list of snapshot objects
+            for rowFile in rowFiles[startRowNum:endRowNum]:
+                #print 'reading snapshot',file
+                rowSnaps.append(self.load_snap(rowFile))
+         
+            while startColNum < numcolSnaps:
+                if startColNum + numColsPerChunk > numcolSnaps:
+                    endColNum = numcolSnaps
+                else:
+                    endColNum = startColNum + numColsPerChunk
+                colSnaps = []
+                for colFile in colFiles[startColNum:endColNum]:
+                    colSnaps.append(self.load_snap(colFile))
+              
+                #With the chunks of the "X" and "Y" matrices, find chunk
+                for rowNum in range(startRowNum,endRowNum):
+                    for colNum in range(startColNum,endColNum):
+                        innerProductMatChunk[rowNum,colNum] = \
+                          self.inner_product(rowSnaps[rowNum-startRowNum],
+                          colSnaps[colNum-startColNum])
+                        #print 'formed H['+str(rowNum)+','+str(colNum)+'] of'+
+                        #  'H['+str(numRows)+','+str(numCols)+']'
+       
+            print '---- Formed a',numRows,'by',numCols,'chunk of the Hankel matrix ----'
+        return innerProductMatChunk
+    
     # Common method for computing modes from snapshots and coefficients
     def _compute_modes(self,modeNumList,modePath,snapPaths,buildCoeffMat,
         indexFrom=1):
@@ -74,8 +152,7 @@ class ModalDecomp(object):
         with a different modeNumList.
         """
        
-        numDirectSnaps = len(directSnapPaths)
-        numAdjointSnaps = len(adjointSnapPaths)
+        numSnaps = len(snapPaths)
         numModes = len(modeNumList)
         
         #The truncated matrices, not sure where they belong right now.
@@ -88,7 +165,7 @@ class ModalDecomp(object):
         else:
             numModesPerChunk = numModes
        
-        if numModes < self.maxSnaps: #form all modes at once
+        if numModes < self.maxSnapsInMem: #form all modes at once
             numSnapsPerChunk = 1
             numModesPerChunk = numModes
         else:
@@ -99,7 +176,7 @@ class ModalDecomp(object):
         startModeNum=0
         while startModeNum < numModes:
             modesChunk = [] #List of modes that are being computed
-            if startModeNum + numModesPerChunks < numModes:
+            if startModeNum + numModesPerChunk < numModes:
                 endModeNum = startModeNum+numModesPerChunk
             else:
                 endModeNum = numModes
@@ -119,21 +196,24 @@ class ModalDecomp(object):
                 # startModeNum to endModeNum, which are then saved to disk.
                 # This process is repeated until all modes are done.
                 for snapNum,snapPath in enumerate(snapPaths[startSnapNum:endSnapNum]):
+                    print 'snapNum',snapNum+startSnapNum
                     snap = self.load_snap(snapPath)
+                    print 'snap',snap
                     #Might be able to eliminate this loop for array multiplication (after tested)
-                    for modeNum in xrange(startModeNum,endModeNum):
-                        if snapNum==0: 
-                            #the mode list is empty, must be created with appends
-                            modesChunk.append(snap * buildCoeffMat[snapNum,modeNum])
+                    for modeNum in range(startModeNum,endModeNum):
+                        if modeNum>=len(modesChunk): 
+                            #the mode list isn't full, must be created with appends
+                            modesChunk.append(snap*buildCoeffMat[snapNum+startSnapNum,modeNumList[modeNum]-1])
                         else: #mode list exists
-                            modesChunk[modeNum] += snap*buildCoeffMat[snapNum,modeNum]
+                            modesChunk[modeNum] += snap*buildCoeffMat[snapNum+startSnapNum,modeNumList[modeNum]-1]
+                        print modesChunk
                 print 'Created the "level" of current mode chunk that is due to'
-                print 'snapshot numbers',startSnapNum,endSnapNum
-                
-                startSnapNum = endSnapsPerChunk
+                print 'snapshot numbers',startSnapNum,'to',endSnapNum
+                print 'length of computed modes is',len(modesChunk)
+                startSnapNum = endSnapNum
             
             for modeNum in xrange(startModeNum,endModeNum):
-                self.write_mode(modesChunk[modeNum],modePath%modeNum) #interface might be wrong!
+                self.save_mode(modesChunk[modeNum],modePath%(modeNumList[modeNum]))
             startModeNum = endModeNum
             
             
