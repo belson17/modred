@@ -17,7 +17,7 @@ class ModalDecomp(object):
     """
     
     def __init__(self,load_snap=None, save_mode=None, save_mat=None, inner_product=None,
-                maxSnapsInMem=100,numCPUs=None):
+                maxSnapsInMem=100,numProcs=None):
         """
         Modal decomposition constructor.
     
@@ -30,7 +30,7 @@ class ModalDecomp(object):
         self.save_mat = save_mat
         self.inner_product = inner_product
         self.maxSnapsInMem=maxSnapsInMem
-        self.mpi = util.MPI(numCPUs=numCPUs)
+        self.mpi = util.MPI(numProcs=numProcs)
     
     def _compute_inner_product_chunk(self,rowSnapPaths,colSnapPaths):
         """ Computes the inner products of snapshots in memory-efficient chunks
@@ -72,7 +72,7 @@ class ModalDecomp(object):
         numColsPerChunk = 1 #forward snapshots per chunk in memory at once
         
         innerProductMatChunk = N.mat(N.zeros((numRows,numCols)))
-         
+        
         startColNum = 0
         startRowNum = 0
          
@@ -108,6 +108,7 @@ class ModalDecomp(object):
                         #  'H['+str(numRows)+','+str(numCols)+']'
        
             print '---- Formed a',numRows,'by',numCols,'chunk of the Hankel matrix ----'
+            if transpose: innerProductMatChunk=innerProductMatChunk.T
         return innerProductMatChunk
     
     # Common method for computing modes from snapshots and coefficients
@@ -129,8 +130,20 @@ class ModalDecomp(object):
         in memory simultaneously.
         """
         #Determine the processor mode assignments.
-        if len(modeNumList) < self.mpi.numCPUs:
-            raise ValueError('Cannot find fewer modes than number of procs')
+
+        if len(snapPaths) > buildCoeffMat.shape[0]:
+            raise ValueError('coefficient matrix has fewer rows than number'+
+              'of snap paths')
+        
+        for modeNum in modeNumList:
+            if modeNum-indexFrom > len(snapPaths):
+                raise ValueError('Cannot form more modes than number of '+
+                  'snapshots')
+
+        if len(modeNumList) < self.mpi.numProcs:
+            raise util.MPIError('Cannot find fewer modes than number of procs, '+
+              'lower the number of procs')       
+              
         modeNumProcAssignments = self.mpi.find_proc_assignments(modeNumList)
         
         #Pass the work to individual processors. Each computes and saves
@@ -152,14 +165,18 @@ class ModalDecomp(object):
        
         numSnaps = len(snapPaths)
         numModes = len(modeNumList)
-        if numModes > numSnaps:
-            raise ValueError('Cannot form more modes than number of snapshots')
+
         if numSnaps > buildCoeffMat.shape[0]:
-            raise ValueError('coefficient matrix doesnt have #rows=#snapshots')
+            raise ValueError('coefficient matrix has fewer rows than number '+
+              'of snap paths')
+        for modeNum in modeNumList:
+            if modeNum-indexFrom > len(snapPaths):
+                raise ValueError('Cannot form more modes than number of '+
+                  'snapshots')
         if numSnaps < buildCoeffMat.shape[0]:
             print 'Warning - fewer snapshot paths than rows in the coeff matrix'
             print '  some rows of coeff matrix will not be used!'
-            
+        
         #The truncated matrices, not sure where they belong right now.
         #V1 = N.mat(Vstar[0:numModes,:]).H
         #E1 = E[0:numModes]
@@ -195,20 +212,24 @@ class ModalDecomp(object):
                 
                 for snapNum in xrange(startSnapNum,endSnapNum):
                     snaps.append(self.load_snap(snapPaths[snapNum]))
-                    #Might be able to eliminate this loop for array multiplication (after tested)
+                    #Might be able to eliminate this loop for array 
+                    #multiplication (after tested)
                     #But this could increase memory usage, be careful
                 for modeIndex in xrange(startModeIndex,endModeIndex):
                     for snapNum in xrange(startSnapNum,endSnapNum):
                         modeLevel = snaps[snapNum-startSnapNum]*\
-                          buildCoeffMat[snapNum,modeNumList[modeIndex]-indexFrom]
+                          buildCoeffMat[snapNum, \
+                            modeNumList[modeIndex]-indexFrom]
                         if modeIndex-startModeIndex>=len(modesChunk): 
                             #the mode list isn't full, must be created
                             modesChunk.append(modeLevel) 
                         else: #mode list exists
                             modesChunk[modeIndex-startModeIndex] += modeLevel
-            #after summing all snapshots contributions to current modes, save modes
+            #after summing all snapshots contributions to current modes, 
+            #save modes
             for modeIndex in xrange(startModeIndex,endModeIndex):
-                self.save_mode(modesChunk[modeIndex-startModeIndex],modePath%(modeNumList[modeIndex]))
+                self.save_mode(modesChunk[modeIndex-startModeIndex],
+                  modePath%(modeNumList[modeIndex]))
             
             
         

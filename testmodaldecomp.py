@@ -7,18 +7,21 @@ import subprocess as SP
 
 #import inspect #makes it possible to find information about a function
 
+from mpi4py import MPI
+parallel = MPI.COMM_WORLD.Get_size() > 1
+
 class TestModalDecomp(unittest.TestCase):
-    """ Tests of the ModalDecomp class """
+    """ Tests of the self.modalDecomp class """
     
     def setUp(self):
-        pass
+        self.modalDecomp = MD.ModalDecomp()
     
     def test_init(self):
         """
         Test arguments passed to the constructor are assigned properly"""
         
         #args = {'load_snap':None,'save_mode':None,'save_mat':None,
-        #  'inner_product':None,'maxSnapsInMem':100,'numCPUs':1}
+        #  'inner_product':None,'maxSnapsInMem':100,'numProcs':1}
           
         def my_load(fname): 
             return 0
@@ -41,121 +44,174 @@ class TestModalDecomp(unittest.TestCase):
         myMD = MD.ModalDecomp(maxSnapsInMem=maxSnaps)
         self.assertEqual(myMD.maxSnapsInMem,maxSnaps)
         
-        #no test for numCPUs, this is handled by the util.MPI class
+        #no test for numProcs, this is handled by the util.MPI class
 
-
-    def helper_compute_modes(self,modalDecomp,compute_modes_func):
+    def generate_snaps_modes(self,numStates,numSnaps,numModes,indexFrom=1):
         """
-        This is a very helpful helper function that takes a modaldecomp
-        object modalDecomp. The function compute_modes_func should be a member
-        function of modaldecomp. It is called with the same set of args -
+        Generates random snapshots and finds the modes. 
+        
+        Returns:
+        snapMat -  matrix in which each column is a snapshot in order
+        modeNumList - unordered list of integers representing mode numbers
+          each entry is unique. Mode numbers are picked randomly between
+          indexFrom and numModes+indexFrom-1. The algorithm to compute modes
+          actually allows for repeated mode numbers in serial. In parallel,
+          this is problematic because different processors can try to write
+          to the same file.
+        buildCoeffMat - matrix numSnaps x numModes, random
+        modeMat - matrix of modes, each column is a mode.
+          matrix column # = modeNumber - indexFrom
+        """
+        modeNumList=[]
+        modeIndex=0
+        while modeIndex < numModes:
+            modeNum = indexFrom+int(N.floor(N.random.random()*numModes))
+            if modeNumList.count(modeNum) == 0:
+                modeNumList.append(modeNum)
+                modeIndex+=1
+        buildCoeffMat = N.mat(N.random.random((numSnaps,numModes)))
+        snapMat = N.mat(N.zeros((numStates,numSnaps)))
+        for snapNum in range(numSnaps):
+            snapMat[:,snapNum] = N.random.random((numStates,1))
+        modeMat = snapMat*buildCoeffMat
+        return snapMat,modeNumList,buildCoeffMat,modeMat    
+        
+
+    def helper_compute_modes(self,compute_modes_func):
+        """
+        A helper function used by test__compute_modes* tests.
+        
+        This function takes an argument
+        compute_modes_func that should be a member
+        function of self.modalDecomp. It is always called with the args -
         [modeNumList,modePath,snapPaths,buildCoeffMat,indexFrom=indexFrom].
         If this is not what compute_modes_func takes as arguments, then this 
-        helper function will fail. 
-        This helper function is used by test__compute_modes_* currently. 
-        It exists to save a lot
-        of duplicate code related to calculating modes for many different
+        helper function will fail. This could be changed in the future.
+        This function is used by test__compute_modes* currently. 
+        It exists to prevent duplicate code related to calculating modes 
+        for many different
+        Many cases are tested for numbers of snapshots, states per snapshot,
+        mode numbers, number of snapshots/modes allowed in memory simultaneously,
+        and what the indexing scheme is (currently supports any indexing scheme,
+        meaning the first mode can be numbered 0, 1, or any integer).
+        
+        
         cases. It only works because each compute_modes_func currently being
         tested take exactly the same arguments!
+        In the future there might need to be a more flexible solution.
+        
         """
         
-        def load_snap(snapPath): #returns a precomputed, random, vector
-            return snapMat[:,snapPath]
+        def load_snap(snapNum): #returns a precomputed, random, vector
+            #argument snapNum is actually an integer.
+            return snapMat[:,snapNum]
         
         numSnapsList = [1,3,20,100]
         numStatesList = [1,10,25]
         numModesList = [1,2,15,80]
         maxSnapsInMemList = [4,20,10000]
         indexFromList = [0,1,5]
+        #modePath = 'proc'+str(self.modalDecomp.mpi.rank)+'/mode_%03d.txt'
         modePath = 'mode_%03d.txt'
+        if self.modalDecomp.mpi.rank == 0:
+            SP.call(['mkdir','testfiles'])
         
-        modalDecomp.load_snap=load_snap
-        modalDecomp.save_mode=util.save_mat_text
-        modalDecomp.inner_product=util.inner_product
+        self.modalDecomp.load_snap=load_snap
+        self.modalDecomp.save_mode=util.save_mat_text
+        self.modalDecomp.inner_product=util.inner_product
         
         for numSnaps in numSnapsList:
             for numStates in numStatesList:
                 for numModes in numModesList:
                     for maxSnapsInMem in maxSnapsInMemList: 
-                        modalDecomp.maxSnapsInMem=maxSnapsInMem
+                        self.modalDecomp.maxSnapsInMem=maxSnapsInMem
                         for indexFrom in indexFromList:
-                          #form the mode list randomly, between indexFrom and numModes+indexFrom-1
-                          # the indexFrom only matters when saving and laoding modes
-                          modeNumList=[]
-                          modeIndex=0
-                          while modeIndex < numModes:
-                              #currently allows for repeat mode numbers in the list
-                              #the function _compute_modes_chunk handles this case.
-                              modeNum = indexFrom+int(N.floor(N.random.random()*numModes))
-                              if modeNumList.count(modeNum) == 0:
-                                  modeNumList.append(modeNum)
-                                  modeIndex+=1
-                              #else: print 'retrying random modeNum, modeNumList=',modeNumList,'numModes=',numModes,'modeNum=',modeNum,modeNumList.count(modeNum)
-                          snapPaths = range(numSnaps)
-                          buildCoeffMat = N.mat(N.random.random((numSnaps,numModes)))
-                          snapMat = N.mat(N.zeros((numStates,numSnaps)))
-                          for snapNum in range(numSnaps):
-                              snapMat[:,snapNum] = N.random.random((numStates,1))
-                          
-                          if numModes > numSnaps or numSnaps > buildCoeffMat.shape[0]:
-                              self.assertRaises(ValueError,compute_modes_func,modeNumList,modePath,snapPaths,
-                                buildCoeffMat,indexFrom=indexFrom)
-                          else:
-                              compute_modes_func(modeNumList,modePath,snapPaths,
-                                buildCoeffMat,indexFrom=indexFrom)
-                              #saves modes to files mode_001.txt, mode_002.txt, etc        
-                              #calculate modes via simple matrix eqn
-                              trueModes = snapMat*buildCoeffMat
-                              for modeNum in modeNumList:
-                                  computedMode=(util.load_mat_text(modePath%modeNum))
-                                  N.testing.assert_array_almost_equal(computedMode,trueModes[:,modeNum-indexFrom])            
-        """
-        if modalDecomp.mpi.parallel:
-            waitRank = modalDecomp.mpi.rank
-            sumOfRanksTrue = 0
-            sumOfRanksMeasured = 0
-            for r in xrange(modalDecomp.mpi.numCPUs):
-                sumOfRanksTrue +=r
-            waitRankList=modalDecomp.mpi.comm.gather(waitRank,root=0)
-            for r in waitRankList:
-                sumOfRanksMeasured +=r
-            self.assertEqual(sumOfRanksTrue,sumOfRanksMeasured)
-        """
-        SP.call(['rm -f mode_*.txt'],shell=True)
+                            #generate data and then broadcast to all procs
+                            if self.modalDecomp.mpi.rank==0:
+                                snapMat,modeNumList,buildCoeffMat,trueModes = \
+                                  self.generate_snaps_modes(numStates,numSnaps,
+                                  numModes,indexFrom=indexFrom)
+                            else:
+                                modeNumList = None
+                                buildCoeffMat = None
+                                snapMat = None
+                                trueModes = None
+                            modeNumList = \
+                              self.modalDecomp.mpi.comm.bcast(modeNumList,root=0)
+                            buildCoeffMat = \
+                              self.modalDecomp.mpi.comm.bcast(buildCoeffMat,root=0)
+                            snapMat = \
+                              self.modalDecomp.mpi.comm.bcast(snapMat,root=0)
+                            trueModes = \
+                              self.modalDecomp.mpi.comm.bcast(trueModes,root=0)
+                                
+                            snapPaths = range(numSnaps)
+                            checkError=False
+                            for modeNum in modeNumList:
+                                if modeNum-indexFrom > numSnaps:
+                                    checkError=True
+                            
+                            if checkError or numSnaps > buildCoeffMat.shape[0]:
+                                self.assertRaises(ValueError,compute_modes_func,
+                                  modeNumList,modePath,snapPaths,
+                                  buildCoeffMat,indexFrom=indexFrom)
+                            elif self.modalDecomp.mpi.numProcs>numModes:
+                                self.assertRaises(util.MPIError,
+                                  compute_modes_func,
+                                  modeNumList,modePath,snapPaths,buildCoeffMat,
+                                  indexFrom=indexFrom)
+                            else:
+                                #saves modes to files
+                                compute_modes_func(modeNumList,modePath,snapPaths,
+                                  buildCoeffMat,indexFrom=indexFrom)
+                              
+                                #parallelize the assertions
+                                modeNumAssignments = \
+                                  self.modalDecomp.mpi.find_proc_assignments( 
+                                  modeNumList)
+                                for modeNum in modeNumAssignments[self.modalDecomp.mpi.rank]:
+                                    computedMode=(util.load_mat_text(
+                                      modePath%modeNum))
+                                    N.testing.assert_array_almost_equal(
+                                      computedMode,trueModes[:,modeNum-indexFrom])            
+        
+                            #Force MPI to wait for all procs to reach this point
+                            #delete all mode files saved to disk
+                            self.modalDecomp.mpi.sync()
+                            if self.modalDecomp.mpi.rank == 0:
+                                SP.call(['rm -rf testfiles/* proc*/*'],
+                                  shell=True)
         
 
-
+    @unittest.skipIf(parallel,'This is a serial test')
     def test__compute_modes_chunk(self):
         """
         Test that can compute chunks of modes from arguments.
         
-        The modes are saved to file so must read them in to test. The
+        The modes are computed, saved to file, and read in to test. The
         compute_modes_chunk method is only ever called on a per-proc basis
         so it does not need to be tested seperately for parallel and serial.
+        It happens that this test passes in parallel as well, but this is
+        not required.
         """
-        modalDecomp = MD.ModalDecomp()
-        self.helper_compute_modes(modalDecomp,modalDecomp._compute_modes_chunk)      
-        
-    
-    def test__compute_modes_serial(self):
-        """
-        Test that can compute modes from the arguments.
-        
-        This only needs to test serial and the components of compute_modes
-        that is not handled by compute_modes_chunk. compute_modes_chunk
-        does most of the work for actually computing the modes."""
-        modalDecomp = MD.ModalDecomp()
-        self.helper_compute_modes(modalDecomp,modalDecomp._compute_modes)
-        
-
-    def test__compute_modes_parallel(self):
+        self.helper_compute_modes(self.modalDecomp._compute_modes_chunk)      
+        #self.modalDecomp.mpi.sync()
+       
+    def test__compute_modes(self):
         """
         Test that can compute modes from arguments. 
         
-        This only needs to test serial and the components of compute_modes
-        that is not handled by compute_modes_chunk. compute_modes_chunk
-        does most of the work for actually computing the modes."""
-        pass
+        This tests the _compute_modes function, which primarily breaks 
+        up the tasks for each processor and passes off the computation to
+        _compute_modes_chunk. Parallel and serial cases need to be tested
+        independently currently (because of file saving/loading/deleting
+        problems in the hlper_compute_modes which are fixable). This test
+        mostly is a call to helper_compute_modes with the function
+        modalDecomp._compute_modes"""
+        
+        self.helper_compute_modes(self.modalDecomp._compute_modes)
+           
+        self.modalDecomp.mpi.sync()
         
     def test__compute_inner_product_chunk(self):
         """
@@ -165,8 +221,13 @@ class TestModalDecomp(unittest.TestCase):
     
     
 if __name__=='__main__':
-    unittest.main()    
-
+    if parallel:
+        print 'Remember to test in serial also with command:'
+        print 'python testmodaldecomp.py'
+    else:
+        print 'Remember to test in parallel also with command:'
+        print 'mpiexec -n <numProcs> python testmodaldecomp.py' 
+    unittest.main(verbosity=2)    
     
     
 
