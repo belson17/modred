@@ -14,8 +14,8 @@ class TestUtil(unittest.TestCase):
         try:
             from mpi4py import MPI
             self.comm=MPI.COMM_WORLD
-            self.numCPUs = self.comm.Get_size()
-            self.myMPI=util.MPI(numCPUs=self.numCPUs)
+            self.numProcs = self.comm.Get_size()
+            self.myMPI=util.MPI(numProcs=self.numProcs)
             self.rank = self.comm.Get_rank()
             self.mpi4py = True
         except ImportError:
@@ -43,19 +43,19 @@ class TestUtil(unittest.TestCase):
         
         Tests must be run in parallel (with mpiexec -n 2). Also test that
         when in serial, it defaults to a good behavior."""
-        self.assertEqual(self.myMPI.numCPUs,self.numCPUs)
+        self.assertEqual(self.myMPI.numProcs,self.numProcs)
         self.assertEqual(self.myMPI.rank,self.rank)
         
         #Test that it is possible to use fewer CPUs than available
-        if self.numCPUs>1:
-          mpiChangeCPUs = util.MPI(self.numCPUs-1)
-          self.assertEqual(mpiChangeCPUs.numCPUs,self.numCPUs-1)
+        if self.numProcs>1:
+          mpiChangeCPUs = util.MPI(self.numProcs-1)
+          self.assertEqual(mpiChangeCPUs.numProcs,self.numProcs-1)
         
         #Test that non-sensible values of CPUs are defaulted to num available.
-        mpiZeroCPUs = util.MPI(numCPUs=0)
-        self.assertEqual(mpiZeroCPUs.numCPUs,self.numCPUs)
-        mpiTooManyCPUs = util.MPI(numCPUs=self.numCPUs+1)
-        self.assertEqual(mpiTooManyCPUs.numCPUs,self.numCPUs)
+        mpiZeroCPUs = util.MPI(numProcs=0)
+        self.assertEqual(mpiZeroCPUs.numProcs,self.numProcs)
+        mpiTooManyCPUs = util.MPI(numProcs=self.numProcs+1)
+        self.assertEqual(mpiTooManyCPUs.numProcs,self.numProcs)
         
         
     
@@ -65,40 +65,40 @@ class TestUtil(unittest.TestCase):
         Given a range of consecutive numbers starting from 0, it tests
         that the correct assignment list is returned. Rather than requiring
         the testutil.py script to be run with many different numbers of procs,
-        the behavior of this function is mimiced by manually setting numCPUs.
+        the behavior of this function is mimiced by manually setting numProcs.
         This should NEVER be done by a user!
         """
         
         numTasks = 10
         
-        numCPUs = 2
+        numProcs = 2
         correctAssignments = [0,5,10]
-        self.myMPI.numCPUs = numCPUs
+        self.myMPI.numProcs = numProcs
         self.assertEqual(self.myMPI.find_consec_proc_assignments(numTasks),
           correctAssignments)
         
-        numCPUs = 3
+        numProcs = 3
         correctAssignments = [0,4,8,10]
-        self.myMPI.numCPUs = numCPUs
+        self.myMPI.numProcs = numProcs
         self.assertEqual(self.myMPI.find_consec_proc_assignments(numTasks),
           correctAssignments)
           
         
-        numCPUs = 4
+        numProcs = 4
         correctAssignments = [0,3,6,9,10]
-        self.myMPI.numCPUs = numCPUs
+        self.myMPI.numProcs = numProcs
         self.assertEqual(self.myMPI.find_consec_proc_assignments(numTasks),
           correctAssignments)
         
-        numCPUs = 6
+        numProcs = 6
         correctAssignments = [0,2,4,6,8,10,10]
-        self.myMPI.numCPUs = numCPUs
+        self.myMPI.numProcs = numProcs
         self.assertEqual(self.myMPI.find_consec_proc_assignments(numTasks),
           correctAssignments)
           
-        numCPUs = 8
+        numProcs = 8
         correctAssignments = [0,2,4,6,8,10,10,10,10]
-        self.myMPI.numCPUs = numCPUs
+        self.myMPI.numProcs = numProcs
         self.assertEqual(self.myMPI.find_consec_proc_assignments(numTasks),
           correctAssignments)
     
@@ -108,21 +108,21 @@ class TestUtil(unittest.TestCase):
         Given a list of tasks, it tests
         that the correct assignment list is returned. Rather than requiring
         the testutil.py script to be run with many different numbers of procs,
-        the behavior of this function is mimiced by manually setting numCPUs.
+        the behavior of this function is mimiced by manually setting numProcs.
         This should NEVER be done by a user!
         """
         
         numTasks=15
         taskList = range(numTasks)
-        numCPUs = 4
+        numProcs = 4
         #Test that it gives the same output as consecutive assignments
         # for that special case
-        self.myMPI.numCPUs = numCPUs
+        self.myMPI.numProcs = numProcs
         consecAssignments = self.myMPI.find_consec_proc_assignments(numTasks)
         nonconsecAssignments = self.myMPI.find_proc_assignments(taskList)
-        self.assertEqual(len(nonconsecAssignments),numCPUs)
+        self.assertEqual(len(nonconsecAssignments),numProcs)
         
-        for CPUNum in range(numCPUs):
+        for CPUNum in range(numProcs):
             self.assertEqual(nonconsecAssignments[CPUNum][0],\
               consecAssignments[CPUNum])
             self.assertEqual(nonconsecAssignments[CPUNum][-1],\
@@ -131,8 +131,8 @@ class TestUtil(unittest.TestCase):
         #can handle a list of any type of objects
         taskList = ['1','2','4','8','16','32','64','128']
         numTasks = len(taskList)
-        numCPUs = 3
-        self.myMPI.numCPUs=numCPUs
+        numProcs = 3
+        self.myMPI.numProcs=numProcs
         correctAssignments=[['1','2','4'],['8','16','32'],['64','128']]
         self.assertEqual(self.myMPI.find_proc_assignments(taskList),
           correctAssignments)

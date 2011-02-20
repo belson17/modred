@@ -112,7 +112,7 @@ class TestModalDecomp(unittest.TestCase):
         maxSnapsInMemList = [4,20,10000]
         indexFromList = [0,1,5]
         #modePath = 'proc'+str(self.modalDecomp.mpi.rank)+'/mode_%03d.txt'
-        modePath = 'mode_%03d.txt'
+        modePath = 'testfiles/mode_%03d.txt'
         if self.modalDecomp.mpi.rank == 0:
             SP.call(['mkdir','testfiles'])
         
@@ -221,13 +221,13 @@ class TestModalDecomp(unittest.TestCase):
     
     
 if __name__=='__main__':
+    unittest.main(verbosity=2)    
     if parallel:
         print 'Remember to test in serial also with command:'
         print 'python testmodaldecomp.py'
     else:
         print 'Remember to test in parallel also with command:'
         print 'mpiexec -n <numProcs> python testmodaldecomp.py' 
-    unittest.main(verbosity=2)    
     
     
 
