@@ -128,21 +128,19 @@ class ModalDecomp(object):
         It also will never have more than self.maxSnaps snapshots/modes
         in memory simultaneously.
         """
-        # TO DO: add load/save functions as optional arguments here?
-        # TO DO: add name for saving build coefficients?
-        # The following function must be defined in each derived class!
-        if indexFrom != 1: 
-            raise UndefinedError('Not supported, set indexFrom to 1 please')
         #Determine the processor mode assignments.
-        rowNumProcAssignments = self.mpi.find_proc_assignments(modeNumList)
+        if len(modeNumList) < self.mpi.numCPUs:
+            raise ValueError('Cannot find fewer modes than number of procs')
+        modeNumProcAssignments = self.mpi.find_proc_assignments(modeNumList)
         
         #Pass the work to individual processors. Each computes and saves
         #the mode numbers from rowNumProcAssigments[n] (a list of mode numbers)
         # There is no required mpi.gather command, modes are saved to file directly.
-        self._compute_modes_chunk(rowNumProcAssignments[self.mpi.rank],
-            modePath,snapPaths,buildCoeffMat)
+        self._compute_modes_chunk(modeNumProcAssignments[self.mpi.rank],
+            modePath,snapPaths,buildCoeffMat,indexFrom=indexFrom)
   
-    def _compute_modes_chunk(self,modeNumList,modePath,snapPaths,buildCoeffMat):
+    def _compute_modes_chunk(self,modeNumList,modePath,snapPaths,buildCoeffMat,
+      indexFrom=1):
         """
         Computes a given set of modes in memory-efficient chunks.
         
@@ -154,7 +152,14 @@ class ModalDecomp(object):
        
         numSnaps = len(snapPaths)
         numModes = len(modeNumList)
-        
+        if numModes > numSnaps:
+            raise ValueError('Cannot form more modes than number of snapshots')
+        if numSnaps > buildCoeffMat.shape[0]:
+            raise ValueError('coefficient matrix doesnt have #rows=#snapshots')
+        if numSnaps < buildCoeffMat.shape[0]:
+            print 'Warning - fewer snapshot paths than rows in the coeff matrix'
+            print '  some rows of coeff matrix will not be used!'
+            
         #The truncated matrices, not sure where they belong right now.
         #V1 = N.mat(Vstar[0:numModes,:]).H
         #E1 = E[0:numModes]
@@ -173,48 +178,37 @@ class ModalDecomp(object):
             numModesPerChunk = self.maxSnapsInMem-numSnapsPerChunk
         
         #Loop over each chunk
-        startModeNum=0
-        while startModeNum < numModes:
+        for startModeIndex in range(0,numModes,numModesPerChunk):
+            endModeIndex = min(startModeIndex+numModesPerChunk,numModes)
             modesChunk = [] #List of modes that are being computed
-            if startModeNum + numModesPerChunk < numModes:
-                endModeNum = startModeNum+numModesPerChunk
-            else:
-                endModeNum = numModes
             
-            startSnapNum=0
-            while startSnapNum < numSnaps:    
-                if startSnapNum + numSnapsPerChunk < numSnaps:
-                    endSnapNum = startSnapNum+numSnapsPerChunk
-                else:
-                    endSnapNum = numSnaps
+            # Sweep through all snapshots, adding "levels", ie adding 
+            # the contribution
+            # of each snapshot to each mode. After one sweep of all
+            # snapshots,
+            # the current modesChunk is complete with modes numbered:
+            # modeList[startModeIndex:endModeIndex], which are then saved to disk.
+            # This process is repeated until all modes are computed and saved.
+            for startSnapNum in xrange(0,numSnaps,numSnapsPerChunk):
+                endSnapNum = min(startSnapNum+numSnapsPerChunk,numSnaps)
+                snaps=[]
                 
-                #Sweep through all snapshots, adding "levels", ie adding 
-                # contributions
-                # of each snapshot to each mode. After one sweep of all
-                # snapshots,
-                # the current modesChunk is complete with modes from
-                # startModeNum to endModeNum, which are then saved to disk.
-                # This process is repeated until all modes are done.
-                for snapNum,snapPath in enumerate(snapPaths[startSnapNum:endSnapNum]):
-                    print 'snapNum',snapNum+startSnapNum
-                    snap = self.load_snap(snapPath)
-                    print 'snap',snap
+                for snapNum in xrange(startSnapNum,endSnapNum):
+                    snaps.append(self.load_snap(snapPaths[snapNum]))
                     #Might be able to eliminate this loop for array multiplication (after tested)
-                    for modeNum in range(startModeNum,endModeNum):
-                        if modeNum>=len(modesChunk): 
-                            #the mode list isn't full, must be created with appends
-                            modesChunk.append(snap*buildCoeffMat[snapNum+startSnapNum,modeNumList[modeNum]-1])
+                    #But this could increase memory usage, be careful
+                for modeIndex in xrange(startModeIndex,endModeIndex):
+                    for snapNum in xrange(startSnapNum,endSnapNum):
+                        modeLevel = snaps[snapNum-startSnapNum]*\
+                          buildCoeffMat[snapNum,modeNumList[modeIndex]-indexFrom]
+                        if modeIndex-startModeIndex>=len(modesChunk): 
+                            #the mode list isn't full, must be created
+                            modesChunk.append(modeLevel) 
                         else: #mode list exists
-                            modesChunk[modeNum] += snap*buildCoeffMat[snapNum+startSnapNum,modeNumList[modeNum]-1]
-                        print modesChunk
-                print 'Created the "level" of current mode chunk that is due to'
-                print 'snapshot numbers',startSnapNum,'to',endSnapNum
-                print 'length of computed modes is',len(modesChunk)
-                startSnapNum = endSnapNum
-            
-            for modeNum in xrange(startModeNum,endModeNum):
-                self.save_mode(modesChunk[modeNum],modePath%(modeNumList[modeNum]))
-            startModeNum = endModeNum
+                            modesChunk[modeIndex-startModeIndex] += modeLevel
+            #after summing all snapshots contributions to current modes, save modes
+            for modeIndex in xrange(startModeIndex,endModeIndex):
+                self.save_mode(modesChunk[modeIndex-startModeIndex],modePath%(modeNumList[modeIndex]))
             
             
         
