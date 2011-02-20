@@ -8,7 +8,8 @@ class ModalDecomp(object):
     """
     Modal Decomposition base class
 
-    This parent class is designed for the implementation of algorithms that take 
+    This parent class is designed for the implementation of algorithms that
+    take 
     a  set of data (snapshots) and turn them into modes.  Each class will 
     implement a method to perform some sort of decomposition, e.g. using POD, 
     BPOD, or DMD.  The results of this decomposition will be used to construct 
@@ -33,10 +34,12 @@ class ModalDecomp(object):
         self.mpi = util.MPI(numProcs=numProcs)
     
     def _compute_inner_product_chunk(self,rowSnapPaths,colSnapPaths):
-        """ Computes the inner products of snapshots in memory-efficient chunks
+        """ Computes inner products of snapshots in memory-efficient chunks
         
-        The 'chunk' refers to the fact that within this method, the snapshots
-        are read in memory-efficient ways such that they are not all in memory at 
+        The 'chunk' refers to the fact that within this method, the 
+        snapshots
+        are read in memory-efficient ways such that they are not all in
+        memory at 
         once. This results in finding 'chunks' of the eventual matrix 
         that is returned. 
         It is also true that this function is meant to be 
@@ -51,65 +54,56 @@ class ModalDecomp(object):
         It returns a matrix with the above number of rows and columns.
         """
         
-        numRowSnaps = len(rowSnapPaths)
-        numColSnaps = len(colSnapPaths)
+        numRows = len(rowSnapPaths)
+        numCols = len(colSnapPaths)
         #enforce that there are more columns than rows for efficiency
-        if numRowSnaps > numColSnaps:
+        if numRows > numCols:
             transpose = True
             temp = rowSnapPaths
             rowSnapPaths = colSnapPaths
             colSnapPaths = temp
-            temp = numRowSnaps
-            numRowSnaps = numColSnaps
-            numColSnaps = temp
+            temp = numRows
+            numRows = numCols
+            numCols = temp
+        else: 
+            transpose = False
                 
-        #These two variables set the chunks of the X and Y matrices that are read in
+        #These two variables set the chunks of the matrices that are read in
         #at each step.
-        if self.maxSnapsInMem > numrowSnaps:
-            numRowsPerChunk = numrowSnaps
-        else:
-            numRowsPerChunk = self.maxSnapsInMem - 1 #row snapshots
-        numColsPerChunk = 1 #forward snapshots per chunk in memory at once
+        numColsPerChunk = 1
+        numRowsPerChunk = self.maxSnapsInMem-numColsPerChunk         
         
         innerProductMatChunk = N.mat(N.zeros((numRows,numCols)))
         
-        startColNum = 0
-        startRowNum = 0
+        for startRowNum in range(0,numRows,numRowsPerChunk):
+            endRowNum = min(numRows,startRowNum+numRowsPerChunk)
+            
+            rowSnaps = []
+            for rowPath in rowSnapPaths[startRowNum:endRowNum]:
+                rowSnaps.append(self.load_snap(rowPath))
          
-        while startRowNum < numrowSnaps: #read in another set of snaps
-            if startRowNum + numRowsPerChunk > numrowSnapshots:
-                #then a typical "chunk" is too large, go only to the end.
-                endRowNum = numRows
-            else:
-                endRowNum = startRowNum + numRowsPerChunk
-          
-            #load in the snapshots from startColNum
-            rowSnaps = [] # a list of snapshot objects
-            for rowFile in rowFiles[startRowNum:endRowNum]:
-                #print 'reading snapshot',file
-                rowSnaps.append(self.load_snap(rowFile))
-         
-            while startColNum < numcolSnaps:
-                if startColNum + numColsPerChunk > numcolSnaps:
-                    endColNum = numcolSnaps
-                else:
-                    endColNum = startColNum + numColsPerChunk
+            for startColNum in range(0,numCols,numColsPerChunk):
+                endColNum = min(numCols,startColNum+numColsPerChunk)
+
                 colSnaps = []
-                for colFile in colFiles[startColNum:endColNum]:
-                    colSnaps.append(self.load_snap(colFile))
+                for colPath in colSnapPaths[startColNum:endColNum]:
+                    colSnaps.append(self.load_snap(colPath))
               
-                #With the chunks of the "X" and "Y" matrices, find chunk
+                #With the chunks of the row and column matrices,
+                #find inner products
                 for rowNum in range(startRowNum,endRowNum):
                     for colNum in range(startColNum,endColNum):
                         innerProductMatChunk[rowNum,colNum] = \
                           self.inner_product(rowSnaps[rowNum-startRowNum],
                           colSnaps[colNum-startColNum])
-                        #print 'formed H['+str(rowNum)+','+str(colNum)+'] of'+
-                        #  'H['+str(numRows)+','+str(numCols)+']'
+            #print 'formed ['+str(rowNum+1)+','+str(colNum+1)+'] of'+\
+            #    '['+str(numRows)+','+str(numCols)+'], completed '+\
+            #    str(round(100.*(rowNum+1)*(colNum+1)/(numRows*numCols)))+\
+            #'% of mat'
        
-            print '---- Formed a',numRows,'by',numCols,'chunk of the Hankel matrix ----'
-            if transpose: innerProductMatChunk=innerProductMatChunk.T
+        if transpose: innerProductMatChunk=innerProductMatChunk.T
         return innerProductMatChunk
+    
     
     # Common method for computing modes from snapshots and coefficients
     def _compute_modes(self,modeNumList,modePath,snapPaths,buildCoeffMat,
@@ -117,20 +111,22 @@ class ModalDecomp(object):
         """
         A common method to compute and save modes from snapshots.
         
-        modeNumList - Indices of modes to compute.
-        modePath - Full path to mode location, e.g /home/tmp/u_%d.out.
-        indexFrom - Choose to index modes starting from 0 or 1.
+        modeNumList - mode numbers to compute on this processor. This 
+          includes the indexFrom, so if indexFrom=1, examples are:
+          [1,2,3,4,5] or [3,1,6,8]. The mode numbers need not be sorted,
+          and sorting does not increase efficiency. 
+          Repeated mode numbers is not guaranteed to work. 
+        modePath - Full path to mode location, e.g /home/user/mode_%d.txt.
+        indexFrom - Choose to index modes starting from 0, 1, or other.
         snapPaths - A list paths to files from which snapshots can be loaded.
         buildCoeffMat - Matrix of coefficients for constructing modes.  The kth
             column contains the coefficients for computing the kth mode.
         
-        This method works in parallel to compute the modes evenly among
-        all of the processors available (see self.mpi).
-        It also will never have more than self.maxSnaps snapshots/modes
-        in memory simultaneously.
+        This methods primary purpose is to evenly divide the tasks for each
+        processor in parallel (see util.MPI). It then calls _compute_modes_chunk.
+        Each processor then computes and saves
+        the mode numbers assigned to it
         """
-        #Determine the processor mode assignments.
-
         if len(snapPaths) > buildCoeffMat.shape[0]:
             raise ValueError('coefficient matrix has fewer rows than number'+
               'of snap paths')
@@ -145,24 +141,48 @@ class ModalDecomp(object):
               'lower the number of procs')       
               
         modeNumProcAssignments = self.mpi.find_proc_assignments(modeNumList)
-        
-        #Pass the work to individual processors. Each computes and saves
-        #the mode numbers from rowNumProcAssigments[n] (a list of mode numbers)
-        # There is no required mpi.gather command, modes are saved to file directly.
+
+        #Pass the work to individual processors..
         self._compute_modes_chunk(modeNumProcAssignments[self.mpi.rank],
             modePath,snapPaths,buildCoeffMat,indexFrom=indexFrom)
-  
+        #There is no required mpi.gather command, modes are saved to file 
+
     def _compute_modes_chunk(self,modeNumList,modePath,snapPaths,buildCoeffMat,
       indexFrom=1):
         """
         Computes a given set of modes in memory-efficient chunks.
         
-        The size of the chunks used depends on the parameter self.maxSnaps,
+        modeNumList - mode numbers to compute on this processor. This 
+          includes the indexFrom, so if indexFrom=1, examples are:
+          [1,2,3,4,5] or [3,1,6,8]. The mode numbers need not be sorted,
+          and sorting does not increase efficiency. 
+          Repeated mode numbers is not guaranteed to work. 
+        modePath - Full path to mode location, e.g /home/user/mode_%d.txt.
+        indexFrom - Choose to index modes starting from 0, 1, or other.
+        snapPaths - A list paths to files from which snapshots can be loaded.
+          This must be the FULL list of snapshots, even in parallel.
+        buildCoeffMat - Matrix of coefficients for constructing modes.  The kth
+            column contains the coefficients for computing the kth mode.
+            Like snapPaths, this must be the FULL buildCoeffMat, even in
+            parallel.
+        
+        The 'chunk' refers to the fact that within this method, the snapshots
+        are read in memory-efficient ways such that they are not all in 
+        memory at 
+        once. This results in finding 'chunks' of the eventual modes 
+        that are saved to disk.
+        It is also true that this function is meant to be 
+        used in parallel - individually on each processor. In this case,
+        each processor has different lists of snapshots to form modes from.
+        The size of the chunks used depends on the parameter self.maxSnapsInMem
         which is the maximum number of snapshots that will fit in memory 
         simultaneously. In parallel, this method is executed by each processor
-        with a different modeNumList.
+        with a different modeNumList. In this way, this method operates in
+        a single-processor sense.
+        
+        
         """
-       
+
         numSnaps = len(snapPaths)
         numModes = len(modeNumList)
 
@@ -182,30 +202,16 @@ class ModalDecomp(object):
         #E1 = E[0:numModes]
         #U1 = N.mat(U[:,0:numModes])
         
-        if numModes >= self.maxSnapsInMem: #more modes than can be in memory
-            numModesPerChunk = self.maxSnapsInMem - 1
-        else:
-            numModesPerChunk = numModes
-       
-        if numModes < self.maxSnapsInMem: #form all modes at once
-            numSnapsPerChunk = 1
-            numModesPerChunk = numModes
-        else:
-            numSnapsPerChunk = 1
-            numModesPerChunk = self.maxSnapsInMem-numSnapsPerChunk
-        
+        numSnapsPerChunk = 1
+        numModesPerChunk = self.maxSnapsInMem-numSnapsPerChunk
+                
         #Loop over each chunk
         for startModeIndex in range(0,numModes,numModesPerChunk):
             endModeIndex = min(startModeIndex+numModesPerChunk,numModes)
             modesChunk = [] #List of modes that are being computed
             
             # Sweep through all snapshots, adding "levels", ie adding 
-            # the contribution
-            # of each snapshot to each mode. After one sweep of all
-            # snapshots,
-            # the current modesChunk is complete with modes numbered:
-            # modeList[startModeIndex:endModeIndex], which are then saved to disk.
-            # This process is repeated until all modes are computed and saved.
+            # the contribution of each snapshot
             for startSnapNum in xrange(0,numSnaps,numSnapsPerChunk):
                 endSnapNum = min(startSnapNum+numSnapsPerChunk,numSnaps)
                 snaps=[]

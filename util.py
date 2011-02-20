@@ -2,23 +2,18 @@
 
 import subprocess as SP
 import numpy as N
-import csv
 def save_mat_text(A,filename,delimiter=','):
     """
     Writes a matrix to file, 1D or 2D, in text with delimeter and a space
     seperating the elements.
     """
-
+    import csv
     if len(N.shape(A))>2:
-        raise RuntimeError('Can only write matrices with 1 or 2 dimensions')
-        
+        raise RuntimeError('Can only write matrices with 1 or 2 dimensions') 
     A = N.mat(A)
     numRows,numCols = N.shape(A) #must be 2D since it is a matrix
-
     writer = csv.writer(open(filename,'w'),delimiter=delimiter)
-    
-    #def genStringElement(
-    
+       
     for rowNum in range(numRows):
         row=[]
         for colNum in range(numCols):
@@ -75,7 +70,12 @@ class MPI(object):
             self.parallel=False
             
     def sync(self):
-        """Forces all processors to synchronize"""
+        """Forces all processors to synchronize
+        
+        Method computes simple formula based on ranks of each proc, then
+        asserts that results make sense and each proc reported back. This
+        forces all processors to wait for others to "catch up"
+        It is self-testing and for now does not need a unittest."""
         if self.parallel:
             data = (self.rank+1)**2
             data = self.comm.gather(data, root=0)
@@ -84,53 +84,37 @@ class MPI(object):
                     assert data[i] == (i+1)**2
             else:
                 assert data is None
-        
-    def find_consec_proc_assignments(self,numTasks):
-        """Finds the tasks for each processor, giving the tasks numbers
-        from 0 to numTasks-1. 
-        
-        It assumes the tasks can be numbered consecutively,
-        hence the name. The returned list is numProcs+1 long and contains
-        the assignments as:
-        Proc n has tasks taskProcAssignments[n:(n+1)]
-        """
-        taskProcAssignments=[]
-        #In the future it would be better to reevaulate
-        #how many tasks per proc formula. When there are more than
-        #half as many procs as tasks, almost half of the procs do 
-        # nothing. Must change tests if this is done
-        numTasksPerProc = int(N.ceil(numTasks/(1.*self.numProcs)))
-        for procNum in range(self.numProcs+1):
-            if procNum*numTasksPerProc <= numTasks:
-                taskProcAssignments.append(procNum*numTasksPerProc)
-            else:
-                taskProcAssignments.append(numTasks)
-        return taskProcAssignments
-        
+
     def find_proc_assignments(self,taskList):
-      """ Finds the breakdown of tasks for each processor, evenly
-      breaking up the tasks in the taskList. It returns a list
-      that has numProcs+1 entries. 
+      """ Returns a 2D list of tasks, [rank][taskIndex], evenly
+      breaking up the tasks in the taskList. 
+      
+      It returns a list that has numProcs+1 entries. 
       Proc n is responsible for taskProcAssignments[n][...]
       where the 2nd dimension of the 2D list contains the tasks (whatever
-      they were in the original taskList)
+      they were in the original taskList).
       """
       
-      #In the future, continuously update available procs and remaining tasks
-      # while assigning to more evenly distribute the tasks.
-      numTasks = len(taskList)
-      numTasksPerProc = int(N.ceil(numTasks/(1.*self.numProcs)))
       taskProcAssignments= []
+      prevMaxTaskIndex = 0
+      import copy
+      taskListUse = copy.deepcopy(taskList)
+      numTasks = len(taskList)
       for procNum in range(self.numProcs):
-          if (procNum+1)*numTasksPerProc < numTasks:
-              taskProcAssignments.append(\
-                taskList[procNum*numTasksPerProc:(procNum+1)*numTasksPerProc])
-          else:
-              taskProcAssignments.append(taskList[procNum*numTasksPerProc:])
+          numRemainingTasks = len(taskListUse)
+          numRemainingProcs = self.numProcs - procNum
+          numTasksPerProc = int(N.ceil(numRemainingTasks/
+            (1.*numRemainingProcs)))
+          newMaxTaskIndex = min(numTasksPerProc,numRemainingTasks)
+          taskProcAssignments.append(taskListUse[:newMaxTaskIndex])
+          for removeElement in taskListUse[:newMaxTaskIndex]:
+              taskListUse.remove(removeElement)
+          prevMaxTaskIndex = newMaxTaskIndex
       #currently do not support 0 tasks for a proc
       for assignment in taskProcAssignments:
           if len(assignment)==0:
-              raise RuntimeError('At least one processor has no tasks'+\
+              print taskProcAssignments
+              raise MPIError('At least one processor has no tasks'+\
                 ', currently this is unsupported, lower num of procs')
       return taskProcAssignments
       
@@ -144,7 +128,7 @@ def find_file_type(filename):
     return fileExtension
 
 def get_file_list(dir,fileExtension=None):
-    """ Finds all files in the given directory that have the given file extension"""
+    """ Finds all files in the given directory that have file extension"""
     filesRaw = SP.Popen(['ls',dir],stdout=SP.PIPE).communicate()[0]
     #files separated by endlines
     filename= ''
@@ -154,7 +138,8 @@ def get_file_list(dir,fileExtension=None):
         if c!='\n':
             filename+=c
         else: #completed file name
-            if fileExtension is not None and filename[-len(fileExtension):] == fileExtension:
+            if fileExtension is not None and \
+              filename[-len(fileExtension):] == fileExtension:
                 fileList.append(filename)
             elif fileExtension is None:
                 fileList.append(filename)
