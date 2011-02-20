@@ -13,7 +13,7 @@ class BPOD(ModalDecomp):
     """
     
     def __init__(self, load_snap=None, save_mode=None, 
-        save_mat=util.write_mat_text, inner_product=None, directSnapPaths=None, 
+        save_mat=util.save_mat_text, inner_product=None, directSnapPaths=None, 
         adjointSnapPaths=None, LSingVecs=None, singVals=None, RSingVecs=None,
         hankelMat=None):
         """

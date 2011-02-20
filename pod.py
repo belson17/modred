@@ -15,7 +15,7 @@ class POD(BPOD):
     """
         
     def __init__(self, load_snap=None, save_mode=None, 
-        save_mat=util.write_mat_text, inner_product=None, snapPaths=None,
+        save_mat=util.save_mat_text, inner_product=None, snapPaths=None,
         singVals=None, singVecs=None, correlationMat=None):
         """
         POD constructor

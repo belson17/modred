@@ -16,7 +16,7 @@ class DMD(ModalDecomp):
     """
     
     def __init__(self, load_snap=None, save_mode=None, 
-        save_mat=util.write_mat_text, inner_product=None, snapPaths=None,
+        save_mat=util.save_mat_text, inner_product=None, snapPaths=None,
         buildCoeff=None, ritzVals=None, lowOrderEigVecs=None, ritzVecScaling=None, 
         modeEnergies=None, pod=None):
         """
@@ -60,7 +60,7 @@ class DMD(ModalDecomp):
                 self.snapPaths[:-1])
             self.pod.compute_decomp()
         elif self.snaplist[:-1] != self.podsnaplist or len(snapPaths) !=\
-            len(self.pod.snapPaths)+1 ):
+            len(self.pod.snapPaths)+1:
             raise RuntimeError('Snapshot mistmatch between POD and DMD '+\
                 'objects.')      
         _podSingValsMat = N.mat(N.diag(N.array(self.pod.singVals).squeeze()))
