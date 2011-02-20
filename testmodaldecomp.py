@@ -6,10 +6,12 @@ import util
 import subprocess as SP
 
 #import inspect #makes it possible to find information about a function
-
-from mpi4py import MPI
-parallel = MPI.COMM_WORLD.Get_size() > 1
-
+try:
+    from mpi4py import MPI
+    parallel = MPI.COMM_WORLD.Get_size() > 1
+except ImportError:
+    parallel = False
+    
 class TestModalDecomp(unittest.TestCase):
     """ Tests of the self.modalDecomp class """
     
@@ -184,6 +186,7 @@ class TestModalDecomp(unittest.TestCase):
         
 
     @unittest.skipIf(parallel,'This is a serial test')
+    @unittest.skip('Working on inner product now')
     def test__compute_modes_chunk(self):
         """
         Test that can compute chunks of modes from arguments.
@@ -197,6 +200,7 @@ class TestModalDecomp(unittest.TestCase):
         self.helper_compute_modes(self.modalDecomp._compute_modes_chunk)      
         #self.modalDecomp.mpi.sync()
        
+    @unittest.skip('Working on inner product right now')
     def test__compute_modes(self):
         """
         Test that can compute modes from arguments. 
@@ -217,7 +221,61 @@ class TestModalDecomp(unittest.TestCase):
         """
         Test computation of matrix of inner products via memory-efficient chunks
         """
-        pass
+        
+        def assert_equal_mat_products(mat1,mat2,paths1,paths2):
+            productTrue = mat1*mat2
+            productComputed = self.modalDecomp._compute_inner_product_chunk(
+              paths1,paths2)
+            N.testing.assert_array_almost_equal(productComputed,productTrue)
+        
+        numRowSnapsList =[10]# [1,3,20,100]
+        numColSnapsList = [5]#[1,2,4,20,99]
+        numStatesList = [4]#[1,10,25]
+        maxSnapsInMemList =[100]# [4,20,10000]
+        if self.modalDecomp.mpi.rank == 0:
+            SP.call(['mkdir','testfiles'])
+        rowSnapPath = 'testfiles/row_snap_%03d.txt'
+        colSnapPath = 'testfiles/col_snap_%03d.txt'
+        
+        self.modalDecomp.load_snap=util.load_mat_text
+        self.modalDecomp.save_mode=util.save_mat_text
+        self.modalDecomp.inner_product=util.inner_product
+        
+        for numRowSnaps in numRowSnapsList:
+            for numColSnaps in numColSnapsList:
+                for numStates in numStatesList:
+                    # generate snapshots and save to file
+                    rowSnapMat = N.mat(N.random.random((numStates,numRowSnaps)))
+                    colSnapMat = N.mat(N.random.random((numStates,numColSnaps)))
+                    rowSnapPaths = []
+                    colSnapPaths = []
+                    for snapNum in xrange(numRowSnaps):
+                        path = rowSnapPath%snapNum
+                        util.save_mat_text(rowSnapMat[:,snapNum],path)
+                        rowSnapPaths.append(path)
+                    for snapNum in xrange(numColSnaps):
+                        path = colSnapPath%snapNum
+                        util.save_mat_text(colSnapMat[:,snapNum],path)
+                        colSnapPaths.append(path)
+                        
+                    for maxSnapsInMem in maxSnapsInMemList: 
+                        self.modalDecomp.maxSnapsInMem=maxSnapsInMem
+                    print 'about to test diff rows cols'
+                    # Test different rows and cols snapshots
+                    assert_equal_mat_products(rowSnapMat.T,colSnapMat,
+                      rowSnapPaths,colSnapPaths)
+                    print 'done diff rows cols, now just rows'
+                    #Test with only the row data
+                    assert_equal_mat_products(rowSnapMat.T,rowSnapMat,
+                      rowSnapPaths,rowSnapPaths)
+                    print 'done just rows, now just cols'
+                    #Test with only the col data
+                    assert_equal_mat_products(colSnapMat.T,colSnapMat,
+                      colSnapPaths,colSnapPaths)
+                
+                       
+                
+        
     
     
 if __name__=='__main__':
