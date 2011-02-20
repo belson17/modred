@@ -98,9 +98,8 @@ class TestModalDecomp(unittest.TestCase):
                               snapMat[:,snapNum] = N.random.random((numStates,1))
                           
                           if numModes > numSnaps or numSnaps > buildCoeffMat.shape[0]:
-                              pass
-                              #self.assertRaises(ValueError,compute_modes_func,modeNumList,modePath,snapPaths,
-                              #  buildCoeffMat,indexFrom=indexFrom)
+                              self.assertRaises(ValueError,compute_modes_func,modeNumList,modePath,snapPaths,
+                                buildCoeffMat,indexFrom=indexFrom)
                           else:
                               compute_modes_func(modeNumList,modePath,snapPaths,
                                 buildCoeffMat,indexFrom=indexFrom)
