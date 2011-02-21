@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 import numpy as N
 import util
@@ -92,7 +93,30 @@ class TestUtil(unittest.TestCase):
           correctAssignments)
         
         #more tests?
-        
+
+    @unittest.skipIf(parallel,'Only operates on first processor')
+    def test_svd(self):
+        numInternalList = [10,50]
+        numRowsList = [3,5,40]
+        numColsList = [1,9,70]
+        for numRows in numRowsList:
+            for numCols in numColsList:
+                for numInternal in numInternalList:
+                    leftMat = N.mat(N.random.random((numRows,numInternal)))
+                    rightMat = N.mat(N.random.random((numInternal,numCols)))
+                    A = leftMat*rightMat
+                    [LSingVecs,singVals,RSingVecs]=util.svd(A)
+                    
+                    U,E,Vstar=N.linalg.svd(A,full_matrices=0)
+                    V = N.mat(Vstar).H
+                    if numInternal < numRows or numInternal <numCols:
+                        U=U[:,:numInternal]
+                        V=V[:,:numInternal]
+                        E=E[:numInternal]
+          
+                    N.testing.assert_array_almost_equal(LSingVecs,U)
+                    N.testing.assert_array_almost_equal(singVals,E)
+                    N.testing.assert_array_almost_equal(RSingVecs,V)
     
 if __name__=='__main__':
 

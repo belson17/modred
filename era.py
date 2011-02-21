@@ -11,6 +11,7 @@ class UndefinedError(Exception):
 class ERA(object):
     """ Forms the ERA ROM, following Ma 2010 
     
+    Usage:
     The simplest way to use this class is to call 
     myEra = ERA()
     myEra.computeDecomp(IOPaths=['/path/file1','/path/file2',...])
@@ -30,29 +31,17 @@ class ERA(object):
         saveMatrix=util.write_mat_text,loadMatrix=util.read_mat_text,dt=None,
         mc=None,mo=None,numStates=100):
         
-        self._IOPaths=IOPaths
-        self._outputDir = util.fixDirSlash(outputDir)
-        self._LSingVecsPath=LSingVecsPath
-        self._RSingVecsPath=RSingVecsPath
-        self._hankelMatPath=hankelMatPath
-        self._hankelMat2Path=hankelMat2Path
-        self._save_matrix = saveMatrix
-        self._load_matrix = loadMatrix
-        self._dt=dt
-        self._mc=mc
-        self._mo=mo
-        self._numStates=numStates
-    
-  #def setOutputDir(self,outputDir):
-  #  self._outputDir = util.fixDirSlash(outputDir)
-  
-    def set_IOSignals(self,IOSignals):
-        self._IOSignals = IOSignals
-  
-    def set_IOPaths(self,IOPaths):
-        self._IOPaths = IOPaths   
-  
-  #other set and get functions...
+        self.IOPaths=IOPaths
+        self.LSingVecs=LSingVecs
+        self.RSingVecs=RSingVecs
+        self.hankelMat=hankelMat
+        self.hankelMat2=hankelMat2
+        self.save_matrix = saveMatrix
+        self.load_matrix = loadMatrix
+        self.dt=dt
+        self.mc=mc
+        self.mo=mo
+        self.numStates=numStates
   
     def compute_decomp(self,IOPaths=None,LSingVecsPath=None,singValsPath=None,
         RSingVecsPath=None,hankelMatPath=None,hankelMat2Path=None,
