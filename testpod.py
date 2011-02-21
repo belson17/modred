@@ -20,7 +20,7 @@ class TestPOD(unittest.TestCase):
         pass
 
     def test_compute_modes(self):
-        """ """"
+        """ """
         #Mostly need to tests the part unique to this function. The 
         #lower level functions are tested independently.
         pass

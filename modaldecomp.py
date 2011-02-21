@@ -3,18 +3,14 @@ import util
 import numpy as N
 
 
-# Base class
 class ModalDecomp(object):
     """
     Modal Decomposition base class
 
-    This parent class is designed for the implementation of algorithms that
-    take 
-    a  set of data (snapshots) and turn them into modes.  Each class will 
-    implement a method to perform some sort of decomposition, e.g. using POD, 
-    BPOD, or DMD.  The results of this decomposition will be used to construct 
-    modes by taking linear combinations of the original data snapshots.
-
+    This parent class contains implementations of algorithms that
+    take as input a set of data (snapshots) and return as output sets of
+    modes.  Derived classes should exist for unique modal decompositions, 
+    e.g. POD, BPOD, and DMD. 
     """
     
     def __init__(self,load_snap=None, save_mode=None, save_mat=None, inner_product=None,
@@ -54,8 +50,14 @@ class ModalDecomp(object):
         It returns a matrix with the above number of rows and columns.
         """
         
+        if rowSnapPaths is None:
+            raise util.UndefinedError('rowSnapPaths is undefined')
+        if colSnapPaths is None:
+            raise util.UndefinedError('colSnapPaths is undefined')            
+        
         numRows = len(rowSnapPaths)
         numCols = len(colSnapPaths)
+        
         #enforce that there are more columns than rows for efficiency
         if numRows > numCols:
             transpose = True
@@ -68,8 +70,6 @@ class ModalDecomp(object):
         else: 
             transpose = False
                 
-        #These two variables set the chunks of the matrices that are read in
-        #at each step.
         numColsPerChunk = 1
         numRowsPerChunk = self.maxSnapsInMem-numColsPerChunk         
         
@@ -105,7 +105,6 @@ class ModalDecomp(object):
         return innerProductMatChunk
     
     
-    # Common method for computing modes from snapshots and coefficients
     def _compute_modes(self,modeNumList,modePath,snapPaths,buildCoeffMat,
         indexFrom=1):
         """
@@ -125,8 +124,12 @@ class ModalDecomp(object):
         This methods primary purpose is to evenly divide the tasks for each
         processor in parallel (see util.MPI). It then calls _compute_modes_chunk.
         Each processor then computes and saves
-        the mode numbers assigned to it
+        the mode numbers assigned to it.
         """
+        
+        if snapPaths is None:
+            raise util.UndefinedError('snapPaths is undefined')
+
         if len(snapPaths) > buildCoeffMat.shape[0]:
             raise ValueError('coefficient matrix has fewer rows than number'+
               'of snap paths')
@@ -136,16 +139,17 @@ class ModalDecomp(object):
                 raise ValueError('Cannot form more modes than number of '+
                   'snapshots')
 
-        if len(modeNumList) < self.mpi.numProcs:
+        if len(modeNumList) < self.mpi._numProcs:
             raise util.MPIError('Cannot find fewer modes than number of procs, '+
               'lower the number of procs')       
               
-        modeNumProcAssignments = self.mpi.find_proc_assignments(modeNumList)
 
+        modeNumProcAssignments = self.mpi.find_proc_assignments(modeNumList)
         #Pass the work to individual processors..
-        self._compute_modes_chunk(modeNumProcAssignments[self.mpi.rank],
+        self._compute_modes_chunk(modeNumProcAssignments[self.mpi._rank],
             modePath,snapPaths,buildCoeffMat,indexFrom=indexFrom)
         #There is no required mpi.gather command, modes are saved to file 
+
 
     def _compute_modes_chunk(self,modeNumList,modePath,snapPaths,buildCoeffMat,
       indexFrom=1):
@@ -178,10 +182,18 @@ class ModalDecomp(object):
         which is the maximum number of snapshots that will fit in memory 
         simultaneously. In parallel, this method is executed by each processor
         with a different modeNumList. In this way, this method operates in
-        a single-processor sense.
-        
+        a single-processor sense.        
         
         """
+        
+        if snapPaths is None: 
+            raise util.UndefinedError('No snapPaths given')
+        if modeNumList is None:
+            raise util.UndefinedError('No modeNumList given')
+        if buildCoeffMat is None:
+            raise util.UndefinedError('No build coeff matrix given')
+        if self.save_mode is None: 
+            raise util.UndefinedError('No self.save_mode defined')
 
         numSnaps = len(snapPaths)
         numModes = len(modeNumList)
@@ -196,12 +208,7 @@ class ModalDecomp(object):
         if numSnaps < buildCoeffMat.shape[0]:
             print 'Warning - fewer snapshot paths than rows in the coeff matrix'
             print '  some rows of coeff matrix will not be used!'
-        
-        #The truncated matrices, not sure where they belong right now.
-        #V1 = N.mat(Vstar[0:numModes,:]).H
-        #E1 = E[0:numModes]
-        #U1 = N.mat(U[:,0:numModes])
-        
+               
         numSnapsPerChunk = 1
         numModesPerChunk = self.maxSnapsInMem-numSnapsPerChunk
                 
@@ -229,14 +236,13 @@ class ModalDecomp(object):
                         if modeIndex-startModeIndex>=len(modesChunk): 
                             #the mode list isn't full, must be created
                             modesChunk.append(modeLevel) 
-                        else: #mode list exists
+                        else: 
                             modesChunk[modeIndex-startModeIndex] += modeLevel
             #after summing all snapshots contributions to current modes, 
             #save modes
             for modeIndex in xrange(startModeIndex,endModeIndex):
                 self.save_mode(modesChunk[modeIndex-startModeIndex],
-                  modePath%(modeNumList[modeIndex]))
-            
+                  modePath%(modeNumList[modeIndex]))            
             
         
         

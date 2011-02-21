@@ -1,3 +1,4 @@
+#!/usr/local/bin/env python
 
 import numpy as N
 import bpod as BP
@@ -7,14 +8,17 @@ import subprocess as SP
 
 try:
     from mpi4py import MPI
-    parallel = MPI.COMM_WORLD.Get_size() >=2
+    comm = MPI.COMM_WORLD
+    parallel = comm.Get_size() >=2
+    rank = comm.Get_rank()
 except ImportError:
     parallel = False
+    rank = 0
 
 if parallel:
-    if MPI.COMM_WORLD.Get_rank()==0:
+    if rank==0:
         print 'Remember to test in serial also with command:'
-        print 'python bpod.py'
+        print 'python testbpod.py'
 else:
     print 'Remember to test in parallel also with command:'
     print 'mpiexec -n <numProcs> python testbpod.py' 
@@ -23,6 +27,7 @@ class TestBPOD(unittest.TestCase):
     """ Test all the BPOD class methods """
     
     def setUp(self):
+        SP.call(['mkdir','testfiles'])
         self.bpod = BP.BPOD()
         self.modeNumList =[1,4,3,6]
         self.numDirectSnaps = 6
@@ -32,7 +37,7 @@ class TestBPOD(unittest.TestCase):
         self.bpod.load_snap=util.load_mat_text
         self.bpod.inner_product=util.inner_product
         self.bpod.save_mode = util.save_mat_text
-        self.indexFrom=1
+        self.indexFrom = 2
         self.bpod.indexFrom=self.indexFrom
         
         self.generate_data_set()
@@ -44,20 +49,40 @@ class TestBPOD(unittest.TestCase):
 
         self.directSnapPaths=[]
         self.adjointSnapPaths=[]
-        self.directSnapMat = N.mat(
-          N.random.random((self.numStates,self.numDirectSnaps)))
-        self.adjointSnapMat = N.mat(
-          N.random.random((self.numStates,self.numAdjointSnaps))) 
-        for directSnapNum in range(self.numDirectSnaps):
-            util.save_mat_text(self.directSnapMat[:,directSnapNum],
-              self.directSnapPath%directSnapNum)
-            self.directSnapPaths.append(self.directSnapPath%directSnapNum)
-        for adjointSnapNum in range(self.numAdjointSnaps):
-            util.save_mat_text(self.adjointSnapMat[:,adjointSnapNum],
-              self.adjointSnapPath%adjointSnapNum)
-            self.adjointSnapPaths.append(self.adjointSnapPath%adjointSnapNum)
         
+        if self.bpod.mpi._rank==0:
+            self.directSnapMat = N.mat(
+              N.random.random((self.numStates,self.numDirectSnaps)))
+            self.adjointSnapMat = N.mat(
+              N.random.random((self.numStates,self.numAdjointSnaps))) 
+            
+            for directSnapNum in range(self.numDirectSnaps):
+                util.save_mat_text(self.directSnapMat[:,directSnapNum],
+                  self.directSnapPath%directSnapNum)
+                self.directSnapPaths.append(self.directSnapPath%directSnapNum)
+                
+            for adjointSnapNum in range(self.numAdjointSnaps):
+                util.save_mat_text(self.adjointSnapMat[:,adjointSnapNum],
+                  self.adjointSnapPath%adjointSnapNum)
+                self.adjointSnapPaths.append(self.adjointSnapPath%adjointSnapNum)
+        else:
+            self.directSnapPaths=None
+            self.adjointSnapPaths=None
+            self.directSnapMat = None
+            self.adjointSnapMat = None
+        if self.bpod.mpi.parallel:
+            self.directSnapPaths = self.bpod.mpi.comm.bcast(
+              self.directSnapPaths,root=0)
+            self.adjointSnapPaths = self.bpod.mpi.comm.bcast(
+              self.adjointSnapPaths,root=0)
+            self.directSnapMat = self.bpod.mpi.comm.bcast(
+              self.directSnapMat,root=0)
+            self.adjointSnapMat = self.bpod.mpi.comm.bcast(
+              self.adjointSnapMat,root=0)
+         
         self.hankelMatTrue=self.adjointSnapMat.T*self.directSnapMat
+        
+        #Do the SVD on all procs.
         self.LSingVecsTrue,self.singValsTrue,self.RSingVecsTrue=\
           util.svd(self.hankelMatTrue)
         
@@ -66,12 +91,14 @@ class TestBPOD(unittest.TestCase):
         self.adjointModeMat = self.adjointSnapMat*N.mat(self.LSingVecsTrue)*\
           N.mat(N.diag(self.singValsTrue**(-0.5)))
         
-        self.bpod.directSnapPaths=self.directSnapPaths
-        self.bpod.adjointSnapPaths=self.adjointSnapPaths
+        #self.bpod.directSnapPaths=self.directSnapPaths
+        #self.bpod.adjointSnapPaths=self.adjointSnapPaths
         
         
     def tearDown(self):
-        SP.call(['rm -f testfiles/*'],shell=True)
+        if self.bpod.mpi.parallel:
+            self.bpod.mpi.sync()
+        #SP.call(['rm -f testfiles/*'],shell=True)
     
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
@@ -121,21 +148,13 @@ class TestBPOD(unittest.TestCase):
         myBPOD = BP.BPOD(hankelMat = hankelMat)
         N.testing.assert_array_almost_equal(myBPOD.hankelMat,hankelMat)
         
-    
-    def test__compute_hankel_serial(self):
-        """Tests that _compute_decomp works in serial"""
-        pass
-        
-    def test__compute_hankel_parallel(self):
-        """Tests that _compute_decomp works in parallel"""
-        pass
-
-        
     def test_compute_decomp(self):
-        """Test that can take snapshots and compute the SVD matrices
+        """
+        Test that can take snapshots, compute the Hankel and SVD matrices
         
-        The testing is minimal here because the SVD is thoroughly tested
-        in testutil.py
+        With previously generated random snapshots, compute the Hankel
+        matrix, then take the SVD. The computed matrices are saved, then
+        loaded and compared to the true matrices. 
         """
         tol = 8
         directSnapPath = 'testfiles/direct_snap_%03d.txt'
@@ -147,13 +166,26 @@ class TestBPOD(unittest.TestCase):
         
         self.bpod.compute_decomp(RSingVecsPath=RSingVecsPath,
           LSingVecsPath=LSingVecsPath,singValsPath=singValsPath,
-          hankelMatPath=hankelMatPath)
+          hankelMatPath=hankelMatPath,directSnapPaths=self.directSnapPaths,
+          adjointSnapPaths=self.adjointSnapPaths)
                 
-        LSingVecsLoaded = util.load_mat_text(LSingVecsPath)
-        RSingVecsLoaded = util.load_mat_text(RSingVecsPath)
-        singValsLoaded = N.squeeze(N.array(
-          util.load_mat_text(singValsPath)))
-        hankelMatLoaded = util.load_mat_text(hankelMatPath)
+        if self.bpod.mpi._rank==0:
+            LSingVecsLoaded = util.load_mat_text(LSingVecsPath)
+            RSingVecsLoaded = util.load_mat_text(RSingVecsPath)
+            singValsLoaded = N.squeeze(N.array(
+              util.load_mat_text(singValsPath)))
+            hankelMatLoaded = util.load_mat_text(hankelMatPath)
+        else:
+            LSingVecsLoaded=None
+            RSingVecsLoaded=None
+            singValsLoaded=None
+            hankelMatLoaded=None
+
+        if self.bpod.mpi._numProcs>1:
+            LSingVecsLoaded=self.bpod.mpi.comm.bcast(LSingVecsLoaded,root=0)
+            RSingVecsLoaded=self.bpod.mpi.comm.bcast(RSingVecsLoaded,root=0)
+            singValsLoaded=self.bpod.mpi.comm.bcast(singValsLoaded,root=0)
+            hankelMatLoaded=self.bpod.mpi.comm.bcast(hankelMatLoaded,root=0)
         
         N.testing.assert_array_almost_equal(self.bpod.hankelMat,
           self.hankelMatTrue,decimal=tol)
@@ -171,14 +203,16 @@ class TestBPOD(unittest.TestCase):
         N.testing.assert_array_almost_equal(RSingVecsLoaded,
           self.RSingVecsTrue,decimal=tol)
         N.testing.assert_array_almost_equal(singValsLoaded,
-          self.singValsTrue,decimal=tol)        
+          self.singValsTrue,decimal=tol)
 
     def test_compute_modes(self):
         """
-        Only testing unique aspects, assuming ModalDecomp is tested.
+        Test computing modes in serial and parallel. 
+        
+        This method uses the existing random data set saved to disk. It tests
+        that BPOD can generate the modes, save them, and load them, then
+        compares them to the known solution.
         """
-        #compute_direct_modes takes arguments modeNumList, modePath, indexFrom
-        #AND requires self.directSnapPaths to be set. 
 
         directModePath ='testfiles/direct_mode_%03d.txt'
         adjointModePath ='testfiles/adjoint_mode_%03d.txt'
@@ -186,34 +220,46 @@ class TestBPOD(unittest.TestCase):
         self.bpod.RSingVecs=self.RSingVecsTrue
         self.bpod.LSingVecs=self.LSingVecsTrue
         self.bpod.singVals=self.singValsTrue
+        
         self.bpod.compute_direct_modes(self.modeNumList,directModePath,
-          indexFrom=self.indexFrom)
+          indexFrom=self.indexFrom,directSnapPaths=self.directSnapPaths,
+          adjointSnapPaths=self.adjointSnapPaths)
+          
         self.bpod.compute_adjoint_modes(self.modeNumList,adjointModePath,
-          indexFrom=self.indexFrom)
+          indexFrom=self.indexFrom,directSnapPaths=self.directSnapPaths,
+          adjointSnapPaths=self.adjointSnapPaths)
           
         directModesComp = []
         adjointModesComp = []
         for modeNum in self.modeNumList:
-            snap = util.load_mat_text(directModePath%modeNum)
-            N.testing.assert_array_almost_equal(snap,self.directModeMat[:,modeNum-self.indexFrom])
-            snap=util.load_mat_text(adjointModePath%modeNum)
-            N.testing.assert_array_almost_equal(snap,self.adjointModeMat[:,modeNum-self.indexFrom])
+            if self.bpod.mpi._rank==0:
+                directSnap = util.load_mat_text(directModePath%modeNum)
+                adjointSnap=util.load_mat_text(adjointModePath%modeNum)
+            else:
+                directSnap = None
+                adjointSnap = None
+            if self.bpod.mpi._numProcs>1:
+                directSnap = self.bpod.mpi.comm.bcast(directSnap,root=0)
+                adjointSnap = self.bpod.mpi.comm.bcast(adjointSnap,root=0)
+            N.testing.assert_array_almost_equal(directSnap,self.directModeMat[:,modeNum-self.indexFrom])
+            N.testing.assert_array_almost_equal(adjointSnap,self.adjointModeMat[:,modeNum-self.indexFrom])
         
-        for modeNum1 in self.modeNumList:
-            directMode = util.load_mat_text(
-              directModePath%modeNum1)
-            for modeNum2 in self.modeNumList:
-                adjointMode = util.load_mat_text(
-                  adjointModePath%modeNum2)
-                innerProduct = self.bpod.inner_product(
-                  directMode,adjointMode)
-                if modeNum1 != modeNum2:
-                    self.assertAlmostEqual(innerProduct,0.)
-                else:
-                    self.assertAlmostEqual(innerProduct,1.)
-  
+        if self.bpod.mpi._rank == 0:
+            for modeNum1 in self.modeNumList:
+                directMode = util.load_mat_text(
+                  directModePath%modeNum1)
+                for modeNum2 in self.modeNumList:
+                    adjointMode = util.load_mat_text(
+                      adjointModePath%modeNum2)
+                    innerProduct = self.bpod.inner_product(
+                      directMode,adjointMode)
+                    if modeNum1 != modeNum2:
+                        self.assertAlmostEqual(innerProduct,0.)
+                    else:
+                        self.assertAlmostEqual(innerProduct,1.)
+      
 if __name__=='__main__':
-    unittest.main()
+    unittest.main(verbosity=2)
     
         
     

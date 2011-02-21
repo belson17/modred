@@ -30,19 +30,14 @@ class POD(BPOD):
         snapPaths - List of filepaths from which snapshots can be loaded.
 
         """
-         # Base class constructor defines common data members
         ModalDecomp.__init__(self, load_snap=load_snap, save_mode=save_mode, 
             save_mat=save_mat, inner_product=inner_product)
 
-        # Additional data members
-        self.snapPaths = snapPaths
-        
-        # Data members that will be set after computation
+        self.snapPaths = snapPaths        
         self.singVecs = singVecs
         self.singVals = singVals
         self.correlationMat = correlationMat
-
-        print 'POD constructor.'    
+  
         
     def compute_decomp(self, SingVecsPath=None, singValsPath=None ):
         """

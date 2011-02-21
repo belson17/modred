@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 import unittest
 import numpy as N
@@ -19,6 +20,7 @@ if parallel:
 else:
     print 'Remember to test in parallel also with command:'
     print 'mpiexec -n <numProcs> python testmodaldecomp.py' 
+
 
 class TestModalDecomp(unittest.TestCase):
     """ Tests of the self.modalDecomp class """
@@ -51,7 +53,9 @@ class TestModalDecomp(unittest.TestCase):
         myMD = MD.ModalDecomp(maxSnapsInMem=maxSnaps)
         self.assertEqual(myMD.maxSnapsInMem,maxSnaps)
         
-        #no test for numProcs, this is handled by the util.MPI class
+        #MPI class is tested by utils.   
+        
+        
     def generate_snaps_modes(self,numStates,numSnaps,numModes,indexFrom=1):
         """
         Generates random snapshots and finds the modes. 
@@ -80,7 +84,7 @@ class TestModalDecomp(unittest.TestCase):
         for snapNum in range(numSnaps):
             snapMat[:,snapNum] = N.random.random((numStates,1))
         modeMat = snapMat*buildCoeffMat
-        return snapMat,modeNumList,buildCoeffMat,modeMat    
+        return snapMat,modeNumList,buildCoeffMat,modeMat 
         
     def helper_compute_modes(self,compute_modes_func):
         """
@@ -112,14 +116,14 @@ class TestModalDecomp(unittest.TestCase):
         def load_snap(snapNum): #returns a precomputed, random, vector
             #argument snapNum is actually an integer.
             return snapMat[:,snapNum]
-        numSnapsList = [1,3,20,40]
+        numSnapsList = [1,3,15,40]
         numStatesList = [1,10,21]
         numModesList = [1,2,15,50]
-        maxSnapsInMemList = [5,20,10000]
+        maxSnapsInMemList = [8,20,10000]
         indexFromList = [0,1,5]
-        #modePath = 'proc'+str(self.modalDecomp.mpi.rank)+'/mode_%03d.txt'
+        #modePath = 'proc'+str(self.modalDecomp.mpi._rank)+'/mode_%03d.txt'
         modePath = 'testfiles/mode_%03d.txt'
-        if self.modalDecomp.mpi.rank == 0:
+        if self.modalDecomp.mpi._rank == 0:
             SP.call(['mkdir','testfiles'])
         
         self.modalDecomp.load_snap=load_snap
@@ -132,7 +136,7 @@ class TestModalDecomp(unittest.TestCase):
                         self.modalDecomp.maxSnapsInMem=maxSnapsInMem
                         for indexFrom in indexFromList:
                             #generate data and then broadcast to all procs
-                            if self.modalDecomp.mpi.rank==0:
+                            if self.modalDecomp.mpi._rank==0:
                                 snapMat,modeNumList,buildCoeffMat,trueModes = \
                                   self.generate_snaps_modes(numStates,numSnaps,
                                   numModes,indexFrom=indexFrom)
@@ -167,7 +171,7 @@ class TestModalDecomp(unittest.TestCase):
                                   compute_modes_func,
                                   modeNumList,modePath,snapPaths,
                                   buildCoeffMat,indexFrom=indexFrom)
-                            elif self.modalDecomp.mpi.numProcs>numModes:
+                            elif self.modalDecomp.mpi._numProcs>numModes:
                                 self.assertRaises(util.MPIError,
                                   compute_modes_func,
                                   modeNumList,modePath,snapPaths,buildCoeffMat,
@@ -183,7 +187,7 @@ class TestModalDecomp(unittest.TestCase):
                                   self.modalDecomp.mpi.find_proc_assignments( 
                                   modeNumList)
                                 for modeNum in modeNumAssignments[ \
-                                  self.modalDecomp.mpi.rank]:
+                                  self.modalDecomp.mpi._rank]:
                                     computedMode=(util.load_mat_text(
                                       modePath%modeNum))
                                     N.testing.assert_array_almost_equal(
@@ -194,7 +198,7 @@ class TestModalDecomp(unittest.TestCase):
                             #this point
                             #delete all mode files saved to disk
                             self.modalDecomp.mpi.sync()
-                            if self.modalDecomp.mpi.rank == 0:
+                            if self.modalDecomp.mpi._rank == 0:
                                 SP.call(['rm -rf testfiles/*'],shell=True)
         
 

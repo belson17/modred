@@ -63,14 +63,14 @@ class MPI(object):
             self.comm = MPI_mod.COMM_WORLD
             if (numProcs is None) or (numProcs > self.comm.Get_size()) or \
             (numProcs<=0): 
-                self.numProcs = self.comm.Get_size()
+                self._numProcs = self.comm.Get_size()
             else: #use fewer CPUs than are available
-                self.numProcs = numProcs      
-            self.rank = self.comm.Get_rank()
+                self._numProcs = numProcs      
+            self._rank = self.comm.Get_rank()
             self.parallel=True
         except ImportError:
-            self.numProcs=1
-            self.rank=0
+            self._numProcs=1
+            self._rank=0
             self.comm = None
             self.parallel=False
             
@@ -82,10 +82,10 @@ class MPI(object):
         forces all processors to wait for others to "catch up"
         It is self-testing and for now does not need a unittest."""
         if self.parallel:
-            data = (self.rank+1)**2
+            data = (self._rank+1)**2
             data = self.comm.gather(data, root=0)
-            if self.rank == 0:
-                for i in range(self.numProcs):
+            if self._rank == 0:
+                for i in range(self._numProcs):
                     assert data[i] == (i+1)**2
             else:
                 assert data is None
@@ -105,9 +105,9 @@ class MPI(object):
       import copy
       taskListUse = copy.deepcopy(taskList)
       numTasks = len(taskList)
-      for procNum in range(self.numProcs):
+      for procNum in range(self._numProcs):
           numRemainingTasks = len(taskListUse)
-          numRemainingProcs = self.numProcs - procNum
+          numRemainingProcs = self._numProcs - procNum
           numTasksPerProc = int(N.ceil(numRemainingTasks/
             (1.*numRemainingProcs)))
           newMaxTaskIndex = min(numTasksPerProc,numRemainingTasks)
@@ -142,7 +142,6 @@ def svd(A):
     #Take care of case where sing vals are ~0
     indexZeroSingVal=N.nonzero(abs(E)<singValTol)
     if len(indexZeroSingVal[0])>0:
-        print indexZeroSingVal[0][0]
         U=U[:,:indexZeroSingVal[0][0]]
         V=V[:,:indexZeroSingVal[0][0]]
         E=E[:indexZeroSingVal[0][0]]

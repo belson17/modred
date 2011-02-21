@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/usr/local/bin/env python
 
 import numpy as N
 import util
 import unittest
 import subprocess as SP
-
+import sys
 try: 
     from mpi4py import MPI
     parallel = MPI.COMM_WORLD.Get_size() > 1
@@ -34,8 +34,8 @@ class TestUtil(unittest.TestCase):
         except ImportError:
             self.numProcs=1
             self.rank=0
-        
         self.myMPI=util.MPI(numProcs=self.numProcs)
+        SP.call(['mkdir','testfiles'])
         
     @unittest.skipIf(parallel,'Only save/load matrices in serial')
     def test_load_save_mat_text(self):
@@ -59,19 +59,19 @@ class TestUtil(unittest.TestCase):
         """Test that the MPI object uses arguments correctly.
         """
         
-        self.assertEqual(self.myMPI.numProcs,self.numProcs)
-        self.assertEqual(self.myMPI.rank,self.rank)
+        self.assertEqual(self.myMPI._numProcs,self.numProcs)
+        self.assertEqual(self.myMPI._rank,self.rank)
         
         #Test that it is possible to use fewer CPUs than available
         if parallel and self.numProcs>1:
             mpiChangeCPUs = util.MPI(numProcs=self.numProcs-1)
-            self.assertEqual(mpiChangeCPUs.numProcs,self.numProcs-1)
+            self.assertEqual(mpiChangeCPUs._numProcs,self.numProcs-1)
         
         #Test that non-sensible values of CPUs are defaulted to num available.
         mpiZeroCPUs = util.MPI(numProcs=0)
-        self.assertEqual(mpiZeroCPUs.numProcs,self.numProcs)
+        self.assertEqual(mpiZeroCPUs._numProcs,self.numProcs)
         mpiTooManyCPUs = util.MPI(numProcs=self.numProcs+1)
-        self.assertEqual(mpiTooManyCPUs.numProcs,self.numProcs)
+        self.assertEqual(mpiTooManyCPUs._numProcs,self.numProcs)
         
         
     def test_MPI_find_proc_assignments(self):
@@ -87,14 +87,21 @@ class TestUtil(unittest.TestCase):
         taskList = ['1','2','4','3','6','7','5']
         numTasks = len(taskList)
         numProcs = 5
-        self.myMPI.numProcs=numProcs
+        self.myMPI._numProcs=numProcs
         correctAssignments=[['1','2'],['4','3'],['6'],['7'],['5']]
+        self.assertEqual(self.myMPI.find_proc_assignments(taskList),
+          correctAssignments)
+          
+        taskList = [3,4,1,5]
+        numTasks = len(taskList)
+        numProcs = 2
+        self.myMPI._numProcs=numProcs
+        correctAssignments=[[3,4],[1,5]]
         self.assertEqual(self.myMPI.find_proc_assignments(taskList),
           correctAssignments)
         
         #more tests?
 
-    @unittest.skipIf(parallel,'Only operates on first processor')
     def test_svd(self):
         numInternalList = [10,50]
         numRowsList = [3,5,40]
@@ -119,7 +126,6 @@ class TestUtil(unittest.TestCase):
                     N.testing.assert_array_almost_equal(RSingVecs,V)
     
 if __name__=='__main__':
-
-    unittest.main()
+    unittest.main(verbosity=2)
 
 
