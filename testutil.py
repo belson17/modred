@@ -5,6 +5,7 @@ import util
 import unittest
 import subprocess as SP
 import sys
+import os
 try: 
     from mpi4py import MPI
     parallel = MPI.COMM_WORLD.Get_size() > 1
@@ -35,7 +36,8 @@ class TestUtil(unittest.TestCase):
             self.numProcs=1
             self.rank=0
         self.myMPI=util.MPI(numProcs=self.numProcs)
-        SP.call(['mkdir','testfiles'])
+        if not os.path.isdir('testfiles'):
+            SP.call(['mkdir','testfiles'])
         
     @unittest.skipIf(parallel,'Only save/load matrices in serial')
     def test_load_save_mat_text(self):

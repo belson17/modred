@@ -5,6 +5,7 @@ import bpod as BP
 import unittest
 import util
 import subprocess as SP
+import os
 
 try:
     from mpi4py import MPI
@@ -27,7 +28,8 @@ class TestBPOD(unittest.TestCase):
     """ Test all the BPOD class methods """
     
     def setUp(self):
-        SP.call(['mkdir','testfiles'])
+        if not os.path.isdir('testfiles'):        
+            SP.call(['mkdir','testfiles'])
         self.bpod = BP.BPOD()
         self.modeNumList =[1,4,3,6]
         self.numDirectSnaps = 6

@@ -5,6 +5,7 @@ import numpy as N
 import modaldecomp as MD
 import util
 import subprocess as SP
+import os
 
 #import inspect #makes it possible to find information about a function
 try:
@@ -124,7 +125,8 @@ class TestModalDecomp(unittest.TestCase):
         #modePath = 'proc'+str(self.modalDecomp.mpi._rank)+'/mode_%03d.txt'
         modePath = 'testfiles/mode_%03d.txt'
         if self.modalDecomp.mpi._rank == 0:
-            SP.call(['mkdir','testfiles'])
+            if not os.path.isdir('testfiles'):
+                SP.call(['mkdir','testfiles'])
         
         self.modalDecomp.load_snap=load_snap
         self.modalDecomp.save_mode=util.save_mat_text
@@ -248,7 +250,8 @@ class TestModalDecomp(unittest.TestCase):
         numColSnapsList = [1,2,4,20,99]
         numStatesList = [1,10,25]
         maxSnapsInMemList = [6,20,10000]
-        SP.call(['mkdir','testfiles'])
+        if not os.path.isdir('testfiles'):
+            SP.call(['mkdir','testfiles'])
         rowSnapPath = 'testfiles/row_snap_%03d.txt'
         colSnapPath = 'testfiles/col_snap_%03d.txt'
         
