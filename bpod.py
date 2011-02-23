@@ -15,11 +15,10 @@ class BPOD(ModalDecomp):
     
     """
     
-    def __init__(self, load_snap=None, save_mode=None, 
-        save_mat=util.save_mat_text, inner_product=None, maxSnapsInMem=100,
-        directSnapPaths=None, 
-        adjointSnapPaths=None, LSingVecs=None, singVals=None, RSingVecs=None,
-        hankelMat=None,numProcs=None):
+    def __init__(self, load_snap=None, save_mode=None, save_mat=\
+        util.save_mat_text, inner_product=None, maxSnapsInMem=100, numProcs=\
+        None, directSnapPaths=None, adjointSnapPaths=None, LSingVecs=None, 
+        singVals=None, RSingVecs=None, hankelMat=None):
         """
         BPOD constructor
         
@@ -37,8 +36,8 @@ class BPOD(ModalDecomp):
         """
         # Base class constructor defines common data members
         ModalDecomp.__init__(self, load_snap=load_snap, save_mode=save_mode, 
-            save_mat=save_mat, inner_product=inner_product, 
-            maxSnapsInMem= maxSnapsInMem)
+            save_mat=save_mat, inner_product=inner_product, maxSnapsInMem=\
+            maxSnapsInMem, numProcs=numProcs)
 
         # Additional data members
         self.directSnapPaths = directSnapPaths

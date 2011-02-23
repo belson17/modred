@@ -14,9 +14,10 @@ class POD(BPOD):
     
     """
         
-    def __init__(self, load_snap=None, save_mode=None, 
-        save_mat=util.save_mat_text, inner_product=None, snapPaths=None,
-        singVals=None, singVecs=None, correlationMat=None):
+    def __init__(self, load_snap=None, save_mode=None, save_mat=\
+        util.save_mat_text, inner_product=None, maxSnapsInMem=100, numProcs=\
+        None, snapPaths=None, singVals=None, singVecs=None, correlationMat=
+        None):
         """
         POD constructor
         
@@ -31,7 +32,8 @@ class POD(BPOD):
 
         """
         ModalDecomp.__init__(self, load_snap=load_snap, save_mode=save_mode, 
-            save_mat=save_mat, inner_product=inner_product)
+            save_mat=save_mat, inner_product=inner_product, maxSnapsInMem=\
+            maxSnapsInMem, numProcs=numProcs)
 
         self.snapPaths = snapPaths        
         self.singVecs = singVecs
