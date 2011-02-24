@@ -12,9 +12,11 @@ try:
     comm = MPI.COMM_WORLD
     parallel = comm.Get_size() >=2
     rank = comm.Get_rank()
+    numProcs = comm.Get_size()
 except ImportError:
     parallel = False
     rank = 0
+    numProcs = 1
 
 if parallel:
     if rank==0:
@@ -150,6 +152,9 @@ class TestBPOD(unittest.TestCase):
         hankelMat = N.mat(N.random.random((2,2)))
         myBPOD = BP.BPOD(hankelMat = hankelMat)
         N.testing.assert_array_almost_equal(myBPOD.hankelMat,hankelMat)
+        
+        self.assertRaises(util.MPIError,BP.BPOD,
+        numProcs=numProcs+1)
         
     def test_compute_decomp(self):
         """

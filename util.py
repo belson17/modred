@@ -61,9 +61,10 @@ class MPI(object):
         try:
             from mpi4py import MPI as MPI_mod
             self.comm = MPI_mod.COMM_WORLD
-            if (numProcs is None) or (numProcs > self.comm.Get_size()) or \
-            (numProcs<=0): 
+            if numProcs is None or numProcs <=0 : 
                 self._numProcs = self.comm.Get_size()
+            elif (numProcs > self.comm.Get_size()):
+                raise MPIError('Asked for too many processors')
             else: #use fewer CPUs than are available
                 self._numProcs = numProcs      
             self._rank = self.comm.Get_rank()

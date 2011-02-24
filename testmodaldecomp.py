@@ -11,8 +11,11 @@ import os
 try:
     from mpi4py import MPI
     parallel = MPI.COMM_WORLD.Get_size() >=2
+    rank = MPI.COMM_WORLD.Get_rank()
+    numProcs = MPI.COMM_WORLD.Get_size()
 except ImportError:
     parallel = False
+    numProcs = 1
 
 if parallel:
     if MPI.COMM_WORLD.Get_rank()==0:
@@ -53,7 +56,8 @@ class TestModalDecomp(unittest.TestCase):
         maxSnaps = 500
         myMD = MD.ModalDecomp(maxSnapsInMem=maxSnaps)
         self.assertEqual(myMD.maxSnapsInMem,maxSnaps)
-        
+        self.assertRaises(util.MPIError,MD.ModalDecomp,
+          numProcs=numProcs+1)
         #MPI class is tested by utils.   
         
         

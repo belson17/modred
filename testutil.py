@@ -72,8 +72,7 @@ class TestUtil(unittest.TestCase):
         #Test that non-sensible values of CPUs are defaulted to num available.
         mpiZeroCPUs = util.MPI(numProcs=0)
         self.assertEqual(mpiZeroCPUs._numProcs,self.numProcs)
-        mpiTooManyCPUs = util.MPI(numProcs=self.numProcs+1)
-        self.assertEqual(mpiTooManyCPUs._numProcs,self.numProcs)
+        self.assertRaises(util.MPIError,util.MPI,(self.numProcs+1))        
         
         
     def test_MPI_find_proc_assignments(self):
