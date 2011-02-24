@@ -46,27 +46,28 @@ class TestBPOD(unittest.TestCase):
         
     def generate_data_set(self):
         #create data set (saved to file)
-        self.directSnapPath ='testfiles/direct_snap_%03d.txt'
-        self.adjointSnapPath ='testfiles/adjoint_snap_%03d.txt'
+        self.directSnapPath = 'testfiles/direct_snap_%03d.txt'
+        self.adjointSnapPath = 'testfiles/adjoint_snap_%03d.txt'
 
         self.directSnapPaths=[]
         self.adjointSnapPaths=[]
         
         if self.bpod.mpi._rank==0:
-            self.directSnapMat = N.mat(
-              N.random.random((self.numStates,self.numDirectSnaps)))
-            self.adjointSnapMat = N.mat(
-              N.random.random((self.numStates,self.numAdjointSnaps))) 
+            self.directSnapMat = N.mat(N.random.random((self.numStates,self.\
+                numDirectSnaps)))
+            self.adjointSnapMat = N.mat(N.random.random((self.numStates,self.\
+                numAdjointSnaps))) 
             
             for directSnapNum in range(self.numDirectSnaps):
-                util.save_mat_text(self.directSnapMat[:,directSnapNum],
-                  self.directSnapPath%directSnapNum)
+                util.save_mat_text(self.directSnapMat[:,directSnapNum],self.\
+                    directSnapPath%directSnapNum)
                 self.directSnapPaths.append(self.directSnapPath%directSnapNum)
                 
             for adjointSnapNum in range(self.numAdjointSnaps):
                 util.save_mat_text(self.adjointSnapMat[:,adjointSnapNum],
                   self.adjointSnapPath%adjointSnapNum)
-                self.adjointSnapPaths.append(self.adjointSnapPath%adjointSnapNum)
+                self.adjointSnapPaths.append(self.adjointSnapPath%\
+                    adjointSnapNum)
         else:
             self.directSnapPaths=None
             self.adjointSnapPaths=None
@@ -243,8 +244,10 @@ class TestBPOD(unittest.TestCase):
             if self.bpod.mpi._numProcs>1:
                 directSnap = self.bpod.mpi.comm.bcast(directSnap,root=0)
                 adjointSnap = self.bpod.mpi.comm.bcast(adjointSnap,root=0)
-            N.testing.assert_array_almost_equal(directSnap,self.directModeMat[:,modeNum-self.indexFrom])
-            N.testing.assert_array_almost_equal(adjointSnap,self.adjointModeMat[:,modeNum-self.indexFrom])
+            N.testing.assert_array_almost_equal(directSnap,self.directModeMat[:,
+                modeNum-self.indexFrom])
+            N.testing.assert_array_almost_equal(adjointSnap,self.\
+                adjointModeMat[:,modeNum-self.indexFrom])
         
         if self.bpod.mpi._rank == 0:
             for modeNum1 in self.modeNumList:

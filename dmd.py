@@ -14,7 +14,7 @@ class DMD(ModalDecomp):
     Generate Ritz vectors from simulation snapshots.
     
     """
-    
+
     def __init__(self, load_snap=None, save_mode=None, save_mat=\
         util.save_mat_text, inner_product=None, maxSnapsInMem=100, numProcs=\
         None, snapPaths=None, buildCoeff=None, ritzVals=None, lowOrderEigVecs=\
@@ -42,8 +42,6 @@ class DMD(ModalDecomp):
         self.ritzVecScaling = ritzVecScaling
         self.modeEnergies = modeEnergies
         self.pod = pod
-        
-        print 'DMD constructor.'
         
     def compute_decomp(self, ritzEigvalsPath=None, ritzVecsPath=None, 
         ritzVecScalingPath=None, ):

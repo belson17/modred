@@ -13,8 +13,8 @@ class ModalDecomp(object):
     e.g. POD, BPOD, and DMD. 
     """
     
-    def __init__(self,load_snap=None, save_mode=None, save_mat=None, inner_product=None,
-                maxSnapsInMem=100,numProcs=None):
+    def __init__(self,load_snap=None, save_mode=None, save_mat=None, 
+        inner_product=None, maxSnapsInMem=100, numProcs=None):
         """
         Modal decomposition constructor.
     
