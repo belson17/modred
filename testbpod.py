@@ -237,21 +237,19 @@ class TestBPOD(unittest.TestCase):
           indexFrom=self.indexFrom,directSnapPaths=self.directSnapPaths,
           adjointSnapPaths=self.adjointSnapPaths)
           
-        directModesComp = []
-        adjointModesComp = []
         for modeNum in self.modeNumList:
             if self.bpod.mpi._rank==0:
-                directSnap = util.load_mat_text(directModePath%modeNum)
-                adjointSnap=util.load_mat_text(adjointModePath%modeNum)
+                directMode = util.load_mat_text(directModePath%modeNum)
+                adjointMode=util.load_mat_text(adjointModePath%modeNum)
             else:
-                directSnap = None
-                adjointSnap = None
+                directMode = None
+                adjointMode = None
             if self.bpod.mpi._numProcs>1:
-                directSnap = self.bpod.mpi.comm.bcast(directSnap,root=0)
-                adjointSnap = self.bpod.mpi.comm.bcast(adjointSnap,root=0)
-            N.testing.assert_array_almost_equal(directSnap,self.directModeMat[:,
+                directMode = self.bpod.mpi.comm.bcast(directMode,root=0)
+                adjointMode = self.bpod.mpi.comm.bcast(adjointMode,root=0)
+            N.testing.assert_array_almost_equal(directMode,self.directModeMat[:,
                 modeNum-self.indexFrom])
-            N.testing.assert_array_almost_equal(adjointSnap,self.\
+            N.testing.assert_array_almost_equal(adjointMode,self.\
                 adjointModeMat[:,modeNum-self.indexFrom])
         
         if self.bpod.mpi._rank == 0:

@@ -194,7 +194,7 @@ class BPOD(ModalDecomp):
         if self.mpi.parallel:
             hankelMatChunkList = self.mpi.comm.gather(hankelMatChunk,root=0)
             if self.mpi._rank==0:
-                hankelMat = N.zeros((numAdjointSnaps,numDirectSnaps))
+                hankelMat = N.mat(N.zeros((numAdjointSnaps,numDirectSnaps)))
                 for procNum in xrange(self.mpi._numProcs):
                 #concatenate the chunks of Hankel matrix
                     hankelMat[adjointSnapProcAssignments[procNum][0]:\
@@ -205,7 +205,7 @@ class BPOD(ModalDecomp):
             hankelMat = self.mpi.comm.bcast(hankelMat,root=0)
         else:
             hankelMat = hankelMatChunk
-    
+        
         return hankelMat
     
 

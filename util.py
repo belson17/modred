@@ -25,7 +25,7 @@ def save_mat_text(A,filename,delimiter=','):
             row.append(str(AMat[rowNum,colNum]))
         writer.writerow(row)
     
-def load_mat_text(filename,delimiter=','):
+def load_mat_text(filename,delimiter=',',isComplex=False):
     """ Reads a matrix written by write_mat_text, plain text"""
     import csv
     f = open(filename,'r')
@@ -40,14 +40,19 @@ def load_mat_text(filename,delimiter=','):
         raise RuntimeError('File is empty! '+filename)
     #rewind to beginning of file and read again
     f.seek(0)
-    A = N.zeros((numLines,lineLength))
-    for i,line in enumerate(matReader):
-        A[i,:] =  N.array([float(j) for j in line])
+    if isComplex:
+        A = N.zeros((numLines,lineLength),dtype=complex)
+        for i,line in enumerate(matReader):
+            A[i,:] =  N.array([complex(j) for j in line])
+    else:
+        A = N.zeros((numLines,lineLength))
+        for i,line in enumerate(matReader):
+            A[i,:] =  N.array([float(j) for j in line])
     return A
-    
+
 def inner_product(snap1,snap2):
     """ A default inner product for n-dimensional numpy arrays """
-    return N.sum(snap1*snap2)
+    return N.sum(snap1*snap2.conj())
   
   
 class MPIError(Exception):

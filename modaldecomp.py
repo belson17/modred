@@ -49,11 +49,17 @@ class ModalDecomp(object):
         of the matrix.
         It returns a matrix with the above number of rows and columns.
         """
-        
+         
         if rowSnapPaths is None:
             raise util.UndefinedError('rowSnapPaths is undefined')
         if colSnapPaths is None:
             raise util.UndefinedError('colSnapPaths is undefined')            
+         
+        # Check that arguments are lists, not strings
+        if isinstance(rowSnapPaths,str):
+            rowSnapPaths = [rowSnapPaths]
+        if isinstance(colSnapPaths,str):
+            colSnapPaths = [colSnapPaths]
         
         numRows = len(rowSnapPaths)
         numCols = len(colSnapPaths)

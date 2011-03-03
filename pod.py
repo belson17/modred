@@ -41,7 +41,8 @@ class POD(BPOD):
         self.correlationMat = correlationMat
   
         
-    def compute_decomp(self, SingVecsPath=None, singValsPath=None ):
+    def compute_decomp(self, SingVecsPath=None, singValsPath=None, 
+        snapPaths=None):
         """
         Compute POD decomposition
         
@@ -50,19 +51,29 @@ class POD(BPOD):
         singValsPath - Output path for singular values from Hankel matrix SVD.
             
         """
+        if snapPaths is not None:
+            self.snapPaths = snapPaths
+        if self.snapPaths is None:
+            raise util.UndefinedError('snapPaths is not given')
+
         # Compute Hankel matrix decomposition, using dir snaps as adj snaps
         # Then save the decomposition matrices as needed, to file/data members
         # Only one set of sing vecs needs to be saved for POD (symmetry)
         self.correlationMat = self._compute_hankel(self.snapPaths,
             self.snapPaths)
                                               
-        self.singVecs, self.singVals, dummy = self._svd( 
+        self.singVecs, self.singVals, dummy = util.svd( 
             self.correlationMat )
         del dummy
         
-        print 'Computing POD decomposition.'
+    def compute_modes(self, modeNumList, modePath, indexFrom=1, snapPaths=\
+        None):
 
-    def compute_modes(self, modeNumList, modePath, indexFrom=1 ):
+        if snapPaths is not None:
+            self.snapPaths = snapPaths
+        if self.snapPaths is None:
+            raise util.UndefinedError('snapPaths is not given')
+
         # Call base class method w/correct coefficients for modes
         self.singVecs = 1
         self.singVals = 1
