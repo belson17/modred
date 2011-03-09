@@ -148,7 +148,7 @@ class TestModalDecomp(unittest.TestCase):
                         self.modalDecomp.maxSnapsInMem=maxSnapsInMem
                         for indexFrom in indexFromList:
                             #generate data and then broadcast to all procs
-                            if self.modalDecomp.mpi._rank==0:
+                            if self.modalDecomp.mpi._rank == 0:
                                 snapMat,modeNumList,buildCoeffMat,trueModes = \
                                   self.generate_snaps_modes(numStates,numSnaps,
                                   numModes,indexFrom=indexFrom)
@@ -158,58 +158,53 @@ class TestModalDecomp(unittest.TestCase):
                                 snapMat = None
                                 trueModes = None
                             if self.modalDecomp.mpi.parallel:
-                                modeNumList = \
-                                  self.modalDecomp.mpi.comm.bcast(modeNumList,
-                                    root=0)
-                                buildCoeffMat = \
-                                  self.modalDecomp.mpi.comm.bcast(
+                                modeNumList = self.modalDecomp.mpi.comm.bcast(
+                                    modeNumList, root=0)
+                                buildCoeffMat = self.modalDecomp.mpi.comm.bcast(
                                     buildCoeffMat,root=0)
-                                snapMat = \
-                                  self.modalDecomp.mpi.comm.bcast(snapMat,
-                                    root=0)
-                                trueModes = \
-                                  self.modalDecomp.mpi.comm.bcast(trueModes,
-                                    root=0)
+                                snapMat = self.modalDecomp.mpi.comm.bcast(
+                                    snapMat, root=0)
+                                trueModes = self.modalDecomp.mpi.comm.bcast(
+                                    trueModes, root=0)
                             snapPaths = range(numSnaps)
-                            #if a mode number (minus starting indxex)
-                            # is greater than the number of snaps
+                            # if a mode number (minus starting indxex)
+                            # is greater than the number of coeff mat columns,
+                            # or is less than zero
                             checkError = False
                             for modeNum in modeNumList:
-                                if modeNum-indexFrom > numSnaps:
+                                modeNumFromZero = modeNum-indexFrom
+                                if modeNumFromZero < 0 or modeNumFromZero >\
+                                    buildCoeffMat.shape[1]-1:
                                     checkError=True
-                            
+                            # or if coeff mat has more rows than there are 
+                            # snapshot paths
                             if checkError or numSnaps > buildCoeffMat.shape[0]:
-                                self.assertRaises(ValueError,
-                                  compute_modes_func,
-                                  modeNumList,modePath,snapPaths,
-                                  buildCoeffMat,indexFrom=indexFrom)
-                            elif self.modalDecomp.mpi._numProcs>numModes:
-                                self.assertRaises(util.MPIError,
-                                  compute_modes_func,
-                                  modeNumList,modePath,snapPaths,buildCoeffMat,
-                                  indexFrom=indexFrom)
+                                self.assertRaises(ValueError, 
+                                    compute_modes_func, modeNumList, modePath,
+                                    snapPaths, buildCoeffMat, indexFrom=\
+                                    indexFrom)
+                            elif self.modalDecomp.mpi._numProcs > numModes:
+                                self.assertRaises(util.MPIError, 
+                                    compute_modes_func, modeNumList, modePath,
+                                    snapPaths, buildCoeffMat, indexFrom=\
+                                    indexFrom)
                             else:
                                 #saves modes to files
-                                compute_modes_func(modeNumList,modePath,
-                                  snapPaths,
-                                  buildCoeffMat,indexFrom=indexFrom)
+                                compute_modes_func(modeNumList, modePath,
+                                    snapPaths, buildCoeffMat, indexFrom=\
+                                    indexFrom)
                               
                                 #parallelize the assertions
                                 modeNumAssignments = \
-                                  self.modalDecomp.mpi.find_proc_assignments( 
-                                  modeNumList)
-                                for modeNum in modeNumAssignments[ \
-                                  self.modalDecomp.mpi._rank]:
-                                    computedMode=(util.load_mat_text(
-                                      modePath%modeNum))
+                                    self.modalDecomp.mpi.find_proc_assignments( 
+                                        modeNumList)
+                                for modeNum in modeNumAssignments[self.\
+                                    modalDecomp.mpi._rank]:
+                                    computedMode = util.load_mat_text(
+                                        modePath % modeNum)
                                     N.testing.assert_array_almost_equal(
-                                      computedMode,
-                                      trueModes[:,modeNum-indexFrom])            
-        
-                            #self.modalDecomp.mpi.sync()
-                            #if self.modalDecomp.mpi._rank == 0:
-                            #    SP.call(['rm -rf testfiles/*'],shell=True)
-        
+                                        computedMode, trueModes[:,modeNum-\
+                                        indexFrom])            
 
     @unittest.skipIf(parallel,'This is a serial test')
     def test__compute_modes_chunk(self):

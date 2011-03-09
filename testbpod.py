@@ -33,7 +33,7 @@ class TestBPOD(unittest.TestCase):
         if not os.path.isdir('testfiles'):        
             SP.call(['mkdir','testfiles'])
         self.bpod = BP.BPOD()
-        self.modeNumList =[1,4,3,6]
+        self.modeNumList =[2,4,3,6]
         self.numDirectSnaps = 6
         self.numAdjointSnaps = 7
         self.numStates = 7
@@ -105,12 +105,6 @@ class TestBPOD(unittest.TestCase):
         #self.bpod.directSnapPaths=self.directSnapPaths
         #self.bpod.adjointSnapPaths=self.adjointSnapPaths
         
-        
-    def tearDown(self):
-        if self.bpod.mpi.parallel:
-            self.bpod.mpi.sync()
-        #SP.call(['rm -f testfiles/*'],shell=True)
-    
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
           

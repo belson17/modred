@@ -137,17 +137,20 @@ class ModalDecomp(object):
             raise util.UndefinedError('snapPaths is undefined')
 
         if len(snapPaths) > buildCoeffMat.shape[0]:
-            raise ValueError('coefficient matrix has fewer rows than number'+
+            raise ValueError('coefficient matrix has fewer rows than number '+
               'of snap paths')
         
         for modeNum in modeNumList:
-            if modeNum-indexFrom > len(snapPaths):
-                raise ValueError('Cannot form more modes than number of '+
-                  'snapshots')
+            if modeNum-indexFrom < 0:
+                raise ValueError('Cannot compute if mode number is less than '+\
+                    'indexFrom')
+            elif modeNum-indexFrom > buildCoeffMat.shape[1]-1:
+                raise ValueError('Cannot compute if mode number is greater '+\
+                    'than number of coefficient columns+indexFrom')
 
         if len(modeNumList) < self.mpi._numProcs:
-            raise util.MPIError('Cannot find fewer modes than number of procs, '+
-              'lower the number of procs')       
+            raise util.MPIError('Cannot find fewer modes than number of procs'+\
+                ', lower the number of procs')       
               
 
         modeNumProcAssignments = self.mpi.find_proc_assignments(modeNumList)
@@ -208,9 +211,12 @@ class ModalDecomp(object):
             raise ValueError('coefficient matrix has fewer rows than number '+
               'of snap paths')
         for modeNum in modeNumList:
-            if modeNum-indexFrom > len(snapPaths):
-                raise ValueError('Cannot form more modes than number of '+
-                  'snapshots')
+            if modeNum-indexFrom < 0:
+                raise ValueError('Cannot compute if mode number is less than '+\
+                    'indexFrom')
+            if modeNum-indexFrom > buildCoeffMat.shape[1]-1:
+                raise ValueError('Cannot form mode for a mode number greater '+\
+                    'than the number of columns in coefficient matrix.')
         if numSnaps < buildCoeffMat.shape[0]:
             print 'Warning - fewer snapshot paths than rows in the coeff matrix'
             print '  some rows of coeff matrix will not be used!'

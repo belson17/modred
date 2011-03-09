@@ -91,11 +91,12 @@ class TestDMD(unittest.TestCase):
             for i in xrange(self.ritzVecsTrue.shape[1]):
                 util.save_mat_text(self.ritzVecsTrue[:,i], self.trueModePath%\
                     (i+1))
-        
+
     def tearDown(self):
-        if self.dmd.mpi.parallel:
-            self.dmd.mpi.sync()
-        #SP.call(['rm -f testfiles/*'],shell=True)
+        self.dmd.mpi.sync()
+        if self.dmd.mpi._rank == 0:
+            SP.call(['rm -rf testfiles/*'],shell=True)
+        self.dmd.mpi.sync()
    
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
