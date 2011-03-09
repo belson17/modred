@@ -57,6 +57,14 @@ class TestUtil(unittest.TestCase):
                       decimal=tol)
         SP.call(['rm',matPath])
         
+       
+    def test_MPI_sync(self):
+        """
+        Test that can properly synchronize processors when in parallel
+        """
+        #not sure how to test this
+        
+        
     def test_MPI_init(self):
         """Test that the MPI object uses arguments correctly.
         """

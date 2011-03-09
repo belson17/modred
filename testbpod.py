@@ -45,7 +45,13 @@ class TestBPOD(unittest.TestCase):
         self.bpod.indexFrom=self.indexFrom
         
         self.generate_data_set()
-        
+    
+    def tearDown(self):
+        self.bpod.mpi.sync()
+        if self.bpod.mpi._rank == 0:
+            SP.call(['rm -rf testfiles/*'],shell=True)
+        self.bpod.mpi.sync()
+    
     def generate_data_set(self):
         #create data set (saved to file)
         self.directSnapPath = 'testfiles/direct_snap_%03d.txt'

@@ -32,6 +32,12 @@ class TestModalDecomp(unittest.TestCase):
     def setUp(self):
         self.modalDecomp = MD.ModalDecomp()
     
+    def tearDown(self):
+        self.modalDecomp.mpi.sync()
+        if self.modalDecomp.mpi._rank == 0:
+            SP.call(['rm -rf testfiles/*'],shell=True)
+        self.modalDecomp.mpi.sync()
+    
     def test_init(self):
         """
         Test arguments passed to the constructor are assigned properly"""
@@ -200,12 +206,9 @@ class TestModalDecomp(unittest.TestCase):
                                       computedMode,
                                       trueModes[:,modeNum-indexFrom])            
         
-                            #Force MPI to wait for all procs to reach
-                            #this point
-                            #delete all mode files saved to disk
-                            self.modalDecomp.mpi.sync()
-                            if self.modalDecomp.mpi._rank == 0:
-                                SP.call(['rm -rf testfiles/*'],shell=True)
+                            #self.modalDecomp.mpi.sync()
+                            #if self.modalDecomp.mpi._rank == 0:
+                            #    SP.call(['rm -rf testfiles/*'],shell=True)
         
 
     @unittest.skipIf(parallel,'This is a serial test')

@@ -88,14 +88,8 @@ class MPI(object):
         forces all processors to wait for others to "catch up"
         It is self-testing and for now does not need a unittest."""
         if self.parallel:
-            data = (self._rank+1)**2
-            data = self.comm.gather(data, root=0)
-            if self._rank == 0:
-                for i in range(self._numProcs):
-                    assert data[i] == (i+1)**2
-            else:
-                assert data is None
-
+            self.comm.Barrier()
+            
     def find_proc_assignments(self,taskList):
       """ Returns a 2D list of tasks, [rank][taskIndex], evenly
       breaking up the tasks in the taskList. 
