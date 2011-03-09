@@ -139,7 +139,10 @@ class ModalDecomp(object):
         if len(snapPaths) > buildCoeffMat.shape[0]:
             raise ValueError('coefficient matrix has fewer rows than number '+
               'of snap paths')
-        
+       
+        if isinstance(modeNumList, int):
+            modeNumList = [modeNumList]
+
         for modeNum in modeNumList:
             if modeNum-indexFrom < 0:
                 raise ValueError('Cannot compute if mode number is less than '+\
@@ -203,6 +206,9 @@ class ModalDecomp(object):
             raise util.UndefinedError('No build coeff matrix given')
         if self.save_mode is None: 
             raise util.UndefinedError('No self.save_mode defined')
+
+        if isinstance(modeNumList, int):
+            modeNumList = [modeNumList]
 
         numSnaps = len(snapPaths)
         numModes = len(modeNumList)

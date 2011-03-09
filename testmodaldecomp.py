@@ -189,22 +189,44 @@ class TestModalDecomp(unittest.TestCase):
                                     snapPaths, buildCoeffMat, indexFrom=\
                                     indexFrom)
                             else:
+                                #test the case that only one mode is desired,
+                                #in which case user might pass in an int
+                                if len(modeNumList) == 1:
+                                    modeNumList = modeNumList[0]
+
                                 #saves modes to files
                                 compute_modes_func(modeNumList, modePath,
                                     snapPaths, buildCoeffMat, indexFrom=\
                                     indexFrom)
-                              
+
+                                #change back to list so is iterable
+                                if isinstance(modeNumList, int):
+                                    modeNumList = [modeNumList]
+
+                                #mpi barrier to sync procs
+                                self.modalDecomp.mpi.sync()
+
+                                #do tests on processor 0
+                                if self.modalDecomp.mpi._rank == 0:
+                                    for modeNum in modeNumList:
+                                        computedMode = util.load_mat_text(
+                                            modePath % modeNum)
+                                        N.testing.assert_array_almost_equal(
+                                            computedMode, trueModes[:,modeNum-\
+                                            indexFrom])            
+                                self.modalDecomp.mpi.sync()
+
                                 #parallelize the assertions
-                                modeNumAssignments = \
-                                    self.modalDecomp.mpi.find_proc_assignments( 
-                                        modeNumList)
-                                for modeNum in modeNumAssignments[self.\
-                                    modalDecomp.mpi._rank]:
-                                    computedMode = util.load_mat_text(
-                                        modePath % modeNum)
-                                    N.testing.assert_array_almost_equal(
-                                        computedMode, trueModes[:,modeNum-\
-                                        indexFrom])            
+                                #modeNumAssignments = \
+                                #    self.modalDecomp.mpi.find_proc_assignments( 
+                                #        modeNumList)
+                                #for modeNum in modeNumAssignments[self.\
+                                #    modalDecomp.mpi._rank]:
+                                #    computedMode = util.load_mat_text(
+                                #        modePath % modeNum)
+                                #    N.testing.assert_array_almost_equal(
+                                #        computedMode, trueModes[:,modeNum-\
+                                #        indexFrom])            
 
     @unittest.skipIf(parallel,'This is a serial test')
     def test__compute_modes_chunk(self):
