@@ -37,7 +37,7 @@ class TestModalDecomp(unittest.TestCase):
         if self.modalDecomp.mpi._rank == 0:
             SP.call(['rm -rf testfiles/*'],shell=True)
         self.modalDecomp.mpi.sync()
-    
+
     def test_init(self):
         """
         Test arguments passed to the constructor are assigned properly"""
@@ -216,18 +216,6 @@ class TestModalDecomp(unittest.TestCase):
                                             indexFrom])            
                                 self.modalDecomp.mpi.sync()
 
-                                #parallelize the assertions
-                                #modeNumAssignments = \
-                                #    self.modalDecomp.mpi.find_proc_assignments( 
-                                #        modeNumList)
-                                #for modeNum in modeNumAssignments[self.\
-                                #    modalDecomp.mpi._rank]:
-                                #    computedMode = util.load_mat_text(
-                                #        modePath % modeNum)
-                                #    N.testing.assert_array_almost_equal(
-                                #        computedMode, trueModes[:,modeNum-\
-                                #        indexFrom])            
-
     @unittest.skipIf(parallel,'This is a serial test')
     def test__compute_modes_chunk(self):
         """
@@ -301,7 +289,11 @@ class TestModalDecomp(unittest.TestCase):
                         path = colSnapPath%snapNum
                         util.save_mat_text(colSnapMat[:,snapNum],path)
                         colSnapPaths.append(path)
-                            
+                    if len(rowSnapPaths) == 1:
+                        rowSnapPaths = rowSnapPaths[0]
+                    if len(colSnapPaths) == 1:
+                        colSnapPaths = colSnapPaths[0]
+
                     for maxSnapsInMem in maxSnapsInMemList: 
                         self.modalDecomp.maxSnapsInMem=maxSnapsInMem
                         # Test different rows and cols snapshots
