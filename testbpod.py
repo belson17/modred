@@ -1,4 +1,4 @@
-#!/usr/local/bin/env python
+#!/usr/bin/env python
 
 import numpy as N
 import bpod as BP
@@ -30,8 +30,8 @@ class TestBPOD(unittest.TestCase):
     """ Test all the BPOD class methods """
     
     def setUp(self):
-        if not os.path.isdir('testfiles'):        
-            SP.call(['mkdir','testfiles'])
+        if not os.path.isdir('modaldecomp_testfiles'):        
+            SP.call(['mkdir','modaldecomp_testfiles'])
         self.bpod = BP.BPOD()
         self.modeNumList =[2,4,3,6]
         self.numDirectSnaps = 6
@@ -49,13 +49,13 @@ class TestBPOD(unittest.TestCase):
     def tearDown(self):
         self.bpod.mpi.sync()
         if self.bpod.mpi._rank == 0:
-            SP.call(['rm -rf testfiles/*'],shell=True)
+            SP.call(['rm -rf modaldecomp_testfiles/*'],shell=True)
         self.bpod.mpi.sync()
     
     def generate_data_set(self):
         #create data set (saved to file)
-        self.directSnapPath = 'testfiles/direct_snap_%03d.txt'
-        self.adjointSnapPath = 'testfiles/adjoint_snap_%03d.txt'
+        self.directSnapPath = 'modaldecomp_testfiles/direct_snap_%03d.txt'
+        self.adjointSnapPath = 'modaldecomp_testfiles/adjoint_snap_%03d.txt'
 
         self.directSnapPaths=[]
         self.adjointSnapPaths=[]
@@ -165,12 +165,12 @@ class TestBPOD(unittest.TestCase):
         loaded and compared to the true matrices. 
         """
         tol = 8
-        directSnapPath = 'testfiles/direct_snap_%03d.txt'
-        adjointSnapPath = 'testfiles/adjoint_snap_%03d.txt'
-        LSingVecsPath ='testfiles/lsingvecs.txt'
-        RSingVecsPath ='testfiles/rsingvecs.txt'
-        singValsPath ='testfiles/singvals.txt'
-        hankelMatPath='testfiles/hankel.txt'
+        directSnapPath = 'modaldecomp_testfiles/direct_snap_%03d.txt'
+        adjointSnapPath = 'modaldecomp_testfiles/adjoint_snap_%03d.txt'
+        LSingVecsPath ='modaldecomp_testfiles/lsingvecs.txt'
+        RSingVecsPath ='modaldecomp_testfiles/rsingvecs.txt'
+        singValsPath ='modaldecomp_testfiles/singvals.txt'
+        hankelMatPath='modaldecomp_testfiles/hankel.txt'
         
         self.bpod.compute_decomp(RSingVecsPath=RSingVecsPath,
           LSingVecsPath=LSingVecsPath,singValsPath=singValsPath,
@@ -222,8 +222,8 @@ class TestBPOD(unittest.TestCase):
         compares them to the known solution.
         """
 
-        directModePath ='testfiles/direct_mode_%03d.txt'
-        adjointModePath ='testfiles/adjoint_mode_%03d.txt'
+        directModePath ='modaldecomp_testfiles/direct_mode_%03d.txt'
+        adjointModePath ='modaldecomp_testfiles/adjoint_mode_%03d.txt'
         
         self.bpod.RSingVecs=self.RSingVecsTrue
         self.bpod.LSingVecs=self.LSingVecsTrue

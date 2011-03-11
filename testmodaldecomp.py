@@ -35,7 +35,7 @@ class TestModalDecomp(unittest.TestCase):
     def tearDown(self):
         self.modalDecomp.mpi.sync()
         if self.modalDecomp.mpi._rank == 0:
-            SP.call(['rm -rf testfiles/*'],shell=True)
+            SP.call(['rm -rf modaldecomp_testfiles/*'],shell=True)
         self.modalDecomp.mpi.sync()
 
     def test_init(self):
@@ -133,10 +133,10 @@ class TestModalDecomp(unittest.TestCase):
         maxSnapsInMemList = [8,20,10000]
         indexFromList = [0,1,5]
         #modePath = 'proc'+str(self.modalDecomp.mpi._rank)+'/mode_%03d.txt'
-        modePath = 'testfiles/mode_%03d.txt'
+        modePath = 'modaldecomp_testfiles/mode_%03d.txt'
         if self.modalDecomp.mpi._rank == 0:
-            if not os.path.isdir('testfiles'):
-                SP.call(['mkdir','testfiles'])
+            if not os.path.isdir('modaldecomp_testfiles'):
+                SP.call(['mkdir','modaldecomp_testfiles'])
         
         self.modalDecomp.load_snap=load_snap
         self.modalDecomp.save_mode=util.save_mat_text
@@ -262,10 +262,10 @@ class TestModalDecomp(unittest.TestCase):
         numColSnapsList = [1,2,4,20,99]
         numStatesList = [1,10,25]
         maxSnapsInMemList = [6,20,10000]
-        if not os.path.isdir('testfiles'):
-            SP.call(['mkdir','testfiles'])
-        rowSnapPath = 'testfiles/row_snap_%03d.txt'
-        colSnapPath = 'testfiles/col_snap_%03d.txt'
+        if not os.path.isdir('modaldecomp_testfiles'):
+            SP.call(['mkdir','modaldecomp_testfiles'])
+        rowSnapPath = 'modaldecomp_testfiles/row_snap_%03d.txt'
+        colSnapPath = 'modaldecomp_testfiles/col_snap_%03d.txt'
         
         self.modalDecomp.load_snap=util.load_mat_text
         self.modalDecomp.save_mode=util.save_mat_text
@@ -306,7 +306,7 @@ class TestModalDecomp(unittest.TestCase):
                         assert_equal_mat_products(colSnapMat.T,colSnapMat,
                           colSnapPaths,colSnapPaths)
                         
-                    SP.call(['rm -f testfiles/*snap*.txt'],shell=True)
+                    SP.call(['rm -f modaldecomp_testfiles/*snap*.txt'],shell=True)
                 
     
     
