@@ -15,9 +15,11 @@ class BPOD(ModalDecomp):
     
     """
     
-    def __init__(self, load_snap=None, save_mode=None, save_mat=\
-        util.save_mat_text, inner_product=None, maxSnapsInMem=100, numProcs=\
-        None, directSnapPaths=None, adjointSnapPaths=None, LSingVecs=None, 
+    def __init__(self, load_snap=None, save_mode=None, 
+        save_mat=util.save_mat_text, load_mat=util.load_mat_text, 
+        inner_product=None,
+        maxSnapsInMem=100, numProcs=None, directSnapPaths=None, 
+        adjointSnapPaths=None, LSingVecs=None, 
         singVals=None, RSingVecs=None, hankelMat=None):
         """
         BPOD constructor
@@ -49,8 +51,38 @@ class BPOD(ModalDecomp):
         self.RSingVecs = RSingVecs
         self.hankelMat = hankelMat
         
-    def compute_decomp(self, hankelMatPath=None, LSingVecsPath=None, 
-      singValsPath=None, RSingVecsPath=None,directSnapPaths=None,
+    def load_decomp(self, LSingVecsPath, singValsPath, RSingVecsPath,
+        load_mat=None):
+        """
+        Loads the decomposition matrices from file. 
+        """
+        if self.mpi._rank == 0:
+            self.LSingVecs = self.load_mat(LSingVecsPath)
+            self.singVals = self.load_mat(singValsPath)
+            self.RSingVecs = self.load_mat(RSingVecsPath)
+        else:
+            self.LSingVecs = None
+            self.singVals = None
+            self.RSingVecs = None
+        if self.mpi.parallel:
+            self.LSingVecs = self.mpi.comm.bcast(self.LSingVecs, root=0)
+            self.singVals = self.mpi.comm.bcast(self.LSingVecs, root=0)
+            self.RSingVecs = self.mpi.comm.bcast(self.LSingVecs, root=0)
+    
+    def save_decomp(self, hankelMatPath, LSingVecsPath, singValsPath, 
+                    RSingVecsPath):
+        """Save the decomposition matrices to file."""
+        if self.mpi._rank == 0:
+            self.save_mat(self.hankelMat,hankelMatPath)
+            self.save_mat(self.LSingVecs,LSingVecsPath)
+            self.save_mat(self.RSingVecs,RSingVecsPath)
+            self.save_mat(self.singVals,singValsPath)
+        
+    
+    def compute_decomp(self, hankelMatPath='hankelMat.txt',
+      LSingVecsPath='LSingVecs.txt', 
+      singValsPath='singVals.txt', RSingVecsPath='RSingVecs.txt',
+      directSnapPaths=None,
       adjointSnapPaths=None):
         """
         Compute BPOD decomposition, forms the Hankel matrix and its SVD
@@ -83,14 +115,10 @@ class BPOD(ModalDecomp):
         self.LSingVecs, self.singVals, self.RSingVecs = util.svd(
           self.hankelMat)
         
-        if self.save_mat is not None and self.mpi._rank==0:
-            if LSingVecsPath is not None:
-                self.save_mat(self.LSingVecs,LSingVecsPath)
-            if RSingVecsPath is not None:
-                self.save_mat(self.RSingVecs,RSingVecsPath)
-            if singValsPath is not None:
-                self.save_mat(self.singVals,singValsPath)
-
+        if self.save_mat is not None:
+            self.save_decomp(hankelMatPath, LSingVecsPath, singValsPath,
+              RSingVecsPath)
+        
 
     def compute_direct_modes(self, modeNumList, modePath, indexFrom=1,
       directSnapPaths=None):
