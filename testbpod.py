@@ -230,12 +230,10 @@ class TestBPOD(unittest.TestCase):
         self.bpod.singVals=self.singValsTrue
         
         self.bpod.compute_direct_modes(self.modeNumList,directModePath,
-          indexFrom=self.indexFrom,directSnapPaths=self.directSnapPaths,
-          adjointSnapPaths=self.adjointSnapPaths)
+          indexFrom=self.indexFrom,directSnapPaths=self.directSnapPaths)
           
         self.bpod.compute_adjoint_modes(self.modeNumList,adjointModePath,
-          indexFrom=self.indexFrom,directSnapPaths=self.directSnapPaths,
-          adjointSnapPaths=self.adjointSnapPaths)
+          indexFrom=self.indexFrom,adjointSnapPaths=self.adjointSnapPaths)
           
         for modeNum in self.modeNumList:
             if self.bpod.mpi._rank==0:

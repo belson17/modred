@@ -93,7 +93,7 @@ class BPOD(ModalDecomp):
 
 
     def compute_direct_modes(self, modeNumList, modePath, indexFrom=1,
-      directSnapPaths=None,adjointSnapPaths=None):
+      directSnapPaths=None):
         """
         Computes the direct modes and saves them to file.
         
@@ -113,8 +113,8 @@ class BPOD(ModalDecomp):
             
         if directSnapPaths is not None:
             self.directSnapPaths=directSnapPaths
-        if adjointSnapPaths is not None:
-            self.adjointSnapPaths=adjointSnapPaths
+        # if adjointSnapPaths is not None:
+        #    self.adjointSnapPaths=adjointSnapPaths
         self.singVals = N.squeeze(N.array(self.singVals))
         
         buildCoeffMat = N.mat(self.RSingVecs) * \
@@ -125,7 +125,7 @@ class BPOD(ModalDecomp):
             indexFrom=indexFrom )
     
     def compute_adjoint_modes(self, modeNumList, modePath, indexFrom=1,
-      directSnapPaths=None,adjointSnapPaths=None):
+      adjointSnapPaths=None):
         """
         Computes the adjoint modes and saves them to file.
         
@@ -143,8 +143,8 @@ class BPOD(ModalDecomp):
             raise UndefinedError('Must define self.LSingVec')
         if self.singVals is None:
             raise UndefinedError('Must define self.singVals')
-        if directSnapPaths is not None:
-            self.directSnapPaths=directSnapPaths
+        #if directSnapPaths is not None:
+        #    self.directSnapPaths=directSnapPaths
         if adjointSnapPaths is not None:
             self.adjointSnapPaths=adjointSnapPaths
         self.singVals = N.squeeze(N.array(self.singVals))
