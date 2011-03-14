@@ -50,15 +50,18 @@ class BPOD(ModalDecomp):
         self.singVals = singVals
         self.RSingVecs = RSingVecs
         self.hankelMat = hankelMat
+        self.load_mat = load_mat
         
     def load_decomp(self, LSingVecsPath, singValsPath, RSingVecsPath,
         load_mat=None):
         """
         Loads the decomposition matrices from file. 
         """
+        if self.load_mat is None:
+            raise UndefinedError('Must specify a load_mat function')
         if self.mpi._rank == 0:
             self.LSingVecs = self.load_mat(LSingVecsPath)
-            self.singVals = self.load_mat(singValsPath)
+            self.singVals = N.squeeze(N.array(self.load_mat(singValsPath)))
             self.RSingVecs = self.load_mat(RSingVecsPath)
         else:
             self.LSingVecs = None
@@ -66,7 +69,7 @@ class BPOD(ModalDecomp):
             self.RSingVecs = None
         if self.mpi.parallel:
             self.LSingVecs = self.mpi.comm.bcast(self.LSingVecs, root=0)
-            self.singVals = self.mpi.comm.bcast(self.LSingVecs, root=0)
+            self.singVals = self.mpi.comm.bcast(self.singVals, root=0)
             self.RSingVecs = self.mpi.comm.bcast(self.LSingVecs, root=0)
     
     def save_decomp(self, hankelMatPath, LSingVecsPath, singValsPath, 
@@ -141,9 +144,6 @@ class BPOD(ModalDecomp):
             
         if directSnapPaths is not None:
             self.directSnapPaths=directSnapPaths
-        # if adjointSnapPaths is not None:
-        #    self.adjointSnapPaths=adjointSnapPaths
-        self.singVals = N.squeeze(N.array(self.singVals))
         
         buildCoeffMat = N.mat(self.RSingVecs) * \
           N.mat(N.diag(self.singVals**(-0.5)))
@@ -171,8 +171,6 @@ class BPOD(ModalDecomp):
             raise UndefinedError('Must define self.LSingVec')
         if self.singVals is None:
             raise UndefinedError('Must define self.singVals')
-        #if directSnapPaths is not None:
-        #    self.directSnapPaths=directSnapPaths
         if adjointSnapPaths is not None:
             self.adjointSnapPaths=adjointSnapPaths
         self.singVals = N.squeeze(N.array(self.singVals))
