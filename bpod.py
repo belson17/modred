@@ -107,7 +107,6 @@ class BPOD(ModalDecomp):
         if self.adjointSnapPaths is None:
             raise util.UndefinedError('adjointSnapPaths is not given')
             
-        # I think we need to rethink this interface, doesn't make sense.
         self.hankelMat = self._compute_hankel(
           self.directSnapPaths, self.adjointSnapPaths)
 

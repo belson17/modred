@@ -6,16 +6,14 @@ import util
 class UndefinedError(Exception):
     pass
 
-########################################################################
-
 class ERA(object):
     """ Forms the ERA ROM, following Ma 2010 
     
     Usage:
     The simplest way to use this class is to call 
     myEra = ERA()
-    myEra.computeDecomp(IOPaths=['/path/file1','/path/file2',...])
-    myEra.computeROM(numStates=50)
+    myEra.compute_decomp(IOPaths=['/path/file1','/path/file2',...])
+    myEra.compute_ROM(numStates=50)
     
     This would generate a 50-state ROM with A,B,C matrices saved in text
     format in the outputDir. 
@@ -28,7 +26,7 @@ class ERA(object):
     def __init__(self,IOPaths=None,LSingVecsPath='LSingVecs.txt',
         singValsPath='singVals.txt',RSingVecsPath='RSingVecs.txt',
         hankelMatPath='hankelMat.txt',hankelMat2Path='hankelMat2.txt',  
-        saveMatrix=util.write_mat_text,loadMatrix=util.read_mat_text,dt=None,
+        save_mat=util.save_mat_text,load_mat=util.load_mat_text,dt=None,
         mc=None,mo=None,numStates=100):
         
         self.IOPaths=IOPaths
@@ -36,8 +34,8 @@ class ERA(object):
         self.RSingVecs=RSingVecs
         self.hankelMat=hankelMat
         self.hankelMat2=hankelMat2
-        self.save_matrix = saveMatrix
-        self.load_matrix = loadMatrix
+        self.save_mat = save_mat
+        self.load_mat = load_mat
         self.dt=dt
         self.mc=mc
         self.mo=mo
@@ -85,26 +83,26 @@ class ERA(object):
         else:
             raise UndefinedError('No input-output impulse data or files given')
         
-        #numSnaps,numOutputs,numInputs,self._dt are determined from files.
-        #self._IOSignals now has the impulse data
+        # numSnaps,numOutputs,numInputs,self._dt are determined from IO signal files.
+        # self._IOSignals now contains the impulse response data
         
-        #Now form the Hankel matrices with self._IOSignals, writes to file the 
+        # Form the Hankel matrices with self._IOSignals, writes to file the 
         # SVD matrices (hankelMat=RSingVecs,singVals,LSingVecs), and the Hankel matrix itself,
         # hankelMat. It leaves these matrices as data members for use later.
         self._form_hankel()
         self._save_matrix(self._hankelMat,self._hankelMatPath)
         self._save_matrix(self._hankelMat2,self._hankelMat2Path)
         
-        self._svd()
+        self._LSingVecs, self._singVals, self._RSingVecs = util.svd(self.hankelMat)
         
         #save these matrices to file, by default text files in current dir.
         #save the full svd information so can compute more modes/states later.
-        self._save_matrix(self._LSingVecs,self._LSingVecsPath)
-        self._save_matrix(self._RSingVecs,self._RSingVecsPath)
-        self._save_matrix(self._singVals,self._singValsPath)
+        self._save_mat(self._LSingVecs,self._LSingVecsPath)
+        self._save_mat(self._singVals,self._singValsPath)
+        self._save_mat(self._RSingVecs,self._RSingVecsPath)
+        
     
-  ######################################################################  
-  
+
     def compute_ROM(self,numStates=None,dt=None,LSingVecsFile=None,
         singValsPath=None,RSingVecsFile=None,hankelMatFile=None,
         hankelMatFile2=None,APath='A-era-disc.txt',BPath='B-era-disc.txt',
@@ -149,16 +147,12 @@ class ERA(object):
         elif self._hankelMat2 is None:
             raise UndefinedError('No hankel matrix 2 data is given')  
         
-        #Now have all of the matrices required, can find ROM.    
-        self._A,self._B,self._C = self._compute_ROM_matrices()
+        # Have all of the decomposition matrices required, find ROM   
+        self._compute_ROM_matrices()
         
-        #Now write these matrices to files
-        self._save_matrix(self._A,APath)
-        self._save_matrix(self._B,BPath)
-        self._save_matrix(self._C,CPath)
+        self.save_ROM_matrices(APath, BPath, CPath)
     
-  ######################################################################
-  
+
     def _read_files(self,IOPaths):
         """Reads a list of files and forms the IOSignals numpy array
         containing the input-output data"""
@@ -242,14 +236,6 @@ class ERA(object):
                   nc*numInputs:(nc+1)*numInputs]=self._IOSignals[:,:,no+nc+1]
         #computed Hankel matrices and SVD as data members
     
-    def _svd(self):
-        """ Computes the SVD of the matrix self._hankelMat """
-        
-        self._LSingVecs,self._singVals,RSingVecsStar =\
-          N.linalg.svd(self._hankelMat,full_matrices=0) #only computes nonzero SVD values
-        
-        self._LSingVecs = N.matrix(self._LSingVecs)
-        self._RSingVecs = N.matrix(RSingVecsStar).H
     
     def _compute_ROM_matrices(self):
         """ This method creates the A,B,C matrices for the ROM discrete time
@@ -270,5 +256,16 @@ class ERA(object):
         self._C = (Ur*N.matrix(N.diag(Er**.5)))[:,:]
         
         #no return, computed matrices as data members
+        
+    def save_ROM_matrices(APath, BPath, CPath):
+        """
+        Uses save_mat to save these matrices to provided paths.
+        """
+        self.save_mat(self._A, APath)
+        self.save_mat(self._B, BPath)
+        self.save_mat(self._C, CPath)
+        
+      
+      
     
   

@@ -10,7 +10,7 @@ PDE would be a derived class"""
 
 class BPODROM(object):
     def __init__(self,adjointModePaths=None,directModePaths=None,
-      directDerivModePaths=None,inner_product=None,save_mat=None,
+      directDerivModePaths=None,inner_product=None,save_mat=util.save_mat_text,
       load_mode=None,save_mode=None,numModes=None,maxSnapsInMem=100,numProcs=1):
         
         self.adjointModePaths=adjointModePaths
@@ -22,8 +22,9 @@ class BPODROM(object):
         self.save_mode=save_mode
         self._numProcs=numProcs
         self.maxSnapsInMem=maxSnapsInMem
+        self.numModes = numModes
     
-    def computeModeDeriv(self,modePaths,modeDtPaths,modeDerivPaths,dt):
+    def compute_mode_derivs(self,modePaths,modeDtPaths,modeDerivPaths,dt):
         """
         Computes time derivatives of modes.
         
@@ -39,13 +40,13 @@ class BPODROM(object):
         numModes = min(len(modePaths),len(modeDtPaths),len(modeDerivPaths))
         print 'Computing derivatives of',numModes,'modes'
         
-        for modeNum in xrange(len(modeDtPaths)):
-            mode = self.load_mode(modePaths[modeNum])
-            modeDt = self.load_mode(modeDtPaths[modeNum])
-            self.save_mode((modeDt-mode)/(1.*dt))            
+        for modeIndex in xrange(len(modeDtPaths)):
+            mode = self.load_mode(modePaths[modeIndex])
+            modeDt = self.load_mode(modeDtPaths[modeIndex])
+            self.save_mode((modeDt-mode)*(1./dt),modeDerivPaths[modeIndex])            
         
     
-    def formA(self,APath,directDerivModePaths=None,adjointModePaths=None,
+    def form_A(self,APath,directDerivModePaths=None,adjointModePaths=None,
       numModes=None):
         if directDerivModePaths is not None:
             self.directDerivModePaths=directDerivModePaths
@@ -74,23 +75,24 @@ class BPODROM(object):
         for startRowNum in range(0,self.numModes,numRowsPerChunk):
             endRowNum = min(startRowNum+numRowsPerChunk,self.numModes)
             adjointModes = [] #a list of 'row' adjoint modes
-            for adjointPath in adjointModePaths[startRowNum:endRowNum]:
+            for adjointPath in self.adjointModePaths[startRowNum:endRowNum]:
                 adjointModes.append(self.load_mode(adjointPath))
               
             #now read in each column (forward time modes advanced dt)
-            for colNum,derivPath in enumerate(directDerivModePaths[:self.numModes]):
+            for colNum,derivPath in enumerate(self.directDerivModePaths[:self.numModes]):
                 derivMode = self.load_mode(derivPath)
                 for rowNum in range(startRowNum,endRowNum):
-                  self.A[rowNum,colNum] = self.inner_product(adjointModes[rowNum],derivMode)
+                  self.A[rowNum,colNum] = self.inner_product(adjointModes[rowNum],
+                  derivMode)
 
         self.save_mat(self.A,APath)
         print '---- A matrix formed, saved to',APath,'-----'
 
       
       
-    def formB(self,BPath,inputPaths,adjointModePaths=None,numModes=None):
+    def form_B(self,BPath,inputPaths,adjointModePaths=None,numModes=None):
         """Forms the B matrix, inner product of adjoint mode with sensor input
-        inputFiles is a list of the input files, representing the actuator field.
+        inpuPaths is a list of the input files, representing the actuator field.
         THE ORDER IS IMPORTANT HERE. The order of the input files determines the order
         of the actuators in the ROM and must be kept track of."""
         
@@ -108,10 +110,9 @@ class BPODROM(object):
         
         numRowsPerChunk = self.maxSnapsInMem - 1
         for startRowNum in range(0,self.numModes,numRowsPerChunk):
-            endRowNum = min(startRowNum+numRowsPerChunk,numModes)
-            
+            endRowNum = min(startRowNum+numRowsPerChunk,self.numModes)
             adjointModes = [] #a list of 'row' adjoint modes
-            for adjointPath in adjointModePaths[startRowNum:endRowNum]:
+            for adjointPath in self.adjointModePaths[startRowNum:endRowNum]:
                 adjointModes.append(self.load_mode(adjointPath))
               
             #now read in each column (forward time modes advanced dt)
@@ -124,7 +125,7 @@ class BPODROM(object):
         print '-----B matrix is formed and saved to',BPath,'-----'
       
     
-    def formC(self,CPath,outputPaths,directModePaths=None,numModes=None):
+    def form_C(self,CPath,outputPaths,directModePaths=None,numModes=None):
         """Forms the C matrix, multiplication of adjoint mode with sensor input
         outputFiles is a list of the output files, representing the sensor fields.
         THE ORDER IS IMPORTANT HERE. The order of the output files determines the order
@@ -140,15 +141,14 @@ class BPODROM(object):
             self.numModes = len(directModePaths)
         
         numOutputs = len(outputPaths)
-        self.C = N.zeros((numOutputs,numModes))
-        
+        self.C = N.zeros((numOutputs,self.numModes))
         numColsPerChunk = self.maxSnapsInMem - 1
         
         for startColNum in range(0,self.numModes,numColsPerChunk):
-            endColNum = min(startColNum+numColsPerChunk,numModes)
+            endColNum = min(startColNum+numColsPerChunk,self.numModes)
             
             directModes = [] #a list of 'row' adjoint modes
-            for directPath in directModePaths[startColNum:endColNum]:
+            for directPath in self.directModePaths[startColNum:endColNum]:
                 directModes.append(self.load_mode(directPath))
               
             #now read in each row (outputs)
