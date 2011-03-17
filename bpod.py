@@ -205,9 +205,9 @@ class BPOD(ModalDecomp):
           adjointSnapProcAssignments[0][-1]-adjointSnapProcAssignments[0][0] > \
           self.maxSnapsInMem:
               print 'Each processor will have to read the number of direct'
-              print 'snapshots = ',numDirectSnapshots,'multiple times,'
-              print 'increase num processors to'
-              print int(N.ceil(numDirectSnapshots/self.maxSnapsInMem))
+              print 'snapshots = ',numDirectSnaps,'multiple times,'
+              print 'increase num processors to',\
+              int(N.ceil(numDirectSnaps/self.maxSnapsInMem))
               print 'to avoid this and get a big speedup'
                       
         hankelMatChunk=self._compute_inner_product_chunk(
