@@ -201,8 +201,8 @@ class BPOD(ModalDecomp):
         adjointSnapProcAssignments = \
           self.mpi.find_proc_assignments(range(numAdjointSnaps))
         
-        if self.mpi._rank == 0 and len(adjointSnapProcAssignments[0])>0 and \
-          adjointSnapProcAssignments[0][1]-adjointSnapProcAssignments[0][0] > \
+        if self.mpi._rank == 0 and \
+          adjointSnapProcAssignments[0][-1]-adjointSnapProcAssignments[0][0] > \
           self.maxSnapsInMem:
               print 'Each processor will have to read the number of direct'
               print 'snapshots = ',numDirectSnapshots,'multiple times,'
