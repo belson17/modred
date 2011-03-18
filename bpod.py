@@ -214,7 +214,7 @@ class BPOD(ModalDecomp):
         hankelMatChunk=self._compute_inner_product_chunk(
           adjointSnapPaths[adjointSnapProcAssignments[self.mpi._rank][0]: \
           adjointSnapProcAssignments[self.mpi._rank][-1]+1],
-          directSnapPaths,verbose=self.verbose)
+          directSnapPaths)
                        
         #Gather list of chunks from each processor, ordered by rank
         if self.mpi.parallel:

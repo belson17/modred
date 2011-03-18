@@ -159,7 +159,7 @@ class ModalDecomp(object):
                         innerProductMatChunk[rowNum,colNum] = \
                           self.inner_product(rowSnaps[rowNum-startRowNum],
                           colSnaps[colNum-startColNum])
-                    if verbose and (rowNum-startRowNum+1)%printAfterNumRows==0:
+                    if self.verbose and (rowNum-startRowNum+1)%printAfterNumRows==0:
                         print 'Processor ',self.mpi._rank,' completed row',\
                           rowNum-startRowNum+1,'out of',numRows,',',\
                           100*(rowNum-startRowNum+1.)/(1.*numRows),\
