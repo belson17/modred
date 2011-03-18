@@ -81,7 +81,7 @@ class MPI(object):
             self.parallel=False
             
     def sync(self):
-        """Forces all processors to synchronize
+        """Forces all processors to synchronize.
         
         Method computes simple formula based on ranks of each proc, then
         asserts that results make sense and each proc reported back. This
@@ -139,12 +139,14 @@ def svd(A):
     U,E,VCompConj=N.linalg.svd(AMat,full_matrices=0)
     V=N.mat(VCompConj).H
     U=N.mat(U)
+    
     #Take care of case where sing vals are ~0
     indexZeroSingVal=N.nonzero(abs(E)<singValTol)
     if len(indexZeroSingVal[0])>0:
         U=U[:,:indexZeroSingVal[0][0]]
         V=V[:,:indexZeroSingVal[0][0]]
         E=E[:indexZeroSingVal[0][0]]
+    
     return U,E,V
 
 

@@ -33,10 +33,10 @@ class TestBPOD(unittest.TestCase):
         if not os.path.isdir('modaldecomp_testfiles'):        
             SP.call(['mkdir','modaldecomp_testfiles'])
         self.bpod = BP.BPOD()
-        self.modeNumList =[2,4,3,6]
-        self.numDirectSnaps = 6
-        self.numAdjointSnaps = 7
-        self.numStates = 7
+        self.modeNumList =[2,4,3,6,9,8,10,11,13]
+        self.numDirectSnaps = 20
+        self.numAdjointSnaps = 25
+        self.numStates = 100
         self.bpod.save_mat=util.save_mat_text
         self.bpod.load_snap=util.load_mat_text
         self.bpod.inner_product=util.inner_product
@@ -99,6 +99,7 @@ class TestBPOD(unittest.TestCase):
         
         self.directModeMat = self.directSnapMat * N.mat(self.RSingVecsTrue)*\
           N.mat(N.diag(self.singValsTrue**(-0.5)))
+
         self.adjointModeMat = self.adjointSnapMat*N.mat(self.LSingVecsTrue)*\
           N.mat(N.diag(self.singValsTrue**(-0.5)))
         
@@ -212,6 +213,8 @@ class TestBPOD(unittest.TestCase):
           self.RSingVecsTrue,decimal=tol)
         N.testing.assert_array_almost_equal(singValsLoaded,
           self.singValsTrue,decimal=tol)
+               
+        
 
     def test_compute_modes(self):
         """
@@ -224,6 +227,8 @@ class TestBPOD(unittest.TestCase):
 
         directModePath ='modaldecomp_testfiles/direct_mode_%03d.txt'
         adjointModePath ='modaldecomp_testfiles/adjoint_mode_%03d.txt'
+        
+        # gives the CORRECT decomposition to start with.
         
         self.bpod.RSingVecs=self.RSingVecsTrue
         self.bpod.LSingVecs=self.LSingVecsTrue

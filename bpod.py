@@ -107,6 +107,7 @@ class BPOD(ModalDecomp):
         if self.adjointSnapPaths is None:
             raise util.UndefinedError('adjointSnapPaths is not given')
             
+        ## TESTING, hankelmat is set already, UNCOMMENT LATER
         self.hankelMat = self._compute_hankel(
           self.directSnapPaths, self.adjointSnapPaths)
 
@@ -167,7 +168,7 @@ class BPOD(ModalDecomp):
         """
         
         if self.LSingVecs is None:
-            raise UndefinedError('Must define self.LSingVec')
+            raise UndefinedError('Must define self.LSingVecs')
         if self.singVals is None:
             raise UndefinedError('Must define self.singVals')
         if adjointSnapPaths is not None:
@@ -205,8 +206,8 @@ class BPOD(ModalDecomp):
           adjointSnapProcAssignments[0][-1]-adjointSnapProcAssignments[0][0] > \
           self.maxSnapsInMem:
               print 'Each processor will have to read the number of direct'
-              print 'snapshots = ',numDirectSnaps,'multiple times,'
-              print 'increase num processors to',\
+              print 'snapshots (',numDirectSnaps,') multiple times.'
+              print 'Increase num processors to at least',\
               int(N.ceil(numDirectSnaps/self.maxSnapsInMem))
               print 'to avoid this and get a big speedup'
                       

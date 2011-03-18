@@ -28,6 +28,56 @@ class ModalDecomp(object):
         self.inner_product = inner_product
         self.maxSnapsInMem=maxSnapsInMem
         self.mpi = util.MPI(numProcs=numProcs)
+        
+    def idiot_check(self,testObj=None,testObjPath=None):
+        """Checks that the user-supplied objects and functions work properly.
+        
+        The arguments are for a test object or the path to one (loaded with load_snap)
+        One of these should be supplied for thorough testing. The add and
+        mult functions are tested for the generic object.
+        This is not a complete testing, but catches some common mistakes.
+        
+        Other things which could be tested:
+          reading/writing doesnt effect other snaps/modes (memory problems)
+          subtraction, division (currently not used for modaldecomp)
+        """
+        import copy
+        tol = 1e-10
+        if testObjPath is not None:
+          testObj = self.load_snap(testObjPath)
+        if testObj is None:
+          raise RuntimeError('Supply snap (or mode) object or path to one for idiot check!')
+        objCopy = copy.deepcopy(testObj)
+        objCopyMag2 = self.inner_product(objCopy,objCopy)
+        
+        factor = 2.
+        objMult = testObj * factor
+        
+        if abs(self.inner_product(objMult,objMult)-objCopyMag2*factor**2)>tol:
+          raise ValueError('Multiplication of snap/mode object failed')
+        
+        if abs(self.inner_product(testObj,testObj)-objCopyMag2)>tol:  
+          raise ValueError('Original object modified by multiplication!')        
+        
+        objAdd = testObj + testObj
+        if abs(self.inner_product(objAdd,objAdd) - objCopyMag2*4)>tol:
+          raise ValueError('Addition does not give correct result')
+        
+        if abs(self.inner_product(testObj,testObj)-objCopyMag2)>tol:  
+          raise ValueError('Original object modified by addition!')       
+        
+        objAddMult = testObj*factor + testObj
+        if abs(self.inner_product(objAddMult,objAddMult)-objCopyMag2*(factor+1)**2)>tol:
+          raise ValueError('Multiplication and addition of snap/mode are inconsistent')
+        
+        if abs(self.inner_product(testObj,testObj)-objCopyMag2)>tol:  
+          raise ValueError('Original object modified by combo of mult/add!') 
+        
+        #objSub = 3.5*testObj - testObj
+        #N.testing.assert_array_almost_equal(objSub,2.5*testObj)
+        #N.testing.assert_array_almost_equal(testObj,objCopy)
+        print 'Passed the idiot check!'
+    
     
     def _compute_inner_product_chunk(self,rowSnapPaths,colSnapPaths):
         """ Computes inner products of snapshots in memory-efficient chunks

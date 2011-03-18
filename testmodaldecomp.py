@@ -65,7 +65,48 @@ class TestModalDecomp(unittest.TestCase):
         self.assertRaises(util.MPIError,MD.ModalDecomp,
           numProcs=numProcs+1)
         #MPI class is tested by utils.   
+    
+    def test_idiot_check(self):
+        """
+        Tests that the idiot check correctly checks user supplied objects/functions.
+        """
+        nx = 40
+        ny = 15
+        testArray = N.random.random((nx,ny))
+        def inner_product(a,b):
+            return N.sum(a.arr*b.arr)
+        import copy
+        myMD = MD.ModalDecomp(inner_product=util.inner_product)
+        myMD.idiot_check(testObj=testArray)
         
+        # An idiot's class that redefines multiplication to modify its data
+        class IdiotMult(object):
+            def __init__(self,arr):
+                self.arr = arr #array
+            def __add__(self,obj):
+                fReturn = copy.deepcopy(self)
+                fReturn.arr+=obj.arr
+                return fReturn
+            def __mul__(self,a):
+                self.arr*=a
+                return self
+                
+        class IdiotAdd(object):
+            def __init__(self,arr):
+                self.arr = arr #array
+            def __add__(self,obj):
+                self.arr += obj.arr
+                return self
+            def __mul__(self,a):
+                fReturn = copy.deepcopy(self)
+                fReturn.arr*=a
+                return fReturn
+        myMD.inner_product = inner_product
+        myIdiotMult = IdiotMult(testArray)
+        self.assertRaises(ValueError,myMD.idiot_check,myIdiotMult)
+        myIdiotAdd = IdiotAdd(testArray)
+        self.assertRaises(ValueError,myMD.idiot_check,myIdiotAdd)
+                
         
     def generate_snaps_modes(self,numStates,numSnaps,numModes,indexFrom=1):
         """
