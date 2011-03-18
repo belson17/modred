@@ -103,9 +103,9 @@ class TestModalDecomp(unittest.TestCase):
                 return fReturn
         myMD.inner_product = inner_product
         myIdiotMult = IdiotMult(testArray)
-        self.assertRaises(ValueError,myMD.idiot_check,myIdiotMult)
+        self.assertRaises(ValueError,myMD.idiot_check,testObj=myIdiotMult)
         myIdiotAdd = IdiotAdd(testArray)
-        self.assertRaises(ValueError,myMD.idiot_check,myIdiotAdd)
+        self.assertRaises(ValueError,myMD.idiot_check,testObj=myIdiotAdd)
                 
         
     def generate_snaps_modes(self,numStates,numSnaps,numModes,indexFrom=1):
