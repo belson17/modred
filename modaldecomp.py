@@ -14,7 +14,7 @@ class ModalDecomp(object):
     """
     
     def __init__(self,load_snap=None, save_mode=None, save_mat=None, 
-        inner_product=None, maxSnapsInMem=100, numProcs=None):
+        inner_product=None, maxSnapsInMem=100, numProcs=None,verbose=False):
         """
         Modal decomposition constructor.
     
@@ -28,6 +28,7 @@ class ModalDecomp(object):
         self.inner_product = inner_product
         self.maxSnapsInMem=maxSnapsInMem
         self.mpi = util.MPI(numProcs=numProcs)
+        self.verbose = verbose
         
     def idiot_check(self,testObj=None,testObjPath=None):
         """Checks that the user-supplied objects and functions work properly.
@@ -79,7 +80,7 @@ class ModalDecomp(object):
         print 'Passed the idiot check!'
     
     
-    def _compute_inner_product_chunk(self,rowSnapPaths,colSnapPaths):
+    def _compute_inner_product_chunk(self,rowSnapPaths,colSnapPaths,verbose=None):
         """ Computes inner products of snapshots in memory-efficient chunks
         
         The 'chunk' refers to the fact that within this method, the 
@@ -98,13 +99,18 @@ class ModalDecomp(object):
         In the future this method can be expanded to find more general shapes
         of the matrix.
         It returns a matrix with the above number of rows and columns.
+        verbose - If verobse is True, then print the progress of inner products
         """
-         
         if rowSnapPaths is None:
             raise util.UndefinedError('rowSnapPaths is undefined')
         if colSnapPaths is None:
             raise util.UndefinedError('colSnapPaths is undefined')            
-         
+        
+        if verbose is not None:
+            self.verbose = verbose
+        if self.verbose:
+            printAfterNumRows = 20 # Print after this many rows are computed
+        
         # Check that arguments are lists, not strings
         if isinstance(rowSnapPaths,str):
             rowSnapPaths = [rowSnapPaths]
@@ -131,6 +137,7 @@ class ModalDecomp(object):
         
         innerProductMatChunk = N.mat(N.zeros((numRows,numCols)))
         
+        
         for startRowNum in range(0,numRows,numRowsPerChunk):
             endRowNum = min(numRows,startRowNum+numRowsPerChunk)
             
@@ -152,6 +159,11 @@ class ModalDecomp(object):
                         innerProductMatChunk[rowNum,colNum] = \
                           self.inner_product(rowSnaps[rowNum-startRowNum],
                           colSnaps[colNum-startColNum])
+                    if verbose and (rowNum-startRowNum+1)%printAfterNumRows==0:
+                        print 'Processor ',self.mpi._rank,' completed row',\
+                          rowNum-startRowNum+1,'out of',numRows,',',\
+                          100*(rowNum-startRowNum+1.)/(1.*numRows),\
+                          '% complete inner products on this proc'
             #print 'formed ['+str(rowNum+1)+','+str(colNum+1)+'] of'+\
             #    '['+str(numRows)+','+str(numCols)+'], completed '+\
             #    str(round(100.*(rowNum+1)*(colNum+1)/(numRows*numCols)))+\
@@ -176,13 +188,12 @@ class ModalDecomp(object):
         snapPaths - A list paths to files from which snapshots can be loaded.
         buildCoeffMat - Matrix of coefficients for constructing modes.  The kth
             column contains the coefficients for computing the kth mode.
-        
+
         This methods primary purpose is to evenly divide the tasks for each
         processor in parallel (see util.MPI). It then calls _compute_modes_chunk.
         Each processor then computes and saves
         the mode numbers assigned to it.
-        """
-        
+        """        
         if snapPaths is None:
             raise util.UndefinedError('snapPaths is undefined')
 

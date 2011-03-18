@@ -3,7 +3,10 @@
 import subprocess as SP
 import numpy as N
 
-class UndefinedError(Exception):
+class UndefinedError(Exception): pass
+    
+class MPIError(Exception):
+    """For MPI related errors"""
     pass
 
 def save_mat_text(A,filename,delimiter=','):
@@ -54,10 +57,6 @@ def inner_product(snap1,snap2):
     """ A default inner product for n-dimensional numpy arrays """
     return N.sum(snap1*snap2.conj())
   
-  
-class MPIError(Exception):
-    """For MPI related errors"""
-    pass
   
 class MPI(object):
     """Simple container for information about how many processors there are.

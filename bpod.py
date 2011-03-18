@@ -20,7 +20,7 @@ class BPOD(ModalDecomp):
         inner_product=None,
         maxSnapsInMem=100, numProcs=None, directSnapPaths=None, 
         adjointSnapPaths=None, LSingVecs=None, 
-        singVals=None, RSingVecs=None, hankelMat=None):
+        singVals=None, RSingVecs=None, hankelMat=None, verbose=False):
         """
         BPOD constructor
         
@@ -39,7 +39,7 @@ class BPOD(ModalDecomp):
         # Base class constructor defines common data members
         ModalDecomp.__init__(self, load_snap=load_snap, save_mode=save_mode, 
             save_mat=save_mat, inner_product=inner_product, maxSnapsInMem=\
-            maxSnapsInMem, numProcs=numProcs)
+            maxSnapsInMem, numProcs=numProcs,verbose=verbose)
 
         # Additional data members
         self.directSnapPaths = directSnapPaths
@@ -214,7 +214,7 @@ class BPOD(ModalDecomp):
         hankelMatChunk=self._compute_inner_product_chunk(
           adjointSnapPaths[adjointSnapProcAssignments[self.mpi._rank][0]: \
           adjointSnapProcAssignments[self.mpi._rank][-1]+1],
-          directSnapPaths)
+          directSnapPaths,verbose=self.verbose)
                        
         #Gather list of chunks from each processor, ordered by rank
         if self.mpi.parallel:

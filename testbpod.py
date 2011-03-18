@@ -33,9 +33,9 @@ class TestBPOD(unittest.TestCase):
         if not os.path.isdir('modaldecomp_testfiles'):        
             SP.call(['mkdir','modaldecomp_testfiles'])
         self.bpod = BP.BPOD()
-        self.modeNumList =[2,4,3,6,9,8,10,11,13]
-        self.numDirectSnaps = 20
-        self.numAdjointSnaps = 25
+        self.modeNumList =[2,4,3,6,9,8,10,11,30]
+        self.numDirectSnaps = 40
+        self.numAdjointSnaps = 45
         self.numStates = 100
         self.bpod.save_mat=util.save_mat_text
         self.bpod.load_snap=util.load_mat_text
@@ -43,6 +43,7 @@ class TestBPOD(unittest.TestCase):
         self.bpod.save_mode = util.save_mat_text
         self.indexFrom = 2
         self.bpod.indexFrom=self.indexFrom
+        self.bpod.verbose = False
         
         self.generate_data_set()
     

@@ -296,7 +296,7 @@ class TestModalDecomp(unittest.TestCase):
         def assert_equal_mat_products(mat1,mat2,paths1,paths2):
             productTrue = mat1*mat2
             productComputed = self.modalDecomp._compute_inner_product_chunk(
-              paths1,paths2)
+              paths1,paths2,verbose=True)
             N.testing.assert_array_almost_equal(productComputed,productTrue)
         
         numRowSnapsList =[1,3,20,100]
