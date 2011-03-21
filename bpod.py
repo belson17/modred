@@ -208,7 +208,7 @@ class BPOD(ModalDecomp):
               print 'Each processor will have to read the number of direct'
               print 'snapshots (',numDirectSnaps,') multiple times.'
               print 'Increase num processors to at least',\
-              int(N.ceil(numDirectSnaps/self.maxSnapsInMem))
+              int(N.ceil(1.*numDirectSnaps/(1.*self.maxSnapsInMem)))
               print 'to avoid this and get a big speedup'
                       
         hankelMatChunk=self._compute_inner_product_chunk(
