@@ -88,39 +88,46 @@ class MPI(object):
         It is self-testing and for now does not need a unittest."""
         if self.parallel:
             self.comm.Barrier()
-            
+    
+    def isRankZero(self):
+        """Returns True if rank is zero, false if not, useful for prints"""
+        if self._rank == 0:
+            return True
+        else:
+            return False
+    
     def find_proc_assignments(self,taskList):
-      """ Returns a 2D list of tasks, [rank][taskIndex], evenly
-      breaking up the tasks in the taskList. 
-      
-      It returns a list that has numProcs+1 entries. 
-      Proc n is responsible for taskProcAssignments[n][...]
-      where the 2nd dimension of the 2D list contains the tasks (whatever
-      they were in the original taskList).
-      """
-      
-      taskProcAssignments= []
-      prevMaxTaskIndex = 0
-      import copy
-      taskListUse = copy.deepcopy(taskList)
-      numTasks = len(taskList)
-      for procNum in range(self._numProcs):
-          numRemainingTasks = len(taskListUse)
-          numRemainingProcs = self._numProcs - procNum
-          numTasksPerProc = int(N.ceil(numRemainingTasks/
-            (1.*numRemainingProcs)))
-          newMaxTaskIndex = min(numTasksPerProc,numRemainingTasks)
-          taskProcAssignments.append(taskListUse[:newMaxTaskIndex])
-          for removeElement in taskListUse[:newMaxTaskIndex]:
-              taskListUse.remove(removeElement)
-          prevMaxTaskIndex = newMaxTaskIndex
-      #currently do not support 0 tasks for a proc
-      for assignment in taskProcAssignments:
-          if len(assignment)==0:
-              print taskProcAssignments
-              raise MPIError('At least one processor has no tasks'+\
-                ', currently this is unsupported, lower num of procs')
-      return taskProcAssignments
+        """ Returns a 2D list of tasks, [rank][taskIndex], evenly
+        breaking up the tasks in the taskList. 
+        
+        It returns a list that has numProcs+1 entries. 
+        Proc n is responsible for taskProcAssignments[n][...]
+        where the 2nd dimension of the 2D list contains the tasks (whatever
+        they were in the original taskList).
+        """
+        
+        taskProcAssignments= []
+        prevMaxTaskIndex = 0
+        import copy
+        taskListUse = copy.deepcopy(taskList)
+        numTasks = len(taskList)
+        for procNum in range(self._numProcs):
+            numRemainingTasks = len(taskListUse)
+            numRemainingProcs = self._numProcs - procNum
+            numTasksPerProc = int(N.ceil(numRemainingTasks/
+              (1.*numRemainingProcs)))
+            newMaxTaskIndex = min(numTasksPerProc,numRemainingTasks)
+            taskProcAssignments.append(taskListUse[:newMaxTaskIndex])
+            for removeElement in taskListUse[:newMaxTaskIndex]:
+                taskListUse.remove(removeElement)
+            prevMaxTaskIndex = newMaxTaskIndex
+        #currently do not support 0 tasks for a proc
+        for assignment in taskProcAssignments:
+            if len(assignment)==0:
+                print taskProcAssignments
+                raise MPIError('At least one processor has no tasks'+\
+                  ', currently this is unsupported, lower num of procs')
+        return taskProcAssignments
     
     
 def svd(A):
