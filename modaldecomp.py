@@ -106,10 +106,7 @@ class ModalDecomp(object):
         if colSnapPaths is None:
             raise util.UndefinedError('colSnapPaths is undefined')            
         
-        if verbose is not None:
-            self.verbose = verbose
-        if self.verbose:
-            printAfterNumRows = 20 # Print after this many rows are computed
+       
         
         # Check that arguments are lists, not strings
         if isinstance(rowSnapPaths,str):
@@ -131,7 +128,12 @@ class ModalDecomp(object):
             numCols = temp
         else: 
             transpose = False
-                
+       
+        if verbose is not None:
+            self.verbose = verbose
+        if self.verbose:
+            printAfterNumCols = (numCols/5)+1 # Print after this many cols are computed
+       
         numColsPerChunk = 1
         numRowsPerChunk = self.maxSnapsInMem-numColsPerChunk         
         
@@ -159,11 +161,13 @@ class ModalDecomp(object):
                         innerProductMatChunk[rowNum,colNum] = \
                           self.inner_product(rowSnaps[rowNum-startRowNum],
                           colSnaps[colNum-startColNum])
-            if self.verbose: 
-                print 'Processor ',self.mpi._rank,' completed row number',\
-                  endRowNum,'out of',numRows,',',\
-                  int(1000.*endRowNum/(1.*numRows))/10.,\
-                  '% complete inner products on this proc'
+                if self.verbose and (endColNum%printAfterNumCols==0 or \
+                  endColNum==numCols): 
+                    print 'Processor',self.mpi._rank,'completed',\
+                    'hankelMat[:'+str(endRowNum)+',:'+str(endColNum)+']',\
+                    'out of hankelMat['+str(numRows)+','+str(numCols)+']',\
+                    ',',int(1000.*endColNum*endRowNum/(1.*numCols*numRows))/10.,\
+                    '% complete inner products on this proc'
        
         if transpose: innerProductMatChunk=innerProductMatChunk.T
         return innerProductMatChunk
