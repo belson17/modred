@@ -2,8 +2,8 @@
 
 import util
 import numpy as N
-""" This is a temporary script which computes the ROM matrices from BPOD
-modes and an LTI plant. Eventually it should be made a derived class of
+""" This is a class which computes the ROM matrices from BPOD
+modes and assuming an LTI plant. Eventually it should be made a derived class of
 a ROM class that computes Galerkin projections for generic PDEs. Each
 PDE would be a derived class"""
 
@@ -43,7 +43,7 @@ class BPODROM(object):
         for modeIndex in xrange(len(modeDtPaths)):
             mode = self.load_mode(modePaths[modeIndex])
             modeDt = self.load_mode(modeDtPaths[modeIndex])
-            self.save_mode((modeDt-mode)*(1./dt),modeDerivPaths[modeIndex])            
+            self.save_mode((modeDt + (mode*(-1.))*(1./dt), modeDerivPaths[modeIndex])            
         
     
     def form_A(self,APath,directDerivModePaths=None,adjointModePaths=None,
@@ -93,7 +93,8 @@ class BPODROM(object):
     def form_B(self,BPath,inputPaths,adjointModePaths=None,numModes=None):
         """Forms the B matrix, inner product of adjoint mode with sensor input
         inpuPaths is a list of the input files, representing the actuator field.
-        THE ORDER IS IMPORTANT HERE. The order of the input files determines the order
+        THE ORDER IS IMPORTANT HERE. The order of the input files determines 
+        the order
         of the actuators in the ROM and must be kept track of."""
         
         if adjointModePaths is not None:
@@ -119,10 +120,11 @@ class BPODROM(object):
             for colNum,inputPath in enumerate(inputPaths):
                 inputField = self.load_mode(inputPath)
                 for rowNum in range(startRowNum,endRowNum):
-                    self.B[rowNum,colNum] = self.inner_product(adjointModes[rowNum],inputField)
+                    self.B[rowNum,colNum] = \
+                      self.inner_product(adjointModes[rowNum],inputField)
       
         self.save_mat(self.B,BPath)
-        print '-----B matrix is formed and saved to',BPath,'-----'
+        print '----- B matrix is formed and saved to',BPath,'-----'
       
     
     def form_C(self,CPath,outputPaths,directModePaths=None,numModes=None):
@@ -155,9 +157,10 @@ class BPODROM(object):
             for rowNum,outputPath in enumerate(outputPaths):
                 outputField = self.load_mode(outputPath)
                 for colNum in range(startColNum,endColNum):
-                    self.C[rowNum,colNum] = self.inner_product(outputField,directModes[colNum])      
+                    self.C[rowNum,colNum] = \
+                      self.inner_product(outputField,directModes[colNum])      
   
         self.save_mat(self.C,CPath)
-        print '-----C matrix is formed and saved to',CPath,'-----'
+        print '----- C matrix is formed and saved to',CPath,'-----'
     
     

@@ -159,15 +159,11 @@ class ModalDecomp(object):
                         innerProductMatChunk[rowNum,colNum] = \
                           self.inner_product(rowSnaps[rowNum-startRowNum],
                           colSnaps[colNum-startColNum])
-                    if self.verbose and (rowNum-startRowNum+1)%printAfterNumRows==0:
-                        print 'Processor ',self.mpi._rank,' completed row',\
-                          rowNum-startRowNum+1,'out of',numRows,',',\
-                          100*(rowNum-startRowNum+1.)/(1.*numRows),\
-                          '% complete inner products on this proc'
-            #print 'formed ['+str(rowNum+1)+','+str(colNum+1)+'] of'+\
-            #    '['+str(numRows)+','+str(numCols)+'], completed '+\
-            #    str(round(100.*(rowNum+1)*(colNum+1)/(numRows*numCols)))+\
-            #'% of mat'
+            if self.verbose: 
+                print 'Processor ',self.mpi._rank,' completed row number',\
+                  endRowNum,'out of',numRows,',',\
+                  int(1000.*endRowNum/(1.*numRows))/10.,\
+                  '% complete inner products on this proc'
        
         if transpose: innerProductMatChunk=innerProductMatChunk.T
         return innerProductMatChunk
