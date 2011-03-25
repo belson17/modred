@@ -42,7 +42,7 @@ class BPODROM(object):
         for modeIndex in xrange(len(modeDtPaths)):
             mode = self.load_mode(modePaths[modeIndex])
             modeDt = self.load_mode(modeDtPaths[modeIndex])
-            self.save_mode(modeDt + (mode*(-1.))*(1./dt), modeDerivPaths[modeIndex])
+            self.save_mode((modeDt - mode)*(1./dt), modeDerivPaths[modeIndex])
         
     
     def form_A(self,APath,directDerivModePaths=None,adjointModePaths=None,

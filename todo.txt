@@ -1,0 +1,70 @@
+
+-- modaldecomp library --
+
+Tests for POD.
+
+Better organization of tests. Right now there is a lot of repeated code,
+and the tests in modaldecomp.py could be better organized. They are 
+thorough, but might be hard to understand at first glance.
+
+Currently the modes are computed from snapshots by assigning each
+processor a set of modes to compute. Each processor then loops through 
+all snapshots, adding their contribution to that mode. I call these contributions 
+"layers"; each snapshot contributes a layer to the mode, and summing
+all of these layers gives the full mode.
+Another approach would be to have each processor be responsible for a set
+of snapshots, and their corresponding layers of all modes. Then each
+processor would compute the layers to all modes, and then all processors
+would sum their layer chunks together to form all the modes.
+The first approach requires each processor to load all snapshots once. The
+second approach could potentially require the processors to only load a 
+subset of the snapshots, and thus be faster. However, the first approach
+requires that there only be enough memory to hold one mode and one snapshot
+at a time, per processor. For the second approach to be faster, it would require
+that there is enough memory to hold all modes and a subset of the snapshots
+simultaneously, per processor. Thus the currently implemented approach is 
+more efficient for the bigger cases, which I feel is more important.
+In the future though, both approaches could be available and modaldecomp
+would pick the more computationaly efficient one based on maxSnapsInMem.
+
+Status print messages could be added to the compute_mode functions.
+Currently these only exist for computing the hankel matrix, which is typically
+the longest part of the computation. 
+
+Profiling with cProfile could expose potentially easy speed increases.
+However, some of these results could be dependent on the user's use of
+the library, we shouldn't optimize for a particular case at expense of other
+cases.
+
+Sphinx documentation. We tried to follow the right format, so this should
+be just a matter of cleaning up comments and formats, and learning to use
+sphinx.
+
+
+
+
+-- ROM library --
+This is a separate library that would compute ROMs. It would interact
+well with modaldecomp when necessary (for example for BPOD). The main idea
+is that there would be a base class that defined mostly the interface, and
+derived classes that would implement computing the ROM ODEs for a 
+specific PDE. The easiest example would be computing a ROM that is an LTI
+system with:
+dx/dt = Ax + Bu
+y = Cx (+ Du)
+This has been done (by Brandt) for the BPOD case (see bpodltirom.py).
+The A, B, and C matrices
+are computed, given the direct modes, the adjoint modes, and the direct
+modes advanced one small time step (these are used to calculate the time-
+derivatives of the direct modes via finite difference).
+More thought needs to be put into this before it is attempted, but it might
+be able to handle general PDEs and general forms of the ROM.
+
+
+
+
+
+
+
+
+
