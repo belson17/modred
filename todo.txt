@@ -40,6 +40,18 @@ Sphinx documentation. We tried to follow the right format, so this should
 be just a matter of cleaning up comments and formats, and learning to use
 sphinx.
 
+Rename maxSnapsInMem to maxSnapsInMemPerProc, and create a new variable
+called maxSnapsInMemPerNode that is more useful. This new variable wouldn't
+be dependent on the number of processors being used, and thus users wouldn't
+have to change their scripts depending on the number of procs they are using.
+
+Automatically detect the maxSnapsInMem* variables. This would require some
+fancier things, like determining the available RAM and the size of a snapshot
+object. It might not be possible since some memory is used by the snap/mode
+objects when doing inner products, etc. We could leave a safety factor though,
+and maybe leave space for 1-2 snaps/modes for scratch space for the user's
+functions. 
+
 
 
 
