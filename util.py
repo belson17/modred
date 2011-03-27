@@ -9,7 +9,7 @@ class MPIError(Exception):
     """For MPI related errors"""
     pass
 
-def save_mat_text(A,filename,delimiter=','):
+def save_mat_text(A,filename,delimiter=' '):
     """
     Writes a matrix to file, 1D or 2D, in text with delimeter and a space
     seperating the elements.
@@ -28,7 +28,7 @@ def save_mat_text(A,filename,delimiter=','):
             row.append(str(AMat[rowNum,colNum]))
         writer.writerow(row)
     
-def load_mat_text(filename,delimiter=',',isComplex=False):
+def load_mat_text(filename,delimiter=' ',isComplex=False):
     """ Reads a matrix written by write_mat_text, plain text"""
     import csv
     f = open(filename,'r')

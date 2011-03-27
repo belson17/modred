@@ -163,10 +163,12 @@ class ModalDecomp(object):
                           colSnaps[colNum-startColNum])
                 if self.verbose and (endColNum%printAfterNumCols==0 or \
                   endColNum==numCols): 
+                    numCompletedIPs = startRowNum*numCols + \
+                      (endRowNum-startRowNum)*endColNum
                     print 'Processor',self.mpi._rank,'completed',\
                     'hankelMat[:'+str(endRowNum)+',:'+str(endColNum)+']',\
                     'out of hankelMat['+str(numRows)+','+str(numCols)+']',\
-                    ',',int(1000.*endColNum*endRowNum/(1.*numCols*numRows))/10.,\
+                    ',',int(1000.*numCompletedIPs/(1.*numCols*numRows))/10.,\
                     '% complete inner products on this proc'
        
         if transpose: innerProductMatChunk=innerProductMatChunk.T
