@@ -14,7 +14,7 @@ class ERA(object):
     myERA.compute_ROM(numStates=50)
     
     This would generate a 50-state LTI ROM with A,B,C matrices saved in text
-    format in the outputDir. 
+    format. 
     
     The above usage makes use of load_impulse_outputs, which assumes a 
     particular format of text files (see documentation for this function).
