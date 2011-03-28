@@ -70,7 +70,7 @@ class ERA(object):
         if mo is not None: self.mo=mo
         
         if self.IOSignals is None:
-            raise UndefinedError('No output impulse data exists in ERA instance')
+            raise util.UndefinedError('No output impulse data exists in ERA instance')
         
         # self.IOSignals now contains the impulse response data
         # numSnaps,numOutputs,numInputs,self.dt are determined from IOSignals.
@@ -93,12 +93,13 @@ class ERA(object):
         numStates is the number of states in the ROM.
         APath, BPath, CPath - the filenames of where to save the ROM matrices.
         They are discrete time matrices, with the associated timestep 'dt'.
-        """        
+        """
         if numStates is not None: 
             self.numStates=numStates
         if dt is not None: 
             self.dt=dt
-                
+        if self.dt is None:
+            raise util.UndefinedError('No time step dt was given')
         # Have all of the decomposition matrices required, find ROM   
         self._compute_ROM_matrices()
         self.save_ROM(APath=APath, BPath=BPath, CPath=CPath)
@@ -117,12 +118,13 @@ class ERA(object):
         of the impulse output data done independently, and passed into
         the ERA class instance.
         """
-        if not isintance(IOSignals,N.zeros(1)):
+        if not isinstance(IOSignals,type(N.zeros((2,2)))):
             raise RuntimeError('IOSignals must be a numpy array')
         if len(IOSignals.shape) != 3:
             raise RuntimeError('IOSignals must be a 3D numpy array')
         
         self.IOSignals = IOSignals
+        self.numOutputs,self.numInputs,self.numSnaps = N.shape(self.IOSignals)
  
   
     def load_impulse_outputs(self,IOPaths):
@@ -148,7 +150,7 @@ class ERA(object):
         myera.compute_decomp()        
         """
         numInputs = len(IOPaths)
-                 
+        
         # Read the first to get some of the parameters
         dat = self.load_mat(IOPaths[0],delimiter=' ')
         time = dat[:,0]
@@ -244,13 +246,12 @@ class ERA(object):
         if (self.mo,self.mc) != self.hankelMat2.shape:
             raise RuntimeError('Sizes of hankel and hankel2 matrices differ')
         
-        if self.RSingVecs is None or self.LSingVecs is None or \
-          self.singVals is None:
+        if self.RSingVecsPath is None or self.LSingVecsPath is None or \
+          self.singValsPath is None:
             print 'Paths to the SVD decomp matrices were not given so '+\
               'computing the SVD now' 
             self.LSingVecs, self.singVals, self.RSingVecs = util.svd(self.hankelMat)
         
-            
   
     def save_ROM(self,APath,BPath,CPath):
         """Saves the A, B, and C LTI matrices to file"""  
@@ -268,6 +269,7 @@ class ERA(object):
         Computes the Hankel and A*Hankel matrix (H and H' in Ma 2010).
         
         Stores them internally as self.hankelMat and self.hankelMat2.
+        Requires that self.IOSignals be set only
         """
         self.numOutputs,self.numInputs,self.numSnaps = N.shape(self.IOSignals)
         if self.mo is None or self.mc is None:
@@ -298,16 +300,24 @@ class ERA(object):
     def _compute_ROM_matrices(self):
         """ Creates the A,B,C LTI ROM matrices from the SVD matrices.
         
-        See Ma et al 2010 for derivation of matrix equations"""
+        See Ma et al 2010 for derivation of matrix equations.
+        Requires that numInputs, numOutputs, numStates, and the SVD matrices be
+        set."""
         if self.numInputs is None or self.numOutputs is None:
             raise UndefinedError('Specify number of inputs and outputs. '+\
             'If you loaded the SVD matrices from file, also give optional\n'+\
-            'arguments numInputs and numOutputs to load_decomp')    
+            'arguments numInputs and numOutputs to load_decomp')
         # Truncated matrices
-        Ur = self.LSingVecs[:,:self.numStates]
-        Er = self.singVals[:self.numStates]
-        Vr = self.RSingVecs[:,:self.numStates]
+        Ur = N.mat(self.LSingVecs[:,:self.numStates])
+        Er = N.squeeze(self.singVals[:self.numStates])
+        Vr = N.mat(self.RSingVecs[:,:self.numStates])
         
+        #print 'sizes of matrices to be multiplied are'
+        #print N.matrix(N.diag(Er**-.5)).shape
+        #print Ur.H.shape
+        #print self.hankelMat2.shape
+        #print Vr.shape
+        #print N.matrix(N.diag(Er**-.5)).shape
         self.A = N.matrix(N.diag(Er**-.5)) * Ur.H * self.hankelMat2 * \
           Vr * N.matrix(N.diag(Er**-.5))
         self.B = (N.matrix(N.diag(Er**.5)) * (Vr.H)[:,:self.numInputs]) * self.dt 
