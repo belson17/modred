@@ -1,4 +1,4 @@
-
+import sys  # for printing to stderr
 import util
 import numpy as N
 
@@ -165,11 +165,12 @@ class ModalDecomp(object):
                   endColNum==numCols): 
                     numCompletedIPs = startRowNum*numCols + \
                       (endRowNum-startRowNum)*endColNum
-                    print 'Processor',self.mpi._rank,'completed',\
-                    'hankelMat[:'+str(endRowNum)+',:'+str(endColNum)+']',\
-                    'out of hankelMat['+str(numRows)+','+str(numCols)+']',\
-                    ',',int(1000.*numCompletedIPs/(1.*numCols*numRows))/10.,\
-                    '% complete inner products on this proc'
+                    print >> sys.stderr, 'Processor', self.mpi._rank,\
+                        'completed', 'hankelMat[:' + str(endRowNum) + ',:' +\
+                        str(endColNum)+']', 'out of hankelMat[' +\
+                        str(numRows)+','+str(numCols)+'],',\
+                        int(1000.*numCompletedIPs/(1.*numCols*numRows))/10.,\
+                        '% complete inner products on this proc'
        
         if transpose: innerProductMatChunk=innerProductMatChunk.T
         return innerProductMatChunk
