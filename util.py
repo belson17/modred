@@ -95,7 +95,11 @@ class MPI(object):
             return True
         else:
             return False
-    
+   
+    def getNumProcs(self):
+        """Returns the number of processors"""
+        return self._numProcs
+
     def find_proc_assignments(self,taskList):
         """ Returns a 2D list of tasks, [rank][taskIndex], evenly
         breaking up the tasks in the taskList. 
