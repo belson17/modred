@@ -17,7 +17,7 @@ class DMD(ModalDecomp):
 
     def __init__(self, load_snap=None, save_mode=None, save_mat=\
         util.save_mat_text, inner_product=None, maxSnapsInMem=100, numProcs=\
-        None, snapPaths=None, buildCoeff=None, ritzVals=None, pod=None):
+        None, snapPaths=None, buildCoeff=None, pod=None):
         """
         DMD constructor
         
@@ -36,7 +36,6 @@ class DMD(ModalDecomp):
         self.buildCoeff = buildCoeff
         
         # Data members that will be set after computation
-        self.ritzVals = ritzVals
         self.pod = pod
         
     def compute_decomp(self, ritzValsPath=None, modeEnergiesPath=None, 
@@ -108,9 +107,9 @@ class DMD(ModalDecomp):
         # User should specify ALL snapshots, even though all but last are used
         if snapPaths is not None:
             self.snapPaths = snapPaths
-    
+
         ModalDecomp._compute_modes(self, modeNumList, modePath, self.\
-            snapPaths[:-1], self.buildCoeff, indexFrom=indexFrom )
+            snapPaths[:-1], self.buildCoeff, indexFrom=indexFrom)
         
         
         
