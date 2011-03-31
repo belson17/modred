@@ -168,9 +168,9 @@ class ModalDecomp(object):
                     print >> sys.stderr, 'Processor', self.mpi._rank,\
                         'completed', 'hankelMat[:' + str(endRowNum) + ',:' +\
                         str(endColNum)+']', 'out of hankelMat[' +\
-                        str(numRows)+','+str(numCols)+'],',\
+                        str(numRows)+','+str(numCols)+']\n    ',\
                         int(1000.*numCompletedIPs/(1.*numCols*numRows))/10.,\
-                        '% complete inner products on this proc'
+                        '% complete inner products on this processor'
        
         if transpose: innerProductMatChunk=innerProductMatChunk.T
         return innerProductMatChunk
