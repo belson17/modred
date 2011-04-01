@@ -109,7 +109,6 @@ class TestDMD(unittest.TestCase):
         self.assertEqual(myDMD.maxSnapsInMem,100)
         self.assertEqual(myDMD.snapPaths,None)
         self.assertEqual(myDMD.buildCoeff,None)
-        self.assertEqual(myDMD.ritzVals,None)
         self.assertEqual(myDMD.pod,None)
 
         # Test that constructor assignments are correct
@@ -142,10 +141,6 @@ class TestDMD(unittest.TestCase):
         buildCoeff = N.mat(N.random.random((2,2)))
         myDMD = D.DMD(buildCoeff=buildCoeff)
         N.testing.assert_array_almost_equal(myDMD.buildCoeff,buildCoeff)
-        
-        ritzVals = N.mat(N.random.random((2,2)))
-        myDMD = D.DMD(ritzVals=ritzVals)
-        N.testing.assert_array_almost_equal(myDMD.ritzVals,ritzVals)
         
         podObj = P.POD()
         myDMD = D.DMD(pod=podObj)
@@ -234,7 +229,7 @@ class TestDMD(unittest.TestCase):
 
         util.save_mat_text(vandermondeMat,'modaldecomp_testfiles/dmd_vandermonde.txt')
 if __name__=='__main__':
-    unittest.main()
+    unittest.main(verbosity=2)
 
 
 

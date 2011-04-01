@@ -56,7 +56,9 @@ class DMD(ModalDecomp):
         # Compute POD from snapshots (excluding last snapshot)
         if self.pod is None:
             self.pod = POD(load_snap=self.load_snap, inner_product=self.\
-                inner_product, snapPaths=self.snapPaths[:-1])
+                inner_product, snapPaths=self.snapPaths[:-1], maxSnapsInMem=\
+                self.maxSnapsInMem, numProcs=self.mpi.getNumProcs(), verbose=\
+                self.verbose)
             self.pod.compute_decomp()
         elif self.snaplist[:-1] != self.podsnaplist or len(snapPaths) !=\
             len(self.pod.snapPaths)+1:
