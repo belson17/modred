@@ -232,21 +232,16 @@ class BPOD(ModalDecomp):
           directSnapPaths)
                        
         #Gather list of chunks from each processor, ordered by rank
-        if self.mpi.parallel:
-            hankelMatChunkList = self.mpi.comm.gather(hankelMatChunk,root=0)
-            if self.mpi.isRankZero():
-                hankelMat = N.mat(N.zeros((numAdjointSnaps,numDirectSnaps)))
-                for rank in xrange(self.mpi.getNumProcs()):
-                #concatenate the chunks of Hankel matrix
-                    hankelMat[adjointSnapProcAssignments[rank][0]:\
-                      adjointSnapProcAssignments[rank][-1]+1] = \
-                      hankelMatChunkList[rank]
-            else:
-                hankelMat = None
-            hankelMat = self.mpi.comm.bcast(hankelMat,root=0)
+        if self.mpi.isParallel():
+            hankelMatChunkList = self.mpi.comm.allgather(hankelMatChunk)
+            hankelMat = N.mat(N.zeros((numAdjointSnaps,numDirectSnaps)))
+            for rank in xrange(self.mpi.getNumProcs()):
+            #concatenate the chunks of Hankel matrix
+                hankelMat[adjointSnapProcAssignments[rank][0]:\
+                  adjointSnapProcAssignments[rank][-1]+1] = \
+                  hankelMatChunkList[rank]
         else:
             hankelMat = hankelMatChunk
-        
         return hankelMat
     
 

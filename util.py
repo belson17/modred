@@ -124,8 +124,7 @@ class MPI(object):
         Proc n is responsible for taskProcAssignments[n][...]
         where the 2nd dimension of the 2D list contains the tasks (whatever
         they were in the original taskList).
-        """
-        
+        """        
         taskProcAssignments= []
         prevMaxTaskIndex = 0
         taskListUse = copy.deepcopy(taskList)
@@ -140,9 +139,8 @@ class MPI(object):
             for removeElement in taskListUse[:newMaxTaskIndex]:
                 taskListUse.remove(removeElement)
             prevMaxTaskIndex = newMaxTaskIndex
-        #currently do not support 0 tasks for a proc
         for assignment in taskProcAssignments:
-            if len(assignment)==0:
+            if len(assignment)==0 and self.isRankZero():
                 print 'Warning - at least one processor has no tasks'
         return taskProcAssignments
     

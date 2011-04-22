@@ -174,7 +174,7 @@ class ModalDecomp(object):
                   endColIndex==numCols): 
                     numCompletedIPs = startRowIndex*numCols + \
                       (endRowIndex-startRowIndex)*endColIndex
-                    print >> sys.stderr, 'Processor', self.mpi._rank,\
+                    print >> sys.stderr, 'Processor', self.mpi.getRank(),\
                         'completed', 'hankelMat[:' + str(endRowIndex) + ',:' +\
                         str(endColIndex)+']', 'out of hankelMat[' +\
                         str(numRows)+','+str(numCols)+']\n    ',\
@@ -329,18 +329,13 @@ class ModalDecomp(object):
                 outputLayers = self.mpi.custom_comm.allreduce(outputLayers, 
                   op=util.sum_lists)                
 
-            # Currently save only from proc 0, should be changed later
             saveOutputIndexAssignments = \
               self.mpi.find_proc_assignments(range(len(outputLayers)))
             if len(saveOutputIndexAssignments[self.mpi.getRank()]) != 0:
                 for outputIndex in saveOutputIndexAssignments[self.mpi.getRank()]:
                     self.save_field(outputLayers[outputIndex], 
                       outputFieldPaths[startOutputIndex + outputIndex])
-            """
-            if self.mpi.isRankZero():
-                for outputIndex,output in enumerate(outputs):
-                    self.save_field(output,outputFieldPaths[startOutputIndex+outputIndex])
-            """
+
             if self.verbose and self.mpi.isRankZero():
                 print >> sys.stderr, 'Computed and saved',\
                   round(1000.*endOutputIndex/numOutputFields)/10.,\
