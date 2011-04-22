@@ -149,7 +149,6 @@ class ModalDecomp(object):
         
         innerProductMatChunk = N.mat(N.zeros((numRows,numCols)))
         
-        
         for startRowIndex in range(0,numRows,numRowsPerChunk):
             endRowIndex = min(numRows,startRowIndex+numRowsPerChunk)
             
@@ -327,13 +326,21 @@ class ModalDecomp(object):
                   startOutputIndex:endOutputIndex])       
             
             if self.mpi.isParallel():
-                outputs = self.mpi.custom_comm.reduce(outputLayers,op=util.sum_lists,root=0)
-            else:
-                outputs = outputLayers
+                outputLayers = self.mpi.custom_comm.allreduce(outputLayers, 
+                  op=util.sum_lists)                
+
             # Currently save only from proc 0, should be changed later
+            saveOutputIndexAssignments = \
+              self.mpi.find_proc_assignments(range(len(outputLayers)))
+            if len(saveOutputIndexAssignments[self.mpi.getRank()]) != 0:
+                for outputIndex in saveOutputIndexAssignments[self.mpi.getRank()]:
+                    self.save_field(outputLayers[outputIndex], 
+                      outputFieldPaths[startOutputIndex + outputIndex])
+            """
             if self.mpi.isRankZero():
                 for outputIndex,output in enumerate(outputs):
                     self.save_field(output,outputFieldPaths[startOutputIndex+outputIndex])
+            """
             if self.verbose and self.mpi.isRankZero():
                 print >> sys.stderr, 'Computed and saved',\
                   round(1000.*endOutputIndex/numOutputFields)/10.,\
