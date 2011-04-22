@@ -24,15 +24,14 @@ class ModalDecomp(object):
         derived classes.  All derived classes should be sure to invoke this
         constructor explicitly.
         """
-        self.mpi = util.MPI()
+        self.mpi = util.MPI(verbose=verbose)
         if maxFieldsPerNode is None:
             maxFieldsPerNode = 2
-            if self.mpi.isRankZero():
+            if self.mpi.isRankZero() and verbose:
                 print 'Warning - only loading 2 fields/processor,',\
                 'increase maxFieldsPerNode for a speedup'
-        if numNodes is None:
-            numNodes = 1
         self.maxFieldsPerNode = maxFieldsPerNode
+        if numNodes is None: numNodes = 1
         self.numNodes = numNodes
         self.load_field = load_field
         self.save_field = save_field
@@ -95,7 +94,8 @@ class ModalDecomp(object):
         #objSub = 3.5*testObj - testObj
         #N.testing.assert_array_almost_equal(objSub,2.5*testObj)
         #N.testing.assert_array_almost_equal(testObj,objCopy)
-        print 'Passed the idiot check!'
+        if self.verbose:
+            print 'Passed the idiot check'
     
     
     def _compute_inner_product_chunk(self,rowFieldPaths,colFieldPaths,verbose=None):
@@ -327,7 +327,7 @@ class ModalDecomp(object):
             
             if self.mpi.isParallel():
                 outputLayers = self.mpi.custom_comm.allreduce(outputLayers, 
-                  op=util.sum_lists)                
+                  op=util.sum_lists)
 
             saveOutputIndexAssignments = \
               self.mpi.find_proc_assignments(range(len(outputLayers)))

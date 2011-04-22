@@ -20,7 +20,7 @@ class BPOD(ModalDecomp):
         inner_product=None,
         maxFieldsPerNode = None, numNodes=None, directSnapPaths=None, 
         adjointSnapPaths=None, LSingVecs=None, 
-        singVals=None, RSingVecs=None, hankelMat=None, verbose=False):
+        singVals=None, RSingVecs=None, hankelMat=None, verbose=True):
         """
         BPOD constructor
         
@@ -121,7 +121,7 @@ class BPOD(ModalDecomp):
             self.LSingVecs = None
             self.RSingVecs = None
             self.singVals = None
-        if self.mpi.isParallel:
+        if self.mpi.isParallel():
             self.LSingVecs = self.mpi.comm.bcast(self.LSingVecs,root=0)
             self.singVals = self.mpi.comm.bcast(self.singVals,root=0)
             self.RSingVecs = self.mpi.comm.bcast(self.RSingVecs,root=0)
@@ -219,9 +219,9 @@ class BPOD(ModalDecomp):
         
         if self.mpi.isRankZero() and \
           adjointSnapProcAssignments[0][-1] - adjointSnapProcAssignments[0][0] > \
-          self.maxFieldsPerProc:
+          self.maxFieldsPerProc and self.verbose:
               print 'Warning: Each processor will have to read the direct'
-              print 'snapshots (',numDirectSnaps,') multiple times.'
+              print 'snapshots ('+str(numDirectSnaps)+') multiple times.'
               print 'Increase number of processors to at least',\
               int(N.ceil(1.*numDirectSnaps/(1.*self.maxFieldsPerProc)))
               print 'to avoid this and get a big speedup'
