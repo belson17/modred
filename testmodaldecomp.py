@@ -31,8 +31,8 @@ class TestModalDecomp(unittest.TestCase):
     
     def tearDown(self):
         self.modalDecomp.mpi.sync()
-        #if self.modalDecomp.mpi.isRankZero():
-        #    SP.call(['rm -rf modaldecomp_testfiles/*'],shell=True)
+        if self.modalDecomp.mpi.isRankZero():
+            SP.call(['rm -rf modaldecomp_testfiles/*'],shell=True)
         self.modalDecomp.mpi.sync()
  
     #@unittest.skip('testing other things')

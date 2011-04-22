@@ -75,6 +75,9 @@ class BPOD(ModalDecomp):
     def save_decomp(self, hankelMatPath, LSingVecsPath, singValsPath, 
                     RSingVecsPath):
         """Save the decomposition matrices to file."""
+        if self.save_mat is None and self.mpi.isRankZero():
+            raise util.UndefinedError('save_mat is undefined, cant save')
+            
         if self.mpi.isRankZero():
             self.save_mat(self.hankelMat,hankelMatPath)
             self.save_mat(self.LSingVecs,LSingVecsPath)
@@ -126,9 +129,8 @@ class BPOD(ModalDecomp):
             self.singVals = self.mpi.comm.bcast(self.singVals,root=0)
             self.RSingVecs = self.mpi.comm.bcast(self.RSingVecs,root=0)
             
-        if self.save_mat is not None:
-            self.save_decomp(hankelMatPath, LSingVecsPath, singValsPath,
-              RSingVecsPath)
+        self.save_decomp(hankelMatPath, LSingVecsPath, singValsPath,
+          RSingVecsPath)
         
         #self.mpi.evaluate_and_bcast([self.LSingVecs,self.singVals,self.RSingVecs],\
         #  util.svd, arguments = [self.hankelMat])
