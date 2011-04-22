@@ -1,55 +1,43 @@
 
 -- modaldecomp library --
-Make tests for constructors better.  Right now each test checks one keyword 
-argument and checks that it has been correctly set.  But it doesn't check that
-the other fields still take their default values.  This could likely be 
-improved by using the objects' __dict__ field, or by looping through using 
-dir(object) with getattr(object, variable).
 
-There is a bug in the parallelization.  Suppose there are X procs available, 
-say because we run the code using mpiexec -n X, but then we construct an object
-with the keywork argument numProcs=Y with Y < X.  When we try to run the job,
-each proc will use the util.mpi class to get its assignments.  However, with 
-numProcs=Y, there will only be Y sets of assignments.  The Xth proc will try to
-access the Xth element of the assignment (task) list, leading to a bug.  This
-functionality could be desirable for many reasons.  For instance we may use X
-procs to do the decomposition (memory intensive) but only want to compute 2 
-modes (so req. only 2 procs).  Or we may have many procs available so that we
-can take advantage of all the RAM on a node, but we might only use a subset of
-them for actual computation.
+
+modaldecomp objects shouldn't own the MPI instance in the way they currently
+do. Really MPI is common to everything in the program, and so shouldn't be
+contained  only within this class. An instance of the MPI class, or whatever form
+the MPI takes if not a class, it should be available to 
+everything.
+Another way of dealing with this would be to pass an MPI class instance to
+modaldecomp objects. Then the class would only be able to use the processors
+in the MPI class and functions defined in it. In this way multiple MPI
+instances could exist and be consistent. This does require the user who
+writes a main function to at least create a single MPI class instance. 
+
+
+Change snapNum and similar to snapIndex. This is because the "number" of a 
+mode is generally different than its index. The most common example of this
+is the first mode is called mode number 1 but has index 0 (indexFrom=1). To
+be clear, I differentiate between a mode number and mode index. To be consistent
+with all naming conventions, index should be used instead of num when 
+referring to some object's "number/index" internally and starting from 0. 
+Number is more of a name, index is hidden from the user and starts from 0.
+  - This has been done for modaldecomp and bpod, and their tests. All
+  future code should make the distinction between xxxNum and xxxIndex
+  notation.
+
 
 The tests for DMD should be updated so that we check that the internal POD
 object has the correct arguments passed to it.
 
-Tests for POD.
 
-Better organization of tests. Right now there is a lot of repeated code,
-and the tests in modaldecomp.py could be better organized. They are 
-thorough, but might be hard to understand at first glance.
+Write the POD object and tests for POD.
 
-Currently the modes are computed from snapshots by assigning each
-processor a set of modes to compute. Each processor then loops through 
-all snapshots, adding their contribution to that mode. I call these contributions 
-"layers"; each snapshot contributes a layer to the mode, and summing
-all of these layers gives the full mode.
-Another approach would be to have each processor be responsible for a set
-of snapshots, and their corresponding layers of all modes. Then each
-processor would compute the layers to all modes, and then all processors
-would sum their layer chunks together to form all the modes.
-The first approach requires each processor to load all snapshots once. The
-second approach could potentially require the processors to only load a 
-subset of the snapshots, and thus be faster. However, the first approach
-requires that there only be enough memory to hold one mode and one snapshot
-at a time, per processor. For the second approach to be faster, it would require
-that there is enough memory to hold all modes and a subset of the snapshots
-simultaneously, per processor. Thus the currently implemented approach is 
-more efficient for the bigger cases, which I feel is more important.
-In the future though, both approaches could be available and modaldecomp
-would pick the more computationaly efficient one based on maxSnapsInMem.
 
-Status print messages could be added to the compute_mode functions.
-Currently these only exist for computing the hankel matrix, which is typically
-the longest part of the computation. 
+Write tests directly for _lin_combine_fields in modaldecomp. Right now only
+_compute_modes is tested. This isn't that bad since _compute_modes is mostly
+a wrapper for _lin_combine_fields, but it would be ideal to test it
+individually as well. 
+
 
 Profiling with cProfile could expose potentially easy speed increases.
 However, some of these results could be dependent on the user's use of
@@ -60,18 +48,13 @@ Sphinx documentation. We tried to follow the right format, so this should
 be just a matter of cleaning up comments and formats, and learning to use
 sphinx.
 
-Rename maxSnapsInMem to maxSnapsInMemPerProc, and create a new variable
-called maxSnapsInMemPerNode that is more useful. This new variable wouldn't
-be dependent on the number of processors being used, and thus users wouldn't
-have to change their scripts depending on the number of procs they are using.
 
-Automatically detect the maxSnapsInMem* variables. This would require some
+Automatically detect the maxSnapsPerNode. This would require some
 fancier things, like determining the available RAM and the size of a snapshot
 object. It might not be possible since some memory is used by the snap/mode
 objects when doing inner products, etc. We could leave a safety factor though,
 and maybe leave space for 1-2 snaps/modes for scratch space for the user's
 functions. 
-
 
 
 
@@ -91,11 +74,6 @@ modes advanced one small time step (these are used to calculate the time-
 derivatives of the direct modes via finite difference).
 More thought needs to be put into this before it is attempted, but it might
 be able to handle general PDEs and general forms of the ROM.
-
-
-
-
-
 
 
 

@@ -1,4 +1,6 @@
-import sys  # for printing to stderr
+
+import sys  
+import copy
 import util
 import numpy as N
 
@@ -13,8 +15,8 @@ class ModalDecomp(object):
     e.g. POD, BPOD, and DMD. 
     """
     
-    def __init__(self,load_snap=None, save_mode=None, save_mat=None, 
-        inner_product=None, maxSnapsInMem=100, numProcs=None,verbose=False):
+    def __init__(self, load_field=None, save_field=None, save_mat=None, 
+        inner_product=None, maxFieldsPerNode=None, numNodes=None, verbose=False):
         """
         Modal decomposition constructor.
     
@@ -22,18 +24,35 @@ class ModalDecomp(object):
         derived classes.  All derived classes should be sure to invoke this
         constructor explicitly.
         """
-        self.load_snap = load_snap
-        self.save_mode = save_mode
+        self.mpi = util.MPI()
+        if maxFieldsPerNode is None:
+            maxFieldsPerNode = 2
+            if self.mpi.isRankZero():
+                print 'Warning - only loading 2 fields/processor,',\
+                'increase maxFieldsPerNode for a speedup'
+        if numNodes is None:
+            numNodes = 1
+        self.maxFieldsPerNode = maxFieldsPerNode
+        self.numNodes = numNodes
+        self.load_field = load_field
+        self.save_field = save_field
         self.save_mat = save_mat
         self.inner_product = inner_product
-        self.maxSnapsInMem=maxSnapsInMem
-        self.mpi = util.MPI(numProcs=numProcs)
+        if (self.numNodes > self.mpi.getNumProcs()):
+            raise util.MPIError('More nodes than processors, ' + \
+              '#nodes='+str(self.numNodes) + ' #procs=' + \
+              str(self.mpi.getNumProcs())) 
+              
+        self.maxFieldsPerProc = \
+          max(2, maxFieldsPerNode / (self.mpi.getNumProcs() / self.numNodes))
         self.verbose = verbose
         
-    def idiot_check(self,testObj=None,testObjPath=None):
+
+        
+    def idiot_check(self, testObj=None, testObjPath=None):
         """Checks that the user-supplied objects and functions work properly.
         
-        The arguments are for a test object or the path to one (loaded with load_snap)
+        The arguments are for a test object or the path to one (loaded with load_field)
         One of these should be supplied for thorough testing. The add and
         mult functions are tested for the generic object.
         This is not a complete testing, but catches some common mistakes.
@@ -42,10 +61,9 @@ class ModalDecomp(object):
           reading/writing doesnt effect other snaps/modes (memory problems)
           subtraction, division (currently not used for modaldecomp)
         """
-        import copy
         tol = 1e-10
         if testObjPath is not None:
-          testObj = self.load_snap(testObjPath)
+          testObj = self.load_field(testObjPath)
         if testObj is None:
           raise RuntimeError('Supply snap (or mode) object or path to one for idiot check!')
         objCopy = copy.deepcopy(testObj)
@@ -80,7 +98,7 @@ class ModalDecomp(object):
         print 'Passed the idiot check!'
     
     
-    def _compute_inner_product_chunk(self,rowSnapPaths,colSnapPaths,verbose=None):
+    def _compute_inner_product_chunk(self,rowFieldPaths,colFieldPaths,verbose=None):
         """ Computes inner products of snapshots in memory-efficient chunks
         
         The 'chunk' refers to the fact that within this method, the 
@@ -101,28 +119,20 @@ class ModalDecomp(object):
         It returns a matrix with the above number of rows and columns.
         verbose - If verobse is True, then print the progress of inner products
         """
-        if rowSnapPaths is None:
-            raise util.UndefinedError('rowSnapPaths is undefined')
-        if colSnapPaths is None:
-            raise util.UndefinedError('colSnapPaths is undefined')            
+        if isinstance(rowFieldPaths,str):
+            rowFieldPaths = [rowFieldPaths]
+        if isinstance(colFieldPaths,str):
+            colFieldPaths = [colFieldPaths]
         
-       
-        
-        # Check that arguments are lists, not strings
-        if isinstance(rowSnapPaths,str):
-            rowSnapPaths = [rowSnapPaths]
-        if isinstance(colSnapPaths,str):
-            colSnapPaths = [colSnapPaths]
-        
-        numRows = len(rowSnapPaths)
-        numCols = len(colSnapPaths)
+        numRows = len(rowFieldPaths)
+        numCols = len(colFieldPaths)
         
         #enforce that there are more columns than rows for efficiency
         if numRows > numCols:
             transpose = True
-            temp = rowSnapPaths
-            rowSnapPaths = colSnapPaths
-            colSnapPaths = temp
+            temp = rowFieldPaths
+            rowFieldPaths = colFieldPaths
+            colFieldPaths = temp
             temp = numRows
             numRows = numCols
             numCols = temp
@@ -135,48 +145,50 @@ class ModalDecomp(object):
             printAfterNumCols = (numCols/5)+1 # Print after this many cols are computed
        
         numColsPerChunk = 1
-        numRowsPerChunk = self.maxSnapsInMem-numColsPerChunk         
+        numRowsPerChunk = self.maxFieldsPerProc-numColsPerChunk         
         
         innerProductMatChunk = N.mat(N.zeros((numRows,numCols)))
         
         
-        for startRowNum in range(0,numRows,numRowsPerChunk):
-            endRowNum = min(numRows,startRowNum+numRowsPerChunk)
+        for startRowIndex in range(0,numRows,numRowsPerChunk):
+            endRowIndex = min(numRows,startRowIndex+numRowsPerChunk)
             
             rowSnaps = []
-            for rowPath in rowSnapPaths[startRowNum:endRowNum]:
-                rowSnaps.append(self.load_snap(rowPath))
+            for rowPath in rowFieldPaths[startRowIndex:endRowIndex]:
+                rowSnaps.append(self.load_field(rowPath))
          
-            for startColNum in range(0,numCols,numColsPerChunk):
-                endColNum = min(numCols,startColNum+numColsPerChunk)
+            for startColIndex in range(0,numCols,numColsPerChunk):
+                endColIndex = min(numCols,startColIndex+numColsPerChunk)
 
                 colSnaps = []
-                for colPath in colSnapPaths[startColNum:endColNum]:
-                    colSnaps.append(self.load_snap(colPath))
+                for colPath in colFieldPaths[startColIndex:endColIndex]:
+                    colSnaps.append(self.load_field(colPath))
               
                 #With the chunks of the row and column matrices,
                 #find inner products
-                for rowNum in range(startRowNum,endRowNum):
-                    for colNum in range(startColNum,endColNum):
-                        innerProductMatChunk[rowNum,colNum] = \
-                          self.inner_product(rowSnaps[rowNum-startRowNum],
-                          colSnaps[colNum-startColNum])
-                if self.verbose and (endColNum%printAfterNumCols==0 or \
-                  endColNum==numCols): 
-                    numCompletedIPs = startRowNum*numCols + \
-                      (endRowNum-startRowNum)*endColNum
+                for rowIndex in range(startRowIndex,endRowIndex):
+                    for colIndex in range(startColIndex,endColIndex):
+                        innerProductMatChunk[rowIndex,colIndex] = \
+                          self.inner_product(rowSnaps[rowIndex-startRowIndex],
+                          colSnaps[colIndex-startColIndex])
+                if self.verbose and (endColIndex%printAfterNumCols==0 or \
+                  endColIndex==numCols): 
+                    numCompletedIPs = startRowIndex*numCols + \
+                      (endRowIndex-startRowIndex)*endColIndex
                     print >> sys.stderr, 'Processor', self.mpi._rank,\
-                        'completed', 'hankelMat[:' + str(endRowNum) + ',:' +\
-                        str(endColNum)+']', 'out of hankelMat[' +\
+                        'completed', 'hankelMat[:' + str(endRowIndex) + ',:' +\
+                        str(endColIndex)+']', 'out of hankelMat[' +\
                         str(numRows)+','+str(numCols)+']\n    ',\
                         int(1000.*numCompletedIPs/(1.*numCols*numRows))/10.,\
                         '% complete inner products on this processor'
        
         if transpose: innerProductMatChunk=innerProductMatChunk.T
         return innerProductMatChunk
+        
+           
+            
     
-    
-    def _compute_modes(self,modeNumList,modePath,snapPaths,buildCoeffMat,
+    def _compute_modes(self,modeNumList,modePath,snapPaths,fieldCoeffMat,
         indexFrom=1):
         """
         A common method to compute and save modes from snapshots.
@@ -186,145 +198,195 @@ class ModalDecomp(object):
           [1,2,3,4,5] or [3,1,6,8]. The mode numbers need not be sorted,
           and sorting does not increase efficiency. 
           Repeated mode numbers is not guaranteed to work. 
-        modePath - Full path to mode location, e.g /home/user/mode_%d.txt.
+        modePath - Full path to mode location, e.g /home/user/mode_%03d.txt.
         indexFrom - Choose to index modes starting from 0, 1, or other.
         snapPaths - A list paths to files from which snapshots can be loaded.
-        buildCoeffMat - Matrix of coefficients for constructing modes.  The kth
-            column contains the coefficients for computing the kth mode.
+        fieldCoeffMat - Matrix of coefficients for constructing modes.  The kth
+            column contains the coefficients for computing the kth index mode, ie
+            indexFrom+k mode number. ith row contains coefficients to multiply
+            corresponding to snapshot i.
 
-        This methods primary purpose is to evenly divide the tasks for each
-        processor in parallel (see util.MPI). It then calls _compute_modes_chunk.
-        Each processor then computes and saves
-        the mode numbers assigned to it.
-        """        
-        if snapPaths is None:
-            raise util.UndefinedError('snapPaths is undefined')
-
-        if len(snapPaths) > buildCoeffMat.shape[0]:
-            raise ValueError('coefficient matrix has fewer rows than number '+
-              'of snap paths')
-       
-        if isinstance(modeNumList, int):
-            modeNumList = [modeNumList]
-
-        for modeNum in modeNumList:
-            if modeNum-indexFrom < 0:
-                raise ValueError('Cannot compute if mode number is less than '+\
-                    'indexFrom')
-            elif modeNum-indexFrom > buildCoeffMat.shape[1]-1:
-                raise ValueError('Cannot compute if mode number is greater '+\
-                    'than number of coefficient columns+indexFrom')
-
-        if len(modeNumList) < self.mpi._numProcs:
-            raise util.MPIError('Cannot find fewer modes than number of procs'+\
-                ', lower the number of procs')       
-              
-
-        modeNumProcAssignments = self.mpi.find_proc_assignments(modeNumList)
-        #Pass the work to individual processors..
-        self._compute_modes_chunk(modeNumProcAssignments[self.mpi._rank],
-            modePath,snapPaths,buildCoeffMat,indexFrom=indexFrom)
-        #There is no required mpi.gather command, modes are saved to file 
-
-
-    def _compute_modes_chunk(self,modeNumList,modePath,snapPaths,buildCoeffMat,
-      indexFrom=1):
-        """
-        Computes a given set of modes in memory-efficient chunks.
-        
-        modeNumList - mode numbers to compute on this processor. This 
-          includes the indexFrom, so if indexFrom=1, examples are:
-          [1,2,3,4,5] or [3,1,6,8]. The mode numbers need not be sorted,
-          and sorting does not increase efficiency. 
-          Repeated mode numbers is not guaranteed to work. 
-        modePath - Full path to mode location, e.g /home/user/mode_%d.txt.
-        indexFrom - Choose to index modes starting from 0, 1, or other.
-        snapPaths - A list paths to files from which snapshots can be loaded.
-          This must be the FULL list of snapshots, even in parallel.
-        buildCoeffMat - Matrix of coefficients for constructing modes.  The kth
-            column contains the coefficients for computing the kth mode.
-            Like snapPaths, this must be the FULL buildCoeffMat, even in
-            parallel.
-        
-        The 'chunk' refers to the fact that within this method, the snapshots
-        are read in memory-efficient ways such that they are not all in 
-        memory at 
-        once. This results in finding 'chunks' of the eventual modes 
-        that are saved to disk.
-        It is also true that this function is meant to be 
-        used in parallel - individually on each processor. In this case,
-        each processor has different lists of snapshots to form modes from.
-        The size of the chunks used depends on the parameter self.maxSnapsInMem
-        which is the maximum number of snapshots that will fit in memory 
-        simultaneously. In parallel, this method is executed by each processor
-        with a different modeNumList. In this way, this method operates in
-        a single-processor sense.        
-        
+        This methods primary purpose is to recast the problem as a simple
+        linear combination of elements. It then calls _lin_combine_fields.
+        This mostly consists of rearranging the coeff matrix so that
+        the first column corresponds to the first mode number in modeNumList.
+        For more details on how the modes are formed, see doc on
+        _lin_combine_fields,
+        where the outputFields are the modes and the inputFields are the 
+        snapshots.
         """
         
-        if snapPaths is None: 
-            raise util.UndefinedError('No snapPaths given')
-        if modeNumList is None:
-            raise util.UndefinedError('No modeNumList given')
-        if buildCoeffMat is None:
-            raise util.UndefinedError('No build coeff matrix given')
-        if self.save_mode is None: 
-            raise util.UndefinedError('No self.save_mode defined')
-
+        if self.save_field is None:
+            raise UndefinedError('save_field is undefined')
+                    
         if isinstance(modeNumList, int):
             modeNumList = [modeNumList]
-
-        numSnaps = len(snapPaths)
+        if isinstance(snapPaths, type('a_string')):
+            snapPaths = [snapPaths]
+        
         numModes = len(modeNumList)
-
-        if numSnaps > buildCoeffMat.shape[0]:
-            raise ValueError('coefficient matrix has fewer rows than number '+
-              'of snap paths')
+        numSnaps = len(snapPaths)
+        
+        if numModes > numSnaps:
+            raise ValueError('cannot compute more modes than number of snapshots')
+                   
         for modeNum in modeNumList:
-            if modeNum-indexFrom < 0:
+            if modeNum < indexFrom:
                 raise ValueError('Cannot compute if mode number is less than '+\
                     'indexFrom')
-            if modeNum-indexFrom > buildCoeffMat.shape[1]-1:
-                raise ValueError('Cannot form mode for a mode number greater '+\
-                    'than the number of columns in coefficient matrix.')
-        if numSnaps < buildCoeffMat.shape[0]:
-            print 'Warning - fewer snapshot paths than rows in the coeff matrix'
-            print '  some rows of coeff matrix will not be used!'
+            elif modeNum-indexFrom >= fieldCoeffMat.shape[1]:
+                raise ValueError('Cannot compute if mode index is greater '+\
+                    'than number of columns in the build coefficient matrix')
+
+        if numSnaps < self.mpi.getNumProcs():
+            raise util.MPIError('Cannot find modes when fewer snapshots '+\
+               'than number of processors')
+        
+        
+        # Construct fieldCoeffMat and outputPaths for lin_combine_fields
+        modeNumListFromZero = []
+        for modeNum in modeNumList:
+            modeNumListFromZero.append(modeNum-indexFrom)
+        fieldCoeffMatReordered = fieldCoeffMat[:,modeNumListFromZero]
+        modePaths = []
+        for modeNum in modeNumList:
+            modePaths.append(modePath%modeNum)
+        self._lin_combine_fields(modePaths,snapPaths,fieldCoeffMatReordered)
+      
+    
+    
+    
+    def _lin_combine_fields(self,outputFieldPaths,inputFieldPaths,fieldCoeffMat):
+        """
+        Linearly combines the input fields and saves them.
+        
+        outputFieldPaths is a list of the files where the linear combinations
+          will be saved.
+        inputFieldPaths is a list of files where the basis fields will
+          be read from.
+        fieldCoeffMat is a matrix where each row corresponds to an input field
+          and each column corresponds to a output field. The rows and columns
+          are assumed to correspond, by index, to the lists inputFieldPaths and 
+          outputFieldPaths.
+          outputs = inputs * fieldCoeffMat
+        
+        Each processor reads a subset of the input fields to compute as many
+        outputs as a processor can have in memory at once. Each processor
+        computes the "layers" from the inputs it is resonsible for, and for
+        as many modes as it can fit in memory. The layers from all procs are
+        then
+        summed together to form the full outputs. The modes are then saved
+        to file.        
+        """
+        if self.save_field is None:
+            raise UndefinedError('save_field is undefined')
+                   
+        if isinstance(outputFieldPaths, str):
+            outputFieldPaths = [outputFieldPaths]
+        if isinstance(inputFieldPaths, str):
+            inputFieldPaths = [inputFieldPaths]
+        
+        numInputFields = len(inputFieldPaths)
+        numOutputFields = len(outputFieldPaths)
+        
+        if numInputFields > fieldCoeffMat.shape[0]:
+            print 'numInputFields',numInputFields
+            print 'rows of fieldCoeffMat',fieldCoeffMat.shape[0]
+            raise ValueError('coeff mat has fewer rows than num of input paths')
+        if numOutputFields > fieldCoeffMat.shape[1]:
+            raise ValueError('Coeff matrix has fewer cols than num of output paths')            
+        if numInputFields < self.mpi.getNumProcs():
+            raise util.MPIError('Cannot find outputs when fewer inputs '+\
+               'than number of processors')
                
-        numSnapsPerChunk = 1
-        numModesPerChunk = self.maxSnapsInMem-numSnapsPerChunk
-                
-        #Loop over each chunk
-        for startModeIndex in range(0,numModes,numModesPerChunk):
-            endModeIndex = min(startModeIndex+numModesPerChunk,numModes)
-            modesChunk = [] #List of modes that are being computed
-            
-            # Sweep through all snapshots, adding "levels", ie adding 
-            # the contribution of each snapshot
-            for startSnapNum in xrange(0,numSnaps,numSnapsPerChunk):
-                endSnapNum = min(startSnapNum+numSnapsPerChunk,numSnaps)
-                snaps=[]
-                
-                for snapNum in xrange(startSnapNum,endSnapNum):
-                    snaps.append(self.load_snap(snapPaths[snapNum]))
-                    #Might be able to eliminate this loop for array 
-                    #multiplication (after tested)
-                    #But this could increase memory usage, be careful
-                for modeIndex in xrange(startModeIndex,endModeIndex):
-                    for snapNum in xrange(startSnapNum,endSnapNum):
-                        modeLevel = snaps[snapNum-startSnapNum]*\
-                          buildCoeffMat[snapNum, \
-                            modeNumList[modeIndex]-indexFrom]
-                        if modeIndex-startModeIndex>=len(modesChunk): 
-                            #the mode list isn't full, must be created
-                            modesChunk.append(modeLevel) 
-                        else: 
-                            modesChunk[modeIndex-startModeIndex] += modeLevel
-            #after summing all snapshots contributions to current modes, 
-            #save modes
-            for modeIndex in xrange(startModeIndex,endModeIndex):
-                self.save_mode(modesChunk[modeIndex-startModeIndex],
-                  modePath%(modeNumList[modeIndex]))            
-            
+        if numInputFields < fieldCoeffMat.shape[0]:
+            print 'Warning - fewer input paths than cols in the coeff matrix'
+            print '  some rows of coeff matrix will not be used'
+        if numOutputFields < fieldCoeffMat.shape[1]:
+            print 'Warning - fewer output paths than rows in the coeff matrix'
+            print '  some cols of coeff matrix will not be used'
         
+        inputProcAssignments = self.mpi.find_proc_assignments(range(len(inputFieldPaths)))
+        for assignment in inputProcAssignments:
+            if len(assignment) == 0:
+                raise MPIError('At least one processor has no tasks'+\
+                  ', currently this is unsupported, lower num of procs')
+                  
+        # Each processor will load only 1 processor at a time
+        # and have as many (partially computed) modes in memory as possible.
+        numOutputsPerProc = self.maxFieldsPerProc - 1       
         
+        for startOutputIndex in range(0,numOutputFields,numOutputsPerProc):
+            endOutputIndex = min(numOutputFields, startOutputIndex + numOutputsPerProc) 
+            # Pass the work to individual processors    
+            outputLayers = self._lin_combine_fields_chunk(
+                inputFieldPaths[inputProcAssignments[self.mpi.getRank()][0] : \
+                  inputProcAssignments[self.mpi.getRank()][-1]+1],
+                fieldCoeffMat[inputProcAssignments[self.mpi.getRank()][0] : \
+                  inputProcAssignments[self.mpi.getRank()][-1]+1,
+                  startOutputIndex:endOutputIndex])       
+            
+            if self.mpi.isParallel():
+                outputs = self.mpi.custom_comm.reduce(outputLayers,op=util.sum_lists,root=0)
+            else:
+                outputs = outputLayers
+            # Currently save only from proc 0, should be changed later
+            if self.mpi.isRankZero():
+                for outputIndex,output in enumerate(outputs):
+                    self.save_field(output,outputFieldPaths[startOutputIndex+outputIndex])
+            if self.verbose and self.mpi.isRankZero():
+                print >> sys.stderr, 'Computed and saved',\
+                  round(1000.*endOutputIndex/numOutputFields)/10.,\
+                  '% of output fields,',endOutputIndex,'out of',numOutputFields
+            self.mpi.sync() # Not sure if necessary
+            
+    
+
+    def _lin_combine_fields_chunk(self,inputFieldPaths,fieldCoeffMat):
+        """
+        Computes a layer of the outputs for a particular processor.
+        
+        This method is to be called on a per-proc basis.
+        inputFieldPaths is the list of input fields for which this proc 
+          is responsible.
+        fieldCoeffMat is a matrix containing coeffs for linearly combining
+          inputFields into the layers of the outputs.
+          The first index corresponds to the input, the second index the output.
+          This is backwards from what one might expect from the equation
+          outputs = fieldCoeffMat * inputs, where inputs and outputs
+          are column vectors. It is best to think as:
+          outputs = inputs * fieldCoeffMat, where inputs and outputs
+          are row vectors and each element is a field object.
+        """
+        
+        numInputs = len(inputFieldPaths)
+        numOutputs = fieldCoeffMat.shape[1]
+        assert fieldCoeffMat.shape[0] == numInputs
+        
+        numInputsPerChunk = 1
+
+        outputLayers = []
+        # Sweep through all snapshots, adding "layers", ie adding 
+        # the contribution of each snapshot
+        for startInputIndex in xrange(0,numInputs,numInputsPerChunk):
+            endInputIndex = min(startInputIndex+numInputsPerChunk,numInputs)
+            inputs=[]
+            
+            for inputIndex in xrange(startInputIndex,endInputIndex):
+                inputs.append(self.load_field(inputFieldPaths[inputIndex]))
+                # Might be able to eliminate this loop for array 
+                # multiplication (after tested)
+                # But this could increase memory usage, be careful
+                
+            for outputIndex in xrange(0,numOutputs):
+                for inputIndex in xrange(startInputIndex,endInputIndex):
+                    outputLayer = inputs[inputIndex-startInputIndex]*\
+                      fieldCoeffMat[inputIndex,outputIndex]
+                    if outputIndex>=len(outputLayers): 
+                        # The mode list isn't full, must be created
+                        outputLayers.append(outputLayer) 
+                    else: 
+                        outputLayers[outputIndex] += outputLayer
+        # Return summed contributions from snapshot set to current modes            
+        return outputLayers  
+

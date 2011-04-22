@@ -35,7 +35,7 @@ class TestUtil(unittest.TestCase):
         except ImportError:
             self.numProcs=1
             self.rank=0
-        self.myMPI=util.MPI(numProcs=self.numProcs)
+        self.myMPI=util.MPI()
         if not os.path.isdir('testfiles'):
             SP.call(['mkdir','testfiles'])
         
@@ -71,17 +71,7 @@ class TestUtil(unittest.TestCase):
         
         self.assertEqual(self.myMPI._numProcs,self.numProcs)
         self.assertEqual(self.myMPI._rank,self.rank)
-        
-        #Test that it is possible to use fewer CPUs than available
-        if parallel and self.numProcs>1:
-            mpiChangeCPUs = util.MPI(numProcs=self.numProcs-1)
-            self.assertEqual(mpiChangeCPUs._numProcs,self.numProcs-1)
-        
-        #Test that non-sensible values of CPUs are defaulted to num available.
-        mpiZeroCPUs = util.MPI(numProcs=0)
-        self.assertEqual(mpiZeroCPUs._numProcs,self.numProcs)
-        self.assertRaises(util.MPIError,util.MPI,(self.numProcs+1))        
-        
+                        
         
     def test_MPI_find_proc_assignments(self):
         """Tests that the correct processor assignments are determined
@@ -108,8 +98,25 @@ class TestUtil(unittest.TestCase):
         correctAssignments=[[3,4],[1,5]]
         self.assertEqual(self.myMPI.find_proc_assignments(taskList),
           correctAssignments)
+          
+    @unittest.skip('Currently function isnt completed or used')
+    def test_MPI_evaluate_and_bcast(self):
+        """Test that can evaluate a function and broadcast to all procs"""
         
-        #more tests?
+        def myAdd(a,b):
+            return a,b
+        class ThisClass(object):
+            def __init__(self):
+                self.a=0
+                self.b=0
+        
+        myClass=ThisClass()
+        d = (myClass.a,myClass.b)
+        self.myMPI.evaluate_and_bcast(d,myAdd,arguments=[1,2])
+        print myClass.a,myClass.b
+        self.assertEqual((1,2),(myClass.a,myClass.b))
+               
+        
 
     def test_svd(self):
         numInternalList = [10,50]
@@ -133,6 +140,7 @@ class TestUtil(unittest.TestCase):
                     N.testing.assert_array_almost_equal(LSingVecs,U)
                     N.testing.assert_array_almost_equal(singVals,E)
                     N.testing.assert_array_almost_equal(RSingVecs,V)
+    
     
 if __name__=='__main__':
     unittest.main(verbosity=2)

@@ -2,6 +2,8 @@
 
 import subprocess as SP
 import numpy as N
+import inspect 
+import copy
 
 class UndefinedError(Exception): pass
     
@@ -15,7 +17,6 @@ def save_mat_text(A,filename,delimiter=' '):
     seperating the elements.
     """
     import csv
-    import copy
     if len(N.shape(A))>2:
         raise RuntimeError('Can only write matrices with 1 or 2 dimensions') 
     AMat = N.mat(copy.deepcopy(A))
@@ -61,24 +62,32 @@ def inner_product(snap1,snap2):
 class MPI(object):
     """Simple container for information about how many processors there are.
     It ensures no failure in case mpi4py is not installed or running serial."""
-    def __init__(self,numProcs=None):
+    def __init__(self):
         try:
+            # Must call MPI module MPI_mod to avoid naming confusion with
+            # the MPI class
             from mpi4py import MPI as MPI_mod
             self.comm = MPI_mod.COMM_WORLD
-            if numProcs is None or numProcs <=0 : 
-                self._numProcs = self.comm.Get_size()
-            elif (numProcs > self.comm.Get_size()):
-                raise MPIError('Asked for too many processors')
-            else: #use fewer CPUs than are available
-                self._numProcs = numProcs      
+            
+            # Must use custom_comm for reduce commands! This is
+            # more scalable, see reductions.py for more details
+            from reductions import Intracomm
+            self.custom_comm = Intracomm(self.comm)
+            
+            # To adjust number of procs, use submission script/mpiexec
+            self._numProcs = self.comm.Get_size()          
             self._rank = self.comm.Get_rank()
-            self.parallel=True
+            if self._numProcs > 1:
+                self.parallel = True
+            else:
+                self.parallel = False
         except ImportError:
             self._numProcs=1
             self._rank=0
             self.comm = None
             self.parallel=False
-            
+    
+    
     def sync(self):
         """Forces all processors to synchronize.
         
@@ -95,7 +104,14 @@ class MPI(object):
             return True
         else:
             return False
-   
+    def isParallel(self):
+        """Returns true if in parallel (requires mpi4py and >1 processor)"""
+        return self.parallel
+        
+    def getRank(self):
+        """Returns the rank of this processor"""
+        return self._rank
+    
     def getNumProcs(self):
         """Returns the number of processors"""
         return self._numProcs
@@ -112,7 +128,6 @@ class MPI(object):
         
         taskProcAssignments= []
         prevMaxTaskIndex = 0
-        import copy
         taskListUse = copy.deepcopy(taskList)
         numTasks = len(taskList)
         for procNum in range(self._numProcs):
@@ -128,11 +143,66 @@ class MPI(object):
         #currently do not support 0 tasks for a proc
         for assignment in taskProcAssignments:
             if len(assignment)==0:
-                print taskProcAssignments
-                raise MPIError('At least one processor has no tasks'+\
-                  ', currently this is unsupported, lower num of procs')
+                print 'Warning - at least one processor has no tasks'
         return taskProcAssignments
     
+    # CURRENTLY THIS FUNCTION DOESNT WORK
+    def evaluate_and_bcast(self,outputs, function, arguments=[], keywords={}):
+        """
+        Evaluates function with inputs and broadcasts outputs to procs
+        
+        outputs must be a list
+        function must be a callable function given the arguments and keywords
+        arguments is a list containing required arguments to "function"
+        keywords is a dictionary containing optional keywords and values
+        for "function"
+        function is called with outputs = function(*arguments,**keywords)
+        For more information, see http://docs.python.org/tutorial/controlflow.html
+        section on keyword arguments, 4.7.2
+        
+        The result is then broadcast to all processors if in parallel.
+        """
+        raise RuntimeError('function isnt fully implemented')
+        print 'outputs are ',outputs
+        print 'function is',function
+        print 'arguments are',arguments
+        print 'keywords are',keywords
+        if self.isRankZero():
+            print function(*arguments,**keywords)
+            outputList = function(*arguments,**keywords)
+            if not isinstance(outputList,tuple):
+                outputList = (outputList)
+            if len(outputList) != len(outputs):
+                raise ValueError('Length of outputs differ')
+                
+            for i in range(len(outputs)):
+                temp = outputs[i]
+                temp = outputList[i]
+
+            print 'outputList is',outputList
+            print 'outputs is',outputs
+        """    
+        else:
+            for outputNum in range(len(outputs)):
+                outputs[outputNum] = None
+        if self.isParallel():
+            for outputNum in range(len(outputs)):
+                outputs[outputNum] = self.comm.bcast(outputs[outputNum], root=0)
+        """
+        print 'Done broadcasting'
+        
+        
+    def __eq__(self, other):
+        a = (self._numProcs == other.getNumProcs() and \
+        self._rank == other.getRank() and self.parallel == other.isParallel())
+        #print self._numProcs == other.getNumProcs() ,\
+        #self._rank == other.getRank() ,self.parallel == other.isParallel()
+        return a
+    def __ne__(self,other):
+        return not (self.__eq__(other))
+    def __add__(self,other):
+        print 'Adding MPI objects doesnt make sense, returning original'
+        return self
     
 def svd(A):
     """An svd that better meets our needs.
@@ -160,34 +230,25 @@ def svd(A):
     return U,E,V
 
 
+def get_data_members(obj):
+    """ Returns a dictionary containing data members of an object"""
+    pr = {}
+    for name in dir(obj):
+        value = getattr(obj, name)
+        if not name.startswith('__') and not inspect.ismethod(value):
+            pr[name] = value
+    return pr
+    
+    
+def sum_lists(list1,list2):
+    """Sum the elements of each list, return a new list.
+    
+    This function is used in MPI reduce commands, but could be used
+    elsewhere too"""
+    assert len(list1)==len(list2)
+    list3=[]
+    for i in xrange(len(list1)):
+        list3.append(list1[i]+list2[i])
+    return list3
 
 
-
-"""
-def find_file_type(filename):
-    l = len(filename)
-    n=-1
-    while abs(n)<l and filename[n]!='.':
-        n-=1
-    fileExtension = filename[n+1:]
-    return fileExtension
-
-def get_file_list(dir,fileExtension=None):
-    # Finds all files in the given directory that have file extension
-    filesRaw = SP.Popen(['ls',dir],stdout=SP.PIPE).communicate()[0]
-    #files separated by endlines
-    filename= ''
-    fileList=[]
-    #print 'filesRaw is ',filesRaw
-    for c in filesRaw:
-        if c!='\n':
-            filename+=c
-        else: #completed file name
-            if fileExtension is not None and \
-              filename[-len(fileExtension):] == fileExtension:
-                fileList.append(filename)
-            elif fileExtension is None:
-                fileList.append(filename)
-            filename=''
-    return fileList
-"""
