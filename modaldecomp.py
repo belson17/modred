@@ -205,11 +205,11 @@ class ModalDecomp(object):
             corresponding to snapshot i.
 
         This methods primary purpose is to recast the problem as a simple
-        linear combination of elements. It then calls _lin_combine_fields.
+        linear combination of elements. It then calls lin_combine_fields.
         This mostly consists of rearranging the coeff matrix so that
         the first column corresponds to the first mode number in modeNumList.
         For more details on how the modes are formed, see doc on
-        _lin_combine_fields,
+        lin_combine_fields,
         where the outputFields are the modes and the inputFields are the 
         snapshots.
         """
@@ -249,12 +249,12 @@ class ModalDecomp(object):
         modePaths = []
         for modeNum in modeNumList:
             modePaths.append(modePath%modeNum)
-        self._lin_combine_fields(modePaths,snapPaths,fieldCoeffMatReordered)
+        self.lin_combine_fields(modePaths,snapPaths,fieldCoeffMatReordered)
       
     
     
     
-    def _lin_combine_fields(self,outputFieldPaths,inputFieldPaths,fieldCoeffMat):
+    def lin_combine_fields(self,outputFieldPaths,inputFieldPaths,fieldCoeffMat):
         """
         Linearly combines the input fields and saves them.
         
@@ -317,7 +317,7 @@ class ModalDecomp(object):
         for startOutputIndex in range(0,numOutputFields,numOutputsPerProc):
             endOutputIndex = min(numOutputFields, startOutputIndex + numOutputsPerProc) 
             # Pass the work to individual processors    
-            outputLayers = self._lin_combine_fields_chunk(
+            outputLayers = self.lin_combine_fields_chunk(
                 inputFieldPaths[inputProcAssignments[self.mpi.getRank()][0] : \
                   inputProcAssignments[self.mpi.getRank()][-1]+1],
                 fieldCoeffMat[inputProcAssignments[self.mpi.getRank()][0] : \
@@ -343,7 +343,7 @@ class ModalDecomp(object):
             
     
 
-    def _lin_combine_fields_chunk(self,inputFieldPaths,fieldCoeffMat):
+    def lin_combine_fields_chunk(self,inputFieldPaths,fieldCoeffMat):
         """
         Computes a layer of the outputs for a particular processor.
         
