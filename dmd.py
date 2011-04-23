@@ -15,21 +15,17 @@ class DMD(ModalDecomp):
     
     """
 
-    def __init__(self, load_snap=None, save_mode=None, save_mat=\
-        util.save_mat_text, inner_product=None, maxSnapsInMem=100, numProcs=\
-        None, snapPaths=None, buildCoeff=None, pod=None, verbose=False):
+    def __init__(self, load_field=None, save_field=None, save_mat=\
+        util.save_mat_text, inner_product=None, maxFieldsPerNode=None, 
+        numNodes=None, snapPaths=None, buildCoeff=None, pod=None, verbose=\
+        False):
         """
         DMD constructor
-        
-        loadSnap - Function to load a snapshot given a filepath.
-        saveMode - Function to save a mode given data and an output path.
-        saveMat - Function to save a matrix.
-        
         """
         # Base class constructor defines common data members
-        ModalDecomp.__init__(self, load_snap=load_snap, save_mode=save_mode, 
-            save_mat=save_mat, inner_product=inner_product, maxSnapsInMem=\
-            maxSnapsInMem, numProcs=numProcs, verbose=verbose)
+        ModalDecomp.__init__(self, load_field=load_field, save_field=save_field,
+            save_mat=save_mat, inner_product=inner_product, maxFieldsPerNode=\
+            maxFieldsPerNode, numNodes=numNodes, verbose=verbose)
 
         # Additional data members
         self.snapPaths = snapPaths
@@ -38,14 +34,10 @@ class DMD(ModalDecomp):
         # Data members that will be set after computation
         self.pod = pod
         
-    def compute_decomp(self, ritzValsPath=None, modeEnergiesPath=None, 
+    def compute_decomp(self, ritzValsPath=None, modeNormsPath=None, 
         buildCoeffPath=None, snapPaths=None):
         """
         Compute DMD decomposition
-        
-        ritzEigvalsPath - Output path for Ritz eigenvalues.
-        ritzVecNormsPath - Output path for matrix of Ritz vectors.
-            
         """
          
         if snapPaths is not None:
@@ -55,10 +47,10 @@ class DMD(ModalDecomp):
 
         # Compute POD from snapshots (excluding last snapshot)
         if self.pod is None:
-            self.pod = POD(load_snap=self.load_snap, inner_product=self.\
-                inner_product, snapPaths=self.snapPaths[:-1], maxSnapsInMem=\
-                self.maxSnapsInMem, numProcs=self.mpi.getNumProcs(), verbose=\
-                self.verbose)
+            self.pod = POD(load_field=self.load_field, inner_product=self.\
+                inner_product, snapPaths=self.snapPaths[:-1], maxFieldsPerNode=\
+                self.maxFieldsPerNode, numNodes=self.numNodes, verbose=self.\
+                verbose)
             self.pod.compute_decomp()
         elif self.snaplist[:-1] != self.podsnaplist or len(snapPaths) !=\
             len(self.pod.snapPaths)+1:
@@ -80,18 +72,14 @@ class DMD(ModalDecomp):
             self.mpi._rank][-1]+1], self.snapPaths[-1])
                        
         #Gather list of chunks from each processor, ordered by rank
-        if self.mpi.parallel:
-            lastColChunkList = self.mpi.comm.gather(lastColChunk, root=0)
-            if self.mpi._rank == 0:
-                lastCol = N.mat(N.empty((numSnaps-1, 1)))
-                # concatenate the chunks of Hankel matrix
-                for procNum in xrange(self.mpi._numProcs):
-                    lastCol[lastColProcAssignments[procNum][0]:\
-                    lastColProcAssignments[procNum][-1]+1] = lastColChunkList[
-                    procNum]
-            else:
-                lastCol = None
-            lastCol = self.mpi.comm.bcast(lastCol, root=0)
+        if self.mpi.isParallel():
+            lastColChunkList = self.mpi.comm.allgather(lastColChunk)
+            lastCol = N.mat(N.empty((numSnaps-1, 1)))
+            # concatenate the chunks of Hankel matrix
+            for procNum in xrange(self.mpi.getNumProcs()):
+                lastCol[lastColProcAssignments[procNum][0]:\
+                lastColProcAssignments[procNum][-1]+1] = lastColChunkList[
+                procNum]
         else:
             lastCol = lastColChunk 
         
@@ -114,7 +102,7 @@ class DMD(ModalDecomp):
         # Compute mode energies
         self.buildCoeff = self.pod.singVecs * _podSingValsSqrtMat *\
             lowOrderEigVecs * ritzVecScaling
-        self.modeEnergies = N.diag(self.buildCoeff.H * self.pod.\
+        self.modeNorms = N.diag(self.buildCoeff.H * self.pod.\
             correlationMat * self.buildCoeff).real
 
         # Save data 
@@ -123,8 +111,8 @@ class DMD(ModalDecomp):
                 self.save_mat(self.ritzVals, ritzValsPath)
             if buildCoeffPath is not None:
                 self.save_mat(self.buildCoeff, buildCoeffPath)
-            if modeEnergiesPath is not None:
-                self.save_mat(self.modeEnergies, modeEnergiesPath)
+            if modeNormsPath is not None:
+                self.save_mat(self.modeNorms, modeNormsPath)
 
     def compute_modes(self, modeNumList, modePath, indexFrom=1, snapPaths=None):
         if self.buildCoeff is None:
@@ -132,7 +120,6 @@ class DMD(ModalDecomp):
         # User should specify ALL snapshots, even though all but last are used
         if snapPaths is not None:
             self.snapPaths = snapPaths
-
         ModalDecomp._compute_modes(self, modeNumList, modePath, self.\
             snapPaths[:-1], self.buildCoeff, indexFrom=indexFrom)
         

@@ -19,9 +19,9 @@ except ImportError:
     numProcs = 1
     rank = 0
 
-print 'To fully test, must do both:'
-print ' 1) python testmodaldecomp.py'
-print ' 2) mpiexec -n <# procs> python testmodaldecomp.py'
+print 'To test fully, remember to do both:'
+print '    1) python testmodaldecomp.py'
+print '    2) mpiexec -n <# procs> python testmodaldecomp.py'
 
 class TestModalDecomp(unittest.TestCase):
     """ Tests of the self.modalDecomp class """

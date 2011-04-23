@@ -19,9 +19,9 @@ except ImportError:
     rank = 0
     numProcs = 1
 
-print 'To fully test, must do both:'
-print ' 1) python testmodaldecomp.py'
-print ' 2) mpiexec -n <# procs> python testmodaldecomp.py'
+print 'To test fully, remember to do both:'
+print '    1) python testbpod.py'
+print '    2) mpiexec -n <# procs> python testbpod.py\n'
 
 class TestBPOD(unittest.TestCase):
     """ Test all the BPOD class methods """

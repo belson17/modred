@@ -14,26 +14,19 @@ class POD(BPOD):
     
     """
         
-    def __init__(self, load_snap=None, save_mode=None, save_mat=\
-        util.save_mat_text, inner_product=None, maxSnapsInMem=100, numProcs=\
-        None, snapPaths=None, singVals=None, singVecs=None, correlationMat=
-        None, verbose=False):
+    def __init__(self, load_field=None, save_field=None, save_mat=\
+        util.save_mat_text, inner_product=None, maxFieldsPerNode=None, 
+        numNodes=None, snapPaths=None, singVals=None, singVecs=None, 
+        correlationMat=None, verbose=False):
         """
         POD constructor
         
         The POD class is a subclass of the BPOD class, where we take the 
         adjoint snapshots to be the direct snapshots.
-        
-        load_snap - Function to load a snapshot given a filepath.
-        save_mode - Function to save a mode given data and an output path.
-        save_mat - Function to save a matrix.
-        inner_product - Function to take inner product of two snapshots.
-        snapPaths - List of filepaths from which snapshots can be loaded.
-
         """
-        ModalDecomp.__init__(self, load_snap=load_snap, save_mode=save_mode, 
-            save_mat=save_mat, inner_product=inner_product, maxSnapsInMem=\
-            maxSnapsInMem, numProcs=numProcs, verbose=verbose)
+        ModalDecomp.__init__(self, load_field=load_field, save_field=save_field,
+            save_mat=save_mat, inner_product=inner_product, maxFieldsPerNode=\
+            maxFieldsPerNode, numNodes=numNodes, verbose=verbose)
 
         self.snapPaths = snapPaths        
         self.singVecs = singVecs
@@ -41,15 +34,10 @@ class POD(BPOD):
         self.correlationMat = correlationMat
   
         
-    def compute_decomp(self, SingVecsPath=None, singValsPath=None, 
+    def compute_decomp(self, singVecsPath=None, singValsPath=None, 
         snapPaths=None):
         """
         Compute POD decomposition
-        
-        singVecsPath - Output path for matrix of left singular vectors from 
-            Hankel matrix SVD.
-        singValsPath - Output path for singular values from Hankel matrix SVD.
-            
         """
         if snapPaths is not None:
             self.snapPaths = snapPaths
@@ -61,14 +49,14 @@ class POD(BPOD):
         # Only one set of sing vecs needs to be saved for POD (symmetry)
         self.correlationMat = self._compute_hankel(self.snapPaths,
             self.snapPaths)
-                                              
-        self.singVecs, self.singVals, dummy = util.svd( 
-            self.correlationMat )
+        self.singVecs, self.singVals, dummy = util.svd(self.correlationMat)
         del dummy
         
     def compute_modes(self, modeNumList, modePath, indexFrom=1, snapPaths=\
         None):
-
+        raise util.UndefinedError('This functionality has not yet been '+\
+            'implemented')
+        """
         if snapPaths is not None:
             self.snapPaths = snapPaths
         if self.snapPaths is None:
@@ -79,4 +67,5 @@ class POD(BPOD):
         self.singVals = 1
         ModalDecomp.compute_modes(self, modeNumList, modePath, self.snapPaths,
             self.singVals*self.singVecs, indexFrom=indexFrom )
-        print 'Implemented to compute POD modes.'
+        print 'Implemented to compute POD modes.
+        """
