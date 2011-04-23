@@ -17,7 +17,7 @@ class DMD(ModalDecomp):
 
     def __init__(self, load_field=None, save_field=None, save_mat=\
         util.save_mat_text, inner_product=None, maxFieldsPerNode=None, 
-        numNodes=None, snapPaths=None, buildCoeff=None, pod=None, verbose=\
+        numNodes=1, snapPaths=None, buildCoeff=None, pod=None, verbose=\
         False):
         """
         DMD constructor

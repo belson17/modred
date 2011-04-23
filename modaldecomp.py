@@ -16,7 +16,7 @@ class ModalDecomp(object):
     """
     
     def __init__(self, load_field=None, save_field=None, save_mat=None, 
-        inner_product=None, maxFieldsPerNode=None, numNodes=None, verbose=False):
+        inner_product=None, maxFieldsPerNode=None, numNodes=1, verbose=False):
         """
         Modal decomposition constructor.
     
@@ -31,7 +31,6 @@ class ModalDecomp(object):
                 print 'Warning - only loading 2 fields/processor,',\
                 'increase maxFieldsPerNode for a speedup'
         self.maxFieldsPerNode = maxFieldsPerNode
-        if numNodes is None: numNodes = 1
         self.numNodes = numNodes
         self.load_field = load_field
         self.save_field = save_field
