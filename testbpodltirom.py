@@ -21,8 +21,8 @@ class TestBPODROM(unittest.TestCase):
     
     def setUp(self):
         self.myBPODROM = BPR.BPODROM(save_mat=util.save_mat_text,
-        load_mode=util.load_mat_text,inner_product=util.inner_product,
-        save_mode=util.save_mat_text)
+        load_field=util.load_mat_text,inner_product=util.inner_product,
+        save_field=util.save_mat_text)
         self.directModePath = 'testfiles/direct_mode_%03d.txt'
         self.adjointModePath = 'testfiles/adjoint_mode_%03d.txt'
         self.directDerivModePath='testfiles/direct_deriv_mode_%03d.txt'
@@ -92,35 +92,35 @@ class TestBPODROM(unittest.TestCase):
         self.CTrue = (self.outputMat.T*self.directModeMat)[:,:numROMModes]
         
     
-    def test_formA(self):
+    def test_form_A(self):
         """
         Test that, given modes, can find correct A matrix
         """
         APath ='testfiles/A.txt'
 
-        self.myBPODROM.formA(APath,directDerivModePaths=self.directDerivModePaths,
+        self.myBPODROM.form_A(APath,directDerivModePaths=self.directDerivModePaths,
           adjointModePaths=self.adjointModePaths,numModes=self.numROMModes)
         
         N.testing.assert_array_almost_equal(self.ATrue,util.load_mat_text(APath))
 
-    def test_formB(self):
+    def test_form_B(self):
         """
         Test that, given modes, can find correct B matrix
         """
         BPath ='testfiles/B.txt'
 
-        self.myBPODROM.formB(BPath,self.inputPaths,
+        self.myBPODROM.form_B(BPath,self.inputPaths,
         adjointModePaths=self.adjointModePaths,
         numModes=self.numROMModes)
         
         N.testing.assert_array_almost_equal(self.BTrue,util.load_mat_text(BPath))
 
-    def test_formC(self):
+    def test_form_C(self):
         """
         Test that, given modes, can find correct C matrix
         """
         CPath ='testfiles/C.txt'
-        self.myBPODROM.formC(CPath,self.outputPaths,
+        self.myBPODROM.form_C(CPath,self.outputPaths,
         directModePaths=self.directModePaths,
         numModes=self.numROMModes)
         

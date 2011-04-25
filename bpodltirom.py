@@ -10,17 +10,20 @@ PDE would be a derived class"""
 class BPODROM(object):
     def __init__(self,adjointModePaths=None,directModePaths=None,
       directDerivModePaths=None,inner_product=None,save_mat=util.save_mat_text,
-      load_mode=None,save_mode=None,numModes=None,maxSnapsInMem=100,numProcs=1):
+      load_field=None,save_field=None,numModes=None,maxFieldsPerNode=2,numNodes=1):
         
+        numProcs = 1 # not parallelized yet
         self.adjointModePaths=adjointModePaths
         self.directModePaths=directModePaths
         self.directDerivModePaths=directDerivModePaths
         self.inner_product=inner_product
         self.save_mat=save_mat
-        self.load_mode=load_mode
-        self.save_mode=save_mode
+        self.load_field=load_field
+        self.save_field=save_field
         self._numProcs=numProcs
-        self.maxSnapsInMem=maxSnapsInMem
+        self.maxFieldsPerNode=maxFieldsPerNode
+        self.numNodes = numNodes
+        self.maxFieldsPerProc = self.maxFieldsPerNode*self.numNodes/numProcs
         self.numModes = numModes
     
     def compute_mode_derivs(self,modePaths,modeDtPaths,modeDerivPaths,dt):
@@ -31,18 +34,18 @@ class BPODROM(object):
         subtracts them and divides by dt. This requires both __mul__
         and __add__ to be defined for the mode object.
         """
-        if (self.load_mode is None):
-            raise util.UndefinedError('no load_mode defined')
-        if (self.save_mode is None):
-            raise util.UndefinedError('no save_mode defined')
+        if (self.load_field is None):
+            raise util.UndefinedError('no load_field defined')
+        if (self.save_field is None):
+            raise util.UndefinedError('no save_field defined')
         
         numModes = min(len(modePaths),len(modeDtPaths),len(modeDerivPaths))
         print 'Computing derivatives of',numModes,'modes'
         
         for modeIndex in xrange(len(modeDtPaths)):
-            mode = self.load_mode(modePaths[modeIndex])
-            modeDt = self.load_mode(modeDtPaths[modeIndex])
-            self.save_mode((modeDt - mode)*(1./dt), modeDerivPaths[modeIndex])
+            mode = self.load_field(modePaths[modeIndex])
+            modeDt = self.load_field(modeDtPaths[modeIndex])
+            self.save_field((modeDt - mode)*(1./dt), modeDerivPaths[modeIndex])
         
     
     def form_A(self,APath,directDerivModePaths=None,adjointModePaths=None,
@@ -69,19 +72,19 @@ class BPODROM(object):
         
         #reading in sets of modes to form A in chunks rather than all at once
         #Assuming all column chunks are 1 long
-        numRowsPerChunk = self.maxSnapsInMem - 1
+        numRowsPerChunk = self.maxFieldsPerProc - 1
         
         for startRowNum in range(0,self.numModes,numRowsPerChunk):
             endRowNum = min(startRowNum+numRowsPerChunk,self.numModes)
             adjointModes = [] #a list of 'row' adjoint modes
             for adjointPath in self.adjointModePaths[startRowNum:endRowNum]:
-                adjointModes.append(self.load_mode(adjointPath))
+                adjointModes.append(self.load_field(adjointPath))
               
             #now read in each column (forward time modes advanced dt)
             for colNum,derivPath in enumerate(self.directDerivModePaths[:self.numModes]):
-                derivMode = self.load_mode(derivPath)
+                derivMode = self.load_field(derivPath)
                 for rowNum in range(startRowNum,endRowNum):
-                  self.A[rowNum,colNum] = self.inner_product(adjointModes[rowNum],
+                  self.A[rowNum,colNum] = self.inner_product(adjointModes[rowNum-startRowNum],
                   derivMode)
 
         self.save_mat(self.A,APath)
@@ -108,19 +111,19 @@ class BPODROM(object):
         numInputs = len(inputPaths)
         self.B = N.zeros((self.numModes,numInputs))
         
-        numRowsPerChunk = self.maxSnapsInMem - 1
+        numRowsPerChunk = self.maxFieldsPerProc - 1
         for startRowNum in range(0,self.numModes,numRowsPerChunk):
             endRowNum = min(startRowNum+numRowsPerChunk,self.numModes)
             adjointModes = [] #a list of 'row' adjoint modes
             for adjointPath in self.adjointModePaths[startRowNum:endRowNum]:
-                adjointModes.append(self.load_mode(adjointPath))
+                adjointModes.append(self.load_field(adjointPath))
               
             #now read in each column (forward time modes advanced dt)
             for colNum,inputPath in enumerate(inputPaths):
-                inputField = self.load_mode(inputPath)
+                inputField = self.load_field(inputPath)
                 for rowNum in range(startRowNum,endRowNum):
                     self.B[rowNum,colNum] = \
-                      self.inner_product(adjointModes[rowNum],inputField)
+                      self.inner_product(adjointModes[rowNum-startRowNum],inputField)
       
         self.save_mat(self.B,BPath)
         print '----- B matrix is formed and saved to',BPath,'-----'
@@ -143,21 +146,21 @@ class BPODROM(object):
         
         numOutputs = len(outputPaths)
         self.C = N.zeros((numOutputs,self.numModes))
-        numColsPerChunk = self.maxSnapsInMem - 1
+        numColsPerChunk = self.maxFieldsPerProc - 1
         
         for startColNum in range(0,self.numModes,numColsPerChunk):
             endColNum = min(startColNum+numColsPerChunk,self.numModes)
             
             directModes = [] #a list of 'row' adjoint modes
             for directPath in self.directModePaths[startColNum:endColNum]:
-                directModes.append(self.load_mode(directPath))
+                directModes.append(self.load_field(directPath))
               
             #now read in each row (outputs)
             for rowNum,outputPath in enumerate(outputPaths):
-                outputField = self.load_mode(outputPath)
+                outputField = self.load_field(outputPath)
                 for colNum in range(startColNum,endColNum):
                     self.C[rowNum,colNum] = \
-                      self.inner_product(outputField,directModes[colNum])      
+                      self.inner_product(outputField,directModes[colNum-startColNum])      
   
         self.save_mat(self.C,CPath)
         print '----- C matrix is formed and saved to',CPath,'-----'
