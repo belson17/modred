@@ -35,7 +35,7 @@ class TestUtil(unittest.TestCase):
         except ImportError:
             self.numProcs=1
             self.rank=0
-        self.myMPI=util.MPI()
+        self.myMPI=util.MPI(verbose=False)
         if not os.path.isdir('testfiles'):
             SP.call(['mkdir','testfiles'])
         

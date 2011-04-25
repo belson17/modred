@@ -140,9 +140,13 @@ class MPI(object):
             for removeElement in taskListUse[:newMaxTaskIndex]:
                 taskListUse.remove(removeElement)
             prevMaxTaskIndex = newMaxTaskIndex
-        for assignment in taskProcAssignments:
-            if len(assignment)==0 and self.isRankZero() and self.verbose:
-                print 'Warning - at least one processor has no tasks'
+        if self.verbose and self.isRankZero():
+            printedPreviously = False
+            for r,assignment in enumerate(taskProcAssignments):
+                if len(assignment)==0 and not printedPreviously:
+                    print 'Warning -',self._numProcs-r-1,'out of',\
+                      self._numProcs,'processors have no tasks'
+                    printedPreviously = True
         return taskProcAssignments
     
     # CURRENTLY THIS FUNCTION DOESNT WORK
