@@ -1,6 +1,11 @@
+#######################
+# MODALDECOMP LIBRARY #
+#######################
 
--- modaldecomp library --
-
+add an option for svd thresholding in DMD.  when the svd singular values are
+ill-conditioned, then the resulting computation results can be invalid.  for
+instance the mode norms may come out negative...(when computed using
+coefficients rather than the modes themselves).
 
 modaldecomp objects shouldn't own the MPI instance in the way they currently
 do. Really MPI is common to everything in the program, and so shouldn't be
@@ -57,8 +62,10 @@ and maybe leave space for 1-2 snaps/modes for scratch space for the user's
 functions. 
 
 
+#################
+## ROM LIBRARY ##
+#################
 
--- ROM library --
 This is a separate library that would compute ROMs. It would interact
 well with modaldecomp when necessary (for example for BPOD). The main idea
 is that there would be a base class that defined mostly the interface, and
