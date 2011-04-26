@@ -30,7 +30,6 @@ class ModalDecomp(object):
         self.inner_product = inner_product
         self.verbose = verbose
 
-        # MPI/processor settings
         self.mpi = util.MPI(verbose=self.verbose)
         if maxFieldsPerNode is None:
             self.maxFieldsPerNode = 2
@@ -182,16 +181,15 @@ class ModalDecomp(object):
                     numCompletedIPs = startRowIndex*numCols + \
                       (endRowIndex-startRowIndex)*endColIndex
                     print >> sys.stderr, 'Processor', self.mpi.getRank(),\
-                        'completed', 'hankelMat[:' + str(endRowIndex) + ',:' +\
-                        str(endColIndex)+']', 'out of hankelMat[' +\
-                        str(numRows)+','+str(numCols)+']\n    ',\
+                        'completed',\
                         int(1000.*numCompletedIPs/(1.*numCols*numRows))/10.,\
-                        '% complete inner products on this processor'
+                        '%, hankelMat[:' + str(endRowIndex) + ',:' +\
+                        str(endColIndex)+']', 'out of hankelMat[' +\
+                        str(numRows)+','+str(numCols)+']'
        
         if transpose: innerProductMatChunk=innerProductMatChunk.T
         return innerProductMatChunk
        
-    # NEW METHOD TO GENERALIZE PARALLIZATION OF IP MATRICES
     def compute_inner_product_matrix(self, rowFieldPaths, colFieldPaths):
         """ Computes a matrix of inner products and returns it.
         
@@ -236,9 +234,9 @@ class ModalDecomp(object):
         if self.mpi.isRankZero() and rowFieldProcAssignments[0][-1] -\
             rowFieldProcAssignments[0][0] > self.maxFieldsPerProc and self.\
             verbose:
-            print 'Warning: Each processor will have to read the direct ' +\
-                'snapshots (%d total) multiple times. Increase number of ' +\
-                'processors to avoid this and get a big speedup.' % numColFields
+            print 'Warning: Each processor will have to read the direct '
+            print 'snapshots (%d total) multiple times. Increase number of'%numColFields
+            print 'processors to avoid this and get a big speedup.'
 
         innerProductMatChunk = self._compute_inner_product_chunk(rowFieldPaths[
             rowFieldProcAssignments[self.mpi.getRank()][0]:
