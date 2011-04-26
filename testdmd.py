@@ -28,8 +28,8 @@ class TestDMD(unittest.TestCase):
     currently, there should be less to test here"""
     
     def setUp(self):
-        if not os.path.isdir('modaldecomp_testfiles'):        
-            SP.call(['mkdir','modaldecomp_testfiles'])
+        if not os.path.isdir('files_modaldecomp_test'):        
+            SP.call(['mkdir','files_modaldecomp_test'])
         self.dmd = D.DMD()
         self.numSnaps = 6 # number of snapshots to generate
         self.numStates = 7 # dimension of state vector
@@ -43,8 +43,8 @@ class TestDMD(unittest.TestCase):
 
     def generate_data_set(self):
         #create data set (saved to file)
-        self.snapPath ='modaldecomp_testfiles/dmd_snap_%03d.txt'
-        self.trueModePath = 'modaldecomp_testfiles/dmd_truemode_%03d.txt'
+        self.snapPath ='files_modaldecomp_test/dmd_snap_%03d.txt'
+        self.trueModePath = 'files_modaldecomp_test/dmd_truemode_%03d.txt'
         self.snapPathList = []
        
         # Generate modes if we are on the first processor
@@ -91,7 +91,7 @@ class TestDMD(unittest.TestCase):
     def tearDown(self):
         self.dmd.mpi.sync()
         if self.dmd.mpi.isRankZero():
-            SP.call(['rm -rf modaldecomp_testfiles/*'],shell=True)
+            SP.call(['rm -rf files_modaldecomp_test/*'],shell=True)
         self.dmd.mpi.sync()
 
     def test_init(self):
@@ -152,9 +152,9 @@ class TestDMD(unittest.TestCase):
         tol = 7 
 
         # Run decomposition and save matrices to file
-        ritzValsPath = 'modaldecomp_testfiles/dmd_ritzvals.txt'
-        modeNormsPath = 'modaldecomp_testfiles/dmd_modeenergies.txt'
-        buildCoeffPath = 'modaldecomp_testfiles/dmd_buildcoeff.txt'
+        ritzValsPath = 'files_modaldecomp_test/dmd_ritzvals.txt'
+        modeNormsPath = 'files_modaldecomp_test/dmd_modeenergies.txt'
+        buildCoeffPath = 'files_modaldecomp_test/dmd_buildcoeff.txt'
         self.dmd.compute_decomp(snapPaths=self.snapPathList, ritzValsPath=\
             ritzValsPath, modeNormsPath=modeNormsPath, buildCoeffPath=\
             buildCoeffPath)
@@ -199,7 +199,7 @@ class TestDMD(unittest.TestCase):
         """
         tol = 8
 
-        modePath ='modaldecomp_testfiles/dmd_mode_%03d.txt'
+        modePath ='files_modaldecomp_test/dmd_mode_%03d.txt'
         self.dmd.buildCoeff = self.buildCoeffTrue
         modeNumList = list(N.array(range(self.numSnaps-1))+self.indexFrom)
         self.dmd.compute_modes(modeNumList, modePath, indexFrom=self.indexFrom, 
@@ -223,7 +223,9 @@ class TestDMD(unittest.TestCase):
         N.testing.assert_array_almost_equal(self.snapMat[:,:-1], self.\
             ritzVecsTrue * vandermondeMat, decimal=tol)
 
-        util.save_mat_text(vandermondeMat,'modaldecomp_testfiles/dmd_vandermonde.txt')
+        util.save_mat_text(vandermondeMat, 'files_modaldecomp_test/' +\
+            'dmd_vandermonde.txt')
+
 if __name__=='__main__':
     unittest.main(verbosity=2)
 

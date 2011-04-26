@@ -10,7 +10,7 @@ import copy
 class testERA(unittest.TestCase):
     
     def setUp(self):
-        self.testDirectory = 'ERA_test_files/'
+        self.testDirectory = 'files_era_test/'
         self.IOPaths = [self.testDirectory+'input1_impulse.txt', \
           self.testDirectory+'input2_impulse.txt']
         outputSignals = util.load_mat_text(self.IOPaths[0],delimiter=' ')

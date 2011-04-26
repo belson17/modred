@@ -24,46 +24,54 @@ class ModalDecomp(object):
         derived classes.  All derived classes should be sure to invoke this
         constructor explicitly.
         """
-        self.mpi = util.MPI(verbose=verbose)
-        if maxFieldsPerNode is None:
-            maxFieldsPerNode = 2
-            if self.mpi.isRankZero() and verbose:
-                print 'Warning - only loading 2 fields/processor,',\
-                'increase maxFieldsPerNode for a speedup'
-        self.maxFieldsPerNode = maxFieldsPerNode
-        self.numNodes = numNodes
         self.load_field = load_field
         self.save_field = save_field
         self.save_mat = save_mat
         self.inner_product = inner_product
-        if (self.numNodes > self.mpi.getNumProcs()):
-            raise util.MPIError('More nodes than processors, ' + \
-              '#nodes='+str(self.numNodes) + ' #procs=' + \
-              str(self.mpi.getNumProcs())) 
-              
-        self.maxFieldsPerProc = \
-          max(2, maxFieldsPerNode / (self.mpi.getNumProcs() / self.numNodes))
         self.verbose = verbose
-        
 
-        
+        # MPI/processor settings
+        self.mpi = util.MPI(verbose=self.verbose)
+        if maxFieldsPerNode is None:
+            self.maxFieldsPerNode = 2
+            if self.mpi.isRankZero() and self.verbose:
+                print 'Warning - maxFieldsPerNode was not specified. ' +\
+                    'Assuming 2 fields can be loaded per node (in serial). ' +\
+                    'Increase maxFieldsPerNode for a speedup.'
+        else:
+            self.maxFieldsPerNode = maxFieldsPerNode
+        self.numNodes = numNodes
+        if (self.numNodes > self.mpi.getNumProcs()):
+            raise util.MPIError('More nodes (%d) than processors (%d).' %  \
+                (self.numNodes, self.mpi.getNumProcs())) 
+        if self.maxFieldsPerNode < 2 * self.mpi.getNumProcs() / self.numNodes:
+            self.maxFieldsPerProc = 2
+            if self.verbose:
+                print 'Warning - maxFieldsPerNode too small for given ' +\
+                    'number of procs, nodes.  Assuming 2 fields can be ' +\
+                    'loaded per proc. Increase maxFieldsPerNode for a speedup.'
+        else:
+            self.maxFieldsPerProc = self.maxFieldsPerNode * self.numNodes / \
+                self.mpi.getNumProcs()
+
     def idiot_check(self, testObj=None, testObjPath=None):
         """Checks that the user-supplied objects and functions work properly.
         
-        The arguments are for a test object or the path to one (loaded with load_field)
-        One of these should be supplied for thorough testing. The add and
-        mult functions are tested for the generic object.
-        This is not a complete testing, but catches some common mistakes.
+        The arguments are for a test object or the path to one (loaded with 
+        load_field).  One of these should be supplied for thorough testing. 
+        The add and mult functions are tested for the generic object.  This is 
+        not a complete testing, but catches some common mistakes.
         
         Other things which could be tested:
-          reading/writing doesnt effect other snaps/modes (memory problems)
-          subtraction, division (currently not used for modaldecomp)
+            reading/writing doesnt effect other snaps/modes (memory problems)
+            subtraction, division (currently not used for modaldecomp)
         """
         tol = 1e-10
         if testObjPath is not None:
           testObj = self.load_field(testObjPath)
         if testObj is None:
-          raise RuntimeError('Supply snap (or mode) object or path to one for idiot check!')
+            raise RuntimeError('Supply snap (or mode) object or path to one '+\
+                'for idiot check!')
         objCopy = copy.deepcopy(testObj)
         objCopyMag2 = self.inner_product(objCopy,objCopy)
         
@@ -85,7 +93,8 @@ class ModalDecomp(object):
         
         objAddMult = testObj*factor + testObj
         if abs(self.inner_product(objAddMult,objAddMult)-objCopyMag2*(factor+1)**2)>tol:
-          raise ValueError('Multiplication and addition of snap/mode are inconsistent')
+          raise ValueError('Multiplication and addition of snap/mode are '+\
+            'inconsistent')
         
         if abs(self.inner_product(testObj,testObj)-objCopyMag2)>tol:  
           raise ValueError('Original object modified by combo of mult/add!') 
@@ -97,27 +106,26 @@ class ModalDecomp(object):
             print 'Passed the idiot check'
     
     
-    def _compute_inner_product_chunk(self,rowFieldPaths,colFieldPaths,verbose=None):
+    def _compute_inner_product_chunk(self, rowFieldPaths, colFieldPaths):
         """ Computes inner products of snapshots in memory-efficient chunks
         
-        The 'chunk' refers to the fact that within this method, the 
-        snapshots
-        are read in memory-efficient ways such that they are not all in
-        memory at 
-        once. This results in finding 'chunks' of the eventual matrix 
-        that is returned. 
-        It is also true that this function is meant to be 
-        used in parallel - individually on each processor. In this case,
-        each processor has different lists of snapshots to take inner products
-        of.
-        rows = number of row snapshot files passed in (BPOD adjoint snaps)
-        columns = number column snapshot files passed in (BPOD direct snaps)
-        Currently this method only supports finding rectangular chunks.
-        In the future this method can be expanded to find more general shapes
-        of the matrix.
-        It returns a matrix with the above number of rows and columns.
-        verbose - If verobse is True, then print the progress of inner products
+        The 'chunk' refers to the fact that within this method, the snapshots
+        are read in memory-efficient ways such that they are not all in memory 
+        at once. This results in finding 'chunks' of the eventual matrix that 
+        is returned. It is also true that this function is meant to be used in 
+        parallel - individually on each processor. In this case, each processor 
+        has different lists of snapshots to take inner products of.
+            rows = number of row snapshot files passed in (BPOD adjoint snaps)
+            columns = number column snapshot files passed in (BPOD direct snaps)
+        Currently this method only supports finding rectangular chunks.  In the 
+        future this method can be expanded to find more general shapes of the 
+        matrix. It returns a matrix with the above number of rows and columns.
+            verbose - If True, then print the progress of inner products
         """
+        # Must check that these are lists, in case method is called directly
+        # When called as part of compute_inner_product_matrix, paths are
+        # generated by getProcAssignments, and are called such that a list is
+        # always passed in
         if isinstance(rowFieldPaths,str):
             rowFieldPaths = [rowFieldPaths]
         if isinstance(colFieldPaths,str):
@@ -126,7 +134,8 @@ class ModalDecomp(object):
         numRows = len(rowFieldPaths)
         numCols = len(colFieldPaths)
         
-        #enforce that there are more columns than rows for efficiency
+        # Enforce that there are more columns than rows for efficiency
+        # On one proc, additional rows cause repeated loading of col fields
         if numRows > numCols:
             transpose = True
             temp = rowFieldPaths
@@ -137,15 +146,14 @@ class ModalDecomp(object):
             numCols = temp
         else: 
             transpose = False
-       
-        if verbose is not None:
-            self.verbose = verbose
+
         if self.verbose:
-            printAfterNumCols = (numCols/5)+1 # Print after this many cols are computed
+            # Print after this many cols are computed
+            printAfterNumCols = (numCols/5)+1 
        
         numColsPerChunk = 1
         numRowsPerChunk = self.maxFieldsPerProc-numColsPerChunk         
-        
+
         innerProductMatChunk = N.mat(N.zeros((numRows,numCols)))
         
         for startRowIndex in range(0,numRows,numRowsPerChunk):
@@ -182,9 +190,78 @@ class ModalDecomp(object):
        
         if transpose: innerProductMatChunk=innerProductMatChunk.T
         return innerProductMatChunk
+       
+    # NEW METHOD TO GENERALIZE PARALLIZATION OF IP MATRICES
+    def compute_inner_product_matrix(self, rowFieldPaths, colFieldPaths):
+        """ Computes a matrix of inner products and returns it.
         
-           
-            
+        This method assigns the task of computing the a matrix of inner products
+        into pieces for each processor, then passes this onto 
+        self._compute_inner_product_chunk(...). After 
+        _compute_inner_product_chunk returns chunks of the inner product matrix,
+        they are concatenated into a completed, single, matrix on processor 0. 
+        This completed matrix is broadcast to all other processors (if 
+        parallel).
+        """
+      
+        if isinstance(rowFieldPaths,str):
+            rowFieldPaths = [rowFieldPaths]
+        if isinstance(colFieldPaths,str):
+            colFieldPaths = [colFieldPaths]
+          
+        numColFields = len(colFieldPaths)
+        numRowFields = len(rowFieldPaths)
+
+        # Enforce that there are more rows than columns for efficiency
+        # Each column is repeated across procs, so fewer columns is better
+        if numColFields > numRowFields:
+            transpose = True
+            temp = rowFieldPaths
+            rowFieldPaths = colFieldPaths
+            colFieldPaths = temp
+            temp = numRowFields
+            numRowFields = numColFields
+            numColFields = temp
+        else: 
+            transpose = False
+
+        rowFieldProcAssignments = self.mpi.find_proc_assignments(range(
+            numRowFields))
+
+        for assignment in rowFieldProcAssignments:
+            if len(assignment) == 0:
+                raise util.MPIError('At least one processor has no tasks. ' +\
+                    'This is not currently supported. Lower number of procs.')
+        
+        if self.mpi.isRankZero() and rowFieldProcAssignments[0][-1] -\
+            rowFieldProcAssignments[0][0] > self.maxFieldsPerProc and self.\
+            verbose:
+            print 'Warning: Each processor will have to read the direct ' +\
+                'snapshots (%d total) multiple times. Increase number of ' +\
+                'processors to avoid this and get a big speedup.' % numColFields
+
+        innerProductMatChunk = self._compute_inner_product_chunk(rowFieldPaths[
+            rowFieldProcAssignments[self.mpi.getRank()][0]:
+            rowFieldProcAssignments[self.mpi.getRank()][-1]+1], colFieldPaths)
+
+        #Gather list of chunks from each processor, ordered by rank
+        if self.mpi.isParallel():
+            innerProductMatChunkList = self.mpi.comm.allgather(
+                innerProductMatChunk)
+            innerProductMat = N.mat(N.zeros((numRowFields, numColFields)))
+
+            #concatenate the chunks of inner product matrix
+            for rank in xrange(self.mpi.getNumProcs()):
+                innerProductMat[rowFieldProcAssignments[rank][0]:\
+                    rowFieldProcAssignments[rank][-1]+1] =\
+                    innerProductMatChunkList[rank]
+        else:
+            innerProductMat = innerProductMatChunk 
+
+        if transpose:
+            innerProductMat = innerProductMat.T
+
+        return innerProductMat
     
     def _compute_modes(self,modeNumList,modePath,snapPaths,fieldCoeffMat,
         indexFrom=1):
@@ -297,10 +374,10 @@ class ModalDecomp(object):
             raise util.MPIError('Cannot find outputs when fewer inputs '+\
                'than number of processors')
                
-        if numInputFields < fieldCoeffMat.shape[0]:
+        if numInputFields < fieldCoeffMat.shape[0] and self.mpi.isRankZero():
             print 'Warning - fewer input paths than cols in the coeff matrix'
             print '  some rows of coeff matrix will not be used'
-        if numOutputFields < fieldCoeffMat.shape[1]:
+        if numOutputFields < fieldCoeffMat.shape[1] and self.mpi.isRankZero():
             print 'Warning - fewer output paths than rows in the coeff matrix'
             print '  some cols of coeff matrix will not be used'
         
@@ -334,7 +411,7 @@ class ModalDecomp(object):
                 for outputIndex in saveOutputIndexAssignments[self.mpi.getRank()]:
                     self.save_field(outputLayers[outputIndex], 
                       outputFieldPaths[startOutputIndex + outputIndex])
-
+ 
             if self.verbose and self.mpi.isRankZero():
                 print >> sys.stderr, 'Computed and saved',\
                   round(1000.*endOutputIndex/numOutputFields)/10.,\

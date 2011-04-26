@@ -110,8 +110,8 @@ class BPOD(ModalDecomp):
         if self.adjointSnapPaths is None:
             raise util.UndefinedError('adjointSnapPaths is not given')
             
-        self.hankelMat = self._compute_hankel(
-          self.directSnapPaths, self.adjointSnapPaths)
+        self.hankelMat = self.compute_inner_product_matrix(self.\
+            adjointSnapPaths, self.directSnapPaths)
 
         if self.save_mat is not None and hankelMatPath is not None and \
           self.mpi.isRankZero():
@@ -193,59 +193,4 @@ class BPOD(ModalDecomp):
         self._compute_modes(modeNumList, modePath, 
             self.adjointSnapPaths,buildCoeffMat,
             indexFrom=indexFrom )
-
-    def _compute_hankel(self, directSnapPaths, adjointSnapPaths):
-        """ Computes the hankel matrix and returns it.
-        
-        This method assigns the task of computing the Hankel matrix
-        into pieces for each processor, then passes this on to
-        self._compute_hankel_chunk(...). After _compute_hankel_chunk
-        returns chunks of the Hankel matrix, they are concatenated
-        into a completed, single, matrix on processor 0. This completed
-        matrix is broadcast to all other processors (if parallel).
-        
-        REMEMBER - adjoint snaps correspond to ROWS, direct snaps to COLUMNS
-        of the Hankel matrix.
-        """
-        
-        numDirectSnaps = len(directSnapPaths)
-        numAdjointSnaps = len(adjointSnapPaths)
-        
-        adjointSnapProcAssignments = \
-          self.mpi.find_proc_assignments(range(numAdjointSnaps))
-        
-        for assignment in adjointSnapProcAssignments:
-            if len(assignment) == 0:
-                raise MPIError('At least one processor has no tasks'+\
-                  ', currently this is unsupported, lower num of procs')
-        
-        if self.mpi.isRankZero() and \
-          adjointSnapProcAssignments[0][-1] - adjointSnapProcAssignments[0][0] > \
-          self.maxFieldsPerProc and self.verbose:
-              print 'Warning: Each processor will have to read the direct'
-              print 'snapshots ('+str(numDirectSnaps)+') multiple times.'
-              print 'Increase number of processors to at least',\
-              int(N.ceil(1.*numDirectSnaps/(1.*self.maxFieldsPerProc)))
-              print 'to avoid this and get a big speedup'
-                      
-        hankelMatChunk = self._compute_inner_product_chunk(
-          adjointSnapPaths[adjointSnapProcAssignments[self.mpi.getRank()][0]: \
-          adjointSnapProcAssignments[self.mpi.getRank()][-1]+1],
-          directSnapPaths)
-                       
-        #Gather list of chunks from each processor, ordered by rank
-        if self.mpi.isParallel():
-            hankelMatChunkList = self.mpi.comm.allgather(hankelMatChunk)
-            hankelMat = N.mat(N.zeros((numAdjointSnaps,numDirectSnaps)))
-            for rank in xrange(self.mpi.getNumProcs()):
-            #concatenate the chunks of Hankel matrix
-                hankelMat[adjointSnapProcAssignments[rank][0]:\
-                  adjointSnapProcAssignments[rank][-1]+1] = \
-                  hankelMatChunkList[rank]
-        else:
-            hankelMat = hankelMatChunk
-        return hankelMat
     
-
-  
-      

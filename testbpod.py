@@ -27,8 +27,8 @@ class TestBPOD(unittest.TestCase):
     """ Test all the BPOD class methods """
     
     def setUp(self):
-        if not os.path.isdir('modaldecomp_testfiles'):        
-            SP.call(['mkdir','modaldecomp_testfiles'])
+        if not os.path.isdir('files_modaldecomp_test'):        
+            SP.call(['mkdir','files_modaldecomp_test'])
         
         self.modeNumList =[2,4,3,6,9,8,10,11,30]
         self.numDirectSnaps = 40
@@ -45,13 +45,13 @@ class TestBPOD(unittest.TestCase):
     def tearDown(self):
         self.bpod.mpi.sync()
         if self.bpod.mpi.isRankZero():
-            SP.call(['rm -rf modaldecomp_testfiles/*'], shell=True)
+            SP.call(['rm -rf files_modaldecomp_test/*'], shell=True)
         self.bpod.mpi.sync()
     
     def generate_data_set(self):
         #create data set (saved to file)
-        self.directSnapPath = 'modaldecomp_testfiles/direct_snap_%03d.txt'
-        self.adjointSnapPath = 'modaldecomp_testfiles/adjoint_snap_%03d.txt'
+        self.directSnapPath = 'files_modaldecomp_test/direct_snap_%03d.txt'
+        self.adjointSnapPath = 'files_modaldecomp_test/adjoint_snap_%03d.txt'
 
         self.directSnapPaths=[]
         self.adjointSnapPaths=[]
@@ -66,7 +66,6 @@ class TestBPOD(unittest.TestCase):
                 util.save_mat_text(self.directSnapMat[:,directSnapIndex],self.\
                     directSnapPath%directSnapIndex)
                 self.directSnapPaths.append(self.directSnapPath%directSnapIndex)
-                
             for adjointSnapIndex in range(self.numAdjointSnaps):
                 util.save_mat_text(self.adjointSnapMat[:,adjointSnapIndex],
                   self.adjointSnapPath%adjointSnapIndex)
@@ -104,88 +103,90 @@ class TestBPOD(unittest.TestCase):
         
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
-        dataMembersOriginal = util.get_data_members(BP.BPOD())
-        
+        # Get default data member values
+        # Set verbose to false, to avoid printing warnings during tests
+        dataMembersOriginal = util.get_data_members(BP.BPOD(verbose=False))
+
         def my_load(fname):
             return 0
-        myBPOD = BP.BPOD(load_field=my_load)
+        myBPOD = BP.BPOD(load_field=my_load, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['load_field'] = my_load
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         
         def my_save(data,fname):
             pass 
-        myBPOD = BP.BPOD(save_field=my_save)
+        myBPOD = BP.BPOD(save_field=my_save, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['save_field'] = my_save
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         self.assertEqual(myBPOD.save_field,my_save)
         
-        myBPOD = BP.BPOD(save_mat=my_save)
+        myBPOD = BP.BPOD(save_mat=my_save, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['save_mat'] = my_save
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         self.assertEqual(myBPOD.save_mat,my_save)
         
         def my_ip(f1,f2): return 0
-        myBPOD = BP.BPOD(inner_product=my_ip)
+        myBPOD = BP.BPOD(inner_product=my_ip, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['inner_product'] = my_ip
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         self.assertEqual(myBPOD.inner_product,my_ip)
                 
         directSnapPaths=['a','b']
-        myBPOD = BP.BPOD(directSnapPaths = directSnapPaths)
+        myBPOD = BP.BPOD(directSnapPaths = directSnapPaths, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['directSnapPaths'] = directSnapPaths
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         self.assertEqual(myBPOD.directSnapPaths,directSnapPaths)
         
         adjointSnapPaths=['a','c']
-        myBPOD = BP.BPOD(adjointSnapPaths = adjointSnapPaths)
+        myBPOD = BP.BPOD(adjointSnapPaths = adjointSnapPaths, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['adjointSnapPaths'] = adjointSnapPaths
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         self.assertEqual(myBPOD.adjointSnapPaths,adjointSnapPaths)
         
         LSingVecs=N.mat(N.random.random((2,3)))
-        myBPOD = BP.BPOD(LSingVecs = LSingVecs)
+        myBPOD = BP.BPOD(LSingVecs = LSingVecs, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['LSingVecs'] = LSingVecs
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         N.testing.assert_array_almost_equal(myBPOD.LSingVecs,LSingVecs)
         
         RSingVecs = N.mat(N.random.random((3,2)))
-        myBPOD = BP.BPOD(RSingVecs = RSingVecs)
+        myBPOD = BP.BPOD(RSingVecs = RSingVecs, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['RSingVecs'] = RSingVecs
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         N.testing.assert_array_almost_equal(myBPOD.RSingVecs,RSingVecs)
         
         singVals = N.mat(N.random.random((2,2)))
-        myBPOD = BP.BPOD(singVals = singVals)
+        myBPOD = BP.BPOD(singVals = singVals, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['singVals'] = singVals
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         N.testing.assert_array_almost_equal(myBPOD.singVals,singVals)
         
         hankelMat = N.mat(N.random.random((4,4)))
-        myBPOD = BP.BPOD(hankelMat = hankelMat)
+        myBPOD = BP.BPOD(hankelMat = hankelMat, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['hankelMat'] = hankelMat
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         N.testing.assert_array_almost_equal(myBPOD.hankelMat,hankelMat)
                 
         maxFieldsPerNode = 500
-        myBPOD = BP.BPOD(maxFieldsPerNode=maxFieldsPerNode)
+        myBPOD = BP.BPOD(maxFieldsPerNode=maxFieldsPerNode, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['maxFieldsPerNode'] = maxFieldsPerNode
         dataMembers['maxFieldsPerProc'] = maxFieldsPerNode / \
           (myBPOD.mpi.getNumProcs()/myBPOD.numNodes)
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         
-        self.assertRaises(util.MPIError,BP.BPOD,
-        numNodes=numProcs+1)
+        self.assertRaises(util.MPIError, BP.BPOD, numNodes=numProcs+1, verbose=\
+            False)
         
     def test_compute_decomp(self):
         """
@@ -196,12 +197,12 @@ class TestBPOD(unittest.TestCase):
         loaded and compared to the true matrices. 
         """
         tol = 8
-        directSnapPath = 'modaldecomp_testfiles/direct_snap_%03d.txt'
-        adjointSnapPath = 'modaldecomp_testfiles/adjoint_snap_%03d.txt'
-        LSingVecsPath ='modaldecomp_testfiles/lsingvecs.txt'
-        RSingVecsPath ='modaldecomp_testfiles/rsingvecs.txt'
-        singValsPath ='modaldecomp_testfiles/singvals.txt'
-        hankelMatPath='modaldecomp_testfiles/hankel.txt'
+        directSnapPath = 'files_modaldecomp_test/direct_snap_%03d.txt'
+        adjointSnapPath = 'files_modaldecomp_test/adjoint_snap_%03d.txt'
+        LSingVecsPath ='files_modaldecomp_test/lsingvecs.txt'
+        RSingVecsPath ='files_modaldecomp_test/rsingvecs.txt'
+        singValsPath ='files_modaldecomp_test/singvals.txt'
+        hankelMatPath='files_modaldecomp_test/hankel.txt'
         
         self.bpod.compute_decomp(RSingVecsPath=RSingVecsPath,
           LSingVecsPath=LSingVecsPath,singValsPath=singValsPath,
@@ -255,8 +256,8 @@ class TestBPOD(unittest.TestCase):
         compares them to the known solution.
         """
 
-        directModePath ='modaldecomp_testfiles/direct_mode_%03d.txt'
-        adjointModePath ='modaldecomp_testfiles/adjoint_mode_%03d.txt'
+        directModePath ='files_modaldecomp_test/direct_mode_%03d.txt'
+        adjointModePath ='files_modaldecomp_test/adjoint_mode_%03d.txt'
         
         # starts with the  CORRECT decomposition.
         

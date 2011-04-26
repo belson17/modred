@@ -47,7 +47,7 @@ class POD(BPOD):
         # Compute Hankel matrix decomposition, using dir snaps as adj snaps
         # Then save the decomposition matrices as needed, to file/data members
         # Only one set of sing vecs needs to be saved for POD (symmetry)
-        self.correlationMat = self._compute_hankel(self.snapPaths,
+        self.correlationMat = self.compute_inner_product_matrix(self.snapPaths,
             self.snapPaths)
         self.singVecs, self.singVals, dummy = util.svd(self.correlationMat)
         del dummy

@@ -62,28 +62,9 @@ class DMD(ModalDecomp):
         # Inner product of snapshots w/POD modes
         numSnaps = len(self.snapPaths)
         podModesStarTimesSnaps = N.mat(N.empty((numSnaps-1, numSnaps-1)))
-        podModesStarTimesSnaps[:,0:-1] = self.pod.correlationMat[:,1:]
-
-       	# Must compute last column, so do in parallel 
-        lastColProcAssignments = self.mpi.find_proc_assignments(range(
-            numSnaps-1))
-        lastColChunk = self._compute_inner_product_chunk(self.snapPaths[
-            lastColProcAssignments[self.mpi._rank][0]:lastColProcAssignments[
-            self.mpi._rank][-1]+1], self.snapPaths[-1])
-                       
-        #Gather list of chunks from each processor, ordered by rank
-        if self.mpi.isParallel():
-            lastColChunkList = self.mpi.comm.allgather(lastColChunk)
-            lastCol = N.mat(N.empty((numSnaps-1, 1)))
-            # concatenate the chunks of Hankel matrix
-            for procNum in xrange(self.mpi.getNumProcs()):
-                lastCol[lastColProcAssignments[procNum][0]:\
-                lastColProcAssignments[procNum][-1]+1] = lastColChunkList[
-                procNum]
-        else:
-            lastCol = lastColChunk 
-        
-        podModesStarTimesSnaps[:,-1] = lastCol
+        podModesStarTimesSnaps[:, :-1] = self.pod.correlationMat[:,1:]  
+        podModesStarTimesSnaps[:, -1] = self.compute_inner_product_matrix(self.\
+            snapPaths[:-1], self.snapPaths[-1])
         podModesStarTimesSnaps = _podSingValsSqrtMat * self.pod.\
             singVecs.H * podModesStarTimesSnaps
             
