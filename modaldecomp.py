@@ -41,7 +41,7 @@ class ModalDecomp(object):
             self.maxFieldsPerNode = maxFieldsPerNode
         self.numNodes = numNodes
         if (self.numNodes > self.mpi.getNumProcs()):
-            raise util.MPIError('More nodes (%d) than processors (%d).' %  \
+            raise util.MPIError('More nodes (%d) than processors (%d).' % \
                 (self.numNodes, self.mpi.getNumProcs())) 
         if self.maxFieldsPerNode < 2 * self.mpi.getNumProcs() / self.numNodes:
             self.maxFieldsPerProc = 2
@@ -175,17 +175,18 @@ class ModalDecomp(object):
                         innerProductMatChunk[rowIndex,colIndex] = \
                           self.inner_product(rowSnaps[rowIndex-startRowIndex],
                           colSnaps[colIndex-startColIndex])
-                if self.verbose and (endColIndex%printAfterNumCols==0 or \
-                  endColIndex==numCols): 
-                    numCompletedIPs = startRowIndex*numCols + \
-                      (endRowIndex-startRowIndex)*endColIndex
-                    print >> sys.stderr, 'Processor', self.mpi.getRank(),\
-                        'completed',\
-                        int(1000.*numCompletedIPs/(1.*numCols*numRows))/10.,\
-                        '%, hankelMat[:' + str(endRowIndex) + ',:' +\
-                        str(endColIndex)+']', 'out of hankelMat[' +\
-                        str(numRows)+','+str(numCols)+']'
-       
+                if self.verbose and (endColIndex % printAfterNumCols==0 or \
+                    endColIndex==numCols): 
+                    numCompletedIPs = startRowIndex * numCols + (endRowIndex -\
+                        startRowIndex) * endColIndex
+                    percentCompletedIPs = 100. * numCompletedIPs / (numCols *\
+                        numRows)
+                    print >> sys.stderr, ('Processor %d completed IPMat[' +\
+                        ':%d, :%d] of IPMat[:%d, :%d]') % (self.mpi.getRank(),
+                        endRowIndex, endColIndex, numRows, numCols)
+                    print >> sys.stderr, ('    %.1f%% of inner products ' +\
+                        'completed on this processor') % percentCompletedIPs
+ 
         if transpose: innerProductMatChunk=innerProductMatChunk.T
         return innerProductMatChunk
       
@@ -287,7 +288,6 @@ class ModalDecomp(object):
         return innerProductMatChunk
       
 
-               
     def compute_inner_product_matrix(self, rowFieldPaths, colFieldPaths):
         """ Computes a matrix of inner products and returns it.
         
@@ -332,9 +332,10 @@ class ModalDecomp(object):
         if self.mpi.isRankZero() and rowFieldProcAssignments[0][-1] -\
             rowFieldProcAssignments[0][0] > self.maxFieldsPerProc and self.\
             verbose:
-            print 'Warning: Each processor will have to read the direct '
-            print 'snapshots (%d total) multiple times. Increase number of'%numColFields
-            print 'processors to avoid this and get a big speedup.'
+            print ('Warning: Each processor will have to read the direct ' +\
+                'snapshots (%d total) multiple times. Increase number of ' +\
+                'processors to avoid this and get a big speedup.') %\
+                numColFields
 
         innerProductMatChunk = self._compute_inner_product_chunk(rowFieldPaths[
             rowFieldProcAssignments[self.mpi.getRank()][0]:
