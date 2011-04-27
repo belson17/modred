@@ -317,14 +317,16 @@ class TestModalDecomp(unittest.TestCase):
         """ 
         def assert_equal_mat_products(mat1, mat2, paths1, paths2):
             productTrue = mat1 * mat2
+            
+            # Test computation as chunk (a serial method, tested on each proc)
             productComputedAsChunk = self.modalDecomp.\
                 _compute_inner_product_chunk(paths1, paths2)
             N.testing.assert_array_almost_equal(productComputedAsChunk, 
                 productTrue)
 
-            # If number of rows > number of procs, should raise error
-            # Number of rows is actually max of (numRows, numCols) because
-            # we do the transpose problem when numCols > numRows
+            # Test paralleized computation.  If # of rows > # of procs, should 
+            # raise error.  Number of rows is actually max of (numRows, numCols)
+            # because we do the transpose problem when numCols > numRows.
             if isinstance(paths1, str):
                 paths1 = [paths1]
             if isinstance(paths2, str):
@@ -338,6 +340,13 @@ class TestModalDecomp(unittest.TestCase):
                 N.testing.assert_array_almost_equal(productComputedAsMat, 
                     productTrue)
 
+            # If two lists are the same, test symmetric computation
+            if paths1 == paths2:
+                productComputedAsSymm = self.modalDecomp.\
+                    _compute_symmetric_inner_product_chunk(paths1)
+                N.testing.assert_array_almost_equal(productComputedAsSymm, 
+                    productTrue)
+   
         numRowSnapsList =[1, 3, 20, 100]
         numColSnapsList = [1, 2, 4, 20, 99]
         numStatesList = [1, 10, 25]
@@ -407,7 +416,8 @@ class TestModalDecomp(unittest.TestCase):
                         # Test with only the row data, to ensure nothing is
                         # goes wrong when the same list is used twice
                         # (potential memory issues, or lists may accidentally
-                        # get altered)
+                        # get altered).  Also, test symmetric computation
+                        # method.
                         assert_equal_mat_products(rowSnapMat.T, rowSnapMat,
                             rowSnapPaths, rowSnapPaths)
                         

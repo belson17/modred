@@ -15,12 +15,11 @@ class BPOD(ModalDecomp):
     
     """
     
-    def __init__(self, load_field=None, save_field=None, 
-        save_mat=util.save_mat_text, load_mat=util.load_mat_text, 
-        inner_product=None,
-        maxFieldsPerNode = None, numNodes=1, directSnapPaths=None, 
-        adjointSnapPaths=None, LSingVecs=None, 
-        singVals=None, RSingVecs=None, hankelMat=None, verbose=True):
+    def __init__(self, load_field=None, save_field=None, save_mat=util.\
+        save_mat_text, load_mat=util.load_mat_text, inner_product=None,
+        maxFieldsPerNode=None, numNodes=1, directSnapPaths=None, 
+        adjointSnapPaths=None, LSingVecs=None, singVals=None, RSingVecs=None, 
+        hankelMat=None, verbose=True):
         """
         BPOD constructor
         
@@ -37,7 +36,7 @@ class BPOD(ModalDecomp):
         hankelMat is adjoint modes "multiplied by" direct modes.
         """
         # Base class constructor defines common data members
-        ModalDecomp.__init__(self, load_field=load_field, save_field=save_field, 
+        ModalDecomp.__init__(self, load_field=load_field, save_field=save_field,
             save_mat=save_mat, inner_product=inner_product, maxFieldsPerNode=\
             maxFieldsPerNode, numNodes=numNodes, verbose=verbose)
 
@@ -85,11 +84,9 @@ class BPOD(ModalDecomp):
             self.save_mat(self.singVals,singValsPath)
         
     
-    def compute_decomp(self, hankelMatPath='hankelMat.txt',
-      LSingVecsPath='LSingVecs.txt', 
-      singValsPath='singVals.txt', RSingVecsPath='RSingVecs.txt',
-      directSnapPaths=None,
-      adjointSnapPaths=None):
+    def compute_decomp(self, hankelMatPath='hankelMat.txt', LSingVecsPath=\
+        'LSingVecs.txt', singValsPath='singVals.txt', RSingVecsPath=\
+        'RSingVecs.txt', directSnapPaths=None, adjointSnapPaths=None):
         """
         Compute BPOD decomposition, forms the Hankel matrix and its SVD
         
