@@ -22,7 +22,7 @@ class BPODROM(object):
         self.save_field=save_field
         self._numProcs=numProcs
         self.maxFieldsPerNode=maxFieldsPerNode
-        self.numNodes = numNodes
+        self.numNodes = 1
         self.maxFieldsPerProc = self.maxFieldsPerNode*self.numNodes/numProcs
         self.numModes = numModes
     
