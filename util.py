@@ -90,6 +90,15 @@ class MPI(object):
             self.comm = None
             self.parallel=False
     
+    def printRankZero(self,msgs):
+      """
+      Prints the elements of the list given from rank=0 only.
+      
+      Could be improved to better mimic if isRankZero(): print a,b,...
+      """
+      if self.isRankZero():
+        for msg in msgs:
+          print msg
     
     def sync(self):
         """Forces all processors to synchronize.
@@ -114,6 +123,7 @@ class MPI(object):
     def getRank(self):
         """Returns the rank of this processor"""
         return self._rank
+    
     
     def getNumProcs(self):
         """Returns the number of processors"""
