@@ -4,6 +4,8 @@ import subprocess as SP
 import numpy as N
 import inspect 
 import copy
+import operator
+
 
 class UndefinedError(Exception): pass
     
@@ -117,38 +119,72 @@ class MPI(object):
         """Returns the number of processors"""
         return self._numProcs
 
-    def find_proc_assignments(self,taskList):
-        """ Returns a 2D list of tasks, [rank][taskIndex], evenly
-        breaking up the tasks in the taskList. 
+    def find_proc_assignments(self, taskList, taskWeights=None):
+        """ Returns a 2D list of tasks, [rank][taskIndex], evenly distributing 
+        the tasks in taskList, allowing for uneven task weights. 
         
-        It returns a list that has numProcs+1 entries. 
+        It returns a list that has numProcs entries. 
         Proc n is responsible for taskProcAssignments[n][...]
         where the 2nd dimension of the 2D list contains the tasks (whatever
         they were in the original taskList).
         """        
         taskProcAssignments= []
-        prevMaxTaskIndex = 0
-        taskListUse = copy.deepcopy(taskList)
-        numTasks = len(taskList)
+        _taskList = copy.deepcopy(taskList)
+
+        # If no weights are given, assume each task has uniform weight
+        if taskWeights is None:
+            _taskWeights = N.ones(len(taskList))
+        else:
+            _taskWeights = N.array(taskWeights)
+
+        numTasks = sum(_taskWeights)
+
+        # Function that searches for closes match to val in valList
+        def find_closest_val(val, valArray):
+            closestVal = min(abs(valArray - val))
+            for testInd, testVal in enumerate(valList):
+                if testVal == closestVal:
+                    ind = testInd
+            return closestVal, ind
+
         for procNum in range(self._numProcs):
-            numRemainingTasks = len(taskListUse)
+            # Number of remaining tasks (scaled by weights)
+            numRemainingTasks = sum(_taskWeights) 
+
+            # Number of processors whose jobs have not yet been assigned
             numRemainingProcs = self._numProcs - procNum
-            numTasksPerProc = int(N.ceil(numRemainingTasks/
-              (1.*numRemainingProcs)))
-            newMaxTaskIndex = min(numTasksPerProc,numRemainingTasks)
-            taskProcAssignments.append(taskListUse[:newMaxTaskIndex])
-            for removeElement in taskListUse[:newMaxTaskIndex]:
-                taskListUse.remove(removeElement)
-            prevMaxTaskIndex = newMaxTaskIndex
-        if self.verbose and self.isRankZero():
-            printedPreviously = False
-            for r,assignment in enumerate(taskProcAssignments):
-                if len(assignment)==0 and not printedPreviously:
-                    print 'Warning -',self._numProcs-r-1,'out of',\
-                      self._numProcs,'processors have no tasks'
-                    printedPreviously = True
+
+            # Distribute weighted task list evenly across processors
+            numTasksPerProc = 1. * numRemainingTasks / numRemainingProcs
+
+            # If task list is not empty, compute assignments
+            if _taskWeights.size != 0:
+                # Index of task list element such that sum(_taskList[:ind]) 
+                # comes closest to numTasksPerProc
+                newMaxTaskIndex = N.abs(N.cumsum(_taskWeights) -\
+                    numTasksPerProc).argmin()
+
+                # Add all tasks up to and including newMaxTaskIndex to the
+                # assignment list
+                taskProcAssignments.append(_taskList[:newMaxTaskIndex + 1])
+
+                # Remove assigned tasks, weights from list
+                del _taskList[:newMaxTaskIndex + 1]
+                _taskWeights = _taskWeights[newMaxTaskIndex + 1:]
+            else:
+                taskProcAssignments.append([])
+
+            # Warning if some processors have no tasks
+            if self.verbose and self.isRankZero():
+                printedPreviously = False
+                for r, assignment in enumerate(taskProcAssignments):
+                    if len(assignment) == 0 and not printedPreviously:
+                        print ('Warning - %d out of %d processors have no ' +\
+                            'tasks'), (self._numProcs - r - 1, self._numProcs)
+                        printedPreviously = True
+
         return taskProcAssignments
-    
+
     # CURRENTLY THIS FUNCTION DOESNT WORK
     def evaluate_and_bcast(self,outputs, function, arguments=[], keywords={}):
         """

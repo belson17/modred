@@ -57,7 +57,6 @@ class TestUtil(unittest.TestCase):
                       decimal=tol)
         SP.call(['rm',matPath])
         
-       
     def test_MPI_sync(self):
         """
         Test that can properly synchronize processors when in parallel
@@ -72,7 +71,6 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(self.myMPI._numProcs,self.numProcs)
         self.assertEqual(self.myMPI._rank,self.rank)
                         
-        
     def test_MPI_find_proc_assignments(self):
         """Tests that the correct processor assignments are determined
         
@@ -82,23 +80,48 @@ class TestUtil(unittest.TestCase):
         the behavior of this function is mimicked by manually setting numProcs.
         This should not be done by a user!
         """
+    
+        # Assume each item in task list has equal weight
+        taskList = ['1', '2', '4', '3', '6', '7', '5']
+        self.myMPI._numProcs = 5
+        correctAssignments = [['1'], ['2'], ['4', '3'], ['6'], ['7', '5']]
+        self.assertEqual(self.myMPI.find_proc_assignments(taskList), 
+            correctAssignments)
+         
+        taskList = [3, 4, 1, 5]
+        self.myMPI._numProcs = 2
+        correctAssignments=[[3, 4], [1, 5]]
+        self.assertEqual(self.myMPI.find_proc_assignments(taskList),
+            correctAssignments)
+       
+        # Allow for uneven weighting of items in task list
+        taskList = ['1', '2', '4', '3', '6', '7', '5']
+        taskWeights = [1, 3, 2, 3, 3, 2, 1]
+        self.myMPI._numProcs = 5
+        correctAssignments = [['1','2'], ['4'], ['3'], ['6'], ['7', '5']]
+        self.assertEqual(self.myMPI.find_proc_assignments(taskList, 
+            taskWeights=taskWeights), correctAssignments)
         
-        taskList = ['1','2','4','3','6','7','5']
-        numTasks = len(taskList)
-        numProcs = 5
-        self.myMPI._numProcs=numProcs
-        correctAssignments=[['1','2'],['4','3'],['6'],['7'],['5']]
-        self.assertEqual(self.myMPI.find_proc_assignments(taskList),
-          correctAssignments)
-          
-        taskList = [3,4,1,5]
-        numTasks = len(taskList)
-        numProcs = 2
-        self.myMPI._numProcs=numProcs
-        correctAssignments=[[3,4],[1,5]]
-        self.assertEqual(self.myMPI.find_proc_assignments(taskList),
-          correctAssignments)
-          
+        # At first, each proc tries to take a task weight load of 2.  This is
+        # closer to 0 than it is to 5, but the first assignment should be [3],
+        # not []
+        taskList = [3, 4, 2, 6, 1]
+        taskWeights = [5, 0.25, 1.75, 0.5, 0.5]
+        self.myMPI._numProcs = 4
+        correctAssignments = [[3], [4], [2], [6, 1]]
+        self.assertEqual(self.myMPI.find_proc_assignments(taskList, 
+            taskWeights=taskWeights), correctAssignments)
+       
+        # Due to the highly uneven task weighting, the first proc will take up
+        # the first 3 tasks, leaving none for the last processor
+        taskList = ['a', 4, (2, 1), 4.3]
+        taskWeights = [.1, .1, .1, .7]
+        self.myMPI._numProcs = 3
+        correctAssignments = [['a', 4, (2, 1)], [4.3], []]
+        self.assertEqual(self.myMPI.find_proc_assignments(taskList, 
+            taskWeights=taskWeights), correctAssignments)
+       
+
     @unittest.skip('Currently function isnt completed or used')
     def test_MPI_evaluate_and_bcast(self):
         """Test that can evaluate a function and broadcast to all procs"""
@@ -117,7 +140,6 @@ class TestUtil(unittest.TestCase):
         self.assertEqual((1,2),(myClass.a,myClass.b))
                
         
-
     def test_svd(self):
         numInternalList = [10,50]
         numRowsList = [3,5,40]

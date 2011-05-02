@@ -340,13 +340,20 @@ class TestModalDecomp(unittest.TestCase):
                 N.testing.assert_array_almost_equal(productComputedAsMat, 
                     productTrue)
 
-            # If two lists are the same, test symmetric computation
+            # Test computation of upper triangular inner product matrix chunk
+            # If lists are not the same, should return an error
+            numRows = int(N.ceil(len(paths1) / 2.))
             if paths1 == paths2:
                 productComputedAsSymm = self.modalDecomp.\
-                    _compute_symmetric_inner_product_chunk(paths1)
+                    _compute_upper_triangular_inner_product_chunk(paths1[
+                        :numRows], paths2)
                 N.testing.assert_array_almost_equal(productComputedAsSymm, 
-                    productTrue)
-   
+                    N.triu(productTrue[:numRows, :]))
+            else:
+                self.assertRaises(ValueError, self.modalDecomp.\
+                    _compute_upper_triangular_inner_product_chunk, paths1, 
+                    paths2)
+
         numRowSnapsList =[1, 3, 20, 100]
         numColSnapsList = [1, 2, 4, 20, 99]
         numStatesList = [1, 10, 25]
