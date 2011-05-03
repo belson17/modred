@@ -112,11 +112,9 @@ class ModalDecomp(object):
                 startRowIndex) * endColIndex
             percentCompletedIPs = 100. * numCompletedIPs / (numCols *\
                 numRows)
-            print >> sys.stderr, ('Processor %d completed IPMat[' +\
-                ':%d, :%d] of IPMat[:%d, :%d]') % (self.mpi.getRank(),
-                endRowIndex, endColIndex, numRows, numCols)
-            print >> sys.stderr, ('    %.1f%% of inner products ' +\
-                'completed on this processor') % percentCompletedIPs
+            print >> sys.stderr, ('Processor %d completed %.1f%% of inner products,',\
+                'IPMat[:%d, :%d] of IPMat[:%d, :%d]') % (self.mpi.getRank(),\
+                percentCompletedIPs, endRowIndex, endColIndex, numRows, numCols)
 
 
     def _compute_inner_product_chunk(self, rowFieldPaths, colFieldPaths):
@@ -133,6 +131,8 @@ class ModalDecomp(object):
         Currently this method only supports finding rectangular chunks.  In the 
         future this method can be expanded to find more general shapes of the 
         matrix. It returns a matrix with the above number of rows and columns.
+        
+        
         """
         # Must check that these are lists, in case method is called directly
         # When called as part of compute_inner_product_matrix, paths are
