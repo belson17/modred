@@ -179,17 +179,19 @@ class TestModalDecomp(unittest.TestCase):
         """
         def load_field(filePath): #returns a precomputed, random, vector
             return util.load_mat_text(filePath)
-            
-        numSnapsList = [1,15,40]
-        #numSnapsList = [3]
-        numStatesList = [1,10,21]
-        #numStatesList = [2]
-        numModesList = [1,15,50]
-        #numModesList = [3]
-        maxFieldsPerNodeList = [2,20,1000]
-        #maxFieldsPerNodeList = [3]
-        #indexFromList = [0]
-        indexFromList = [0,1,5]
+        
+        maxFieldsPerProc = 10
+        totalNumFieldsInMem  = numProcs * maxFieldsPerProc
+        numSnapsList = [1, 15, 40]
+        numStates = 20
+        # Test cases where number of modes:
+        #   less, equal, more than numStates
+        #   less, equal, more than numSnaps
+        #   less, equal, more than totalNumFieldsInMem
+        numModesList = [1, 8, 10, 20, 25, 45,
+          int(N.ceil(totalNumFieldsInMem/2.)), totalNumFieldsInMem, \
+          totalNumFieldsInMem*2]
+        indexFromList = [0, 5]
         #modePath = 'proc'+str(self.modalDecomp.mpi._rank)+'/mode_%03d.txt'
         modePath = 'files_modaldecomp_test/mode_%03d.txt'
         snapPath = 'files_modaldecomp_test/snap_%03d.txt'
@@ -201,111 +203,108 @@ class TestModalDecomp(unittest.TestCase):
         self.modalDecomp.save_field=util.save_mat_text
         self.modalDecomp.inner_product=util.inner_product
         for numSnaps in numSnapsList:
-            for numStates in numStatesList:
-                for numModes in numModesList:
-                    for maxFieldsPerNode in maxFieldsPerNodeList:
-                        self.modalDecomp = ModalDecomp(load_field=load_field,
-                            save_field=util.save_mat_text, inner_product=util.\
-                            inner_product, maxFieldsPerNode=maxFieldsPerNode,
-                            verbose=False)
+            for numModes in numModesList:
+                self.modalDecomp = ModalDecomp(load_field=load_field,
+                    save_field=util.save_mat_text, inner_product=util.\
+                    inner_product, verbose=False)
+                self.modalDecomp.maxFieldsPerProc = maxFieldsPerProc
+                for indexFrom in indexFromList:
+                    #generate data and then broadcast to all procs
+                    #print '----- new case ----- '
+                    #print 'numSnaps =',numSnaps
+                    #print 'numStates =',numStates
+                    #print 'numModes =',numModes
+                    #print 'maxFieldsPerNode =',maxFieldsPerNode                          
+                    #print 'indexFrom =',indexFrom
+                    snapPaths = []
+                    for snapIndex in range(numSnaps):
+                        snapPaths.append(snapPath%snapIndex)
+                    
+                    if self.modalDecomp.mpi.isRankZero():
+                        snapMat,modeNumList,buildCoeffMat,trueModes = \
+                          self.generate_snaps_modes(numStates,numSnaps,
+                          numModes,indexFrom=indexFrom)
+                        for snapIndex,s in enumerate(snapPaths):
+                            util.save_mat_text(snapMat[:,snapIndex], s)
+                    else:
+                        modeNumList = None
+                        buildCoeffMat = None
+                        snapMat = None
+                        trueModes = None
+                    if self.modalDecomp.mpi.isParallel():
+                        modeNumList = self.modalDecomp.mpi.comm.bcast(
+                            modeNumList, root=0)
+                        buildCoeffMat = self.modalDecomp.mpi.comm.bcast(
+                            buildCoeffMat,root=0)
+                        snapMat = self.modalDecomp.mpi.comm.bcast(
+                            snapMat, root=0)
+                        trueModes = self.modalDecomp.mpi.comm.bcast(
+                            trueModes, root=0)
                         
-                        for indexFrom in indexFromList:
-                            #generate data and then broadcast to all procs
-                            #print '----- new case ----- '
-                            #print 'numSnaps =',numSnaps
-                            #print 'numStates =',numStates
-                            #print 'numModes =',numModes
-                            #print 'maxFieldsPerNode =',maxFieldsPerNode                          
-                            #print 'indexFrom =',indexFrom
-                            snapPaths = []
-                            for snapIndex in range(numSnaps):
-                                snapPaths.append(snapPath%snapIndex)
-                            
-                            if self.modalDecomp.mpi.isRankZero():
-                                snapMat,modeNumList,buildCoeffMat,trueModes = \
-                                  self.generate_snaps_modes(numStates,numSnaps,
-                                  numModes,indexFrom=indexFrom)
-                                for snapIndex,s in enumerate(snapPaths):
-                                    util.save_mat_text(snapMat[:,snapIndex], s)
-                            else:
-                                modeNumList = None
-                                buildCoeffMat = None
-                                snapMat = None
-                                trueModes = None
-                            if self.modalDecomp.mpi.isParallel():
-                                modeNumList = self.modalDecomp.mpi.comm.bcast(
-                                    modeNumList, root=0)
-                                buildCoeffMat = self.modalDecomp.mpi.comm.bcast(
-                                    buildCoeffMat,root=0)
-                                snapMat = self.modalDecomp.mpi.comm.bcast(
-                                    snapMat, root=0)
-                                trueModes = self.modalDecomp.mpi.comm.bcast(
-                                    trueModes, root=0)
-                                
-                            # if any mode number (minus starting indxex)
-                            # is greater than the number of coeff mat columns,
-                            # or is less than zero
-                            checkAssertRaises = False
+                    # if any mode number (minus starting indxex)
+                    # is greater than the number of coeff mat columns,
+                    # or is less than zero
+                    checkAssertRaises = False
+                    for modeNum in modeNumList:
+                        modeNumFromZero = modeNum-indexFrom
+                        if modeNumFromZero < 0 or modeNumFromZero >=\
+                            buildCoeffMat.shape[1]:
+                            checkAssertRaises = True
+                    if checkAssertRaises:
+                        self.assertRaises(ValueError, self.modalDecomp.\
+                            _compute_modes, modeNumList, modePath, 
+                            snapPaths, buildCoeffMat, indexFrom=\
+                            indexFrom)
+                    # If the coeff mat has more rows than there are 
+                    # snapshot paths
+                    elif numSnaps > buildCoeffMat.shape[0]:
+                        self.assertRaises(ValueError, self.modalDecomp.\
+                            _compute_modes, modeNumList, modePath,
+                            snapPaths, buildCoeffMat, indexFrom=\
+                            indexFrom)
+                    elif numModes > numSnaps:
+                        self.assertRaises(ValueError,
+                          self.modalDecomp._compute_modes, modeNumList,
+                          modePath, snapPaths, buildCoeffMat,
+                          indexFrom=indexFrom)
+                    # If more processors than number of snaps available,
+                    # then some procs will not have a task, not allowed.
+                    elif self.modalDecomp.mpi.getNumProcs() > numSnaps:
+                        self.assertRaises(util.MPIError, self.\
+                            modalDecomp._compute_modes, modeNumList, 
+                            modePath, snapPaths, buildCoeffMat, 
+                            indexFrom=indexFrom)
+                    else:
+                        # Test the case that only one mode is desired,
+                        # in which case user might pass in an int
+                        if len(modeNumList) == 1:
+                            modeNumList = modeNumList[0]
+
+                        # Saves modes to files
+                        self.modalDecomp._compute_modes(modeNumList, 
+                            modePath, snapPaths, buildCoeffMat, 
+                            indexFrom=indexFrom)
+
+                        # Change back to list so is iterable
+                        if isinstance(modeNumList, int):
+                            modeNumList = [modeNumList]
+
+                        self.modalDecomp.mpi.sync()
+                        
+                        # Do tests on processor 0
+                        if self.modalDecomp.mpi.isRankZero():
                             for modeNum in modeNumList:
-                                modeNumFromZero = modeNum-indexFrom
-                                if modeNumFromZero < 0 or modeNumFromZero >=\
-                                    buildCoeffMat.shape[1]:
-                                    checkAssertRaises = True
-                            if checkAssertRaises:
-                                self.assertRaises(ValueError, self.modalDecomp.\
-                                    _compute_modes, modeNumList, modePath, 
-                                    snapPaths, buildCoeffMat, indexFrom=\
-                                    indexFrom)
-                            # If the coeff mat has more rows than there are 
-                            # snapshot paths
-                            elif numSnaps > buildCoeffMat.shape[0]:
-                                self.assertRaises(ValueError, self.modalDecomp.\
-                                    _compute_modes, modeNumList, modePath,
-                                    snapPaths, buildCoeffMat, indexFrom=\
-                                    indexFrom)
-                            elif numModes > numSnaps:
-                                self.assertRaises(ValueError,
-                                  self.modalDecomp._compute_modes, modeNumList,
-                                  modePath, snapPaths, buildCoeffMat,
-                                  indexFrom=indexFrom)
-                            # If more processors than number of snaps available,
-                            # then some procs will not have a task, not allowed.
-                            elif self.modalDecomp.mpi.getNumProcs() > numSnaps:
-                                self.assertRaises(util.MPIError, self.\
-                                    modalDecomp._compute_modes, modeNumList, 
-                                    modePath, snapPaths, buildCoeffMat, 
-                                    indexFrom=indexFrom)
-                            else:
-                                # Test the case that only one mode is desired,
-                                # in which case user might pass in an int
-                                if len(modeNumList) == 1:
-                                    modeNumList = modeNumList[0]
-
-                                # Saves modes to files
-                                self.modalDecomp._compute_modes(modeNumList, 
-                                    modePath, snapPaths, buildCoeffMat, 
-                                    indexFrom=indexFrom)
-
-                                # Change back to list so is iterable
-                                if isinstance(modeNumList, int):
-                                    modeNumList = [modeNumList]
-
-                                self.modalDecomp.mpi.sync()
+                                computedMode = util.load_mat_text(
+                                    modePath % modeNum)
+                                #print 'mode number',modeNum
+                                #print 'true mode',trueModes[:,
+                                    #modeNum-indexFrom]
+                                #print 'computed mode',computedMode
+                                N.testing.assert_array_almost_equal(
+                                    computedMode, trueModes[:,modeNum-\
+                                    indexFrom])
                                 
-                                # Do tests on processor 0
-                                if self.modalDecomp.mpi.isRankZero():
-                                    for modeNum in modeNumList:
-                                        computedMode = util.load_mat_text(
-                                            modePath % modeNum)
-                                        #print 'mode number',modeNum
-                                        #print 'true mode',trueModes[:,
-                                            #modeNum-indexFrom]
-                                        #print 'computed mode',computedMode
-                                        N.testing.assert_array_almost_equal(
-                                            computedMode, trueModes[:,modeNum-\
-                                            indexFrom])
-                                        
-                                self.modalDecomp.mpi.sync()
+                        self.modalDecomp.mpi.sync()
        
         self.modalDecomp.mpi.sync()
         
@@ -353,11 +352,12 @@ class TestModalDecomp(unittest.TestCase):
                 self.assertRaises(ValueError, self.modalDecomp.\
                     _compute_upper_triangular_inner_product_chunk, paths1, 
                     paths2)
-
-        numRowSnapsList =[1, 3, 20, 100]
-        numColSnapsList = [1, 2, 4, 20, 99]
-        numStatesList = [1, 10, 25]
-        maxFieldsPerNodeList = [6, 20, 10000]
+        maxFieldsPerProc = 5
+        totalNumFields = maxFieldsPerProc * numProcs
+        numRowSnapsList =[1, int(round(totalNumFields/2.)), totalNumFields,
+          int(round(totalNumFields*2.5))]
+        numColSnapsList = numRowSnapsList
+        numStates = 6
 
         if not os.path.isdir('files_modaldecomp_test'):
             SP.call(['mkdir', 'files_modaldecomp_test'])
@@ -370,63 +370,61 @@ class TestModalDecomp(unittest.TestCase):
 
         for numRowSnaps in numRowSnapsList:
             for numColSnaps in numColSnapsList:
-                for numStates in numStatesList:
-                    # generate snapshots and save to file, only do on proc 0
-                    self.modalDecomp.mpi.sync()
-                    if self.modalDecomp.mpi.isRankZero():
-                        rowSnapMat = N.mat(N.random.random((numStates,
-                            numRowSnaps)))
-                        colSnapMat = N.mat(N.random.random((numStates,
-                            numColSnaps)))
-                        rowSnapPaths = []
-                        colSnapPaths = []
-                        for snapIndex in xrange(numRowSnaps):
-                            path = rowSnapPath % snapIndex
-                            util.save_mat_text(rowSnapMat[:,snapIndex],path)
-                            rowSnapPaths.append(path)
-                        for snapIndex in xrange(numColSnaps):
-                            path = colSnapPath % snapIndex
-                            util.save_mat_text(colSnapMat[:,snapIndex],path)
-                            colSnapPaths.append(path)
-                    else:
-                        rowSnapMat = None
-                        colSnapMat = None
-                        rowSnapPaths = None
-                        colSnapPaths = None
-                    if self.modalDecomp.mpi.isParallel():
-                        rowSnapMat = self.modalDecomp.mpi.comm.bcast(
-                            rowSnapMat, root=0)
-                        colSnapMat = self.modalDecomp.mpi.comm.bcast(
-                            colSnapMat, root=0)
-                        rowSnapPaths = self.modalDecomp.mpi.comm.bcast(
-                            rowSnapPaths, root=0)
-                        colSnapPaths = self.modalDecomp.mpi.comm.bcast(
-                            colSnapPaths, root=0)
+                # generate snapshots and save to file, only do on proc 0
+                self.modalDecomp.mpi.sync()
+                if self.modalDecomp.mpi.isRankZero():
+                    rowSnapMat = N.mat(N.random.random((numStates,
+                        numRowSnaps)))
+                    colSnapMat = N.mat(N.random.random((numStates,
+                        numColSnaps)))
+                    rowSnapPaths = []
+                    colSnapPaths = []
+                    for snapIndex in xrange(numRowSnaps):
+                        path = rowSnapPath % snapIndex
+                        util.save_mat_text(rowSnapMat[:,snapIndex],path)
+                        rowSnapPaths.append(path)
+                    for snapIndex in xrange(numColSnaps):
+                        path = colSnapPath % snapIndex
+                        util.save_mat_text(colSnapMat[:,snapIndex],path)
+                        colSnapPaths.append(path)
+                else:
+                    rowSnapMat = None
+                    colSnapMat = None
+                    rowSnapPaths = None
+                    colSnapPaths = None
+                if self.modalDecomp.mpi.isParallel():
+                    rowSnapMat = self.modalDecomp.mpi.comm.bcast(
+                        rowSnapMat, root=0)
+                    colSnapMat = self.modalDecomp.mpi.comm.bcast(
+                        colSnapMat, root=0)
+                    rowSnapPaths = self.modalDecomp.mpi.comm.bcast(
+                        rowSnapPaths, root=0)
+                    colSnapPaths = self.modalDecomp.mpi.comm.bcast(
+                        colSnapPaths, root=0)
 
-                    # If number of rows/cols is 1, test case that a string, not
-                    # a list, is passed in
-                    if len(rowSnapPaths) == 1:
-                        rowSnapPaths = rowSnapPaths[0]
-                    if len(colSnapPaths) == 1:
-                        colSnapPaths = colSnapPaths[0]
+                # If number of rows/cols is 1, test case that a string, not
+                # a list, is passed in
+                if len(rowSnapPaths) == 1:
+                    rowSnapPaths = rowSnapPaths[0]
+                if len(colSnapPaths) == 1:
+                    colSnapPaths = colSnapPaths[0]
 
-                    for maxFieldsPerNode in maxFieldsPerNodeList:
-                        self.modalDecomp = ModalDecomp(load_field=util.\
-                            load_mat_text, save_field=util.save_mat_text,
-                            inner_product=util.inner_product, maxFieldsPerNode=\
-                            maxFieldsPerNode)
+                self.modalDecomp = ModalDecomp(load_field=util.\
+                    load_mat_text, save_field=util.save_mat_text,
+                    inner_product=util.inner_product)
+                self.modalDecomp.maxFieldsPerProc = maxFieldsPerProc
 
-                        # Test different rows and cols snapshots
-                        assert_equal_mat_products(rowSnapMat.T, colSnapMat,
-                            rowSnapPaths, colSnapPaths)
-                        
-                        # Test with only the row data, to ensure nothing is
-                        # goes wrong when the same list is used twice
-                        # (potential memory issues, or lists may accidentally
-                        # get altered).  Also, test symmetric computation
-                        # method.
-                        assert_equal_mat_products(rowSnapMat.T, rowSnapMat,
-                            rowSnapPaths, rowSnapPaths)
+                # Test different rows and cols snapshots
+                assert_equal_mat_products(rowSnapMat.T, colSnapMat,
+                    rowSnapPaths, colSnapPaths)
+                
+                # Test with only the row data, to ensure nothing is
+                # goes wrong when the same list is used twice
+                # (potential memory issues, or lists may accidentally
+                # get altered).  Also, test symmetric computation
+                # method.
+                assert_equal_mat_products(rowSnapMat.T, rowSnapMat,
+                    rowSnapPaths, rowSnapPaths)
                         
 if __name__=='__main__':
     unittest.main(verbosity=2)    
