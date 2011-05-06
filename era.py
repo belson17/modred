@@ -65,13 +65,13 @@ class ERA(object):
     
     def compute_ROM(self, numStates, dtSample=None, dtModel=None):
         """
-        Computes the A,B,C ROM matrices and saves to file.
+        Computes the A,B,C ROM discrete-time matrices, with dtModel time step.
         
-        dt - is the time step between the snapshots. If it is not given, assume it
-        was determined by computeDecomp and saved as a data member.
+        dtSample - is the time step between the snapshots. If it is not given,
+        assume it is already known.
+        dtModel - time step after snapshots to A*snapshot. If not given, 
+        assume already known.
         numStates is the number of states in the ROM.
-        APath, BPath, CPath - the filenames of where to save the ROM matrices.
-        They are discrete time matrices, with the associated timestep 'dt'.
         """
         self.numStates = numStates
         if dtSample is not None: self.dtSample = dtSample
@@ -86,11 +86,11 @@ class ERA(object):
         """
         Set the signals from each output to each input.
         
-        IOSignals is a 3D array with indices [output#, input#, snap#]
-        The self.IOSignals variable must be set with the data before
+        IOSignals* are 3D arrays with indices [output#, input#, snap#]
+        The self.IOSignals* variables must be set with the data before
         self.compute_decomp can be called. This function is particularly
         useful if the data is not saved in the default format (which can
-        be loaded and set to IOSignals with self.load_impulse_outputs).
+        be loaded with self.load_impulse_outputs).
         In this way, any data format can be used, the computation/loading
         of the impulse output data done independently, and passed into
         the ERA class instance.
@@ -135,10 +135,8 @@ class ERA(object):
         Usage:
         myera = ERA()
         myera.load_impulse_outputs(['input1ToOutputs.txt','input2ToOutputs.txt'])
-        myera.compute_decomp()        
+        myera.compute_decomp()
         """
-
-       
         numInputs = len(IOPaths)       
 
         # Read the first to get some of the parameters
@@ -312,12 +310,13 @@ class ERA(object):
         #print N.matrix(N.diag(Er**-.5)).shape
         self.A = N.matrix(N.diag(Er**-.5)) * Ur.H * self.hankelMat2 * \
           Vr * N.matrix(N.diag(Er**-.5))
-        self.B = (N.matrix(N.diag(Er**.5)) * (Vr.H)[:,:self.numInputs]) * self.dtSample 
+        self.B = (N.matrix(N.diag(Er**.5)) * (Vr.H)[:,:self.numInputs]) * self.dtModel 
         # !! NEED * dt above!!
         # ERA finds a system that reproduces the impulse responses. However,
-        # the impulse is applied over a time interval dt and so has an integral
-        # 1*dt rather than just 1. This means the B matrix in the ERA system
-        # is "off" by a factor of dt. When the dt factor is included, 
+        # as far as ERA is concerned, the impulse is "applied" over a 
+        # time interval dtModel and so has a time-integral
+        # 1*dtModel rather than just 1. This means the B matrix in the ERA system
+        # is "off" by a factor of dtModel. When the dt factor is included, 
         # the ERA and BPOD
         # systems are approximately the same.
         self.C = (Ur[:self.numOutputs,:]*N.matrix(N.diag(Er**.5)))
