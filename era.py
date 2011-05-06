@@ -7,11 +7,12 @@ class ERA(object):
     
     Usage:
     The simplest way to use this class is to call 
-    myERA = ERA(dt=2.5)
+    myERA = ERA()
     myERA.load_impulse_outputs(['/path/input1ToOutputs.txt',\
       '/path/input2ToOutputs.txt',...])
     myERA.compute_decomp()
-    myERA.compute_ROM(numStates=50)
+    myERA.save_decomp('H.txt','H2.txt','U.txt','E.txt','V.txt')
+    myERA.compute_ROM(50, APath='A.txt',BPath='B.txt',CPath='C.txt')
     
     This would generate a 50-state LTI ROM with A,B,C matrices saved in text
     format. 
@@ -27,64 +28,42 @@ class ERA(object):
     to compute input-to-output signals from saved snapshots as well.
     """
   
-    def __init__(self, IOSignals = None, LSingVecsPath=None,
-        singValsPath=None, RSingVecsPath=None,
-        hankelMatPath=None, hankelMat2Path=None,  
-        save_mat=util.save_mat_text, load_mat=util.load_mat_text,
-        dt=None, mc=None, mo=None, numStates=100):
-
-        self.IOSignals = IOSignals
-        self.LSingVecsPath = LSingVecsPath
-        self.RSingVecsPath = RSingVecsPath
-        self.singValsPath = singValsPath
-        self.hankelMatPath = hankelMatPath
-        self.hankelMat2Path = hankelMat2Path
+    def __init__(self, save_mat=util.save_mat_text, \
+        load_mat=util.load_mat_text,
+        dtSample=None, dtModel=None, mc=None, mo=None, numStates=100):
+        
+        self.dtTol = 1e-6
         self.save_mat = save_mat
         self.load_mat = load_mat
-        self.dt=dt
+        self.dtSample = dtSample 
+        self.dtModel = dtModel
         self.mc=mc
         self.mo=mo
-        self.numStates=numStates
-        self.numOutputs = None
-        self.numInputs = None
-        self.numSnaps = None
+        self.numStates = numStates
 
-    def compute_decomp(self, mc=None, mo=None,
-      hankelMatPath=None,
-      hankelMat2Path=None, LSingVecsPath=None,
-      singValsPath=None, RSingVecsPath=None):
+    def compute_decomp(self, mc=None, mo=None):
         """
         Forms Hankel matrices, takes the SVD, and saves the resulting matrices
         
-        - IOPaths is a list of file names, each containing the outputs from 
-        a single impulse response of an input.
-        These files are read with the function self._loadInputToOutputs,
-        or will be read 
-        by a default function that assumes a text file with columns:
-        [t output1 output2 ...]
-        - RSingVecsPath is the location of the V matrix in the SVD of
-        the Hankel matrix, U E V* = H
-        LSingVecs*N.mat(N.diag(singVals))*RSingVecs.H = hankelMat
-        """        
-        if mc is not None: self.mc=mc
-        if mo is not None: self.mo=mo
+        Assumes that the impulse output signals are provided to the class as
+        self.IOSignalsSampled and IOSignalsAdvancedDt
         
-        if self.IOSignals is None:
+        LSingVecs*N.mat(N.diag(singVals))*RSingVecs.H = hankelMat
+        """
+        if mc is not None: self.mc = mc
+        if mo is not None: self.mo = mo
+        
+        if self.IOSignalsSampled is None or self.IOSignalsAdvancedDt is None:
             raise util.UndefinedError('No output impulse data exists in ERA instance')
         
-        # self.IOSignals now contains the impulse response data
+        # IOSignalsDt* now contains the impulse response data
         # numSnaps,numOutputs,numInputs,self.dt are determined from IOSignals.
         
-        # Form the Hankel matrices with self.IOSignals
+        # Form the Hankel matrices with self.IOSignals*
         self._compute_hankel()
         self.LSingVecs, self.singVals, self.RSingVecs = util.svd(self.hankelMat) 
-
-        self.save_decomp(hankelMatPath=hankelMatPath,\
-          hankelMat2Path=hankelMat2Path, LSingVecsPath=LSingVecsPath,\
-          singValsPath=singValsPath, RSingVecsPath=RSingVecsPath)   
     
-    def compute_ROM(self,numStates=None,dt=None,
-      APath='A_ERA_disc.txt',BPath='B_ERA_disc.txt',CPath='C_ERA_disc.txt'):
+    def compute_ROM(self, numStates, dtSample=None, dtModel=None):
         """
         Computes the A,B,C ROM matrices and saves to file.
         
@@ -94,18 +73,16 @@ class ERA(object):
         APath, BPath, CPath - the filenames of where to save the ROM matrices.
         They are discrete time matrices, with the associated timestep 'dt'.
         """
-        if numStates is not None: 
-            self.numStates=numStates
-        if dt is not None: 
-            self.dt=dt
-        if self.dt is None:
-            raise util.UndefinedError('No time step dt was given')
+        self.numStates = numStates
+        if dtSample is not None: self.dtSample = dtSample
+        if dtModel is not None: self.dtModel = dtModel
+        if self.dtSample is None or self.dtModel is None:
+            raise util.UndefinedError('No time step was given')
         # Have all of the decomposition matrices required, find ROM   
         self._compute_ROM_matrices()
-        self.save_ROM(APath=APath, BPath=BPath, CPath=CPath)
         
       
-    def set_impulse_outputs(self,IOSignals):
+    def set_impulse_outputs(self, IOSignalsSampled, IOSignalsAdvancedDt):
         """
         Set the signals from each output to each input.
         
@@ -118,23 +95,34 @@ class ERA(object):
         of the impulse output data done independently, and passed into
         the ERA class instance.
         """
-        if not isinstance(IOSignals,type(N.zeros((2,2)))):
-            raise RuntimeError('IOSignals must be a numpy array')
-        if len(IOSignals.shape) != 3:
-            raise RuntimeError('IOSignals must be a 3D numpy array')
+        if not isinstance(IOSignalsSampled, type(N.zeros(1))):
+            raise RuntimeError('IOSignalsSampled must be a numpy array')
+        if not isinstance(IOSignalsAdvancedDt, type(N.zeros(1))):
+            raise RuntimeError('IOSignalsAdvancedDt must be a numpy array')
+        if len(IOSignalsSampled.shape) != 3 or len(IOSignalsAdvancedDt.shape) != 3:
+            raise RuntimeError('IOSignalsSampled and AdvancedDt must '+\
+              'be 3D numpy arrays')
         
-        self.IOSignals = IOSignals
-        self.numOutputs,self.numInputs,self.numSnaps = N.shape(self.IOSignals)
+        self.IOSignalsSampled = IOSignalsSampled
+        self.IOSignalsAdvancedDt = IOSignalsAdvancedDt
+        self.numOutputs,self.numInputs,self.numSnaps = N.shape(self.IOSignalsSampled)
+        if self.IOSignalsSampled.shape != self.IOSignalsAdvancedDt.shape:
+            raise RuntimeError('IOSignalsSampled and IOSignalsAdvancedDt are not '+\
+              'the same size')
  
   
-    def load_impulse_outputs(self,IOPaths):
+    def load_impulse_outputs(self, IOPaths):
         """
         Reads impulse output signals, forms IOSignals array.
         
         This is a convenience function that assumes the form of the files
         to have columns
         [t output1 output2 ...] 
-        for each impulse response in separate files. 
+        for each impulse response in separate files. The times must be:
+        t0, t0+dtModel, t0+dtSample, t0+dtSample+dtModel, t0+2*dtSample, ...
+        OR, if dtModel and dtSample are equal
+        t0, t0+dtSample, t0+2*dtSample, ...
+        
         IOPaths is a list of the files, each file corresponds to a particular
         impulse response.
         
@@ -149,111 +137,110 @@ class ERA(object):
         myera.load_impulse_outputs(['input1ToOutputs.txt','input2ToOutputs.txt'])
         myera.compute_decomp()        
         """
-        numInputs = len(IOPaths)
-        
+
+       
+        numInputs = len(IOPaths)       
+
         # Read the first to get some of the parameters
-        dat = self.load_mat(IOPaths[0],delimiter=' ')
-        time = dat[:,0]
-        outputSignals = dat[:,1:]
-        self.dt = time[1]-time[0]
-        for ti in xrange(len(time)-1):
-            if abs(time[ti+1]-time[ti]-self.dt)>self.dt*1e-3:
-                raise ValueError('dt must be constant, isnt in file '+IOPaths[0])  
-        numSnaps,numOutputs = N.shape(outputSignals)
+        rawData = self.load_mat(IOPaths[0],delimiter=' ')
+        time = rawData[:,0]
+        outputSignals = rawData[:,1:]
+        dummy,numOutputs = N.shape(outputSignals)
+
+        tiSample = 0
+        t0 = time[0]
+        if abs((time[2]-t0) - (time[1]-t0)*2) < self.dtTol:
+            # dtModel and dtSample are equal, special case!
+            self.dtSample = time[1] - t0
+            self.dtModel = self.dtSample
+        else:
+            self.dtSample = time[2] - t0
+            self.dtModel = time[1] - t0
         
-        self.IOSignals = N.zeros((numOutputs,numInputs,numSnaps))
-        self.IOSignals[:,0,:] = outputSignals.T
+        for ti,tv in enumerate(time[:-1]):
+            if abs(t0 + tiSample*self.dtSample - tv) < self.dtTol:
+                # Then on a sampled dt value
+                if abs(t0 + tiSample*self.dtSample + self.dtModel - time[ti+1]) > self.dtTol:
+                    raise ValueError('Time spacing, dtModel, is wrong in '+IOPaths[0]+\
+                    '; expected dtSample '+str(self.dtSample)+' and dtModel '+\
+                    str(self.dtModel))
+                else:
+                    tiSample += 1
         
-        # Load all of the other IOFiles
-        for inputNum,IOPath in enumerate(IOPaths[1:]):
-            dat = self.load_mat(IOPath,delimiter=' ')
-            if N.abs((dat[1,0]-dat[0,0])-self.dt)>self.dt*1e-3:
-                raise ValueError('dt is not consistent for file '+IOPath)
-            self.IOSignals[:,inputNum+1,:] = dat[:,1:].T
+        # tiSample is now the number of snapshots at the sampled values
+        # This includes the IC, if it was in the impulse response output file
+        numSnaps = tiSample
         
-        #self.IOSignals has shape: (i,j,k) where i is the OUTPUT, j is input,
-        #and k is snapshot number. All are 0-indexed, obviously.   
+        self.IOSignalsSampled = N.zeros((numOutputs,numInputs,numSnaps))
+        self.IOSignalsAdvancedDt = N.zeros((numOutputs,numInputs,numSnaps))
+        
+        # Load all of the IOFiles and store the output signals
+        for inputNum,IOPath in enumerate(IOPaths):
+            rawData = self.load_mat(IOPath,delimiter=' ')
+            timeIO = rawData[:,0]
+            outputSignals = rawData[:,1:]
+            if len(time) != len(timeIO):
+                raise ValueError('Number of impulse output signals differs between'+\
+                  ' files '+IOPaths[0]+' and '+IOPath)
+            elif N.amax(abs(time - timeIO)) > self.dtTol:
+                raise ValueError('Times differ between files '+IOPaths[0]+\
+                  ' and '+IOPath)
+            tiSample = 0
+            for ti,tv in enumerate(timeIO[:-1]):
+                if abs(t0 + tiSample*self.dtSample - tv) < self.dtTol:
+                    # Then on a sampled dt value
+                    if abs(t0 + tiSample*self.dtSample + self.dtModel - rawData[ti+1,0]) > self.dtTol:
+                        raise ValueError('Time spacing, dtModel, is wrong in '+\
+                          IOPaths[0]+'; expected dtSample '+\
+                          str(self.dtSample)+' and dtModel '+\
+                          str(self.dtModel))
+                    else:
+                        self.IOSignalsSampled[:,inputNum,tiSample] = \
+                          outputSignals[ti,:].T
+                        self.IOSignalsAdvancedDt[:,inputNum,tiSample] = \
+                          outputSignals[ti+1,:].T
+                        tiSample += 1
+                  
+        # self.IOSignalsSampled and Model have shape:
+        # (i,j,k) where i is the OUTPUT, j is input,
+        # and k is snapshot number. All are 0-indexed. 
+        # For example,  the first input's
+        # impulse response output signals are in [:,0,:].   
  
-    def save_decomp(self,hankelMatPath=None, \
-      hankelMat2Path=None, LSingVecsPath=None, \
-      singValsPath=None, RSingVecsPath=None):
+    def save_decomp(self, hankelMatPath, hankelMat2Path, 
+      LSingVecsPath, singValsPath, RSingVecsPath):
         """Saves the decomposition matrices"""
-        if LSingVecsPath is not None: self.LSingVecsPath=LSingVecsPath
-        if RSingVecsPath is not None: self.RSingVecsPath=RSingVecsPath
-        if singValsPath is not None: self.singValsPath=singValsPath
-        if hankelMatPath is not None: self.hankelMatPath=hankelMatPath
-        if hankelMat2Path is not None: self.hankelMat2Path=hankelMat2Path 
-        
-        if self.hankelMatPath is not None:  
-            self.save_mat(self.hankelMat,self.hankelMatPath)
-        else:
-            print 'WARNING - No hankel matrix path given, not saving it'
-        
-        if self.hankelMat2Path is not None:  
-            self.save_mat(self.hankelMat2,self.hankelMat2Path)
-        else:
-            print 'WARNING - No A*(hankel matrix) path given, not saving it'
-        
-        if self.LSingVecsPath is not None:  
-            self.save_mat(self.LSingVecs,self.LSingVecsPath)
-        else:
-            print 'WARNING - No left singular vectors path given, not saving it'
-        
-        if self.singValsPath is not None:  
-            self.save_mat(self.singVals,self.singValsPath)
-        else:
-            print 'WARNING - No singular values path given, not saving it'
-        
-        if self.RSingVecsPath is not None:  
-            self.save_mat(self.RSingVecs,self.RSingVecsPath)
-        else:
-            print 'WARNING - No right singular vectores path given, not saving it'
+        self.save_mat(self.hankelMat, hankelMatPath)
+        self.save_mat(self.hankelMat2,hankelMat2Path)
+        self.save_mat(self.LSingVecs,LSingVecsPath)
+        self.save_mat(self.singVals,singValsPath)
+        self.save_mat(self.RSingVecs,RSingVecsPath)
     
         
-    def load_decomp(self,hankelMatPath=None,
-        hankelMat2Path=None, LSingVecsPath=None,
-        singValsPath=None, RSingVecsPath=None,
-        numInputs=None,numOutputs=None):
+    def load_decomp(self, hankelMatPath, hankelMat2Path, \
+      LSingVecsPath, singValsPath, RSingVecsPath,
+      numInputs = None, numOutputs = None):
         """Loads the decomposition matrices, computes SVD if necessary"""
-        if LSingVecsPath is not None: self.LSingVecsPath=LSingVecsPath
-        if RSingVecsPath is not None: self.RSingVecsPath=RSingVecsPath
-        if singValsPath is not None: self.singValsPath=singValsPath
-        if hankelMatPath is not None: self.hankelMatPath=hankelMatPath
-        if hankelMat2Path is not None: self.hankelMat2Path=hankelMat2Path 
         if numInputs is not None: self.numInputs = numInputs
         if numOutputs is not None: self.numOutputs = numOutputs
+        if self.numOutputs is None or self.numInputs is None:
+            raise util.UndefinedError(\
+              'Specify number of outputs and inputs when loading decomp')
+              
+        self.LSingVecs=self.load_mat(LSingVecsPath)
+        self.RSingVecs=self.load_mat(RSingVecsPath)    
+        self.singVals=self.load_mat(singValsPath)    
+        self.hankelMat=self.load_mat(hankelMatPath)
+        self.hankelMat2=self.load_mat(hankelMat2Path)
         
-        if self.LSingVecsPath is not None:
-            self.LSingVecs=self.load_mat(self.LSingVecsPath)
-        
-        if self.RSingVecsPath is not None:
-            self.RSingVecs=self.load_mat(self.RSingVecsPath)    
-        
-        if self.singValsPath is not None:
-            self.singVals=self.load_mat(self.singValsPath)    
-        
-        if self.hankelMatPath is not None:
-            self.hankelMat=self.load_mat(self.hankelMatPath)
-        if self.hankelMat is None:
-            raise UndefinedError('No hankel matrix data is given, required')
-        
-        if self.hankelMat2Path is not None:
-            self.hankelMat2=self.load_mat(self.hankelMat2Path)
-        if self.hankelMat2 is None:
-            raise UndefinedError('No hankel matrix 2 data is given, required')  
-        
-        self.mo,self.mc = N.shape(self.hankelMat)
-        if (self.mo,self.mc) != self.hankelMat2.shape:
+        s = self.hankelMat.shape
+        self.mo = s[0]/self.numOutputs
+        self.mc = s[1]/self.numInputs
+        if self.hankelMat.shape != self.hankelMat2.shape:
             raise RuntimeError('Sizes of hankel and hankel2 matrices differ')
-        
-        if self.RSingVecsPath is None or self.LSingVecsPath is None or \
-          self.singValsPath is None:
-            print 'Paths to the SVD decomp matrices were not given so '+\
-              'computing the SVD now' 
-            self.LSingVecs, self.singVals, self.RSingVecs = util.svd(self.hankelMat)
-        
+                
   
-    def save_ROM(self,APath,BPath,CPath):
+    def save_ROM(self, APath, BPath, CPath):
         """Saves the A, B, and C LTI matrices to file"""  
         self.save_mat(self.A, APath)
         self.save_mat(self.B, BPath)
@@ -269,31 +256,36 @@ class ERA(object):
         Computes the Hankel and A*Hankel matrix (H and H' in Ma 2010).
         
         Stores them internally as self.hankelMat and self.hankelMat2.
-        Requires that self.IOSignals be set only
+        Requires that self.IOSignalsSampled and AdvanceDt be set only
         """
-        self.numOutputs,self.numInputs,self.numSnaps = N.shape(self.IOSignals)
+        self.numOutputs,self.numInputs,self.numSnaps = N.shape(self.IOSignalsSampled)
+        #print 'num of snaps, including IC, is ',self.numSnaps
+
         if self.mo is None or self.mc is None:
-            self.mo = ((self.numSnaps-2)/2)
-            self.mc = ((self.numSnaps-2)/2)
+            self.mo = ((self.numSnaps-1)/2)
+            self.mc = ((self.numSnaps-1)/2)
             #print 'Assuming square Hankel matrix with max number of snapshots'
         #print 'mo, mc, and numSnapshots are', self.mo,self.mc,numSnaps
  
-        if (self.mo + self.mc)+2 > self.numSnaps:
-            raise ValueError('mo+mc+2 must be less than the number of snapshots')
+        if (self.mo + self.mc + 1) > self.numSnaps:
+            raise ValueError('mo+mc+1 must be less than the number of snapshots')
         
         #Now form the hankel matrix, H and H' from Ma 2010
-        self.hankelMat = N.zeros((self.numOutputs*(self.mo+1),
-          self.numInputs*(self.mc+1)))
+        self.hankelMat = N.zeros((self.numOutputs*(self.mo),
+          self.numInputs*(self.mc)))
         self.hankelMat2 = N.zeros(N.shape(self.hankelMat))
-        for no in range(self.mo+1):
-            for nc in range(self.mc+1):
+        #print 'forming hankel mat and mo,mc is',self.mo,self.mc
+        #print 'hankel matrices have size',self.hankelMat.shape
+        #print 'shape of iosignals is',self.IOSignalsSampled.shape
+        for no in range(self.mo):
+            for nc in range(self.mc):
                 #print 'shape of H',N.shape(H[no:no+numOutputs,nc:nc+numInputs])
                 #print 'shape of IOSignals',N.shape(IOSignals[:,:,no+nc])
                 #print no,nc
                 self.hankelMat[no*self.numOutputs:(no+1)*self.numOutputs,\
-                  nc*self.numInputs:(nc+1)*self.numInputs]=self.IOSignals[:,:,no+nc]
+                  nc*self.numInputs:(nc+1)*self.numInputs]=self.IOSignalsSampled[:,:,no+nc]
                 self.hankelMat2[no*self.numOutputs:(no+1)*self.numOutputs,\
-                  nc*self.numInputs:(nc+1)*self.numInputs]=self.IOSignals[:,:,no+nc+1]
+                  nc*self.numInputs:(nc+1)*self.numInputs]=self.IOSignalsAdvancedDt[:,:,no+nc]
         #computed Hankel matrices and SVD as data members
     
     
@@ -320,7 +312,7 @@ class ERA(object):
         #print N.matrix(N.diag(Er**-.5)).shape
         self.A = N.matrix(N.diag(Er**-.5)) * Ur.H * self.hankelMat2 * \
           Vr * N.matrix(N.diag(Er**-.5))
-        self.B = (N.matrix(N.diag(Er**.5)) * (Vr.H)[:,:self.numInputs]) * self.dt 
+        self.B = (N.matrix(N.diag(Er**.5)) * (Vr.H)[:,:self.numInputs]) * self.dtSample 
         # !! NEED * dt above!!
         # ERA finds a system that reproduces the impulse responses. However,
         # the impulse is applied over a time interval dt and so has an integral

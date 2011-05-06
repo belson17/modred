@@ -13,17 +13,20 @@ class testERA(unittest.TestCase):
         self.testDirectory = 'files_era_test/'
         self.IOPaths = [self.testDirectory+'input1_impulse.txt', \
           self.testDirectory+'input2_impulse.txt']
-        outputSignals = util.load_mat_text(self.IOPaths[0],delimiter=' ')
+        rawData = util.load_mat_text(self.IOPaths[0],delimiter=' ')
+        outputSignals = rawData[:,1:]
         self.dt = 25.
-        self.numSnaps,self.numOutputs = N.shape(outputSignals[:,1:])
+        self.numSnaps,self.numOutputs = N.shape(outputSignals[:-1,:])
         self.numInputs = len(self.IOPaths)
         
-        self.IOSignals = N.zeros((self.numOutputs,self.numInputs,self.numSnaps))
+        self.IOSignalsSampled = N.zeros((self.numOutputs,self.numInputs,self.numSnaps))
+        self.IOSignalsAdvancedDt = N.zeros((self.numOutputs,self.numInputs,self.numSnaps))
         self.time = outputSignals[:,0]
-        self.IOSignals[:,0,:] = outputSignals[:,1:].T
-        for inputIndex, IOPath in enumerate(self.IOPaths[1:]):
-            outputSignals = util.load_mat_text(IOPath,delimiter=' ')
-            self.IOSignals[:,inputIndex+1,:] = outputSignals[:,1:].T
+        for inputIndex, IOPath in enumerate(self.IOPaths):
+            rawData = util.load_mat_text(IOPath,delimiter=' ')
+            outputSignals = rawData[:,1:]
+            self.IOSignalsSampled[:,inputIndex,:] = outputSignals[:-1,:].T
+            self.IOSignalsAdvancedDt[:,inputIndex,:] = outputSignals[1:,:].T
         
         self.hankelMatKnown = \
           N.mat(util.load_mat_text(self.testDirectory+'hankelMatKnown.txt'))
@@ -46,13 +49,33 @@ class testERA(unittest.TestCase):
         
     def tearDown(self):
         """Deletes all of the matrices created by the tests"""
-        SP.call(['rm -f '+self.testDirectory+'*Computed*'],shell=True)
+        SP.call(['rm -f '+self.testDirectory+'*Computed*'], shell=True)
+        SP.call(['rm -f '+self.testDirectory+'*delete_me*'], shell=True)
+
+    def generate_unequal_dt_data(self, numInputs, numOutputs, numSnaps, \
+      dtSample, dtModel, t0):
+        """Generates data that has unequal dtModel and dtSample"""
+        time = N.array([t0,t0+dtModel])
+        for snapNum in range(1,numSnaps):
+            time = N.append(time, t0 + snapNum*dtSample)
+            time = N.append(time, t0 + snapNum*dtSample + dtModel)
+        #print 'length of time is',len(time)
+        #print 'time is',time
+        IOSignalsAll = N.random.random((numOutputs, numInputs, 2*numSnaps))
+        IOSignalsSampled = IOSignalsAll[:,:,::2]
+        IOSignalsAdvancedDt = IOSignalsAll[:,:,1::2]
+        impulseFilePaths = []
+        impulseFilePath = self.testDirectory+'delete_me_impulse%03d.txt'
+        for inputNum in range(numInputs):
+            impulseFilePaths.append(impulseFilePath%inputNum)
+            rawData = N.concatenate( \
+              (time.reshape(len(time),1),IOSignalsAll[:,inputNum,:].T), axis=1)
+            util.save_mat_text(rawData,impulseFilePath%inputNum)
+        return IOSignalsSampled, IOSignalsAdvancedDt, time, impulseFilePaths
+
 
     def test_init(self):
         """Tests the constructor"""
-        IOSignals = N.random.random((4,5,6))
-        myERA = era.ERA(IOSignals = IOSignals)
-        N.testing.assert_array_almost_equal(myERA.IOSignals,IOSignals)
         
         # Should test others
         
@@ -64,46 +87,90 @@ class testERA(unittest.TestCase):
         for numOutputs in numOutputsList:
             for numInputs in numInputsList:
                 for numSnaps in numSnapsList:
-                    IOSignals = N.random.random((numOutputs,numInputs,numSnaps))%100
-                    myERA = era.ERA()
-                    myERA.set_impulse_outputs(IOSignals)
+                    IOSignalsSampled = N.random.random((numOutputs,numInputs,numSnaps))%100
+                    IOSignalsAdvancedDt = N.random.random((numOutputs,numInputs,numSnaps))%100
+                    myERA = era.ERA(dtModel=self.dt, dtSample=self.dt)
+                    myERA.set_impulse_outputs(IOSignalsSampled, IOSignalsAdvancedDt)
                     self.assertEqual(myERA.numOutputs,numOutputs)
                     self.assertEqual(myERA.numInputs,numInputs)
                     self.assertEqual(myERA.numSnaps,numSnaps)
-                    N.testing.assert_array_almost_equal(myERA.IOSignals, IOSignals)
+                    N.testing.assert_array_almost_equal(\
+                      myERA.IOSignalsSampled, IOSignalsSampled)
+                    N.testing.assert_array_almost_equal(\
+                      myERA.IOSignalsAdvancedDt, IOSignalsAdvancedDt)
+    
     
     def test_load_impulse_outputs(self):
         """Test that can load in a list of impulse output signals from file"""
         myERA = era.ERA()
         myERA.load_impulse_outputs(self.IOPaths)
-        N.testing.assert_array_almost_equal(myERA.IOSignals,self.IOSignals)
+        N.testing.assert_array_almost_equal(myERA.IOSignalsSampled,self.IOSignalsSampled)
+        N.testing.assert_array_almost_equal(myERA.IOSignalsAdvancedDt,self.IOSignalsAdvancedDt)
+        
+        # Test unequal dt spacing
+        numInputs = 2
+        numOutputs = 3
+        numSnaps = 10
+        dtSample = 1.5
+        dtModel = .1
+        t0 = 10.
+        
+        IOSignalsSampledTrue, IOSignalsAdvancedDtTrue, timeTrue, \
+          impulseFilePathsTrue = \
+          self.generate_unequal_dt_data(numInputs, numOutputs, numSnaps, \
+          dtSample, dtModel, t0)
+        
+        myERA = era.ERA()
+        myERA.load_impulse_outputs(impulseFilePathsTrue)
+        self.assertAlmostEqual(myERA.dtSample, dtSample)
+        self.assertAlmostEqual(myERA.dtModel, dtModel)
+        N.testing.assert_array_almost_equal(\
+          myERA.IOSignalsSampled, IOSignalsSampledTrue)
+        N.testing.assert_array_almost_equal(\
+          myERA.IOSignalsAdvancedDt, IOSignalsAdvancedDtTrue)
+        
+        
     
     def test__compute_hankel(self):
         """Test that with given signals, compute correct hankel matrix"""
         myERA = era.ERA()
-        myERA.IOSignals = self.IOSignals
+        myERA.IOSignalsSampled = self.IOSignalsSampled
+        myERA.IOSignalsAdvancedDt= self.IOSignalsAdvancedDt
         myERA._compute_hankel()
-        N.testing.assert_array_almost_equal(myERA.hankelMat,self.hankelMatKnown)
-        N.testing.assert_array_almost_equal(myERA.hankelMat2,self.hankelMat2Known)
+        N.testing.assert_array_almost_equal(myERA.hankelMat, \
+          self.hankelMatKnown[:myERA.hankelMat.shape[0],:myERA.hankelMat.shape[1]])
+        N.testing.assert_array_almost_equal(myERA.hankelMat2, \
+          self.hankelMat2Known[:myERA.hankelMat2.shape[0],:myERA.hankelMat2.shape[1]])           
+        
         
     def test_compute_decomp(self):
         myERA = era.ERA()
-        myERA.IOSignals = self.IOSignals
+        myERA.IOSignalsSampled = self.IOSignalsSampled
+        myERA.IOSignalsAdvancedDt= self.IOSignalsAdvancedDt
         hankelMatPath = self.testDirectory+'hankelMatComputed.txt'
         hankelMat2Path = self.testDirectory+'hankelMat2Computed.txt'
         LSingVecsPath = self.testDirectory+'LSingVecsComputed.txt'
         singValsPath = self.testDirectory+'singValsComputed.txt'
         RSingVecsPath = self.testDirectory+'RSingVecsComputed.txt'
-        myERA.compute_decomp(hankelMatPath=hankelMatPath,
-          hankelMat2Path = hankelMat2Path, LSingVecsPath=LSingVecsPath,
-          singValsPath = singValsPath, RSingVecsPath=RSingVecsPath)
-        
-        N.testing.assert_array_almost_equal(myERA.hankelMat,self.hankelMatKnown)
-        N.testing.assert_array_almost_equal(myERA.hankelMat2,self.hankelMat2Known)
-        N.testing.assert_array_almost_equal(myERA.LSingVecs,self.LSingVecsKnown)
+        myERA.compute_decomp()
+        myERA.save_decomp(hankelMatPath,
+          hankelMat2Path , LSingVecsPath,
+          singValsPath, RSingVecsPath)
+        s = myERA.hankelMat.shape
+        N.testing.assert_array_almost_equal(myERA.hankelMat, \
+          self.hankelMatKnown[:s[0],:s[1]])
+        N.testing.assert_array_almost_equal(myERA.hankelMat2, \
+          self.hankelMat2Known[:s[0], :s[1]])
+        s = myERA.LSingVecs.shape
+        N.testing.assert_array_almost_equal(myERA.LSingVecs, \
+          self.LSingVecsKnown[:s[0],:s[1]])
+          
+        s = N.squeeze(myERA.singVals).shape
         N.testing.assert_array_almost_equal(N.squeeze(myERA.singVals),
-          N.squeeze(self.singValsKnown))
-        N.testing.assert_array_almost_equal(myERA.RSingVecs,self.RSingVecsKnown)
+          N.squeeze(self.singValsKnown)[:s[0]])
+        s= myERA.RSingVecs.shape
+        N.testing.assert_array_almost_equal(myERA.RSingVecs, \
+          self.RSingVecsKnown[:s[0],:s[1]])
         
         # Load in saved decomp matrices, check they are the same
         hankelMatLoaded = util.load_mat_text(hankelMatPath)
@@ -118,6 +185,7 @@ class testERA(unittest.TestCase):
         N.testing.assert_array_almost_equal(N.squeeze(singValsLoaded), \
           N.squeeze(self.singValsKnown))
         N.testing.assert_array_almost_equal(RSingVecsLoaded,self.RSingVecsKnown)
+    
     
     def test_compute_ROM(self):
         """Test forming the ROM matrices from decomp matrices"""
@@ -134,13 +202,12 @@ class testERA(unittest.TestCase):
         BPathComputed = self.testDirectory+'BComputed.txt'
         CPathComputed = self.testDirectory+'CComputed.txt'
         # Gives an error if there is no time step specified or read from file
-        self.assertRaises(util.UndefinedError,myERA.compute_ROM,\
-          None,None,APathComputed,BPathComputed,\
-          CPathComputed)
+        self.assertRaises(util.UndefinedError,myERA.compute_ROM,self.numStates)
         
-        myERA.dt = self.dt
-        myERA.compute_ROM(APath=APathComputed,BPath=BPathComputed,
-          CPath=CPathComputed)
+        myERA.dtSample = self.dt
+        myERA.dtModel = self.dt
+        myERA.compute_ROM(self.numStates)
+        myERA.save_ROM(APathComputed, BPathComputed, CPathComputed)
         
         N.testing.assert_array_almost_equal(myERA.A,self.AKnown)
         N.testing.assert_array_almost_equal(myERA.B,self.BKnown)
@@ -155,7 +222,7 @@ class testERA(unittest.TestCase):
         N.testing.assert_array_almost_equal(CLoaded,self.CKnown)
 
     def test_save_load_decomp(self):
-        """Test that properly saves decomp matrices"""
+        """Test that properly saves and loads decomp matrices"""
         myERA = era.ERA(numStates = self.numStates)
         myERA.hankelMat = copy.deepcopy(self.hankelMatKnown)
         myERA.hankelMat2 = copy.deepcopy(self.hankelMat2Known)
@@ -169,13 +236,13 @@ class testERA(unittest.TestCase):
         singValsPath = self.testDirectory+'singValsComputed.txt'
         RSingVecsPath = self.testDirectory+'RSingVecsComputed.txt'
         
-        myERA.save_decomp(hankelMatPath=hankelMatPath,
-          hankelMat2Path = hankelMat2Path, LSingVecsPath=LSingVecsPath,
-          singValsPath = singValsPath, RSingVecsPath=RSingVecsPath)
+        myERA.save_decomp(hankelMatPath,
+          hankelMat2Path, LSingVecsPath,
+          singValsPath , RSingVecsPath)
         
-        myERA.load_decomp(hankelMatPath=hankelMatPath,
-          hankelMat2Path = hankelMat2Path, LSingVecsPath=LSingVecsPath,
-          singValsPath = singValsPath, RSingVecsPath=RSingVecsPath,
+        myERA.load_decomp(hankelMatPath,
+          hankelMat2Path , LSingVecsPath,
+          singValsPath, RSingVecsPath,
           numInputs = self.numInputs, numOutputs=self.numOutputs)
         
         N.testing.assert_array_almost_equal(myERA.hankelMat,self.hankelMatKnown)
@@ -185,9 +252,13 @@ class testERA(unittest.TestCase):
           N.squeeze(self.singValsKnown))
         N.testing.assert_array_almost_equal(myERA.RSingVecs,self.RSingVecsKnown)
         
+        """
+        # Old test, used to allow only loading the Hankel matrices and not 
+        # the SVD matrices. Now only the entire set can be loaded. Might
+        # include this feature again in the future, but hardly used.
         myERANoSVD = era.ERA()
-        myERANoSVD.load_decomp(hankelMatPath=hankelMatPath,
-          hankelMat2Path = hankelMat2Path,numInputs = self.numInputs, 
+        myERANoSVD.load_decomp(hankelMatPath,
+          hankelMat2Path,numInputs = self.numInputs, 
           numOutputs=self.numOutputs)
         
         N.testing.assert_array_almost_equal(myERANoSVD.hankelMat,self.hankelMatKnown)
@@ -196,7 +267,7 @@ class testERA(unittest.TestCase):
         N.testing.assert_array_almost_equal(N.squeeze(myERANoSVD.singVals),
           N.squeeze(self.singValsKnown))
         N.testing.assert_array_almost_equal(myERANoSVD.RSingVecs,self.RSingVecsKnown)     
-        
+        """
         
         
     def test_save_ROM(self):
