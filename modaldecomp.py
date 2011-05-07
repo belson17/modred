@@ -112,11 +112,13 @@ class ModalDecomp(object):
                 startRowIndex) * endColIndex
             percentCompletedIPs = 100. * numCompletedIPs / (numCols *\
                 numRows)
-            print >> sys.stderr, ('Processor %d completed %.1f%% of inner products,',\
+           
+            print >> sys.stderr, ('Processor %d completed %.1f%% of '+\
+                'inner products, '+\
                 'IPMat[:%d, :%d] of IPMat[:%d, :%d]') % (self.mpi.getRank(),\
                 percentCompletedIPs, endRowIndex, endColIndex, numRows, numCols)
-
-
+          
+          
     def _compute_inner_product_chunk(self, rowFieldPaths, colFieldPaths):
         """ Computes inner products of snapshots in memory-efficient chunks
         
