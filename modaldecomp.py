@@ -472,7 +472,7 @@ class ModalDecomp(object):
         to file.        
         """
         if self.save_field is None:
-            raise UndefinedError('save_field is undefined')
+            raise util.UndefinedError('save_field is undefined')
                    
         if isinstance(outputFieldPaths, str):
             outputFieldPaths = [outputFieldPaths]
