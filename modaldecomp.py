@@ -35,8 +35,8 @@ class ModalDecomp(object):
             self.maxFieldsPerNode = 2
             if self.mpi.isRankZero() and self.verbose:
                 print 'Warning - maxFieldsPerNode was not specified. ' +\
-                    'Assuming 2 fields can be loaded per node (in serial). ' +\
-                    'Increase maxFieldsPerNode for a speedup.'
+                    'Assuming 2 fields can be loaded per node. Increase ' +\
+                    'maxFieldsPerNode for a speedup.'
         else:
             self.maxFieldsPerNode = maxFieldsPerNode
         self.numNodes = numNodes
@@ -48,7 +48,8 @@ class ModalDecomp(object):
             if self.verbose:
                 print 'Warning - maxFieldsPerNode too small for given ' +\
                     'number of procs, nodes.  Assuming 2 fields can be ' +\
-                    'loaded per proc. Increase maxFieldsPerNode for a speedup.'
+                    'loaded per processor. Increase maxFieldsPerNode for a ' +\
+                    'speedup.'
         else:
             self.maxFieldsPerProc = self.maxFieldsPerNode * self.numNodes / \
                 self.mpi.getNumProcs()
@@ -112,12 +113,11 @@ class ModalDecomp(object):
                 startRowIndex) * endColIndex
             percentCompletedIPs = 100. * numCompletedIPs / (numCols *\
                 numRows)
-           
-            print >> sys.stderr, ('Processor %d completed %.1f%% of '+\
-                'inner products, '+\
-                'IPMat[:%d, :%d] of IPMat[:%d, :%d]') % (self.mpi.getRank(),\
-                percentCompletedIPs, endRowIndex, endColIndex, numRows, numCols)
-          
+            print >> sys.stderr, ('Processor %d completed %.1f%% of inner ' +\
+                'products: IPMat[:%d, :%d] of IPMat[:%d, :%d]') % (self.mpi.\
+                getRank(), percentCompletedIPs, endRowIndex, endColIndex, 
+                numRows, numCols)
+  
           
     def _compute_inner_product_chunk(self, rowFieldPaths, colFieldPaths):
         """ Computes inner products of snapshots in memory-efficient chunks
@@ -345,11 +345,6 @@ class ModalDecomp(object):
         rowFieldProcAssignments = self.mpi.find_proc_assignments(range(
             numRowFields))
 
-        for assignment in rowFieldProcAssignments:
-            if len(assignment) == 0:
-                raise util.MPIError('At least one processor has no tasks. ' +\
-                    'This is not currently supported. Lower number of procs.')
-        
         if self.mpi.isRankZero() and rowFieldProcAssignments[0][-1] -\
             rowFieldProcAssignments[0][0] > self.maxFieldsPerProc and self.\
             verbose:
@@ -358,26 +353,90 @@ class ModalDecomp(object):
                 'processors to avoid this and get a big speedup.') %\
                 numColFields
 
-        innerProductMatChunk = self._compute_inner_product_chunk(rowFieldPaths[
-            rowFieldProcAssignments[self.mpi.getRank()][0]:
-            rowFieldProcAssignments[self.mpi.getRank()][-1]+1], colFieldPaths)
+        # Only compute if task list is nonempty
+        if len(rowFieldProcAssignments[self.mpi.getRank()]) != 0:
+            innerProductMatChunk = self._compute_inner_product_chunk(
+                rowFieldPaths[rowFieldProcAssignments[self.mpi.getRank()][0]:
+                rowFieldProcAssignments[self.mpi.getRank()][-1]+1], 
+                colFieldPaths)
+        else:  
+            innerProductMatChunk = None
 
-        #Gather list of chunks from each processor, ordered by rank
+        # Gather list of chunks from each processor, ordered by rank
         if self.mpi.isParallel():
             innerProductMatChunkList = self.mpi.comm.allgather(
                 innerProductMatChunk)
             innerProductMat = N.mat(N.zeros((numRowFields, numColFields)))
 
-            #concatenate the chunks of inner product matrix
-            for rank in xrange(self.mpi.getNumProcs()):
-                innerProductMat[rowFieldProcAssignments[rank][0]:\
-                    rowFieldProcAssignments[rank][-1]+1] =\
-                    innerProductMatChunkList[rank]
+            # concatenate the chunks of inner product matrix for nonempty tasks
+            for rank, currentInnerProductMatChunk in enumerate(
+                innerProductMatChunkList):
+                if currentInnerProductMatChunk is not None:
+                    innerProductMat[rowFieldProcAssignments[rank][0]:\
+                        rowFieldProcAssignments[rank][-1]+1] =\
+                        currentInnerProductMatChunk
         else:
             innerProductMat = innerProductMatChunk 
 
         if transpose:
             innerProductMat = innerProductMat.T
+
+        return innerProductMat
+     
+    def compute_symmetric_inner_product_matrix(self, fieldPaths):
+        """ Computes a symmetric matrix of inner products and returns it.
+        
+        Because the inner product is symmetric, only one set of snapshots needs
+        to be specified.  This method will call
+        _compute_upper_triangular_inner_product_matrix_chunk and at the end
+        will symemtrize the upper triangular matrix.
+        """
+      
+        if isinstance(fieldPaths,str):
+            fieldPaths = [fieldPaths]
+          
+        numFields = len(fieldPaths)
+ 
+        rowFieldProcAssignments = self.mpi.find_proc_assignments(range(
+            numFields), taskWeights=range(numFields, 0, -1))
+
+        if self.mpi.isRankZero() and rowFieldProcAssignments[0][-1] -\
+            rowFieldProcAssignments[0][0] > self.maxFieldsPerProc and self.\
+            verbose:
+            print ('Warning: Each processor may have to read the snapshots ' +\
+                '(%d total) multiple times. Increase number of processors ' +\
+                'to avoid this and get a big speedup.') % numFields
+
+        # Perform task if task assignment is not empty
+        if len(rowFieldProcAssignments[self.mpi.getRank()]) != 0:
+            innerProductMatChunk = self.\
+                _compute_upper_triangular_inner_product_chunk(fieldPaths[
+                rowFieldProcAssignments[self.mpi.getRank()][0]:
+                rowFieldProcAssignments[self.mpi.getRank()][-1] + 1], 
+                fieldPaths[rowFieldProcAssignments[self.mpi.getRank()][0]:])
+        else:
+            innerProductMatChunk = None
+
+        # Gather list of chunks from each processor, ordered by rank
+        if self.mpi.isParallel():
+            innerProductMatChunkList = self.mpi.comm.allgather(
+                innerProductMatChunk)
+            innerProductMat = N.mat(N.zeros((numFields, numFields)))
+
+            # concatenate the chunks of inner product matrix for procs with
+            # nonempty tasks
+            for rank, currentInnerProductMatChunk in enumerate(
+                innerProductMatChunkList):
+                if currentInnerProductMatChunk is not None:
+                    innerProductMat[rowFieldProcAssignments[rank][0]:\
+                        rowFieldProcAssignments[rank][-1] + 1,
+                        rowFieldProcAssignments[rank][0]:] =\
+                        currentInnerProductMatChunk
+        else:
+            innerProductMat = innerProductMatChunk 
+
+        # Symmetrize matrix
+        innerProductMat += N.triu(innerProductMat, 1).T
 
         return innerProductMat
     
@@ -421,7 +480,8 @@ class ModalDecomp(object):
         numSnaps = len(snapPaths)
         
         if numModes > numSnaps:
-            raise ValueError('cannot compute more modes than number of snapshots')
+            raise ValueError('cannot compute more modes than number of ' +\
+                'snapshots')
                    
         for modeNum in modeNumList:
             if modeNum < indexFrom:
@@ -445,8 +505,6 @@ class ModalDecomp(object):
         for modeNum in modeNumList:
             modePaths.append(modePath%modeNum)
         self.lin_combine_fields(modePaths,snapPaths,fieldCoeffMatReordered)
-      
-    
     
     
     def lin_combine_fields(self,outputFieldPaths,inputFieldPaths,fieldCoeffMat):
@@ -487,7 +545,8 @@ class ModalDecomp(object):
             print 'rows of fieldCoeffMat',fieldCoeffMat.shape[0]
             raise ValueError('coeff mat has fewer rows than num of input paths')
         if numOutputFields > fieldCoeffMat.shape[1]:
-            raise ValueError('Coeff matrix has fewer cols than num of output paths')            
+            raise ValueError('Coeff matrix has fewer cols than num of ' +\
+                'output paths')            
         if numInputFields < self.mpi.getNumProcs():
             raise util.MPIError('Cannot find outputs when fewer inputs '+\
                'than number of processors')
@@ -499,7 +558,8 @@ class ModalDecomp(object):
             print 'Warning - fewer output paths than rows in the coeff matrix'
             print '  some cols of coeff matrix will not be used'
         
-        inputProcAssignments = self.mpi.find_proc_assignments(range(len(inputFieldPaths)))
+        inputProcAssignments = self.mpi.find_proc_assignments(range(len(
+            inputFieldPaths)))
         for assignment in inputProcAssignments:
             if len(assignment) == 0:
                 raise MPIError('At least one processor has no tasks'+\
@@ -510,7 +570,8 @@ class ModalDecomp(object):
         numOutputsPerProc = self.maxFieldsPerProc - 1       
         
         for startOutputIndex in range(0,numOutputFields,numOutputsPerProc):
-            endOutputIndex = min(numOutputFields, startOutputIndex + numOutputsPerProc) 
+            endOutputIndex = min(numOutputFields, startOutputIndex +\
+                numOutputsPerProc) 
             # Pass the work to individual processors    
             outputLayers = self.lin_combine_fields_chunk(
                 inputFieldPaths[inputProcAssignments[self.mpi.getRank()][0] : \
@@ -526,7 +587,8 @@ class ModalDecomp(object):
             saveOutputIndexAssignments = \
               self.mpi.find_proc_assignments(range(len(outputLayers)))
             if len(saveOutputIndexAssignments[self.mpi.getRank()]) != 0:
-                for outputIndex in saveOutputIndexAssignments[self.mpi.getRank()]:
+                for outputIndex in saveOutputIndexAssignments[self.mpi.\
+                    getRank()]:
                     self.save_field(outputLayers[outputIndex], 
                       outputFieldPaths[startOutputIndex + outputIndex])
  

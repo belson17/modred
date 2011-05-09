@@ -315,43 +315,57 @@ class TestModalDecomp(unittest.TestCase):
         (compute_inner_product_chunk)
         """ 
         def assert_equal_mat_products(mat1, mat2, paths1, paths2):
+            # Path list may actually be a string, in which case covert to list
+            if isinstance(paths1, str):
+                paths1 = [paths1]
+            if isinstance(paths2, str):
+                paths2 = [paths2]
+
+            # True inner product matrix
             productTrue = mat1 * mat2
-            
+           
             # Test computation as chunk (a serial method, tested on each proc)
             productComputedAsChunk = self.modalDecomp.\
                 _compute_inner_product_chunk(paths1, paths2)
             N.testing.assert_array_almost_equal(productComputedAsChunk, 
                 productTrue)
 
-            # Test paralleized computation.  If # of rows > # of procs, should 
-            # raise error.  Number of rows is actually max of (numRows, numCols)
-            # because we do the transpose problem when numCols > numRows.
-            if isinstance(paths1, str):
-                paths1 = [paths1]
-            if isinstance(paths2, str):
-                paths2 = [paths2]
-            if numProcs > max(len(paths1), len(paths2)):
-                self.assertRaises(util.MPIError, self.modalDecomp.\
-                    compute_inner_product_matrix, paths1, paths2)
-            else:
-                productComputedAsMat = self.modalDecomp.\
-                    compute_inner_product_matrix(paths1, paths2)
-                N.testing.assert_array_almost_equal(productComputedAsMat, 
-                    productTrue)
-
+            # Test paralleized computation.  
+            productComputedAsMat = self.modalDecomp.\
+                compute_inner_product_matrix(paths1, paths2)
+            N.testing.assert_array_almost_equal(productComputedAsMat, 
+                productTrue)
+           
             # Test computation of upper triangular inner product matrix chunk
-            # If lists are not the same, should return an error
-            numRows = int(N.ceil(len(paths1) / 2.))
             if paths1 == paths2:
-                productComputedAsSymm = self.modalDecomp.\
+                # Test computation as chunk (serial).  
+                # First test complete upper triangular computation
+                productComputedAsFullSymmChunk = self.modalDecomp.\
+                    _compute_upper_triangular_inner_product_chunk(paths1, 
+                        paths2)
+                N.testing.assert_array_almost_equal(
+                    productComputedAsFullSymmChunk, N.triu(productTrue))
+
+                # Also test non-square upper triangular computation
+                numRows = int(N.ceil(len(paths1) / 2.))
+                productComputedAsPartialSymmChunk = self.modalDecomp.\
                     _compute_upper_triangular_inner_product_chunk(paths1[
                         :numRows], paths2)
-                N.testing.assert_array_almost_equal(productComputedAsSymm, 
-                    N.triu(productTrue[:numRows, :]))
+                N.testing.assert_array_almost_equal(
+                    productComputedAsPartialSymmChunk, N.triu(productTrue[
+                    :numRows, :]))
+                
+                # Test computation in parallel
+                productComputedAsSymmMat = self.modalDecomp.\
+                    compute_symmetric_inner_product_matrix(paths1)
+                N.testing.assert_array_almost_equal(productComputedAsSymmMat, 
+                    productTrue)
+            # If lists are not the same, should return an error
             else:
                 self.assertRaises(ValueError, self.modalDecomp.\
                     _compute_upper_triangular_inner_product_chunk, paths1, 
                     paths2)
+
         maxFieldsPerProc = 5
         totalNumFields = maxFieldsPerProc * numProcs
         numRowSnapsList =[1, int(round(totalNumFields/2.)), totalNumFields,
@@ -413,7 +427,7 @@ class TestModalDecomp(unittest.TestCase):
                     load_mat_text, save_field=util.save_mat_text,
                     inner_product=util.inner_product)
                 self.modalDecomp.maxFieldsPerProc = maxFieldsPerProc
-
+                
                 # Test different rows and cols snapshots
                 assert_equal_mat_products(rowSnapMat.T, colSnapMat,
                     rowSnapPaths, colSnapPaths)
