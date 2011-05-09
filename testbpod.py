@@ -108,7 +108,7 @@ class TestBPOD(unittest.TestCase):
         dataMembersOriginal = util.get_data_members(BP.BPOD(verbose=False))
 
         def my_load(fname):
-            return 0
+            pass
         myBPOD = BP.BPOD(load_field=my_load, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['load_field'] = my_load
@@ -128,7 +128,8 @@ class TestBPOD(unittest.TestCase):
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         self.assertEqual(myBPOD.save_mat,my_save)
         
-        def my_ip(f1,f2): return 0
+        def my_ip(f1,f2): 
+            pass
         myBPOD = BP.BPOD(inner_product=my_ip, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['inner_product'] = my_ip

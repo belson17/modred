@@ -16,7 +16,7 @@ class ModalDecomp(object):
     """
     
     def __init__(self, load_field=None, save_field=None, save_mat=None, 
-        inner_product=None, maxFieldsPerNode=None, numNodes=1, verbose=False):
+        inner_product=None, maxFieldsPerNode=None, numNodes=1, verbose=True):
         """
         Modal decomposition constructor.
     

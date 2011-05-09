@@ -27,7 +27,7 @@ class TestModalDecomp(unittest.TestCase):
     """ Tests of the self.modalDecomp class """
     
     def setUp(self):
-        self.modalDecomp = ModalDecomp()
+        self.modalDecomp = ModalDecomp(verbose=False)
     
     def tearDown(self):
         self.modalDecomp.mpi.sync()
@@ -46,7 +46,7 @@ class TestModalDecomp(unittest.TestCase):
         def my_load(fname):
             return 0
         
-        myMD = ModalDecomp(load_field=my_load)
+        myMD = ModalDecomp(load_field=my_load, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['load_field'] = my_load
         self.assertEqual(util.get_data_members(myMD), dataMembers)
@@ -54,31 +54,32 @@ class TestModalDecomp(unittest.TestCase):
         def my_save(data,fname):
             pass
         
-        myMD = ModalDecomp(save_field=my_save)
+        myMD = ModalDecomp(save_field=my_save, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['save_field'] = my_save
         self.assertEqual(util.get_data_members(myMD), dataMembers)
         
-        myMD = ModalDecomp(save_mat=my_save)
+        myMD = ModalDecomp(save_mat=my_save, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['save_mat'] = my_save
         self.assertEqual(util.get_data_members(myMD), dataMembers)
         
         def my_ip(f1,f2): return 0
-        myMD = ModalDecomp(inner_product=my_ip)
+        myMD = ModalDecomp(inner_product=my_ip, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['inner_product'] = my_ip
         self.assertEqual(util.get_data_members(myMD), dataMembers)
         
         maxFieldsPerNode = 500
-        myMD = ModalDecomp(maxFieldsPerNode=maxFieldsPerNode)
+        myMD = ModalDecomp(maxFieldsPerNode=maxFieldsPerNode, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['maxFieldsPerNode'] = maxFieldsPerNode
         dataMembers['maxFieldsPerProc'] = maxFieldsPerNode / (myMD.mpi.\
             getNumProcs() / myMD.numNodes)
         self.assertEqual(util.get_data_members(myMD), dataMembers)
         
-        self.assertRaises(util.MPIError, ModalDecomp, numNodes=numProcs + 1)
+        self.assertRaises(util.MPIError, ModalDecomp, numNodes=numProcs + 1, 
+            verbose=False)
         #MPI class is tested by utils.   
         
     #@unittest.skip('testing other things')
@@ -93,7 +94,7 @@ class TestModalDecomp(unittest.TestCase):
         def inner_product(a,b):
             return N.sum(a.arr*b.arr)
         import copy
-        myMD = ModalDecomp(inner_product=util.inner_product)
+        myMD = ModalDecomp(inner_product=util.inner_product, verbose=False)
         myMD.idiot_check(testObj=testArray)
         
         # An idiot's class that redefines multiplication to modify its data
@@ -425,7 +426,7 @@ class TestModalDecomp(unittest.TestCase):
 
                 self.modalDecomp = ModalDecomp(load_field=util.\
                     load_mat_text, save_field=util.save_mat_text,
-                    inner_product=util.inner_product)
+                    inner_product=util.inner_product, verbose=False)
                 self.modalDecomp.maxFieldsPerProc = maxFieldsPerProc
                 
                 # Test different rows and cols snapshots

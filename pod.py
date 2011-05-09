@@ -44,14 +44,13 @@ class POD(BPOD):
         if self.snapPaths is None:
             raise util.UndefinedError('snapPaths is not given')
 
-        # Compute Hankel matrix decomposition, using dir snaps as adj snaps
-        # Then save the decomposition matrices as needed, to file/data members
-        # Only one set of sing vecs needs to be saved for POD (symmetry)
-        self.correlationMat = self.compute_inner_product_matrix(self.snapPaths,
+        self.correlationMat = self.compute_symmetric_inner_product_matrix(
             self.snapPaths)
+           
         self.singVecs, self.singVals, dummy = util.svd(self.correlationMat)
         del dummy
-        
+
+
     def compute_modes(self, modeNumList, modePath, indexFrom=1, snapPaths=\
         None):
         raise util.UndefinedError('This functionality has not yet been '+\
@@ -69,3 +68,7 @@ class POD(BPOD):
             self.singVals*self.singVecs, indexFrom=indexFrom )
         print 'Implemented to compute POD modes.
         """
+
+
+
+

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 import numpy as N
-import dmd as D
-import pod as P
+from dmd import DMD
+from pod import POD
 import unittest
 import util
 import subprocess as SP
@@ -30,7 +30,7 @@ class TestDMD(unittest.TestCase):
     def setUp(self):
         if not os.path.isdir('files_modaldecomp_test'):        
             SP.call(['mkdir','files_modaldecomp_test'])
-        self.dmd = D.DMD()
+        self.dmd = DMD(verbose=False)
         self.numSnaps = 6 # number of snapshots to generate
         self.numStates = 7 # dimension of state vector
         self.dmd.save_mat=util.save_mat_text
@@ -42,7 +42,7 @@ class TestDMD(unittest.TestCase):
         self.generate_data_set()
 
     def generate_data_set(self):
-        #create data set (saved to file)
+        # create data set (saved to file)
         self.snapPath ='files_modaldecomp_test/dmd_snap_%03d.txt'
         self.trueModePath = 'files_modaldecomp_test/dmd_truemode_%03d.txt'
         self.snapPathList = []
@@ -97,49 +97,49 @@ class TestDMD(unittest.TestCase):
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         # Test that default optional arguments are correct
-        myDMD = D.DMD()
-        self.assertEqual(myDMD.load_field,None)
-        self.assertEqual(myDMD.save_field,None)
-        self.assertEqual(myDMD.save_mat,util.save_mat_text)
-        self.assertEqual(myDMD.inner_product,None)
-        self.assertEqual(myDMD.maxFieldsPerNode,2)
-        self.assertEqual(myDMD.snapPaths,None)
-        self.assertEqual(myDMD.buildCoeff,None)
-        self.assertEqual(myDMD.pod,None)
+        myDMD = DMD(verbose=False)
+        self.assertEqual(myDMD.load_field, None)
+        self.assertEqual(myDMD.save_field, None)
+        self.assertEqual(myDMD.save_mat, util.save_mat_text)
+        self.assertEqual(myDMD.inner_product, None)
+        self.assertEqual(myDMD.maxFieldsPerNode, 2)
+        self.assertEqual(myDMD.snapPaths, None)
+        self.assertEqual(myDMD.buildCoeff, None)
+        self.assertEqual(myDMD.pod, None)
 
         # Test that constructor assignments are correct
         def my_load(fname): 
-            return 0
-        myDMD = D.DMD(load_field=my_load)
-        self.assertEqual(myDMD.load_field,my_load)
+            pass
+        myDMD = DMD(load_field=my_load, verbose=False)
+        self.assertEqual(myDMD.load_field, my_load)
         
         def my_save(data,fname):
             pass 
-        myDMD = D.DMD(save_field=my_save)
-        self.assertEqual(myDMD.save_field,my_save)
+        myDMD = DMD(save_field=my_save, verbose=False)
+        self.assertEqual(myDMD.save_field, my_save)
         
-        myDMD = D.DMD(save_mat=my_save)
-        self.assertEqual(myDMD.save_mat,my_save)
+        myDMD = DMD(save_mat=my_save, verbose=False)
+        self.assertEqual(myDMD.save_mat, my_save)
         
         def my_ip(f1,f2): 
             return 0
-        myDMD = D.DMD(inner_product=my_ip)
-        self.assertEqual(myDMD.inner_product,my_ip)
+        myDMD = DMD(inner_product=my_ip, verbose=False)
+        self.assertEqual(myDMD.inner_product, my_ip)
         
         maxSnaps = 500
-        myDMD = D.DMD(maxFieldsPerNode=maxSnaps)
-        self.assertEqual(myDMD.maxFieldsPerNode,maxSnaps)
+        myDMD = DMD(maxFieldsPerNode=maxSnaps, verbose=False)
+        self.assertEqual(myDMD.maxFieldsPerNode, maxSnaps)
         
-        snapPathList=['a','b']
-        myDMD = D.DMD(snapPaths=snapPathList)
-        self.assertEqual(myDMD.snapPaths,snapPathList)
+        snapPathList=['a', 'b']
+        myDMD = DMD(snapPaths=snapPathList, verbose=False)
+        self.assertEqual(myDMD.snapPaths, snapPathList)
 
         buildCoeff = N.mat(N.random.random((2,2)))
-        myDMD = D.DMD(buildCoeff=buildCoeff)
-        N.testing.assert_array_almost_equal(myDMD.buildCoeff,buildCoeff)
+        myDMD = DMD(buildCoeff=buildCoeff, verbose=False)
+        N.testing.assert_array_almost_equal(myDMD.buildCoeff, buildCoeff)
         
-        podObj = P.POD()
-        myDMD = D.DMD(pod=podObj)
+        podObj = POD(verbose=False)
+        myDMD = DMD(pod=podObj, verbose=False)
         N.testing.assert_equal(myDMD.pod, podObj)
 
     def test_compute_decomp(self):

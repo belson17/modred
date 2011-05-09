@@ -64,7 +64,7 @@ def inner_product(snap1,snap2):
 class MPI(object):
     """Simple container for information about how many processors there are.
     It ensures no failure in case mpi4py is not installed or running serial."""
-    def __init__(self,verbose=False):
+    def __init__(self, verbose=True):
         self.verbose = verbose
         try:
             # Must call MPI module MPI_mod to avoid naming confusion with
