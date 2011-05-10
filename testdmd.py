@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import numpy as N
 from dmd import DMD
 from pod import POD
@@ -7,6 +6,7 @@ import unittest
 import util
 import subprocess as SP
 import os
+import copy
 
 try:
     from mpi4py import MPI
@@ -30,20 +30,26 @@ class TestDMD(unittest.TestCase):
     def setUp(self):
         if not os.path.isdir('files_modaldecomp_test'):        
             SP.call(['mkdir','files_modaldecomp_test'])
-        self.dmd = DMD(verbose=False)
         self.numSnaps = 6 # number of snapshots to generate
         self.numStates = 7 # dimension of state vector
-        self.dmd.save_mat=util.save_mat_text
-        self.dmd.load_field=util.load_mat_text
-        self.dmd.inner_product=util.inner_product
-        self.dmd.save_field = util.save_mat_text
         self.indexFrom = 2
-        self.dmd.indexFrom=self.indexFrom
+        self.dmd = DMD(verbose=False, load_field=util.load_mat_text, 
+            save_field=util.save_mat_text, save_mat=util.save_mat_text, 
+            inner_product=util.inner_product)
         self.generate_data_set()
+   
+        # Default data members for constructor test
+        self.defaultMPI = util.MPI()
+        self.defaultDataMembers = {'load_field': None, 'save_field': None, 
+            'save_mat': util.save_mat_text, 'inner_product': None, 
+            'maxFieldsPerNode': 2, 'maxFieldsPerProc': 2, 'mpi': self.\
+            defaultMPI, 'numNodes': 1, 'snapPaths': None, 'buildCoeff': None,
+            'pod': None, 'verbose': False}
+
 
     def generate_data_set(self):
         # create data set (saved to file)
-        self.snapPath ='files_modaldecomp_test/dmd_snap_%03d.txt'
+        self.snapPath = 'files_modaldecomp_test/dmd_snap_%03d.txt'
         self.trueModePath = 'files_modaldecomp_test/dmd_truemode_%03d.txt'
         self.snapPathList = []
        
@@ -96,51 +102,58 @@ class TestDMD(unittest.TestCase):
 
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
-        # Test that default optional arguments are correct
-        myDMD = DMD(verbose=False)
-        self.assertEqual(myDMD.load_field, None)
-        self.assertEqual(myDMD.save_field, None)
-        self.assertEqual(myDMD.save_mat, util.save_mat_text)
-        self.assertEqual(myDMD.inner_product, None)
-        self.assertEqual(myDMD.maxFieldsPerNode, 2)
-        self.assertEqual(myDMD.snapPaths, None)
-        self.assertEqual(myDMD.buildCoeff, None)
-        self.assertEqual(myDMD.pod, None)
+        dataMembersOriginal = util.get_data_members(DMD(verbose=False))
+        self.assertEqual(dataMembersOriginal, self.defaultDataMembers)
 
-        # Test that constructor assignments are correct
-        def my_load(fname): 
-            pass
+        def my_load(fname): pass
         myDMD = DMD(load_field=my_load, verbose=False)
-        self.assertEqual(myDMD.load_field, my_load)
+        dataMembers = copy.deepcopy(dataMembersOriginal)
+        dataMembers['load_field'] = my_load
+        self.assertEqual(util.get_data_members(myDMD), dataMembers)
         
-        def my_save(data,fname):
-            pass 
+        def my_save(data, fname): pass 
         myDMD = DMD(save_field=my_save, verbose=False)
-        self.assertEqual(myDMD.save_field, my_save)
-        
+        dataMembers = copy.deepcopy(dataMembersOriginal)
+        dataMembers['save_field'] = my_save
+        self.assertEqual(util.get_data_members(myDMD), dataMembers)
+ 
         myDMD = DMD(save_mat=my_save, verbose=False)
-        self.assertEqual(myDMD.save_mat, my_save)
-        
-        def my_ip(f1,f2): 
-            return 0
+        dataMembers = copy.deepcopy(dataMembersOriginal)
+        dataMembers['save_mat'] = my_save
+        self.assertEqual(util.get_data_members(myDMD), dataMembers)
+ 
+        def my_ip(f1,f2): pass
         myDMD = DMD(inner_product=my_ip, verbose=False)
-        self.assertEqual(myDMD.inner_product, my_ip)
-        
-        maxSnaps = 500
-        myDMD = DMD(maxFieldsPerNode=maxSnaps, verbose=False)
-        self.assertEqual(myDMD.maxFieldsPerNode, maxSnaps)
-        
+        dataMembers = copy.deepcopy(dataMembersOriginal)
+        dataMembers['inner_product'] = my_ip
+        self.assertEqual(util.get_data_members(myDMD), dataMembers)
+ 
+        maxFieldsPerNode = 500
+        myDMD = DMD(maxFieldsPerNode=maxFieldsPerNode, verbose=False)
+        dataMembers = copy.deepcopy(dataMembersOriginal)
+        dataMembers['maxFieldsPerNode'] = maxFieldsPerNode
+        dataMembers['maxFieldsPerProc'] = maxFieldsPerNode * myDMD.numNodes /\
+            myDMD.mpi.getNumProcs() / myDMD.numNodes
+        self.assertEqual(util.get_data_members(myDMD), dataMembers)
+ 
         snapPathList=['a', 'b']
         myDMD = DMD(snapPaths=snapPathList, verbose=False)
-        self.assertEqual(myDMD.snapPaths, snapPathList)
+        dataMembers = copy.deepcopy(dataMembersOriginal)
+        dataMembers['snapPaths'] = snapPathList
+        self.assertEqual(util.get_data_members(myDMD), dataMembers)
 
         buildCoeff = N.mat(N.random.random((2,2)))
         myDMD = DMD(buildCoeff=buildCoeff, verbose=False)
-        N.testing.assert_array_almost_equal(myDMD.buildCoeff, buildCoeff)
+        dataMembers = copy.deepcopy(dataMembersOriginal)
+        dataMembers['buildCoeff'] = buildCoeff
+        self.assertEqual(util.get_data_members(myDMD), dataMembers)
         
         podObj = POD(verbose=False)
         myDMD = DMD(pod=podObj, verbose=False)
-        N.testing.assert_equal(myDMD.pod, podObj)
+        dataMembers = copy.deepcopy(dataMembersOriginal)
+        dataMembers['pod'] = podObj
+        self.assertEqual(util.get_data_members(myDMD), dataMembers)
+
 
     def test_compute_decomp(self):
         """ 

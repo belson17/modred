@@ -3,7 +3,7 @@
 import subprocess as SP
 import os
 import numpy as N
-import bpod as BP
+from bpod import BPOD
 import unittest
 import util
 import copy
@@ -29,19 +29,25 @@ class TestBPOD(unittest.TestCase):
     def setUp(self):
         if not os.path.isdir('files_modaldecomp_test'):        
             SP.call(['mkdir','files_modaldecomp_test'])
-        
-        self.modeNumList =[2,4,3,6,9,8,10,11,30]
+        self.modeNumList =[2, 4, 3, 6, 9, 8, 10, 11, 30]
         self.numDirectSnaps = 40
         self.numAdjointSnaps = 45
         self.numStates = 100
         self.indexFrom = 2
-        self.bpod = BP.BPOD(save_mat = util.save_mat_text, \
-          load_field = util.load_mat_text, \
-          inner_product = util.inner_product, \
-          save_field = util.save_mat_text, \
-          verbose = False)
+        self.bpod = BPOD(save_mat=util.save_mat_text, load_field=util.\
+            load_mat_text, inner_product=util.inner_product, save_field=util.\
+            save_mat_text, verbose=False)
         self.generate_data_set()
-    
+   
+        # Default data members for constructor test
+        self.defaultMPI = util.MPI()
+        self.defaultDataMembers = {'load_field': None, 'save_field': None, 
+            'save_mat': util.save_mat_text, 'load_mat': util.load_mat_text, 
+            'inner_product': None, 'maxFieldsPerNode': 2, 'maxFieldsPerProc': 2,
+            'mpi': self.defaultMPI, 'numNodes': 1, 'directSnapPaths': None, 
+            'adjointSnapPaths': None, 'LSingVecs': None, 'singVals': None,
+            'RSingVecs': None, 'hankelMat': None, 'verbose': False}
+
     def tearDown(self):
         self.bpod.mpi.sync()
         if self.bpod.mpi.isRankZero():
@@ -105,88 +111,86 @@ class TestBPOD(unittest.TestCase):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
-        dataMembersOriginal = util.get_data_members(BP.BPOD(verbose=False))
+        dataMembersOriginal = util.get_data_members(BPOD(verbose=False))
+        self.assertEqual(dataMembersOriginal, self.defaultDataMembers)
 
-        def my_load(fname):
-            pass
-        myBPOD = BP.BPOD(load_field=my_load, verbose=False)
+        def my_load(fname): pass
+        myBPOD = BPOD(load_field=my_load, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['load_field'] = my_load
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         
-        def my_save(data,fname):
-            pass 
-        myBPOD = BP.BPOD(save_field=my_save, verbose=False)
+        def my_save(data,fname): pass 
+        myBPOD = BPOD(save_field=my_save, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['save_field'] = my_save
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         self.assertEqual(myBPOD.save_field,my_save)
         
-        myBPOD = BP.BPOD(save_mat=my_save, verbose=False)
+        myBPOD = BPOD(save_mat=my_save, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['save_mat'] = my_save
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         self.assertEqual(myBPOD.save_mat,my_save)
         
-        def my_ip(f1,f2): 
-            pass
-        myBPOD = BP.BPOD(inner_product=my_ip, verbose=False)
+        def my_ip(f1,f2): pass
+        myBPOD = BPOD(inner_product=my_ip, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['inner_product'] = my_ip
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         self.assertEqual(myBPOD.inner_product,my_ip)
                 
         directSnapPaths=['a','b']
-        myBPOD = BP.BPOD(directSnapPaths = directSnapPaths, verbose=False)
+        myBPOD = BPOD(directSnapPaths = directSnapPaths, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['directSnapPaths'] = directSnapPaths
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         self.assertEqual(myBPOD.directSnapPaths,directSnapPaths)
         
         adjointSnapPaths=['a','c']
-        myBPOD = BP.BPOD(adjointSnapPaths = adjointSnapPaths, verbose=False)
+        myBPOD = BPOD(adjointSnapPaths = adjointSnapPaths, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['adjointSnapPaths'] = adjointSnapPaths
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         self.assertEqual(myBPOD.adjointSnapPaths,adjointSnapPaths)
         
         LSingVecs=N.mat(N.random.random((2,3)))
-        myBPOD = BP.BPOD(LSingVecs = LSingVecs, verbose=False)
+        myBPOD = BPOD(LSingVecs = LSingVecs, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['LSingVecs'] = LSingVecs
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         N.testing.assert_array_almost_equal(myBPOD.LSingVecs,LSingVecs)
         
         RSingVecs = N.mat(N.random.random((3,2)))
-        myBPOD = BP.BPOD(RSingVecs = RSingVecs, verbose=False)
+        myBPOD = BPOD(RSingVecs = RSingVecs, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['RSingVecs'] = RSingVecs
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         N.testing.assert_array_almost_equal(myBPOD.RSingVecs,RSingVecs)
         
         singVals = N.mat(N.random.random((2,2)))
-        myBPOD = BP.BPOD(singVals = singVals, verbose=False)
+        myBPOD = BPOD(singVals = singVals, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['singVals'] = singVals
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         N.testing.assert_array_almost_equal(myBPOD.singVals,singVals)
         
         hankelMat = N.mat(N.random.random((4,4)))
-        myBPOD = BP.BPOD(hankelMat = hankelMat, verbose=False)
+        myBPOD = BPOD(hankelMat = hankelMat, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['hankelMat'] = hankelMat
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         N.testing.assert_array_almost_equal(myBPOD.hankelMat,hankelMat)
                 
         maxFieldsPerNode = 500
-        myBPOD = BP.BPOD(maxFieldsPerNode=maxFieldsPerNode, verbose=False)
+        myBPOD = BPOD(maxFieldsPerNode=maxFieldsPerNode, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['maxFieldsPerNode'] = maxFieldsPerNode
-        dataMembers['maxFieldsPerProc'] = maxFieldsPerNode / \
-          (myBPOD.mpi.getNumProcs()/myBPOD.numNodes)
+        dataMembers['maxFieldsPerProc'] = maxFieldsPerNode * myBPOD.numNodes /\
+            myBPOD.mpi.getNumProcs() / myBPOD.numNodes
         self.assertEqual(util.get_data_members(myBPOD), dataMembers)
         
-        self.assertRaises(util.MPIError, BP.BPOD, numNodes=numProcs+1, verbose=\
+        self.assertRaises(util.MPIError, BPOD, numNodes=numProcs+1, verbose=\
             False)
         
     def test_compute_decomp(self):
@@ -245,7 +249,6 @@ class TestBPOD(unittest.TestCase):
           self.RSingVecsTrue,decimal=tol)
         N.testing.assert_array_almost_equal(singValsLoaded,
           self.singValsTrue,decimal=tol)
-               
         
 
     def test_compute_modes(self):

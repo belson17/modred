@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import unittest
 import numpy as N
 from modaldecomp import ModalDecomp
@@ -27,8 +26,24 @@ class TestModalDecomp(unittest.TestCase):
     """ Tests of the self.modalDecomp class """
     
     def setUp(self):
-        self.modalDecomp = ModalDecomp(verbose=False)
-    
+        # Default data members (verbose set to false even though default is true
+        # so messages won't print during tests
+        self.defaultMPI = util.MPI() 
+        self.defaultDataMembers = {'load_field': None, 'save_field': None, 
+            'save_mat': None, 'inner_product': None, 'maxFieldsPerNode': 2,
+            'maxFieldsPerProc': 2, 'mpi': self.defaultMPI, 'numNodes': 1, 
+            'verbose': False}
+       
+        # Parallel stuff
+        self.maxFieldsPerProc = 10
+        self.totalNumFieldsInMem = numProcs * self.maxFieldsPerProc
+
+        # ModalDecomp object for running tests
+        self.modalDecomp = ModalDecomp(load_field=util.load_mat_text, 
+            save_field=util.save_mat_text, inner_product=util.inner_product, 
+            verbose=False)
+        self.modalDecomp.maxFieldsPerProc = self.maxFieldsPerProc
+
     def tearDown(self):
         self.modalDecomp.mpi.sync()
         if self.modalDecomp.mpi.isRankZero():
@@ -41,19 +56,16 @@ class TestModalDecomp(unittest.TestCase):
         Test arguments passed to the constructor are assigned properly
         """
         
-        dataMembersOriginal = util.get_data_members(self.modalDecomp)
+        dataMembersOriginal = util.get_data_members(ModalDecomp(verbose=False))
+        self.assertEqual(dataMembersOriginal, self.defaultDataMembers)
         
-        def my_load(fname):
-            return 0
-        
+        def my_load(fname): pass
         myMD = ModalDecomp(load_field=my_load, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['load_field'] = my_load
         self.assertEqual(util.get_data_members(myMD), dataMembers)
         
-        def my_save(data,fname):
-            pass
-        
+        def my_save(data,fname): pass
         myMD = ModalDecomp(save_field=my_save, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['save_field'] = my_save
@@ -64,7 +76,7 @@ class TestModalDecomp(unittest.TestCase):
         dataMembers['save_mat'] = my_save
         self.assertEqual(util.get_data_members(myMD), dataMembers)
         
-        def my_ip(f1,f2): return 0
+        def my_ip(f1,f2): pass
         myMD = ModalDecomp(inner_product=my_ip, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['inner_product'] = my_ip
@@ -74,14 +86,16 @@ class TestModalDecomp(unittest.TestCase):
         myMD = ModalDecomp(maxFieldsPerNode=maxFieldsPerNode, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['maxFieldsPerNode'] = maxFieldsPerNode
-        dataMembers['maxFieldsPerProc'] = maxFieldsPerNode / (myMD.mpi.\
-            getNumProcs() / myMD.numNodes)
+        dataMembers['maxFieldsPerProc'] = maxFieldsPerNode * myMD.numNodes /\
+            myMD.mpi.getNumProcs()
+        print util.get_data_members(myMD), dataMembers
         self.assertEqual(util.get_data_members(myMD), dataMembers)
         
         self.assertRaises(util.MPIError, ModalDecomp, numNodes=numProcs + 1, 
             verbose=False)
         #MPI class is tested by utils.   
         
+
     #@unittest.skip('testing other things')
     def test_idiot_check(self):
         """
@@ -93,7 +107,6 @@ class TestModalDecomp(unittest.TestCase):
         testArray = N.random.random((nx,ny))
         def inner_product(a,b):
             return N.sum(a.arr*b.arr)
-        import copy
         myMD = ModalDecomp(inner_product=util.inner_product, verbose=False)
         myMD.idiot_check(testObj=testArray)
         
@@ -153,7 +166,7 @@ class TestModalDecomp(unittest.TestCase):
         return snapMat,modeNumList,buildCoeffMat,modeMat 
         
     
-    def test__compute_modes_chunk(self):
+    # def test__compute_modes_chunk(self):
         """
         Test that can compute chunks of modes from arguments.
         
@@ -162,7 +175,7 @@ class TestModalDecomp(unittest.TestCase):
         in _compute_modes_chunk, but really _compute_modes and
         _compute_modes_chunk do only one task and need only one test.
         """
-        pass        
+    #    pass        
     
     #@unittest.skip('testing other things')
     def test_compute_modes(self):
@@ -178,20 +191,15 @@ class TestModalDecomp(unittest.TestCase):
         (currently supports any indexing
         scheme, meaning the first mode can be numbered 0, 1, or any integer).
         """
-        def load_field(filePath): #returns a precomputed, random, vector
-            return util.load_mat_text(filePath)
-        
-        maxFieldsPerProc = 10
-        totalNumFieldsInMem  = numProcs * maxFieldsPerProc
         numSnapsList = [1, 15, 40]
         numStates = 20
         # Test cases where number of modes:
         #   less, equal, more than numStates
         #   less, equal, more than numSnaps
         #   less, equal, more than totalNumFieldsInMem
-        numModesList = [1, 8, 10, 20, 25, 45,
-          int(N.ceil(totalNumFieldsInMem/2.)), totalNumFieldsInMem, \
-          totalNumFieldsInMem*2]
+        numModesList = [1, 8, 10, 20, 25, 45, int(N.ceil(self.\
+            totalNumFieldsInMem / 2.)), self.totalNumFieldsInMem, self.\
+            totalNumFieldsInMem * 2]
         indexFromList = [0, 5]
         #modePath = 'proc'+str(self.modalDecomp.mpi._rank)+'/mode_%03d.txt'
         modePath = 'files_modaldecomp_test/mode_%03d.txt'
@@ -200,15 +208,8 @@ class TestModalDecomp(unittest.TestCase):
             if not os.path.isdir('files_modaldecomp_test'):
                 SP.call(['mkdir','files_modaldecomp_test'])
         
-        self.modalDecomp.load_field=load_field
-        self.modalDecomp.save_field=util.save_mat_text
-        self.modalDecomp.inner_product=util.inner_product
         for numSnaps in numSnapsList:
             for numModes in numModesList:
-                self.modalDecomp = ModalDecomp(load_field=load_field,
-                    save_field=util.save_mat_text, inner_product=util.\
-                    inner_product, verbose=False)
-                self.modalDecomp.maxFieldsPerProc = maxFieldsPerProc
                 for indexFrom in indexFromList:
                     #generate data and then broadcast to all procs
                     #print '----- new case ----- '
@@ -219,12 +220,12 @@ class TestModalDecomp(unittest.TestCase):
                     #print 'indexFrom =',indexFrom
                     snapPaths = []
                     for snapIndex in range(numSnaps):
-                        snapPaths.append(snapPath%snapIndex)
+                        snapPaths.append(snapPath % snapIndex)
                     
                     if self.modalDecomp.mpi.isRankZero():
-                        snapMat,modeNumList,buildCoeffMat,trueModes = \
-                          self.generate_snaps_modes(numStates,numSnaps,
-                          numModes,indexFrom=indexFrom)
+                        snapMat,modeNumList, buildCoeffMat, trueModes = \
+                          self.generate_snaps_modes(numStates, numSnaps,
+                          numModes, indexFrom=indexFrom)
                         for snapIndex,s in enumerate(snapPaths):
                             util.save_mat_text(snapMat[:,snapIndex], s)
                     else:
@@ -308,7 +309,8 @@ class TestModalDecomp(unittest.TestCase):
                         self.modalDecomp.mpi.sync()
        
         self.modalDecomp.mpi.sync()
-        
+
+    #@unittest.skip('testing other things')
     def test_compute_inner_product_matrices(self):
         """
         Test computation of matrix of inner products in memory-efficient
@@ -367,10 +369,8 @@ class TestModalDecomp(unittest.TestCase):
                     _compute_upper_triangular_inner_product_chunk, paths1, 
                     paths2)
 
-        maxFieldsPerProc = 5
-        totalNumFields = maxFieldsPerProc * numProcs
-        numRowSnapsList =[1, int(round(totalNumFields/2.)), totalNumFields,
-          int(round(totalNumFields*2.5))]
+        numRowSnapsList =[1, int(round(self.totalNumFieldsInMem / 2.)), self.\
+            totalNumFieldsInMem, self.totalNumFieldsInMem *2]
         numColSnapsList = numRowSnapsList
         numStates = 6
 
@@ -379,10 +379,6 @@ class TestModalDecomp(unittest.TestCase):
         rowSnapPath = 'files_modaldecomp_test/row_snap_%03d.txt'
         colSnapPath = 'files_modaldecomp_test/col_snap_%03d.txt'
         
-        self.modalDecomp.load_field = util.load_mat_text
-        self.modalDecomp.save_field = util.save_mat_text
-        self.modalDecomp.inner_product = util.inner_product
-
         for numRowSnaps in numRowSnapsList:
             for numColSnaps in numColSnapsList:
                 # generate snapshots and save to file, only do on proc 0
@@ -424,11 +420,6 @@ class TestModalDecomp(unittest.TestCase):
                 if len(colSnapPaths) == 1:
                     colSnapPaths = colSnapPaths[0]
 
-                self.modalDecomp = ModalDecomp(load_field=util.\
-                    load_mat_text, save_field=util.save_mat_text,
-                    inner_product=util.inner_product, verbose=False)
-                self.modalDecomp.maxFieldsPerProc = maxFieldsPerProc
-                
                 # Test different rows and cols snapshots
                 assert_equal_mat_products(rowSnapMat.T, colSnapMat,
                     rowSnapPaths, colSnapPaths)

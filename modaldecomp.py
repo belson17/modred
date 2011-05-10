@@ -43,9 +43,9 @@ class ModalDecomp(object):
         if (self.numNodes > self.mpi.getNumProcs()):
             raise util.MPIError('More nodes (%d) than processors (%d).' % \
                 (self.numNodes, self.mpi.getNumProcs())) 
-        if self.maxFieldsPerNode < 2 * self.mpi.getNumProcs() / self.numNodes:
+        if self.maxFieldsPerNode < 2 * self.mpi.getNumProcs() / self.numNodes: 
             self.maxFieldsPerProc = 2
-            if self.verbose:
+            if self.verbose and self.mpi.isRankZero():
                 print 'Warning - maxFieldsPerNode too small for given ' +\
                     'number of procs, nodes.  Assuming 2 fields can be ' +\
                     'loaded per processor. Increase maxFieldsPerNode for a ' +\
