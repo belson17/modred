@@ -88,7 +88,6 @@ class TestModalDecomp(unittest.TestCase):
         dataMembers['maxFieldsPerNode'] = maxFieldsPerNode
         dataMembers['maxFieldsPerProc'] = maxFieldsPerNode * myMD.numNodes /\
             myMD.mpi.getNumProcs()
-        print util.get_data_members(myMD), dataMembers
         self.assertEqual(util.get_data_members(myMD), dataMembers)
         
         self.assertRaises(util.MPIError, ModalDecomp, numNodes=numProcs + 1, 
