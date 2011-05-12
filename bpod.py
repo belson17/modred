@@ -1,9 +1,9 @@
-from modaldecomp import ModalDecomp
+from fieldoperations import FieldOperations
 import util
 import numpy as N
 import util 
 
-class BPOD(ModalDecomp):
+class BPOD(object):
     """
     Balanced Proper Orthogonal Decomposition
     
@@ -15,9 +15,7 @@ class BPOD(ModalDecomp):
     
     def __init__(self, load_field=None, save_field=None, save_mat=util.\
         save_mat_text, load_mat=util.load_mat_text, inner_product=None,
-        maxFieldsPerNode=None, numNodes=1, directSnapPaths=None, 
-        adjointSnapPaths=None, LSingVecs=None, singVals=None, RSingVecs=None, 
-        hankelMat=None, verbose=True):
+        maxFieldsPerNode=2, numNodes=1, verbose=True):
         """
         BPOD constructor
         
@@ -25,37 +23,24 @@ class BPOD(ModalDecomp):
         save_field - Function to save a mode given data and an output path.
         save_mat - Function to save a matrix.
         inner_product - Function to take inner product of two snapshots.
-        directSnapPaths - List of filepaths from which direct snapshots can be
-            loaded.
-        adjointSnapPaths - List of filepaths from which direct snapshots can be
-            loaded.
-        SVD of hankelMat gives:
-        LSingVecs * singVals * RSingVecs* = hankelMat = "Y* X"
-        hankelMat is adjoint modes "multiplied by" direct modes.
+        verbose - True means print more information about progress and warnings
+        numNodes - number of nodes used in this computation
         """
-        # Base class constructor defines common data members
-        ModalDecomp.__init__(self, load_field=load_field, save_field=save_field,
+        self.verbose = verbose
+        self.load_mat = load_mat
+        self.save_mat = save_mat
+        # Class that contains all of the low-level field operations
+        # and parallelizes them.
+        self.fieldOperations = FieldOperations(load_field=load_field, save_field=save_field,
             save_mat=save_mat, inner_product=inner_product, maxFieldsPerNode=\
             maxFieldsPerNode, numNodes=numNodes, verbose=verbose)
+        self.mpi = util.MPIInstance
+    
 
-        # Additional data members
-        self.directSnapPaths = directSnapPaths
-        self.adjointSnapPaths = adjointSnapPaths
-        
-        # Data members that will be set after computation
-        self.LSingVecs = LSingVecs
-        self.singVals = singVals
-        self.RSingVecs = RSingVecs
-        self.hankelMat = hankelMat
-        self.load_mat = load_mat
-        
-    def load_decomp(self, hankelMatPath, LSingVecsPath, singValsPath, 
-        RSingVecsPath, load_mat=None):
+    def load_decomp(self, LSingVecsPath, singValsPath, RSingVecsPath):
         """
         Loads the decomposition matrices from file. 
         """
-        if load_mat is not None:
-            self.load_mat = load_mat
         if self.load_mat is None:
             raise UndefinedError('Must specify a load_mat function')
         if self.mpi.isRankZero():
@@ -71,48 +56,49 @@ class BPOD(ModalDecomp):
             self.singVals = self.mpi.comm.bcast(self.singVals, root=0)
             self.RSingVecs = self.mpi.comm.bcast(self.LSingVecs, root=0)
     
-    def save_decomp(self, hankelMatPath, LSingVecsPath, singValsPath, 
-        RSingVecsPath):
+    def save_hankel_mat(self, hankelMatPath):
+        if self.save_mat is None:
+            raise util.UndefinedError('save_mat not specified')
+        elif self.mpi.isRankZero():
+            self.save_mat(self.hankelMat, hankelMatPath)           
+    
+    def save_decomp(self, LSingVecsPath, singValsPath, RSingVecsPath):
         """Save the decomposition matrices to file."""
-        if self.save_mat is None and self.mpi.isRankZero():
+        if self.save_mat is None:
             raise util.UndefinedError('save_mat is undefined, cant save')
-            
-        if self.mpi.isRankZero():
-            if hankelMatPath is not None:
-                self.save_mat(self.hankelMat, hankelMatPath)
-            if LSingVecsPath is not None:
-                self.save_mat(self.LSingVecs, LSingVecsPath)
-            if RSingVecsPath is not None:
-                self.save_mat(self.RSingVecs, RSingVecsPath)
-            if singValsPath is not None:
-                self.save_mat(self.singVals, singValsPath)
-        
-    def compute_decomp(self, hankelMatPath='hankelMat.txt', LSingVecsPath=\
-        'LSingVecs.txt', singValsPath='singVals.txt', RSingVecsPath=\
-        'RSingVecs.txt', directSnapPaths=None, adjointSnapPaths=None):
+        elif self.mpi.isRankZero():
+            self.save_mat(self.LSingVecs, LSingVecsPath)
+            self.save_mat(self.RSingVecs, RSingVecsPath)
+            self.save_mat(self.singVals, singValsPath)
+                
+    def compute_decomp(self, directSnapPaths=None, adjointSnapPaths=None,
+        hankelMatPath=None):
         """
-        Compute BPOD decomposition, forms the Hankel matrix and its SVD
+        Compute BPOD decomposition from given data.
         
-        LSingVecsPath - Output path for matrix of left singular vectors from 
-            Hankel matrix SVD.
-        singValsPath - Output path for singular values from Hankel matrix SVD.
-        RSingVecsPath - Output path for matrix of right singular vectors from
-            Hankel matrix SVD.
+        If directSnapPaths and adjointSnapPaths are given, then the Hankel
+        matrix is formed, then the SVD is taken.
+        If hankelMatPath is given, then the Hankel matrix is read from
+        file and the SVD is taken.
+        If no arguments are given, then the function fails.
+        If both the paths and the hankelMatPath are given, the HankelMatPath
+        is given priority since it requires less computation.
         """
         
-        if directSnapPaths is not None:
+        if hankelMatPath is not None:
+            if self.load_mat is None:
+                raise util.UndefinedError('load_mat is undefined')
+            elif self.mpi.isRankZero():
+                self.hankelMat = self.load_mat(hankelMatPath)
+        elif directSnapPaths is not None and adjointSnapPaths is not None:
             self.directSnapPaths = directSnapPaths
-        if adjointSnapPaths is not None:
             self.adjointSnapPaths = adjointSnapPaths
-
-        if self.directSnapPaths is None:
-            raise util.UndefinedError('directSnapPaths is not given')
-        if self.adjointSnapPaths is None:
-            raise util.UndefinedError('adjointSnapPaths is not given')
-            
-        self.hankelMat = self.compute_inner_product_matrix(self.\
-            adjointSnapPaths, self.directSnapPaths)
-
+            self.hankelMat = self.fieldOperations.compute_inner_product_mat(\
+                self.adjointSnapPaths, self.directSnapPaths)
+        else:
+            raise util.UndefinedError('Must provide either snap paths or '+\
+                'hankel matrix path to bpod.compute_decomp')
+                
         if self.mpi.isRankZero():
             self.LSingVecs, self.singVals, self.RSingVecs = util.svd(self.\
                 hankelMat)
@@ -124,9 +110,6 @@ class BPOD(ModalDecomp):
             self.LSingVecs = self.mpi.comm.bcast(self.LSingVecs, root=0)
             self.singVals = self.mpi.comm.bcast(self.singVals, root=0)
             self.RSingVecs = self.mpi.comm.bcast(self.RSingVecs, root=0)
-           
-        self.save_decomp(hankelMatPath, LSingVecsPath, singValsPath, 
-            RSingVecsPath)
         
         #self.mpi.evaluate_and_bcast([self.LSingVecs,self.singVals,self.RSingVecs],\
         #  util.svd, arguments = [self.hankelMat])
@@ -152,12 +135,14 @@ class BPOD(ModalDecomp):
             
         if directSnapPaths is not None:
             self.directSnapPaths = directSnapPaths
+        if self.directSnapPaths is None:
+            raise util.UndefinedError('Must specify directSnapPaths')
         
         buildCoeffMat = N.mat(self.RSingVecs) * N.mat(N.diag(self.singVals **\
             -0.5))
 
-        self._compute_modes(modeNumList, modePath, self.directSnapPaths, 
-            buildCoeffMat, indexFrom=indexFrom)
+        self.fieldOperations._compute_modes(modeNumList, modePath, 
+            self.directSnapPaths, buildCoeffMat, indexFrom=indexFrom)
     
     def compute_adjoint_modes(self, modeNumList, modePath, indexFrom=1,
         adjointSnapPaths=None):
@@ -179,11 +164,14 @@ class BPOD(ModalDecomp):
             raise UndefinedError('Must define self.singVals')
         if adjointSnapPaths is not None:
             self.adjointSnapPaths=adjointSnapPaths
+        if self.adjointSnapPaths is None:
+            raise util.UndefinedError('Must specify adjointSnapPaths')
+
         self.singVals = N.squeeze(N.array(self.singVals))
         
         buildCoeffMat = N.mat(self.LSingVecs) * N.mat(N.diag(self.singVals **\
             -0.5))
                  
-        self._compute_modes(modeNumList, modePath, self.adjointSnapPaths,
-            buildCoeffMat, indexFrom=indexFrom)
+        self.fieldOperations._compute_modes(modeNumList, modePath,
+            self.adjointSnapPaths, buildCoeffMat, indexFrom=indexFrom)
     

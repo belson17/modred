@@ -1,54 +1,49 @@
 #!/usr/bin/env python
-import unittest
-import numpy as N
-from modaldecomp import ModalDecomp
-import util
+
 import subprocess as SP
 import os
 import copy
 import inspect #makes it possible to find information about a function
+import unittest
+import numpy as N
+from fieldoperations import FieldOperations
+import util
 
-try:
-    from mpi4py import MPI
-    parallel = MPI.COMM_WORLD.Get_size() >=2
-    rank = MPI.COMM_WORLD.Get_rank()
-    numProcs = MPI.COMM_WORLD.Get_size()
-except ImportError:
-    parallel = False
-    numProcs = 1
-    rank = 0
+
+mpi = util.MPIInstance
 
 print 'To test fully, remember to do both:'
 print '    1) python testmodaldecomp.py'
 print '    2) mpiexec -n <# procs> python testmodaldecomp.py'
 
-class TestModalDecomp(unittest.TestCase):
-    """ Tests of the self.modalDecomp class """
+class TestFieldOperations(unittest.TestCase):
+    """ Tests of the self.fieldOperations class """
     
     def setUp(self):
         # Default data members (verbose set to false even though default is true
         # so messages won't print during tests
-        self.defaultMPI = util.MPI() 
+        self.defaultMPI = util.MPIInstance 
         self.defaultDataMembers = {'load_field': None, 'save_field': None, 
             'save_mat': None, 'inner_product': None, 'maxFieldsPerNode': 2,
             'maxFieldsPerProc': 2, 'mpi': self.defaultMPI, 'numNodes': 1, 
             'verbose': False}
        
-        # Parallel stuff
         self.maxFieldsPerProc = 10
-        self.totalNumFieldsInMem = numProcs * self.maxFieldsPerProc
+        self.totalNumFieldsInMem = mpi.getNumProcs() * self.maxFieldsPerProc
 
-        # ModalDecomp object for running tests
-        self.modalDecomp = ModalDecomp(load_field=util.load_mat_text, 
-            save_field=util.save_mat_text, inner_product=util.inner_product, 
+        # FieldOperations object for running tests
+        self.fieldOperations = FieldOperations( 
+            load_field=util.load_mat_text, 
+            save_field=util.save_mat_text, 
+            inner_product=util.inner_product, 
             verbose=False)
-        self.modalDecomp.maxFieldsPerProc = self.maxFieldsPerProc
+        self.fieldOperations.maxFieldsPerProc = self.maxFieldsPerProc
 
     def tearDown(self):
-        self.modalDecomp.mpi.sync()
-        if self.modalDecomp.mpi.isRankZero():
-            SP.call(['rm -rf files_modaldecomp_test/*'],shell=True)
-        self.modalDecomp.mpi.sync()
+        mpi.sync()
+        if mpi.isRankZero():
+            SP.call(['rm -rf files_modaldecomp_test/*'], shell=True)
+        mpi.sync()
  
     #@unittest.skip('testing other things')
     def test_init(self):
@@ -56,43 +51,43 @@ class TestModalDecomp(unittest.TestCase):
         Test arguments passed to the constructor are assigned properly
         """
         
-        dataMembersOriginal = util.get_data_members(ModalDecomp(verbose=False))
+        dataMembersOriginal = util.get_data_members(FieldOperations(verbose=False))
         self.assertEqual(dataMembersOriginal, self.defaultDataMembers)
         
         def my_load(fname): pass
-        myMD = ModalDecomp(load_field=my_load, verbose=False)
+        myFO = FieldOperations(load_field=my_load, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['load_field'] = my_load
-        self.assertEqual(util.get_data_members(myMD), dataMembers)
+        self.assertEqual(util.get_data_members(myFO), dataMembers)
         
         def my_save(data,fname): pass
-        myMD = ModalDecomp(save_field=my_save, verbose=False)
+        myFO = FieldOperations(save_field=my_save, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['save_field'] = my_save
-        self.assertEqual(util.get_data_members(myMD), dataMembers)
+        self.assertEqual(util.get_data_members(myFO), dataMembers)
         
-        myMD = ModalDecomp(save_mat=my_save, verbose=False)
+        myFO = FieldOperations(save_mat=my_save, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['save_mat'] = my_save
-        self.assertEqual(util.get_data_members(myMD), dataMembers)
+        self.assertEqual(util.get_data_members(myFO), dataMembers)
         
         def my_ip(f1,f2): pass
-        myMD = ModalDecomp(inner_product=my_ip, verbose=False)
+        myFO = FieldOperations(inner_product=my_ip, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['inner_product'] = my_ip
-        self.assertEqual(util.get_data_members(myMD), dataMembers)
+        self.assertEqual(util.get_data_members(myFO), dataMembers)
         
         maxFieldsPerNode = 500
-        myMD = ModalDecomp(maxFieldsPerNode=maxFieldsPerNode, verbose=False)
+        myFO = FieldOperations(maxFieldsPerNode=maxFieldsPerNode, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['maxFieldsPerNode'] = maxFieldsPerNode
-        dataMembers['maxFieldsPerProc'] = maxFieldsPerNode * myMD.numNodes /\
-            myMD.mpi.getNumProcs()
-        self.assertEqual(util.get_data_members(myMD), dataMembers)
+        dataMembers['maxFieldsPerProc'] = maxFieldsPerNode * myFO.numNodes/ \
+            myFO.mpi.getNumProcs()
+        self.assertEqual(util.get_data_members(myFO), dataMembers)
         
-        self.assertRaises(util.MPIError, ModalDecomp, numNodes=numProcs + 1, 
+        self.assertRaises(util.MPIError, FieldOperations, numNodes=mpi.getNumProcs() + 1, 
             verbose=False)
-        #MPI class is tested by utils.   
+        #MPI class is tested by utils
         
 
     #@unittest.skip('testing other things')
@@ -106,8 +101,8 @@ class TestModalDecomp(unittest.TestCase):
         testArray = N.random.random((nx,ny))
         def inner_product(a,b):
             return N.sum(a.arr*b.arr)
-        myMD = ModalDecomp(inner_product=util.inner_product, verbose=False)
-        myMD.idiot_check(testObj=testArray)
+        myFO = FieldOperations(inner_product=util.inner_product, verbose=False)
+        myFO.idiot_check(testObj=testArray)
         
         # An idiot's class that redefines multiplication to modify its data
         class IdiotMult(object):
@@ -131,11 +126,11 @@ class TestModalDecomp(unittest.TestCase):
                 fReturn = copy.deepcopy(self)
                 fReturn.arr*=a
                 return fReturn
-        myMD.inner_product = inner_product
+        myFO.inner_product = inner_product
         myIdiotMult = IdiotMult(testArray)
-        self.assertRaises(ValueError,myMD.idiot_check,testObj=myIdiotMult)
+        self.assertRaises(ValueError,myFO.idiot_check,testObj=myIdiotMult)
         myIdiotAdd = IdiotAdd(testArray)
-        self.assertRaises(ValueError,myMD.idiot_check,testObj=myIdiotAdd)
+        self.assertRaises(ValueError,myFO.idiot_check,testObj=myIdiotAdd)
                 
         
     def generate_snaps_modes(self,numStates,numSnaps,numModes,indexFrom=1):
@@ -200,10 +195,10 @@ class TestModalDecomp(unittest.TestCase):
             totalNumFieldsInMem / 2.)), self.totalNumFieldsInMem, self.\
             totalNumFieldsInMem * 2]
         indexFromList = [0, 5]
-        #modePath = 'proc'+str(self.modalDecomp.mpi._rank)+'/mode_%03d.txt'
+        #modePath = 'proc'+str(self.fieldOperations.mpi._rank)+'/mode_%03d.txt'
         modePath = 'files_modaldecomp_test/mode_%03d.txt'
         snapPath = 'files_modaldecomp_test/snap_%03d.txt'
-        if self.modalDecomp.mpi.isRankZero():
+        if self.fieldOperations.mpi.isRankZero():
             if not os.path.isdir('files_modaldecomp_test'):
                 SP.call(['mkdir','files_modaldecomp_test'])
         
@@ -221,7 +216,7 @@ class TestModalDecomp(unittest.TestCase):
                     for snapIndex in range(numSnaps):
                         snapPaths.append(snapPath % snapIndex)
                     
-                    if self.modalDecomp.mpi.isRankZero():
+                    if self.fieldOperations.mpi.isRankZero():
                         snapMat,modeNumList, buildCoeffMat, trueModes = \
                           self.generate_snaps_modes(numStates, numSnaps,
                           numModes, indexFrom=indexFrom)
@@ -232,14 +227,14 @@ class TestModalDecomp(unittest.TestCase):
                         buildCoeffMat = None
                         snapMat = None
                         trueModes = None
-                    if self.modalDecomp.mpi.isParallel():
-                        modeNumList = self.modalDecomp.mpi.comm.bcast(
+                    if self.fieldOperations.mpi.isParallel():
+                        modeNumList = self.fieldOperations.mpi.comm.bcast(
                             modeNumList, root=0)
-                        buildCoeffMat = self.modalDecomp.mpi.comm.bcast(
+                        buildCoeffMat = self.fieldOperations.mpi.comm.bcast(
                             buildCoeffMat,root=0)
-                        snapMat = self.modalDecomp.mpi.comm.bcast(
+                        snapMat = self.fieldOperations.mpi.comm.bcast(
                             snapMat, root=0)
-                        trueModes = self.modalDecomp.mpi.comm.bcast(
+                        trueModes = self.fieldOperations.mpi.comm.bcast(
                             trueModes, root=0)
                         
                     # if any mode number (minus starting indxex)
@@ -252,27 +247,27 @@ class TestModalDecomp(unittest.TestCase):
                             buildCoeffMat.shape[1]:
                             checkAssertRaises = True
                     if checkAssertRaises:
-                        self.assertRaises(ValueError, self.modalDecomp.\
+                        self.assertRaises(ValueError, self.fieldOperations.\
                             _compute_modes, modeNumList, modePath, 
                             snapPaths, buildCoeffMat, indexFrom=\
                             indexFrom)
                     # If the coeff mat has more rows than there are 
                     # snapshot paths
                     elif numSnaps > buildCoeffMat.shape[0]:
-                        self.assertRaises(ValueError, self.modalDecomp.\
+                        self.assertRaises(ValueError, self.fieldOperations.\
                             _compute_modes, modeNumList, modePath,
                             snapPaths, buildCoeffMat, indexFrom=\
                             indexFrom)
                     elif numModes > numSnaps:
                         self.assertRaises(ValueError,
-                          self.modalDecomp._compute_modes, modeNumList,
+                          self.fieldOperations._compute_modes, modeNumList,
                           modePath, snapPaths, buildCoeffMat,
                           indexFrom=indexFrom)
                     # If more processors than number of snaps available,
                     # then some procs will not have a task, not allowed.
-                    elif self.modalDecomp.mpi.getNumProcs() > numSnaps:
+                    elif self.fieldOperations.mpi.getNumProcs() > numSnaps:
                         self.assertRaises(util.MPIError, self.\
-                            modalDecomp._compute_modes, modeNumList, 
+                            fieldOperations._compute_modes, modeNumList, 
                             modePath, snapPaths, buildCoeffMat, 
                             indexFrom=indexFrom)
                     else:
@@ -282,7 +277,7 @@ class TestModalDecomp(unittest.TestCase):
                             modeNumList = modeNumList[0]
 
                         # Saves modes to files
-                        self.modalDecomp._compute_modes(modeNumList, 
+                        self.fieldOperations._compute_modes(modeNumList, 
                             modePath, snapPaths, buildCoeffMat, 
                             indexFrom=indexFrom)
 
@@ -290,10 +285,10 @@ class TestModalDecomp(unittest.TestCase):
                         if isinstance(modeNumList, int):
                             modeNumList = [modeNumList]
 
-                        self.modalDecomp.mpi.sync()
+                        self.fieldOperations.mpi.sync()
                         
                         # Do tests on processor 0
-                        if self.modalDecomp.mpi.isRankZero():
+                        if self.fieldOperations.mpi.isRankZero():
                             for modeNum in modeNumList:
                                 computedMode = util.load_mat_text(
                                     modePath % modeNum)
@@ -305,12 +300,12 @@ class TestModalDecomp(unittest.TestCase):
                                     computedMode, trueModes[:,modeNum-\
                                     indexFrom])
                                 
-                        self.modalDecomp.mpi.sync()
+                        self.fieldOperations.mpi.sync()
        
-        self.modalDecomp.mpi.sync()
+        self.fieldOperations.mpi.sync()
 
     #@unittest.skip('testing other things')
-    def test_compute_inner_product_matrices(self):
+    def test_compute_inner_product_mats(self):
         """
         Test computation of matrix of inner products in memory-efficient
         chunks, both in parallel (compute_inner_product_matrix) and serial
@@ -327,14 +322,14 @@ class TestModalDecomp(unittest.TestCase):
             productTrue = mat1 * mat2
            
             # Test computation as chunk (a serial method, tested on each proc)
-            productComputedAsChunk = self.modalDecomp.\
+            productComputedAsChunk = self.fieldOperations.\
                 _compute_inner_product_chunk(paths1, paths2)
             N.testing.assert_array_almost_equal(productComputedAsChunk, 
                 productTrue)
 
             # Test paralleized computation.  
-            productComputedAsMat = self.modalDecomp.\
-                compute_inner_product_matrix(paths1, paths2)
+            productComputedAsMat = self.fieldOperations.\
+                compute_inner_product_mat(paths1, paths2)
             N.testing.assert_array_almost_equal(productComputedAsMat, 
                 productTrue)
            
@@ -342,7 +337,7 @@ class TestModalDecomp(unittest.TestCase):
             if paths1 == paths2:
                 # Test computation as chunk (serial).  
                 # First test complete upper triangular computation
-                productComputedAsFullSymmChunk = self.modalDecomp.\
+                productComputedAsFullSymmChunk = self.fieldOperations.\
                     _compute_upper_triangular_inner_product_chunk(paths1, 
                         paths2)
                 N.testing.assert_array_almost_equal(
@@ -350,7 +345,7 @@ class TestModalDecomp(unittest.TestCase):
 
                 # Also test non-square upper triangular computation
                 numRows = int(N.ceil(len(paths1) / 2.))
-                productComputedAsPartialSymmChunk = self.modalDecomp.\
+                productComputedAsPartialSymmChunk = self.fieldOperations.\
                     _compute_upper_triangular_inner_product_chunk(paths1[
                         :numRows], paths2)
                 N.testing.assert_array_almost_equal(
@@ -358,13 +353,13 @@ class TestModalDecomp(unittest.TestCase):
                     :numRows, :]))
                 
                 # Test computation in parallel
-                productComputedAsSymmMat = self.modalDecomp.\
-                    compute_symmetric_inner_product_matrix(paths1)
+                productComputedAsSymmMat = self.fieldOperations.\
+                    compute_symmetric_inner_product_mat(paths1)
                 N.testing.assert_array_almost_equal(productComputedAsSymmMat, 
                     productTrue)
             # If lists are not the same, should return an error
             else:
-                self.assertRaises(ValueError, self.modalDecomp.\
+                self.assertRaises(ValueError, self.fieldOperations.\
                     _compute_upper_triangular_inner_product_chunk, paths1, 
                     paths2)
 
@@ -381,8 +376,8 @@ class TestModalDecomp(unittest.TestCase):
         for numRowSnaps in numRowSnapsList:
             for numColSnaps in numColSnapsList:
                 # generate snapshots and save to file, only do on proc 0
-                self.modalDecomp.mpi.sync()
-                if self.modalDecomp.mpi.isRankZero():
+                self.fieldOperations.mpi.sync()
+                if self.fieldOperations.mpi.isRankZero():
                     rowSnapMat = N.mat(N.random.random((numStates,
                         numRowSnaps)))
                     colSnapMat = N.mat(N.random.random((numStates,
@@ -402,14 +397,14 @@ class TestModalDecomp(unittest.TestCase):
                     colSnapMat = None
                     rowSnapPaths = None
                     colSnapPaths = None
-                if self.modalDecomp.mpi.isParallel():
-                    rowSnapMat = self.modalDecomp.mpi.comm.bcast(
+                if self.fieldOperations.mpi.isParallel():
+                    rowSnapMat = self.fieldOperations.mpi.comm.bcast(
                         rowSnapMat, root=0)
-                    colSnapMat = self.modalDecomp.mpi.comm.bcast(
+                    colSnapMat = self.fieldOperations.mpi.comm.bcast(
                         colSnapMat, root=0)
-                    rowSnapPaths = self.modalDecomp.mpi.comm.bcast(
+                    rowSnapPaths = self.fieldOperations.mpi.comm.bcast(
                         rowSnapPaths, root=0)
-                    colSnapPaths = self.modalDecomp.mpi.comm.bcast(
+                    colSnapPaths = self.fieldOperations.mpi.comm.bcast(
                         colSnapPaths, root=0)
 
                 # If number of rows/cols is 1, test case that a string, not

@@ -300,4 +300,6 @@ def sum_lists(list1,list2):
         list3.append(list1[i]+list2[i])
     return list3
 
+# Create an instance of MPI class that is used everywhere, "singleton"
+MPIInstance = MPI()
 

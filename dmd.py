@@ -1,5 +1,5 @@
 # Parent class
-from modaldecomp import ModalDecomp
+from fieldoperations import FieldOperations
 from pod import POD
 import numpy as N
 
@@ -7,7 +7,7 @@ import numpy as N
 import util
 
 # Derived class
-class DMD(ModalDecomp):
+class DMD(object):
     """
     Dynamic Mode Decomposition/Koopman Mode Decomposition
         
@@ -17,21 +17,24 @@ class DMD(ModalDecomp):
 
     def __init__(self, load_field=None, save_field=None, save_mat=util.\
         save_mat_text, inner_product=None, maxFieldsPerNode=None, numNodes=1, 
-        snapPaths=None, buildCoeff=None, pod=None, verbose=True):
+        pod=None, verbose=True):
         """
         DMD constructor
         """
         # Base class constructor defines common data members
-        ModalDecomp.__init__(self, load_field=load_field, save_field=save_field,
-            save_mat=save_mat, inner_product=inner_product, maxFieldsPerNode=\
-            maxFieldsPerNode, numNodes=numNodes, verbose=verbose)
+        self.fieldOperations = FieldOperations(self, load_field=load_field,\
+            save_field=save_field,
+            save_mat=save_mat, inner_product=inner_product,\
+            maxFieldsPerNode=maxFieldsPerNode, numNodes=numNodes, \
+            verbose=verbose)
 
-        # Additional data members
-        self.snapPaths = snapPaths
-        self.buildCoeff = buildCoeff
-        
+        self.verbose = verbose
+        self.load_mat = load_mat
+        self.save_mat = save_mat
+
         # Data members that will be set after computation
         self.pod = pod
+        
         
     def compute_decomp(self, ritzValsPath=None, modeNormsPath=None, 
         buildCoeffPath=None, snapPaths=None):

@@ -1,18 +1,18 @@
 
+"""Collection of useful functions for modaldecomp library"""
+
 import sys  
 import copy
 import util
 import numpy as N
 
 
-class ModalDecomp(object):
+class FieldOperations(object):
     """
-    Modal Decomposition base class
+    Does many useful operations on fields.
 
-    This parent class contains implementations of algorithms that
-    take as input a set of data (snapshots) and return as output sets of
-    modes.  Derived classes should exist for unique modal decompositions, 
-    e.g. POD, BPOD, and DMD. 
+    All modal decomp classes should use the common functionality provided
+    in this class as much as possible.
     """
     
     def __init__(self, load_field=None, save_field=None, save_mat=None, 
@@ -30,7 +30,8 @@ class ModalDecomp(object):
         self.inner_product = inner_product
         self.verbose = verbose
 
-        self.mpi = util.MPI(verbose=self.verbose)
+        self.mpi = util.MPIInstance
+        self.mpi.verbose = self.verbose
         if maxFieldsPerNode is None:
             self.maxFieldsPerNode = 2
             if self.mpi.isRankZero() and self.verbose:
@@ -309,7 +310,7 @@ class ModalDecomp(object):
         return innerProductMatChunk
       
 
-    def compute_inner_product_matrix(self, rowFieldPaths, colFieldPaths):
+    def compute_inner_product_mat(self, rowFieldPaths, colFieldPaths):
         """ Computes a matrix of inner products and returns it.
         
         This method assigns the task of computing the a matrix of inner products
@@ -383,7 +384,7 @@ class ModalDecomp(object):
 
         return innerProductMat
      
-    def compute_symmetric_inner_product_matrix(self, fieldPaths):
+    def compute_symmetric_inner_product_mat(self, fieldPaths):
         """ Computes a symmetric matrix of inner products and returns it.
         
         Because the inner product is symmetric, only one set of snapshots needs
@@ -440,7 +441,7 @@ class ModalDecomp(object):
 
         return innerProductMat
     
-    def _compute_modes(self,modeNumList,modePath,snapPaths,fieldCoeffMat,
+    def _compute_modes(self, modeNumList, modePath, snapPaths, fieldCoeffMat,
         indexFrom=1):
         """
         A common method to compute and save modes from snapshots.
@@ -504,10 +505,9 @@ class ModalDecomp(object):
         modePaths = []
         for modeNum in modeNumList:
             modePaths.append(modePath%modeNum)
-        self.lin_combine_fields(modePaths,snapPaths,fieldCoeffMatReordered)
+        self.lin_combine(modePaths, snapPaths, fieldCoeffMatReordered)
     
-    
-    def lin_combine_fields(self,outputFieldPaths,inputFieldPaths,fieldCoeffMat):
+    def lin_combine(self, outputFieldPaths, inputFieldPaths, fieldCoeffMat):
         """
         Linearly combines the input fields and saves them.
         
@@ -573,7 +573,7 @@ class ModalDecomp(object):
             endOutputIndex = min(numOutputFields, startOutputIndex +\
                 numOutputsPerProc) 
             # Pass the work to individual processors    
-            outputLayers = self.lin_combine_fields_chunk(
+            outputLayers = self.lin_combine_chunk(
                 inputFieldPaths[inputProcAssignments[self.mpi.getRank()][0] : \
                   inputProcAssignments[self.mpi.getRank()][-1]+1],
                 fieldCoeffMat[inputProcAssignments[self.mpi.getRank()][0] : \
@@ -600,7 +600,7 @@ class ModalDecomp(object):
             
     
 
-    def lin_combine_fields_chunk(self,inputFieldPaths,fieldCoeffMat):
+    def lin_combine_chunk(self, inputFieldPaths, fieldCoeffMat):
         """
         Computes a layer of the outputs for a particular processor.
         
@@ -647,4 +647,15 @@ class ModalDecomp(object):
                         outputLayers[outputIndex] += outputLayer
         # Return summed contributions from snapshot set to current modes            
         return outputLayers  
+        
+
+    def __eq__(self, other):
+        #print 'comparing fieldOperations classes'
+        a = (self.inner_product == other.inner_product and \
+        self.load_field == other.load_field and self.save_field == other.save_field \
+        and self.maxFieldsPerNode==other.maxFieldsPerNode and\
+        self.numNodes==other.numNodes and self.verbose==other.verbose)
+        return a
+    def __ne__(self,other):
+        return not (self.__eq__(other))
 
