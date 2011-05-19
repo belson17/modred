@@ -3,9 +3,13 @@ Utility Functions
 
 .. module:: util
    :noindex:
-.. autofunction:: write_mat_text
-.. autofunction:: read_mat_text
-.. autofunction:: find_file_type
+.. autoclass:: UndefinedError
+   :members:
+.. autofunction:: save_mat_text
+.. autofunction:: load_mat_text
+.. autofunction:: inner_product
+.. autoclass:: MPIError
+   :members:
 .. autoclass:: MPI
    :members:
 
