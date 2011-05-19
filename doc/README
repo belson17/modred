@@ -9,11 +9,13 @@ Note: Sphinx actually runs and imports python code, so broken code, or code not 
 2.  (Optional, do this step if you activate numpy extension in conf.py) 
     Install numpydoc [http://pypi.python.org/pypi/numpydoc] 
 
-3.  In Makefile point to your own copy of sphinx-build, e.g.
+3.  Copy Makefile.sav to Makefile - this is your local file that you will modify    and is not under version control. Do not modify Makefile.sav.
+
+4.  In Makefile point to your own copy of sphinx-build, e.g.
     [SPHINXBUILD   = /Users/yourname/CODES/Sphinx-1.0.6/sphinx-build.py]
 
-4.  From within doc/ directory 
-    >> touch *.rst
-    >> make html  [or make latex]
+5.  From within the doc/ directory 
+    $ touch *.rst
+    $ make html  [or make latex]
 
-5.  Navigate to doc/_build/html and open index.html to view and browse the documentation
+6.  Navigate to doc/_build/html and open index.html to view and browse the documentation
