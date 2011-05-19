@@ -9,15 +9,18 @@ import util
 import copy
 
 mpi = util.MPIInstance
+
+""" # distributed only
 if mpi.isRankZero():
     print 'To test fully, remember to do both:'
     print '    1) python testbpod.py'
     print '    2) mpiexec -n <# procs> python testbpod.py\n'
+""" # distributed only
 
 class TestBPOD(unittest.TestCase):
     """ Test all the BPOD class methods """
     def setUp(self):
-        self.maxDiff = 1000
+        self.maxDiff = 2000
         if not os.path.isdir('files_modaldecomp_test'):        
             SP.call(['mkdir','files_modaldecomp_test'])
         self.modeNumList =[2, 4, 3, 6, 9, 8, 10, 11, 30]
@@ -26,7 +29,7 @@ class TestBPOD(unittest.TestCase):
         self.numStates = 100
         self.indexFrom = 2
         self.bpod = BPOD(load_field=util.load_mat_text, save_field=util.\
-            save_mat_text, save_mat=util.save_mat_text, inner_product=util.\
+            save_mat_text, inner_product=util.\
             inner_product, verbose=False)
         self.generate_data_set()
    
@@ -66,10 +69,10 @@ class TestBPOD(unittest.TestCase):
             self.directSnapMat = None
             self.adjointSnapMat = None
         if mpi.isParallel():
-            self.directSnapPaths = mpi.comm.bcast(self.\
-                directSnapPaths, root=0)
-            self.adjointSnapPaths = mpi.comm.bcast(self.\
-                adjointSnapPaths, root=0)
+            self.directSnapPaths = mpi.comm.bcast(self.directSnapPaths,
+                root=0)
+            self.adjointSnapPaths = mpi.comm.bcast(self.adjointSnapPaths,
+                root=0)
             self.directSnapMat = mpi.comm.bcast(self.directSnapMat, 
                 root=0)
             self.adjointSnapMat = mpi.comm.bcast(self.adjointSnapMat,
@@ -77,7 +80,7 @@ class TestBPOD(unittest.TestCase):
          
         self.hankelMatTrue = self.adjointSnapMat.T * self.directSnapMat
         
-        #Do the SVD on all procs.
+        #Do the SVD on all procs
         self.LSingVecsTrue, self.singValsTrue, self.RSingVecsTrue = util.svd(
             self.hankelMatTrue)
         self.directModeMat = self.directSnapMat * N.mat(self.RSingVecsTrue) *\
@@ -95,8 +98,8 @@ class TestBPOD(unittest.TestCase):
         dataMembersDefault = {'save_mat': util.save_mat_text, 'load_mat': util.load_mat_text, 
             'mpi': util.MPIInstance, 'verbose': False,
             'fieldOperations': FieldOperations(load_field=None, save_field=None,
-            save_mat=util.save_mat_text, inner_product=None, maxFieldsPerNode=\
-            2, numNodes=1, verbose=False)}
+            inner_product=None, maxFieldsPerNode=\
+            2, verbose=False)}
         
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
@@ -136,12 +139,8 @@ class TestBPOD(unittest.TestCase):
         myBPOD = BPOD(maxFieldsPerNode=maxFieldsPerNode, verbose=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['fieldOperations'].maxFieldsPerNode = maxFieldsPerNode
-        dataMembersModified['fieldOperations'].maxFieldsPerProc = maxFieldsPerNode*\
-            myBPOD.fieldOperations.numNodes/mpi.getNumProcs()
         self.assertEqual(util.get_data_members(myBPOD), dataMembersModified)
         
-        self.assertRaises(util.MPIError, BPOD, numNodes=mpi.getNumProcs()+1,
-            verbose=False)
         
     def test_compute_decomp(self):
         """

@@ -32,8 +32,8 @@ class BPOD(object):
         # Class that contains all of the low-level field operations
         # and parallelizes them.
         self.fieldOperations = FieldOperations(load_field=load_field, save_field=save_field,
-            save_mat=save_mat, inner_product=inner_product, maxFieldsPerNode=\
-            maxFieldsPerNode, numNodes=numNodes, verbose=verbose)
+            inner_product=inner_product, maxFieldsPerNode=\
+            maxFieldsPerNode, verbose=verbose)
         self.mpi = util.MPIInstance
     
 

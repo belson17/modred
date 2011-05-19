@@ -125,12 +125,3 @@ class DMD(object):
         
         
         
-        
-        
-        
-        
-        
-        
-        
-        
-        

@@ -3,9 +3,14 @@
 
 import sys  
 import copy
+import multiprocessing
+from multiprocessing import Pool
+import itertools
+
 import util
 import numpy as N
 
+pool = Pool(processes = multiprocessing.cpu_count())
 
 class FieldOperations(object):
     """
@@ -15,8 +20,8 @@ class FieldOperations(object):
     in this class as much as possible.
     """
     
-    def __init__(self, load_field=None, save_field=None, save_mat=None, 
-        inner_product=None, maxFieldsPerNode=None, numNodes=1, verbose=True):
+    def __init__(self, load_field=None, save_field=None, 
+        inner_product=None, maxFieldsPerNode=None, verbose=True):
         """
         Modal decomposition constructor.
     
@@ -24,9 +29,10 @@ class FieldOperations(object):
         derived classes.  All derived classes should be sure to invoke this
         constructor explicitly.
         """
+        # Pool of workers within the node
+        #self.
         self.load_field = load_field
         self.save_field = save_field
-        self.save_mat = save_mat
         self.inner_product = inner_product
         self.verbose = verbose
 
@@ -40,20 +46,12 @@ class FieldOperations(object):
                     'maxFieldsPerNode for a speedup.'
         else:
             self.maxFieldsPerNode = maxFieldsPerNode
-        self.numNodes = numNodes
-        if (self.numNodes > self.mpi.getNumProcs()):
-            raise util.MPIError('More nodes (%d) than processors (%d).' % \
-                (self.numNodes, self.mpi.getNumProcs())) 
-        if self.maxFieldsPerNode < 2 * self.mpi.getNumProcs() / self.numNodes: 
-            self.maxFieldsPerProc = 2
-            if self.verbose and self.mpi.isRankZero():
-                print 'Warning - maxFieldsPerNode too small for given ' +\
-                    'number of procs, nodes.  Assuming 2 fields can be ' +\
-                    'loaded per processor. Increase maxFieldsPerNode for a ' +\
-                    'speedup.'
-        else:
-            self.maxFieldsPerProc = self.maxFieldsPerNode * self.numNodes / \
-                self.mpi.getNumProcs()
+            
+            
+    def copy(self):
+        """Returns a deep copy of the class"""
+        return copy.deepcopy(self)
+
 
     def idiot_check(self, testObj=None, testObjPath=None):
         """Checks that the user-supplied objects and functions work properly.
@@ -114,10 +112,90 @@ class FieldOperations(object):
                 startRowIndex) * endColIndex
             percentCompletedIPs = 100. * numCompletedIPs / (numCols *\
                 numRows)
-            print >> sys.stderr, ('Processor %d completed %.1f%% of inner ' +\
-                'products: IPMat[:%d, :%d] of IPMat[:%d, :%d]') % (self.mpi.\
-                getRank(), percentCompletedIPs, endRowIndex, endColIndex, 
+            print >> sys.stderr, ('Completed %.1f%% of inner ' +\
+                'products on node %d - IPMat[:%d, :%d] of IPMat[:%d, :%d]') %(\
+                percentCompletedIPs, self.mpi.getNodeNum(), endRowIndex, endColIndex, 
                 numRows, numCols)
+  
+    def compute_inner_product_mat(self, rowFieldPaths, colFieldPaths):
+        """ Computes a matrix of inner products and returns it.
+        
+        This method assigns the task of computing the a matrix of inner products
+        into pieces for each processor, then passes this onto 
+        self._compute_inner_product_chunk(...). After 
+        _compute_inner_product_chunk returns chunks of the inner product matrix,
+        they are concatenated into a completed, single, matrix on processor 0. 
+        This completed matrix is broadcast to all other processors (if 
+        parallel).
+        """
+        if isinstance(rowFieldPaths,str):
+            rowFieldPaths = [rowFieldPaths]
+        if isinstance(colFieldPaths,str):
+            colFieldPaths = [colFieldPaths]
+          
+        numColFields = len(colFieldPaths)
+        numRowFields = len(rowFieldPaths)
+
+        # Enforce that there are more cols than rows for efficiency
+        # 3 rows by 2 cols gives: 2 loads + 6 loads = 8 loads
+        # 2 rows  by 3 cols gives: 3 loads + 6 loads = 9 loads
+        # thus minimize # rows.
+        if numRowFields > numColFields:
+            transpose = True
+            temp = rowFieldPaths
+            rowFieldPaths = colFieldPaths
+            colFieldPaths = temp
+            temp = numRowFields
+            numRowFields = numColFields
+            numColFields = temp
+        else: 
+            transpose = False
+
+        rowFieldNodeAssignments = self.mpi.find_assignments(range(
+            numRowFields))
+
+        if self.mpi.isRankZero() and rowFieldNodeAssignments[0][-1] -\
+            rowFieldNodeAssignments[0][0] > self.maxFieldsPerNode and self.\
+            verbose:
+            print ('Warning: Each node will have to read the column ' +\
+                'fields (%d total) multiple times. Increase number of ' +\
+                'nodes to avoid this and get a big speedup.') %\
+                numColFields
+
+        # Only compute if task list is nonempty
+        #print 'rowFieldNodeAssignments is',rowFieldNodeAssignments
+        innerProductMatChunk = None
+        if len(rowFieldNodeAssignments[self.mpi.getNodeNum()]) != 0:
+            innerProductMatChunk = self._compute_inner_product_chunk(
+                rowFieldPaths[rowFieldNodeAssignments[self.mpi.getNodeNum()][0]:
+                rowFieldNodeAssignments[self.mpi.getNodeNum()][-1]+1], 
+                colFieldPaths)
+        else:  
+            innerProductMatChunk = None
+
+        # Gather list of chunks from each processor, ordered by rank
+        if self.mpi.isParallel():
+            #print 'gathering inner product mat chunk list'
+            innerProductMatChunkList = self.mpi.comm.allgather(
+                innerProductMatChunk)
+            #print 'finished gathering inner product mat chunk list'
+            innerProductMat = N.mat(N.zeros((numRowFields, numColFields)))
+
+            # concatenate the chunks of inner product matrix
+            for rank, currentInnerProductMatChunk in enumerate(
+                innerProductMatChunkList):
+                if currentInnerProductMatChunk is not None:
+                    innerProductMat[rowFieldNodeAssignments[rank][0]:\
+                        rowFieldNodeAssignments[rank][-1]+1] =\
+                        currentInnerProductMatChunk
+        else:
+            innerProductMat = innerProductMatChunk 
+
+        if transpose:
+            innerProductMat = innerProductMat.T
+
+        return innerProductMat
+  
   
           
     def _compute_inner_product_chunk(self, rowFieldPaths, colFieldPaths):
@@ -135,11 +213,10 @@ class FieldOperations(object):
         future this method can be expanded to find more general shapes of the 
         matrix. It returns a matrix with the above number of rows and columns.
         
-        
         """
         # Must check that these are lists, in case method is called directly
         # When called as part of compute_inner_product_matrix, paths are
-        # generated by getProcAssignments, and are called such that a list is
+        # generated by getNodeAssignments, and are called such that a list is
         # always passed in
         if isinstance(rowFieldPaths,str):
             rowFieldPaths = [rowFieldPaths]
@@ -165,41 +242,140 @@ class FieldOperations(object):
         if self.verbose:
             # Print after this many cols are computed
             printAfterNumCols = (numCols/5)+1 
+        
        
-        numColsPerChunk = 1
-        numRowsPerChunk = self.maxFieldsPerProc-numColsPerChunk         
+        numSubChunks = self.maxFieldsPerNode / self.mpi.getNumProcsPerNode()
+        # If can read more than 2 subChunks, where a sub chunk has
+        # procs/node fields, then distribute
+        # reading with one sub chunk in col, rest of the sub chunks in rows,
+        # iterate:
+        #  rows
+        #    cols
+        if numSubChunks >= 2:
+            numColsPerChunk = 1*self.mpi.getNumProcsPerNode() 
+            numRowsPerChunk = self.maxFieldsPerNode - numColsPerChunk
+            
+        # If not, maximize the number of rows per chunk, leftovers for col
+        elif numSubChunks == 1:
+            numColsPerChunk = self.maxFieldsPerNode - self.mpi.getNumProcsPerNode()
+            numRowsPerChunk = self.mpi.getNumProcsPerNode()
+        # If can't get even numProcsPerNode fields in memory at once, then
+        # default to slowest option, will not make full use of shared memory
+        else:
+            numColsPerChunk = 1
+            numRowsPerChunk = self.maxFieldsPerNode - numColsPerChunk
 
-        innerProductMatChunk = N.mat(N.zeros((numRows,numCols)))
+        innerProductMat = N.mat(N.zeros((numRows,numCols)))
         
         for startRowIndex in range(0,numRows,numRowsPerChunk):
             endRowIndex = min(numRows,startRowIndex+numRowsPerChunk)
             
-            rowSnaps = []
-            for rowPath in rowFieldPaths[startRowIndex:endRowIndex]:
-                rowSnaps.append(self.load_field(rowPath))
-         
+            #rowSnaps = []
+            #for rowPath in rowFieldPaths[startRowIndex:endRowIndex]:
+            #    rowSnaps.append(self.load_field(rowPath))
+            rowSnaps = pool.map(self.load_field, rowFieldPaths[startRowIndex:endRowIndex])
+            
             for startColIndex in range(0,numCols,numColsPerChunk):
                 endColIndex = min(numCols,startColIndex+numColsPerChunk)
 
-                colSnaps = []
-                for colPath in colFieldPaths[startColIndex:endColIndex]:
-                    colSnaps.append(self.load_field(colPath))
-              
-                #With the chunks of the row and column matrices,
-                #find inner products
+                #colSnaps = []
+                #for colPath in colFieldPaths[startColIndex:endColIndex]:
+                #    colSnaps.append(self.load_field(colPath))
+                colSnaps = pool.map(self.load_field, colFieldPaths[startColIndex:endColIndex])
+                              
+                # Non shared mem 
                 for rowIndex in range(startRowIndex,endRowIndex):
                     for colIndex in range(startColIndex,endColIndex):
-                        innerProductMatChunk[rowIndex,colIndex] = \
+                        innerProductMat[rowIndex,colIndex] = \
                           self.inner_product(rowSnaps[rowIndex-startRowIndex],
                           colSnaps[colIndex-startColIndex])
+                
+                """
+                # Shared mem, first create the list of tuples of row and col snaps
+                #import time as T
+                #startTime = T.time()
+                rowsForMap = []
+                colsForMap = []
+                for rowIndex in range(startRowIndex,endRowIndex):
+                    for colIndex in range(startColIndex,endColIndex):
+                        rowsForMap.append(rowSnaps[rowIndex-startRowIndex])
+                        colsForMap.append(colSnaps[colIndex-startColIndex])
+                #print 'time making lists',T.time()-startTime
+                innerProductList = pool.map(util.eval_func_tuple,
+                    itertools.izip(itertools.repeat(self.inner_product),
+                        rowsForMap, colsForMap))
+                innerProductMat[startRowIndex:endRowIndex, startColIndex:endColIndex] = \
+                    N.array(innerProductList).reshape(endRowIndex-startRowIndex,
+                        endColIndex - startColIndex)
+                """
+                
                 if self.verbose:
                     self._print_inner_product_progress(startRowIndex, 
                         endRowIndex, endColIndex, numRows, numCols, 
                         printAfterNumCols)
         
         if transpose: 
-            innerProductMatChunk = innerProductMatChunk.T
-        return innerProductMatChunk
+            innerProductMat = innerProductMat.T
+            
+        return innerProductMat
+      
+      
+    def compute_symmetric_inner_product_mat(self, fieldPaths):
+        """ Computes a symmetric matrix of inner products and returns it.
+        
+        Because the inner product is symmetric, only one set of snapshots needs
+        to be specified.  This method will call
+        _compute_upper_triangular_inner_product_matrix_chunk and at the end
+        will symemtrize the upper triangular matrix.
+        """
+      
+        if isinstance(fieldPaths,str):
+            fieldPaths = [fieldPaths]
+          
+        numFields = len(fieldPaths)
+ 
+        rowFieldNodeAssignments = self.mpi.find_assignments(range(
+            numFields), taskWeights=range(numFields, 0, -1))
+
+        if self.mpi.isRankZero() and rowFieldNodeAssignments[0][-1] -\
+            rowFieldNodeAssignments[0][0] > self.maxFieldsPerNode and self.\
+            verbose:
+            print ('Warning: Each processor may have to read the snapshots ' +\
+                '(%d total) multiple times. Increase number of processors ' +\
+                'to avoid this and get a big speedup.') % numFields
+
+        # Perform task if task assignment is not empty
+        if len(rowFieldNodeAssignments[self.mpi.getNodeNum()]) != 0:
+            innerProductMatChunk = self.\
+                _compute_upper_triangular_inner_product_chunk(fieldPaths[
+                rowFieldNodeAssignments[self.mpi.getNodeNum()][0]:
+                rowFieldNodeAssignments[self.mpi.getNodeNum()][-1] + 1], 
+                fieldPaths[rowFieldNodeAssignments[self.mpi.getNodeNum()][0]:])
+        else:
+            innerProductMatChunk = None
+
+        # Gather list of chunks from each processor, ordered by rank
+        if self.mpi.isParallel():
+            innerProductMatChunkList = self.mpi.comm.allgather(
+                innerProductMatChunk)
+            innerProductMat = N.mat(N.zeros((numFields, numFields)))
+
+            # concatenate the chunks of inner product matrix for procs with
+            # nonempty tasks
+            for rank, currentInnerProductMatChunk in enumerate(
+                innerProductMatChunkList):
+                if currentInnerProductMatChunk is not None:
+                    innerProductMat[rowFieldNodeAssignments[rank][0]:\
+                        rowFieldNodeAssignments[rank][-1] + 1,
+                        rowFieldNodeAssignments[rank][0]:] =\
+                        currentInnerProductMatChunk
+        else:
+            innerProductMat = innerProductMatChunk 
+
+        # Symmetrize matrix
+        innerProductMat += N.triu(innerProductMat, 1).T
+
+        return innerProductMat  
       
 
     def _compute_upper_triangular_inner_product_chunk(self, rowFieldPaths, 
@@ -218,7 +394,7 @@ class FieldOperations(object):
         """
         # Must check that these are lists, in case method is called directly
         # When called as part of compute_inner_product_matrix, paths are
-        # generated by getProcAssignments, and are called such that a list is
+        # generated by getNodeAssignments, and are called such that a list is
         # always passed in
         if isinstance(rowFieldPaths, str):
             rowFieldPaths = [rowFieldPaths]
@@ -242,11 +418,11 @@ class FieldOperations(object):
 
         # If computing a square chunk (upper triangular part) and all rows can
         # be loaded simultaneously, no need to save room for a column chunk
-        if self.maxFieldsPerProc >= numRows and numRows == numCols:
+        if self.maxFieldsPerNode >= numRows and numRows == numCols:
             numColsPerChunk = 0
         else:
             numColsPerChunk = 1 
-        numRowsPerChunk = self.maxFieldsPerProc - numColsPerChunk         
+        numRowsPerChunk = self.maxFieldsPerNode - numColsPerChunk         
 
         innerProductMatChunk = N.mat(N.zeros((numRows, numCols)))
         
@@ -310,136 +486,9 @@ class FieldOperations(object):
         return innerProductMatChunk
       
 
-    def compute_inner_product_mat(self, rowFieldPaths, colFieldPaths):
-        """ Computes a matrix of inner products and returns it.
-        
-        This method assigns the task of computing the a matrix of inner products
-        into pieces for each processor, then passes this onto 
-        self._compute_inner_product_chunk(...). After 
-        _compute_inner_product_chunk returns chunks of the inner product matrix,
-        they are concatenated into a completed, single, matrix on processor 0. 
-        This completed matrix is broadcast to all other processors (if 
-        parallel).
-        """
-      
-        if isinstance(rowFieldPaths,str):
-            rowFieldPaths = [rowFieldPaths]
-        if isinstance(colFieldPaths,str):
-            colFieldPaths = [colFieldPaths]
-          
-        numColFields = len(colFieldPaths)
-        numRowFields = len(rowFieldPaths)
-
-        # Enforce that there are more rows than columns for efficiency
-        # Each column is repeated across procs, so fewer columns is better
-        if numColFields > numRowFields:
-            transpose = True
-            temp = rowFieldPaths
-            rowFieldPaths = colFieldPaths
-            colFieldPaths = temp
-            temp = numRowFields
-            numRowFields = numColFields
-            numColFields = temp
-        else: 
-            transpose = False
-
-        rowFieldProcAssignments = self.mpi.find_proc_assignments(range(
-            numRowFields))
-
-        if self.mpi.isRankZero() and rowFieldProcAssignments[0][-1] -\
-            rowFieldProcAssignments[0][0] > self.maxFieldsPerProc and self.\
-            verbose:
-            print ('Warning: Each processor will have to read the direct ' +\
-                'snapshots (%d total) multiple times. Increase number of ' +\
-                'processors to avoid this and get a big speedup.') %\
-                numColFields
-
-        # Only compute if task list is nonempty
-        if len(rowFieldProcAssignments[self.mpi.getRank()]) != 0:
-            innerProductMatChunk = self._compute_inner_product_chunk(
-                rowFieldPaths[rowFieldProcAssignments[self.mpi.getRank()][0]:
-                rowFieldProcAssignments[self.mpi.getRank()][-1]+1], 
-                colFieldPaths)
-        else:  
-            innerProductMatChunk = None
-
-        # Gather list of chunks from each processor, ordered by rank
-        if self.mpi.isParallel():
-            innerProductMatChunkList = self.mpi.comm.allgather(
-                innerProductMatChunk)
-            innerProductMat = N.mat(N.zeros((numRowFields, numColFields)))
-
-            # concatenate the chunks of inner product matrix for nonempty tasks
-            for rank, currentInnerProductMatChunk in enumerate(
-                innerProductMatChunkList):
-                if currentInnerProductMatChunk is not None:
-                    innerProductMat[rowFieldProcAssignments[rank][0]:\
-                        rowFieldProcAssignments[rank][-1]+1] =\
-                        currentInnerProductMatChunk
-        else:
-            innerProductMat = innerProductMatChunk 
-
-        if transpose:
-            innerProductMat = innerProductMat.T
-
-        return innerProductMat
+    
      
-    def compute_symmetric_inner_product_mat(self, fieldPaths):
-        """ Computes a symmetric matrix of inner products and returns it.
-        
-        Because the inner product is symmetric, only one set of snapshots needs
-        to be specified.  This method will call
-        _compute_upper_triangular_inner_product_matrix_chunk and at the end
-        will symemtrize the upper triangular matrix.
-        """
-      
-        if isinstance(fieldPaths,str):
-            fieldPaths = [fieldPaths]
-          
-        numFields = len(fieldPaths)
- 
-        rowFieldProcAssignments = self.mpi.find_proc_assignments(range(
-            numFields), taskWeights=range(numFields, 0, -1))
-
-        if self.mpi.isRankZero() and rowFieldProcAssignments[0][-1] -\
-            rowFieldProcAssignments[0][0] > self.maxFieldsPerProc and self.\
-            verbose:
-            print ('Warning: Each processor may have to read the snapshots ' +\
-                '(%d total) multiple times. Increase number of processors ' +\
-                'to avoid this and get a big speedup.') % numFields
-
-        # Perform task if task assignment is not empty
-        if len(rowFieldProcAssignments[self.mpi.getRank()]) != 0:
-            innerProductMatChunk = self.\
-                _compute_upper_triangular_inner_product_chunk(fieldPaths[
-                rowFieldProcAssignments[self.mpi.getRank()][0]:
-                rowFieldProcAssignments[self.mpi.getRank()][-1] + 1], 
-                fieldPaths[rowFieldProcAssignments[self.mpi.getRank()][0]:])
-        else:
-            innerProductMatChunk = None
-
-        # Gather list of chunks from each processor, ordered by rank
-        if self.mpi.isParallel():
-            innerProductMatChunkList = self.mpi.comm.allgather(
-                innerProductMatChunk)
-            innerProductMat = N.mat(N.zeros((numFields, numFields)))
-
-            # concatenate the chunks of inner product matrix for procs with
-            # nonempty tasks
-            for rank, currentInnerProductMatChunk in enumerate(
-                innerProductMatChunkList):
-                if currentInnerProductMatChunk is not None:
-                    innerProductMat[rowFieldProcAssignments[rank][0]:\
-                        rowFieldProcAssignments[rank][-1] + 1,
-                        rowFieldProcAssignments[rank][0]:] =\
-                        currentInnerProductMatChunk
-        else:
-            innerProductMat = innerProductMatChunk 
-
-        # Symmetrize matrix
-        innerProductMat += N.triu(innerProductMat, 1).T
-
-        return innerProductMat
+    
     
     def _compute_modes(self, modeNumList, modePath, snapPaths, fieldCoeffMat,
         indexFrom=1):
@@ -492,9 +541,9 @@ class FieldOperations(object):
                 raise ValueError('Cannot compute if mode index is greater '+\
                     'than number of columns in the build coefficient matrix')
 
-        if numSnaps < self.mpi.getNumProcs():
+        if numSnaps < self.mpi.getNumNodes():
             raise util.MPIError('Cannot find modes when fewer snapshots '+\
-               'than number of processors')
+               'than number of nodes')
         
         
         # Construct fieldCoeffMat and outputPaths for lin_combine_fields
@@ -506,6 +555,8 @@ class FieldOperations(object):
         for modeNum in modeNumList:
             modePaths.append(modePath%modeNum)
         self.lin_combine(modePaths, snapPaths, fieldCoeffMatReordered)
+    
+    
     
     def lin_combine(self, outputFieldPaths, inputFieldPaths, fieldCoeffMat):
         """
@@ -547,7 +598,7 @@ class FieldOperations(object):
         if numOutputFields > fieldCoeffMat.shape[1]:
             raise ValueError('Coeff matrix has fewer cols than num of ' +\
                 'output paths')            
-        if numInputFields < self.mpi.getNumProcs():
+        if numInputFields < self.mpi.getNumNodes():
             raise util.MPIError('Cannot find outputs when fewer inputs '+\
                'than number of processors')
                
@@ -558,26 +609,26 @@ class FieldOperations(object):
             print 'Warning - fewer output paths than rows in the coeff matrix'
             print '  some cols of coeff matrix will not be used'
         
-        inputProcAssignments = self.mpi.find_proc_assignments(range(len(
+        inputNodeAssignments = self.mpi.find_assignments(range(len(
             inputFieldPaths)))
-        for assignment in inputProcAssignments:
+        for assignment in inputNodeAssignments:
             if len(assignment) == 0:
                 raise MPIError('At least one processor has no tasks'+\
                   ', currently this is unsupported, lower num of procs')
                   
-        # Each processor will load only 1 processor at a time
+        # Each node will load only 1 field at a time
         # and have as many (partially computed) modes in memory as possible.
-        numOutputsPerProc = self.maxFieldsPerProc - 1       
+        numOutputsPerNode = self.maxFieldsPerNode - 1       
         
-        for startOutputIndex in range(0,numOutputFields,numOutputsPerProc):
+        for startOutputIndex in range(0,numOutputFields,numOutputsPerNode):
             endOutputIndex = min(numOutputFields, startOutputIndex +\
-                numOutputsPerProc) 
-            # Pass the work to individual processors    
+                numOutputsPerNode) 
+            # Pass the work to individual nodes    
             outputLayers = self.lin_combine_chunk(
-                inputFieldPaths[inputProcAssignments[self.mpi.getRank()][0] : \
-                  inputProcAssignments[self.mpi.getRank()][-1]+1],
-                fieldCoeffMat[inputProcAssignments[self.mpi.getRank()][0] : \
-                  inputProcAssignments[self.mpi.getRank()][-1]+1,
+                inputFieldPaths[inputNodeAssignments[self.mpi.getNodeNum()][0] : \
+                  inputNodeAssignments[self.mpi.getNodeNum()][-1]+1],
+                fieldCoeffMat[inputNodeAssignments[self.mpi.getNodeNum()][0] : \
+                  inputNodeAssignments[self.mpi.getNodeNum()][-1]+1,
                   startOutputIndex:endOutputIndex])       
             
             if self.mpi.isParallel():
@@ -585,10 +636,10 @@ class FieldOperations(object):
                   op=util.sum_lists)
 
             saveOutputIndexAssignments = \
-              self.mpi.find_proc_assignments(range(len(outputLayers)))
-            if len(saveOutputIndexAssignments[self.mpi.getRank()]) != 0:
+              self.mpi.find_assignments(range(len(outputLayers)))
+            if len(saveOutputIndexAssignments[self.mpi.getNodeNum()]) != 0:
                 for outputIndex in saveOutputIndexAssignments[self.mpi.\
-                    getRank()]:
+                    getNodeNum()]:
                     self.save_field(outputLayers[outputIndex], 
                       outputFieldPaths[startOutputIndex + outputIndex])
  
@@ -654,8 +705,15 @@ class FieldOperations(object):
         a = (self.inner_product == other.inner_product and \
         self.load_field == other.load_field and self.save_field == other.save_field \
         and self.maxFieldsPerNode==other.maxFieldsPerNode and\
-        self.numNodes==other.numNodes and self.verbose==other.verbose)
+        self.verbose==other.verbose)
         return a
     def __ne__(self,other):
         return not (self.__eq__(other))
+
+
+
+
+    
+    
+
 

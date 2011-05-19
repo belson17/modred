@@ -1,11 +1,14 @@
 #  A group of useful functions that don't belong to anything in particular
 
+import os
 import subprocess as SP
+import multiprocessing
+from multiprocessing import Pool
 import numpy as N
 import inspect 
 import copy
 import operator
-
+import pickle #cPickle?
 
 class UndefinedError(Exception): pass
     
@@ -62,14 +65,17 @@ def inner_product(snap1,snap2):
   
   
 class MPI(object):
-    """Simple container for information about how many processors there are.
-    It ensures no failure in case mpi4py is not installed or running serial."""
+    """
+    Contains both distributed and shared memory information and methods.
+    """
     def __init__(self, verbose=True):
         self.verbose = verbose
+        # Distributed memory (may not be available if mpi4py not installed)
         try:
             # Must call MPI module MPI_mod to avoid naming confusion with
             # the MPI class
             from mpi4py import MPI as MPI_mod
+            
             self.comm = MPI_mod.COMM_WORLD
             
             # Must use custom_comm for reduce commands! This is
@@ -77,28 +83,71 @@ class MPI(object):
             from reductions import Intracomm
             self.custom_comm = Intracomm(self.comm)
             
-            # To adjust number of procs, use submission script/mpiexec
-            self._numProcs = self.comm.Get_size()          
+            # To adjust number of nodes, use submission script/mpiexec
+            self._numMPITasks = self.comm.Get_size()  
             self._rank = self.comm.Get_rank()
-            if self._numProcs > 1:
+            if self._numMPITasks > 1:
                 self.parallel = True
             else:
                 self.parallel = False
         except ImportError:
-            self._numProcs=1
+            self._numMPITasks=1
             self._rank=0
             self.comm = None
             self.parallel=False
+        # Shared memory, available since python 2.6
+        
+        self._numProcsPerNode = multiprocessing.cpu_count()
+        
+        # number of nodes is number of MPI tasks because submissions should always
+        # have number of MPI tasks per node (sometimes loosely referred to as
+        # "procs per node")  = 1.
+        if self.parallel:
+            nodeID = self.findNodeID()
+            nodeIDList = self.comm.allgather(nodeID)
+            nodeIDListWithoutDuplicates = []
+            for ID in nodeIDList:
+                if not (ID in nodeIDListWithoutDuplicates):
+                    nodeIDListWithoutDuplicates.append(ID)
+            self._numNodes = len(nodeIDListWithoutDuplicates)
+        else:
+            self._numNodes = 1
+        
+        if self._numNodes != self._numMPITasks:
+            raise ValueError('The number of nodes does not match the '+\
+                'number of MPI tasks. The number of nodes (from hostnames) '+\
+                'is '+str(self._numNodes)+' but the number of MPI tasks is '+\
+                str(self._numMPITasks)+' (from mpiexec -n <MPI tasks> '+\
+                'or a submission script processors per node variable not being 1). '+\
+                'You probably need to change your submission script or mpiexec')     
+                
     
+    def findNodeID(self):
+        """
+        Finds a unique ID number for each node.
+        
+        Taken from email with mpi4py list"""
+        hostname = os.uname()[1]
+        
+        # xor_hash is an integer that corresponds to a unique node
+        # xor_hash = 0
+        #for char in hostname:
+        #    xor_hash = xor_hash ^ ord(char)
+        #return xor_hash
+        return hash(hostname)
+        
+        
     def printRankZero(self,msgs):
       """
       Prints the elements of the list given from rank=0 only.
       
       Could be improved to better mimic if isRankZero(): print a,b,...
       """
+      if not isintance(msgs,list):
+          msgs = [msgs]
       if self.isRankZero():
-        for msg in msgs:
-          print msg
+          for msg in msgs:
+              print msg
     
     def sync(self):
         """Forces all processors to synchronize.
@@ -106,35 +155,39 @@ class MPI(object):
         Method computes simple formula based on ranks of each proc, then
         asserts that results make sense and each proc reported back. This
         forces all processors to wait for others to "catch up"
-        It is self-testing and for now does not need a unittest."""
+        """
         if self.parallel:
             self.comm.Barrier()
     
     def isRankZero(self):
         """Returns True if rank is zero, false if not, useful for prints"""
-        if self._rank == 0:
-            return True
-        else:
-            return False
+        return self._rank == 0
+            
+            
     def isParallel(self):
         """Returns true if in parallel (requires mpi4py and >1 processor)"""
         return self.parallel
         
-    def getRank(self):
-        """Returns the rank of this processor"""
+    #def getRank(self):
+    #    """Returns the rank of this processor"""
+    #    return self._rank
+    
+    def getNodeNum(self):
+        """ Returns the node number, same as the rank since 1 mpi task/node"""
         return self._rank
     
+    def getNumNodes(self):
+        return self._numNodes
     
-    def getNumProcs(self):
-        """Returns the number of processors"""
-        return self._numProcs
+    def getNumProcsPerNode(self):
+        return self._numProcsPerNode
 
-    def find_proc_assignments(self, taskList, taskWeights=None):
-        """ Returns a 2D list of tasks, [rank][taskIndex], evenly distributing 
-        the tasks in taskList, allowing for uneven task weights. 
+    def find_assignments(self, taskList, taskWeights=None):
+        """ 
+        Returns a 2D list [rank][taskIndex] distributing the tasks.
         
-        It returns a list that has numProcs entries. 
-        Proc n is responsible for taskProcAssignments[n][...]
+        It returns a list that has numNodes entries. 
+        Node n is responsible for taskProcAssignments[n][:]
         where the 2nd dimension of the 2D list contains the tasks (whatever
         they were in the original taskList).
         """        
@@ -157,22 +210,22 @@ class MPI(object):
                     ind = testInd
             return closestVal, ind
 
-        for procNum in range(self._numProcs):
+        for nodeNum in range(self._numNodes):
             # Number of remaining tasks (scaled by weights)
             numRemainingTasks = sum(_taskWeights) 
 
             # Number of processors whose jobs have not yet been assigned
-            numRemainingProcs = self._numProcs - procNum
+            numRemainingNodes = self._numNodes - nodeNum
 
             # Distribute weighted task list evenly across processors
-            numTasksPerProc = 1. * numRemainingTasks / numRemainingProcs
+            numTasksPerNode = 1. * numRemainingTasks / numRemainingNodes
 
             # If task list is not empty, compute assignments
             if _taskWeights.size != 0:
                 # Index of task list element such that sum(_taskList[:ind]) 
                 # comes closest to numTasksPerProc
                 newMaxTaskIndex = N.abs(N.cumsum(_taskWeights) -\
-                    numTasksPerProc).argmin()
+                    numTasksPerNode).argmin()
 
                 # Add all tasks up to and including newMaxTaskIndex to the
                 # assignment list
@@ -189,11 +242,100 @@ class MPI(object):
                 printedPreviously = False
                 for r, assignment in enumerate(taskProcAssignments):
                     if len(assignment) == 0 and not printedPreviously:
-                        print ('Warning - %d out of %d processors have no ' +\
-                            'tasks') % (self._numProcs - r, self._numProcs)
+                        print ('Warning - %d out of %d nodes have no ' +\
+                            'tasks') % (self._numNodes - r, self._numNodes)
                         printedPreviously = True
 
         return taskProcAssignments
+        
+    def bcast_pickle(self, obj, root = 0, fileName = None):
+        """
+        Saves a pickle file for broadcast rather than use self.comm.bcast
+        
+        Since multiprocessing breaks the bcast function, new implementation
+        saves a pickle file and loads it on each node. Inefficient but
+        fool-proof. Should be called from ALL nodes. obj only needs to 
+        be non-None for rank=0, and whatever obj is on root=0, it is 
+        returned from bcast_pickle.
+        
+        Usage:
+        if mpi.isRankZero():
+            obj = N.random.random(4)
+        else:
+            obj = None
+        obj = mpi.bcast_pickle(obj)
+        """
+        if fileName is None:
+            fileName = 'bcast.pickle'
+        
+        if self.getNodeNum() == root:
+            pickleFile = open(fileName,'wb')
+            pickle.dump(obj,pickleFile)
+            pickleFile.close()
+            
+        self.sync()
+        pickleFile = open(fileName,'rb')
+        obj = pickle.load(pickleFile)
+        pickleFile.close()
+        self.sync()
+        if self.isRankZero():
+            SP.call(['rm', fileName])
+        return obj
+        
+    def gather_pickle(self, obj, root=0, fileName = None):
+        """
+        Saves pickle files for gathering rather than use self.comm.gather
+        
+        Since multiprocessing breaks the gather function, new implementation
+        saves pickle files and loads all on the root node. Inefficient but
+        fool-proof. Should be called from ALL nodes. obj needs to 
+        be defined on all nodes. If fileName is used, must contain
+        a %03d.
+        
+        Usage:
+        obj = N.random.random(4)
+        objList = mpi.gather_pickle(obj)
+        # objList is only non-None on root node (default 0)
+        """
+        if fileName is None:
+            fileName = 'gather_node_%03d.pickle'
+            
+        pickleFile = open(fileName % self.getNodeNum(), 'wb')
+        pickle.dump(obj,pickleFile)
+        pickleFile.close()
+        
+        self.sync()
+        if self.getNodeNum() == root:
+            objList = []
+            for nodeNum in range(self.getNumNodes()):
+                pickleFile = open(fileName % nodeNum,'rb')
+                objList.append(pickle.load(pickleFile))
+                pickleFile.close()
+                SP.call(['rm',fileName % nodeNum]) 
+            return objList
+        else:
+            return None
+    
+    def allgather_pickle(self, obj, fileName = None):
+        """
+        Saves pickle files for gathering rather than use self.comm.allgather
+        
+        Simply calls gather_pickle and bcast_pickle. See the documentation
+        of these for more details.
+        If fileName is used, must contain a %03d.
+        
+        Usage:
+        obj = N.random.random(4)
+        objList = mpi.allgather_pickle(obj)
+        # objList is the same list of arrays on all nodes
+        """
+        if fileName is None:
+            fileName = 'allgather_node_%03d.pickle'
+        # gather obj's into objList, only non-None on rank 0
+        objList = self.gather_pickle(obj)
+        # bcast objList from rank 0 to all other ranks
+        return self.bcast_pickle(objList)
+    
 
     # CURRENTLY THIS FUNCTION DOESNT WORK
     def evaluate_and_bcast(self,outputs, function, arguments=[], keywords={}):
@@ -242,8 +384,8 @@ class MPI(object):
         
         
     def __eq__(self, other):
-        a = (self._numProcs == other.getNumProcs() and \
-        self._rank == other.getRank() and self.parallel == other.isParallel())
+        a = (self._numNodes == other.getNumNodes() and \
+        self._rank == other.getNodeNum() and self.parallel == other.isParallel())
         #print self._numProcs == other.getNumProcs() ,\
         #self._rank == other.getRank() ,self.parallel == other.isParallel()
         return a
@@ -300,6 +442,18 @@ def sum_lists(list1,list2):
         list3.append(list1[i]+list2[i])
     return list3
 
+
+def eval_func_tuple(f_args):
+    """Takes a tuple of a function and args, evaluates and returns result"""
+    return f_args[0](*f_args[1:])
+    
+# Simple function for testing
+def add(x,y): return x+y
+
 # Create an instance of MPI class that is used everywhere, "singleton"
-MPIInstance = MPI()
+MPIInstance = MPI(verbose=True)
+
+
+
+
 
