@@ -2,17 +2,23 @@
 
 import subprocess as SP
 import numpy as N
+import inspect 
+import copy
+import operator
 
-class UndefinedError(Exception):
+
+class UndefinedError(Exception): pass
+    
+class MPIError(Exception):
+    """For MPI related errors"""
     pass
 
-def save_mat_text(A,filename,delimiter=','):
+def save_mat_text(A,filename,delimiter=' '):
     """
     Writes a matrix to file, 1D or 2D, in text with delimeter and a space
     seperating the elements.
     """
     import csv
-    import copy
     if len(N.shape(A))>2:
         raise RuntimeError('Can only write matrices with 1 or 2 dimensions') 
     AMat = N.mat(copy.deepcopy(A))
@@ -25,7 +31,7 @@ def save_mat_text(A,filename,delimiter=','):
             row.append(str(AMat[rowNum,colNum]))
         writer.writerow(row)
     
-def load_mat_text(filename,delimiter=','):
+def load_mat_text(filename,delimiter=' ',isComplex=False):
     """ Reads a matrix written by write_mat_text, plain text"""
     import csv
     f = open(filename,'r')
@@ -40,89 +46,212 @@ def load_mat_text(filename,delimiter=','):
         raise RuntimeError('File is empty! '+filename)
     #rewind to beginning of file and read again
     f.seek(0)
-    A = N.zeros((numLines,lineLength))
-    for i,line in enumerate(matReader):
-        A[i,:] =  N.array([float(j) for j in line])
+    if isComplex:
+        A = N.zeros((numLines,lineLength),dtype=complex)
+        for i,line in enumerate(matReader):
+            A[i,:] =  N.array([complex(j) for j in line])
+    else:
+        A = N.zeros((numLines,lineLength))
+        for i,line in enumerate(matReader):
+            A[i,:] =  N.array([float(j) for j in line])
     return A
-    
+
 def inner_product(snap1,snap2):
     """ A default inner product for n-dimensional numpy arrays """
-    return N.sum(snap1*snap2)
+    return N.sum(snap1*snap2.conj())
   
-  
-class MPIError(Exception):
-    """For MPI related errors"""
-    pass
   
 class MPI(object):
     """Simple container for information about how many processors there are.
     It ensures no failure in case mpi4py is not installed or running serial."""
-    def __init__(self,numProcs=None):
+    def __init__(self, verbose=True):
+        self.verbose = verbose
         try:
+            # Must call MPI module MPI_mod to avoid naming confusion with
+            # the MPI class
             from mpi4py import MPI as MPI_mod
             self.comm = MPI_mod.COMM_WORLD
-            if (numProcs is None) or (numProcs > self.comm.Get_size()) or \
-            (numProcs<=0): 
-                self._numProcs = self.comm.Get_size()
-            else: #use fewer CPUs than are available
-                self._numProcs = numProcs      
+            
+            # Must use custom_comm for reduce commands! This is
+            # more scalable, see reductions.py for more details
+            from reductions import Intracomm
+            self.custom_comm = Intracomm(self.comm)
+            
+            # To adjust number of procs, use submission script/mpiexec
+            self._numProcs = self.comm.Get_size()          
             self._rank = self.comm.Get_rank()
-            self.parallel=True
+            if self._numProcs > 1:
+                self.parallel = True
+            else:
+                self.parallel = False
         except ImportError:
             self._numProcs=1
             self._rank=0
             self.comm = None
             self.parallel=False
-            
+    
+    def printRankZero(self,msgs):
+      """
+      Prints the elements of the list given from rank=0 only.
+      
+      Could be improved to better mimic if isRankZero(): print a,b,...
+      """
+      if self.isRankZero():
+        for msg in msgs:
+          print msg
+    
     def sync(self):
-        """Forces all processors to synchronize
+        """Forces all processors to synchronize.
         
         Method computes simple formula based on ranks of each proc, then
         asserts that results make sense and each proc reported back. This
         forces all processors to wait for others to "catch up"
         It is self-testing and for now does not need a unittest."""
         if self.parallel:
-            data = (self._rank+1)**2
-            data = self.comm.gather(data, root=0)
-            if self._rank == 0:
-                for i in range(self._numProcs):
-                    assert data[i] == (i+1)**2
-            else:
-                assert data is None
-
-    def find_proc_assignments(self,taskList):
-      """ Returns a 2D list of tasks, [rank][taskIndex], evenly
-      breaking up the tasks in the taskList. 
-      
-      It returns a list that has numProcs+1 entries. 
-      Proc n is responsible for taskProcAssignments[n][...]
-      where the 2nd dimension of the 2D list contains the tasks (whatever
-      they were in the original taskList).
-      """
-      
-      taskProcAssignments= []
-      prevMaxTaskIndex = 0
-      import copy
-      taskListUse = copy.deepcopy(taskList)
-      numTasks = len(taskList)
-      for procNum in range(self._numProcs):
-          numRemainingTasks = len(taskListUse)
-          numRemainingProcs = self._numProcs - procNum
-          numTasksPerProc = int(N.ceil(numRemainingTasks/
-            (1.*numRemainingProcs)))
-          newMaxTaskIndex = min(numTasksPerProc,numRemainingTasks)
-          taskProcAssignments.append(taskListUse[:newMaxTaskIndex])
-          for removeElement in taskListUse[:newMaxTaskIndex]:
-              taskListUse.remove(removeElement)
-          prevMaxTaskIndex = newMaxTaskIndex
-      #currently do not support 0 tasks for a proc
-      for assignment in taskProcAssignments:
-          if len(assignment)==0:
-              print taskProcAssignments
-              raise MPIError('At least one processor has no tasks'+\
-                ', currently this is unsupported, lower num of procs')
-      return taskProcAssignments
+            self.comm.Barrier()
     
+    def isRankZero(self):
+        """Returns True if rank is zero, false if not, useful for prints"""
+        if self._rank == 0:
+            return True
+        else:
+            return False
+    def isParallel(self):
+        """Returns true if in parallel (requires mpi4py and >1 processor)"""
+        return self.parallel
+        
+    def getRank(self):
+        """Returns the rank of this processor"""
+        return self._rank
+    
+    
+    def getNumProcs(self):
+        """Returns the number of processors"""
+        return self._numProcs
+
+    def find_proc_assignments(self, taskList, taskWeights=None):
+        """ Returns a 2D list of tasks, [rank][taskIndex], evenly distributing 
+        the tasks in taskList, allowing for uneven task weights. 
+        
+        It returns a list that has numProcs entries. 
+        Proc n is responsible for taskProcAssignments[n][...]
+        where the 2nd dimension of the 2D list contains the tasks (whatever
+        they were in the original taskList).
+        """        
+        taskProcAssignments= []
+        _taskList = copy.deepcopy(taskList)
+
+        # If no weights are given, assume each task has uniform weight
+        if taskWeights is None:
+            _taskWeights = N.ones(len(taskList))
+        else:
+            _taskWeights = N.array(taskWeights)
+
+        numTasks = sum(_taskWeights)
+
+        # Function that searches for closes match to val in valList
+        def find_closest_val(val, valArray):
+            closestVal = min(abs(valArray - val))
+            for testInd, testVal in enumerate(valList):
+                if testVal == closestVal:
+                    ind = testInd
+            return closestVal, ind
+
+        for procNum in range(self._numProcs):
+            # Number of remaining tasks (scaled by weights)
+            numRemainingTasks = sum(_taskWeights) 
+
+            # Number of processors whose jobs have not yet been assigned
+            numRemainingProcs = self._numProcs - procNum
+
+            # Distribute weighted task list evenly across processors
+            numTasksPerProc = 1. * numRemainingTasks / numRemainingProcs
+
+            # If task list is not empty, compute assignments
+            if _taskWeights.size != 0:
+                # Index of task list element such that sum(_taskList[:ind]) 
+                # comes closest to numTasksPerProc
+                newMaxTaskIndex = N.abs(N.cumsum(_taskWeights) -\
+                    numTasksPerProc).argmin()
+
+                # Add all tasks up to and including newMaxTaskIndex to the
+                # assignment list
+                taskProcAssignments.append(_taskList[:newMaxTaskIndex + 1])
+
+                # Remove assigned tasks, weights from list
+                del _taskList[:newMaxTaskIndex + 1]
+                _taskWeights = _taskWeights[newMaxTaskIndex + 1:]
+            else:
+                taskProcAssignments.append([])
+
+            # Warning if some processors have no tasks
+            if self.verbose and self.isRankZero():
+                printedPreviously = False
+                for r, assignment in enumerate(taskProcAssignments):
+                    if len(assignment) == 0 and not printedPreviously:
+                        print ('Warning - %d out of %d processors have no ' +\
+                            'tasks') % (self._numProcs - r, self._numProcs)
+                        printedPreviously = True
+
+        return taskProcAssignments
+
+    # CURRENTLY THIS FUNCTION DOESNT WORK
+    def evaluate_and_bcast(self,outputs, function, arguments=[], keywords={}):
+        """
+        Evaluates function with inputs and broadcasts outputs to procs
+        
+        outputs must be a list
+        function must be a callable function given the arguments and keywords
+        arguments is a list containing required arguments to "function"
+        keywords is a dictionary containing optional keywords and values
+        for "function"
+        function is called with outputs = function(*arguments,**keywords)
+        For more information, see http://docs.python.org/tutorial/controlflow.html
+        section on keyword arguments, 4.7.2
+        
+        The result is then broadcast to all processors if in parallel.
+        """
+        raise RuntimeError('function isnt fully implemented')
+        print 'outputs are ',outputs
+        print 'function is',function
+        print 'arguments are',arguments
+        print 'keywords are',keywords
+        if self.isRankZero():
+            print function(*arguments,**keywords)
+            outputList = function(*arguments,**keywords)
+            if not isinstance(outputList,tuple):
+                outputList = (outputList)
+            if len(outputList) != len(outputs):
+                raise ValueError('Length of outputs differ')
+                
+            for i in range(len(outputs)):
+                temp = outputs[i]
+                temp = outputList[i]
+
+            print 'outputList is',outputList
+            print 'outputs is',outputs
+        """    
+        else:
+            for outputNum in range(len(outputs)):
+                outputs[outputNum] = None
+        if self.isParallel():
+            for outputNum in range(len(outputs)):
+                outputs[outputNum] = self.comm.bcast(outputs[outputNum], root=0)
+        """
+        print 'Done broadcasting'
+        
+        
+    def __eq__(self, other):
+        a = (self._numProcs == other.getNumProcs() and \
+        self._rank == other.getRank() and self.parallel == other.isParallel())
+        #print self._numProcs == other.getNumProcs() ,\
+        #self._rank == other.getRank() ,self.parallel == other.isParallel()
+        return a
+    def __ne__(self,other):
+        return not (self.__eq__(other))
+    def __add__(self,other):
+        print 'Adding MPI objects doesnt make sense, returning original'
+        return self
     
 def svd(A):
     """An svd that better meets our needs.
@@ -139,43 +268,38 @@ def svd(A):
     U,E,VCompConj=N.linalg.svd(AMat,full_matrices=0)
     V=N.mat(VCompConj).H
     U=N.mat(U)
+    
     #Take care of case where sing vals are ~0
     indexZeroSingVal=N.nonzero(abs(E)<singValTol)
     if len(indexZeroSingVal[0])>0:
         U=U[:,:indexZeroSingVal[0][0]]
         V=V[:,:indexZeroSingVal[0][0]]
         E=E[:indexZeroSingVal[0][0]]
+    
     return U,E,V
 
 
+def get_data_members(obj):
+    """ Returns a dictionary containing data members of an object"""
+    pr = {}
+    for name in dir(obj):
+        value = getattr(obj, name)
+        if not name.startswith('__') and not inspect.ismethod(value):
+            pr[name] = value
+    return pr
+    
+    
+def sum_lists(list1,list2):
+    """Sum the elements of each list, return a new list.
+    
+    This function is used in MPI reduce commands, but could be used
+    elsewhere too"""
+    assert len(list1)==len(list2)
+    list3=[]
+    for i in xrange(len(list1)):
+        list3.append(list1[i]+list2[i])
+    return list3
 
+# Create an instance of MPI class that is used everywhere, "singleton"
+MPIInstance = MPI()
 
-
-"""
-def find_file_type(filename):
-    l = len(filename)
-    n=-1
-    while abs(n)<l and filename[n]!='.':
-        n-=1
-    fileExtension = filename[n+1:]
-    return fileExtension
-
-def get_file_list(dir,fileExtension=None):
-    # Finds all files in the given directory that have file extension
-    filesRaw = SP.Popen(['ls',dir],stdout=SP.PIPE).communicate()[0]
-    #files separated by endlines
-    filename= ''
-    fileList=[]
-    #print 'filesRaw is ',filesRaw
-    for c in filesRaw:
-        if c!='\n':
-            filename+=c
-        else: #completed file name
-            if fileExtension is not None and \
-              filename[-len(fileExtension):] == fileExtension:
-                fileList.append(filename)
-            elif fileExtension is None:
-                fileList.append(filename)
-            filename=''
-    return fileList
-"""
