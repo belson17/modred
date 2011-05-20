@@ -200,14 +200,21 @@ class MPI(object):
         """
         Evaluates function with inputs and broadcasts outputs to procs
         
-        outputs must be a list
-        function must be a callable function given the arguments and keywords
-        arguments is a list containing required arguments to "function"
-        keywords is a dictionary containing optional keywords and values
-        for "function"
-        function is called with outputs = function(*arguments,**keywords)
-        For more information, see http://docs.python.org/tutorial/controlflow.html
-        section on keyword arguments, 4.7.2
+        outputs 
+          must be a list
+
+        function
+          must be a callable function given the arguments and keywords
+
+        arguments
+          a list containing required arguments to *function*
+
+        keywords 
+          a dictionary containing optional keywords and values for *function*
+
+        function is called with outputs = function(\*arguments,\*\*keywords)
+
+        For more information, see http://docs.python.org/tutorial/controlflow.html section on keyword arguments, 4.7.2
         
         The result is then broadcast to all processors if in parallel.
         """

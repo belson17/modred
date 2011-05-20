@@ -1,0 +1,187 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>BPOD Class &mdash; Modal Decomposition v0.0 documentation</title>
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Modal Decomposition v0.0 documentation" href="index.html" />
+    <link rel="next" title="POD Class" href="pod_string.html" />
+    <link rel="prev" title="Modal Decomposition abstract base class" href="modaldecomp_string.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="pod_string.html" title="POD Class"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="modaldecomp_string.html" title="Modal Decomposition abstract base class"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Modal Decomposition v0.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-bpod">
+<span id="bpod-class"></span><h1>BPOD Class<a class="headerlink" href="#module-bpod" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="bpod.BPOD">
+<em class="property">class </em><tt class="descclassname">bpod.</tt><tt class="descname">BPOD</tt><big>(</big><em>load_field=None</em>, <em>save_field=None</em>, <em>save_mat=&lt;function save_mat_text at 0x101e7db90&gt;</em>, <em>load_mat=&lt;function load_mat_text at 0x10307b488&gt;</em>, <em>inner_product=None</em>, <em>maxFieldsPerNode=2</em>, <em>numNodes=1</em>, <em>verbose=True</em><big>)</big><a class="headerlink" href="#bpod.BPOD" title="Permalink to this definition">¶</a></dt>
+<dd><p>Balanced Proper Orthogonal Decomposition</p>
+<p>Generate direct and adjoint modes from direct and adjoint simulation 
+snapshots. BPOD inherits from ModalDecomp and uses it for low level
+functions.</p>
+<dl class="method">
+<dt id="bpod.BPOD.compute_adjoint_modes">
+<tt class="descname">compute_adjoint_modes</tt><big>(</big><em>modeNumList</em>, <em>modePath</em>, <em>indexFrom=1</em>, <em>adjointSnapPaths=None</em><big>)</big><a class="headerlink" href="#bpod.BPOD.compute_adjoint_modes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the adjoint modes and saves them to file.</p>
+<dl class="docutils">
+<dt>modeNumList</dt>
+<dd>Mode numbers to compute on this processor. This 
+includes the indexFrom, so if indexFrom=1, examples are:
+[1,2,3,4,5] or [3,1,6,8]. The mode numbers need not be sorted,
+and sorting does not increase efficiency. 
+Repeated mode numbers is not guaranteed to work.</dd>
+<dt>modePath</dt>
+<dd>Full path to mode location, e.g /home/user/mode_%d.txt.</dd>
+<dt>indexFrom</dt>
+<dd>Choose to index modes starting from 0, 1, or other.</dd>
+</dl>
+<p>self.LSingVecs, self.singVals must exist or an UndefinedError.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="bpod.BPOD.compute_decomp">
+<tt class="descname">compute_decomp</tt><big>(</big><em>directSnapPaths=None</em>, <em>adjointSnapPaths=None</em>, <em>hankelMatPath=None</em><big>)</big><a class="headerlink" href="#bpod.BPOD.compute_decomp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute BPOD decomposition from given data.</p>
+<p>If directSnapPaths and adjointSnapPaths are given, then the Hankel
+matrix is formed, then the SVD is taken.
+If hankelMatPath is given, then the Hankel matrix is read from
+file and the SVD is taken.
+If no arguments are given, then the function fails.
+If both the paths and the hankelMatPath are given, the HankelMatPath
+is given priority since it requires less computation.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="bpod.BPOD.compute_direct_modes">
+<tt class="descname">compute_direct_modes</tt><big>(</big><em>modeNumList</em>, <em>modePath</em>, <em>indexFrom=1</em>, <em>directSnapPaths=None</em><big>)</big><a class="headerlink" href="#bpod.BPOD.compute_direct_modes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the direct modes and saves them to file.</p>
+<dl class="docutils">
+<dt>modeNumList</dt>
+<dd>Mode numbers to compute on this processor. This 
+includes the indexFrom, so if indexFrom=1, examples are:
+[1,2,3,4,5] or [3,1,6,8]. The mode numbers need not be sorted,
+and sorting does not increase efficiency. 
+Repeated mode numbers is not guaranteed to work.</dd>
+<dt>modePath</dt>
+<dd>Full path to mode location, e.g /home/user/mode_%d.txt.</dd>
+<dt>indexFrom</dt>
+<dd>Choose to index modes starting from 0, 1, or other.</dd>
+</dl>
+<p>self.RSingVecs, self.singVals must exist or an UndefinedError.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="bpod.BPOD.load_decomp">
+<tt class="descname">load_decomp</tt><big>(</big><em>LSingVecsPath</em>, <em>singValsPath</em>, <em>RSingVecsPath</em><big>)</big><a class="headerlink" href="#bpod.BPOD.load_decomp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads the decomposition matrices from file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="bpod.BPOD.save_decomp">
+<tt class="descname">save_decomp</tt><big>(</big><em>LSingVecsPath</em>, <em>singValsPath</em>, <em>RSingVecsPath</em><big>)</big><a class="headerlink" href="#bpod.BPOD.save_decomp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the decomposition matrices to file.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="modaldecomp_string.html"
+                        title="previous chapter">Modal Decomposition abstract base class</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="pod_string.html"
+                        title="next chapter">POD Class</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/bpod_string.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="pod_string.html" title="POD Class"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="modaldecomp_string.html" title="Modal Decomposition abstract base class"
+             >previous</a> |</li>
+        <li><a href="index.html">Modal Decomposition v0.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, B.Belson, J.Tu, L.Padilla.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.6.
+    </div>
+  </body>
+</html>

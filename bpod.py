@@ -119,14 +119,21 @@ class BPOD(object):
         """
         Computes the direct modes and saves them to file.
         
-        modeNumList - mode numbers to compute on this processor. This 
+        modeNumList
+          Mode numbers to compute on this processor. This 
           includes the indexFrom, so if indexFrom=1, examples are:
           [1,2,3,4,5] or [3,1,6,8]. The mode numbers need not be sorted,
           and sorting does not increase efficiency. 
           Repeated mode numbers is not guaranteed to work. 
-        modePath - Full path to mode location, e.g /home/user/mode_%d.txt.
-        indexFrom - Choose to index modes starting from 0, 1, or other.
+
+        modePath
+          Full path to mode location, e.g /home/user/mode_%d.txt.
+
+        indexFrom
+          Choose to index modes starting from 0, 1, or other.
+        
         self.RSingVecs, self.singVals must exist or an UndefinedError.
+
         """
         if self.RSingVecs is None:
             raise util.UndefinedError('Must define self.RSingVecs')
@@ -149,14 +156,21 @@ class BPOD(object):
         """
         Computes the adjoint modes and saves them to file.
         
-        modeNumList - mode numbers to compute on this processor. This 
+        modeNumList
+          Mode numbers to compute on this processor. This 
           includes the indexFrom, so if indexFrom=1, examples are:
           [1,2,3,4,5] or [3,1,6,8]. The mode numbers need not be sorted,
           and sorting does not increase efficiency. 
-          Repeated mode numbers is not guaranteed to work. 
-        modePath - Full path to mode location, e.g /home/user/mode_%d.txt.
-        indexFrom - Choose to index modes starting from 0, 1, or other.
+          Repeated mode numbers is not guaranteed to work.
+
+        modePath
+          Full path to mode location, e.g /home/user/mode_%d.txt.
+
+        indexFrom
+          Choose to index modes starting from 0, 1, or other.
+        
         self.LSingVecs, self.singVals must exist or an UndefinedError.
+
         """
         if self.LSingVecs is None:
             raise UndefinedError('Must define self.LSingVecs')

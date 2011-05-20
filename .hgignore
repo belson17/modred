@@ -1,6 +1,6 @@
 syntax: glob
 .*
 *.pyc
-doc/_*
+doc/_static
 doc/Makefile
 testfiles/*

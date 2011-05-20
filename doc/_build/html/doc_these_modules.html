@@ -1,0 +1,174 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Modal Decomposition Classes &mdash; Modal Decomposition v0.0 documentation</title>
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Modal Decomposition v0.0 documentation" href="index.html" />
+    <link rel="prev" title="Introduction" href="intro.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="intro.html" title="Introduction"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Modal Decomposition v0.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="modal-decomposition-classes">
+<h1>Modal Decomposition Classes<a class="headerlink" href="#modal-decomposition-classes" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-modaldecomp">
+<span id="the-modaldecomp-module"></span><h2>The modaldecomp Module<a class="headerlink" href="#module-modaldecomp" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="modaldecomp.ModalDecomp">
+<em class="property">class </em><tt class="descclassname">modaldecomp.</tt><tt class="descname">ModalDecomp</tt><a class="headerlink" href="#modaldecomp.ModalDecomp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Modal Decomposition base class</p>
+<p>This parent class is designed for the implementation of algorithms that take 
+a  set of data (snapshots) and turn them into modes.  Each class will 
+implement a method to perform some sort of decomposition, e.g. using POD, 
+BPOD, or DMD.  The results of this decomposition will be used to construct 
+modes by taking linear combinations of the original data snapshots.</p>
+<dl class="method">
+<dt id="modaldecomp.ModalDecomp.compute_modes">
+<tt class="descname">compute_modes</tt><big>(</big><em>modeNumList</em>, <em>modePath</em>, <em>indexFrom=1</em>, <em>snaps=None</em>, <em>snapPaths=None</em>, <em>coeffMat=None</em>, <em>coeffMatPath=None</em><big>)</big><a class="headerlink" href="#modaldecomp.ModalDecomp.compute_modes" title="Permalink to this definition">¶</a></dt>
+<dd><p>A common method to compute modes from snapshots.</p>
+<p>modeNumList - Indices of modes to compute.
+modePath - Full path to mode location, e.g /home/tmp/u_%d.out.
+indexFrom - Choose to index modes starting from 0 or 1.
+snaps - An iterable container of snapshots.
+snapPaths - A list paths to files from which snapshots can be loaded.
+coeffMat - Matrix of coefficients for constructing modes.  The kth</p>
+<blockquote>
+column contains the coefficients for computing the kth mode.</blockquote>
+<p>coeffMatPath - Path to file from which coefficient matrix can be loaded.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-bpod">
+<span id="the-bpod-module"></span><h2>The bpod Module<a class="headerlink" href="#module-bpod" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="bpod.BPOD">
+<em class="property">class </em><tt class="descclassname">bpod.</tt><tt class="descname">BPOD</tt><big>(</big><em>loadSnap=None</em>, <em>saveMode=None</em>, <em>saveMat=&lt;function write_mat_text at 0x101e7c7d0&gt;</em><big>)</big><a class="headerlink" href="#bpod.BPOD" title="Permalink to this definition">¶</a></dt>
+<dd><p>Balanced Proper Orthogonal Decomposition</p>
+<p>Generate direct and adjoint modes from direct and adjoint simulation 
+snapshots.</p>
+<dl class="method">
+<dt id="bpod.BPOD.compute_decomp">
+<tt class="descname">compute_decomp</tt><big>(</big><em>directSnaps=None</em>, <em>directSnapPaths=None</em>, <em>adjointSnaps=None</em>, <em>adjointSnapPaths=None</em>, <em>innerProduct=None</em>, <em>LSingVecsPath=None</em>, <em>singValsPath=None</em>, <em>RSingVecsPath=None</em><big>)</big><a class="headerlink" href="#bpod.BPOD.compute_decomp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute BPOD decomposition</p>
+<p>directSnaps - Iterable container of direct snapshots.
+directSnapPaths - List of paths to files containing direct snapshots.
+adjointSnaps - Iterable container of adjoint snapshots.
+adjointSnapPaths - List of paths to files containing adjoint snapshots.</p>
+<blockquote>
+innerProduct - Function returning inner product of two snapshots.</blockquote>
+<dl class="docutils">
+<dt>LSingVecsPath - Output path for matrix of left singular vectors from </dt>
+<dd>Hankel matrix SVD.</dd>
+</dl>
+<p>singValsPath - Output path for singular values from Hankel matrix SVD.
+RSingVecsPath - Output path for matrix of right singular vectors from</p>
+<blockquote>
+Hankel matrix SVD.</blockquote>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Modal Decomposition Classes</a><ul>
+<li><a class="reference internal" href="#module-modaldecomp">The modaldecomp Module</a></li>
+<li><a class="reference internal" href="#module-bpod">The bpod Module</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="intro.html"
+                        title="previous chapter">Introduction</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/doc_these_modules.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="intro.html" title="Introduction"
+             >previous</a> |</li>
+        <li><a href="index.html">Modal Decomposition v0.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, B.Belson, J.Tu, L.Padilla.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.6.
+    </div>
+  </body>
+</html>
