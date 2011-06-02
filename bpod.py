@@ -26,16 +26,18 @@ class BPOD(object):
         verbose - True means print more information about progress and warnings
         numNodes - number of nodes used in this computation
         """
-        self.verbose = verbose
-        self.load_mat = load_mat
-        self.save_mat = save_mat
         # Class that contains all of the low-level field operations
         # and parallelizes them.
-        self.fieldOperations = FieldOperations(load_field=load_field, save_field=save_field,
-            save_mat=save_mat, inner_product=inner_product, maxFieldsPerNode=\
-            maxFieldsPerNode, numNodes=numNodes, verbose=verbose)
+        self.fieldOperations = FieldOperations(load_field=load_field, 
+            save_field=save_field, inner_product=inner_product, 
+            maxFieldsPerNode=maxFieldsPerNode, numNodes=numNodes, verbose=\
+            verbose)
         self.mpi = util.MPIInstance
-    
+
+        self.load_mat = load_mat
+        self.save_mat = save_mat
+        self.verbose = verbose
+ 
 
     def load_decomp(self, LSingVecsPath, singValsPath, RSingVecsPath):
         """
@@ -65,7 +67,7 @@ class BPOD(object):
     def save_decomp(self, LSingVecsPath, singValsPath, RSingVecsPath):
         """Save the decomposition matrices to file."""
         if self.save_mat is None:
-            raise util.UndefinedError('save_mat is undefined, cant save')
+            raise util.UndefinedError("save_mat is undefined, can't save")
         elif self.mpi.isRankZero():
             self.save_mat(self.LSingVecs, LSingVecsPath)
             self.save_mat(self.RSingVecs, RSingVecsPath)
@@ -111,8 +113,8 @@ class BPOD(object):
             self.singVals = self.mpi.comm.bcast(self.singVals, root=0)
             self.RSingVecs = self.mpi.comm.bcast(self.RSingVecs, root=0)
         
-        #self.mpi.evaluate_and_bcast([self.LSingVecs,self.singVals,self.RSingVecs],\
-        #  util.svd, arguments = [self.hankelMat])
+        #self.mpi.evaluate_and_bcast([self.LSingVecs,self.singVals,self.\
+        #    RSingVecs], util.svd, arguments = [self.hankelMat])
 
     def compute_direct_modes(self, modeNumList, modePath, indexFrom=1,
         directSnapPaths=None):

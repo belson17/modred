@@ -92,11 +92,10 @@ class TestBPOD(unittest.TestCase):
         """Test arguments passed to the constructor are assigned properly"""
         # Default data members for constructor test
 
-        dataMembersDefault = {'save_mat': util.save_mat_text, 'load_mat': util.load_mat_text, 
-            'mpi': util.MPIInstance, 'verbose': False,
+        dataMembersDefault = {'save_mat': util.save_mat_text, 'load_mat': util.\
+            load_mat_text, 'mpi': util.MPIInstance, 'verbose': False,
             'fieldOperations': FieldOperations(load_field=None, save_field=None,
-            save_mat=util.save_mat_text, inner_product=None, maxFieldsPerNode=\
-            2, numNodes=1, verbose=False)}
+            inner_product=None, maxFieldsPerNode=2, numNodes=1, verbose=False)}
         
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
@@ -108,8 +107,13 @@ class TestBPOD(unittest.TestCase):
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['fieldOperations'].load_field = my_load
         self.assertEqual(util.get_data_members(myBPOD), dataMembersModified)
-        
-        def my_save(data,fname): pass 
+
+        myBPOD = BPOD(load_mat=my_load, verbose=False)
+        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified['load_mat'] = my_load
+        self.assertEqual(util.get_data_members(myBPOD), dataMembersModified)
+ 
+        def my_save(data, fname): pass 
         myBPOD = BPOD(save_field=my_save, verbose=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['fieldOperations'].save_field = my_save
@@ -120,13 +124,7 @@ class TestBPOD(unittest.TestCase):
         dataMembersModified['save_mat'] = my_save
         self.assertEqual(util.get_data_members(myBPOD), dataMembersModified)
         
-        myBPOD = BPOD(save_mat=my_save, verbose=False)
-        dataMembersModified = copy.deepcopy(dataMembersDefault)
-        dataMembersModified['fieldOperations'].save_mat = my_save
-        dataMembersModified['save_mat'] = my_save
-        self.assertEqual(util.get_data_members(myBPOD), dataMembersModified)
-        
-        def my_ip(f1,f2): pass
+        def my_ip(f1, f2): pass
         myBPOD = BPOD(inner_product=my_ip, verbose=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['fieldOperations'].inner_product = my_ip
@@ -135,11 +133,12 @@ class TestBPOD(unittest.TestCase):
         maxFieldsPerNode = 500
         myBPOD = BPOD(maxFieldsPerNode=maxFieldsPerNode, verbose=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
-        dataMembersModified['fieldOperations'].maxFieldsPerNode = maxFieldsPerNode
-        dataMembersModified['fieldOperations'].maxFieldsPerProc = maxFieldsPerNode*\
-            myBPOD.fieldOperations.numNodes/mpi.getNumProcs()
+        dataMembersModified['fieldOperations'].maxFieldsPerNode =\
+            maxFieldsPerNode
+        dataMembersModified['fieldOperations'].maxFieldsPerProc = \
+            maxFieldsPerNode * myBPOD.fieldOperations.numNodes/mpi.getNumProcs()
         self.assertEqual(util.get_data_members(myBPOD), dataMembersModified)
-        
+       
         self.assertRaises(util.MPIError, BPOD, numNodes=mpi.getNumProcs()+1,
             verbose=False)
         

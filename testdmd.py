@@ -2,24 +2,18 @@
 import numpy as N
 from dmd import DMD
 from pod import POD
+from fieldoperations import FieldOperations
 import unittest
 import util
 import subprocess as SP
 import os
 import copy
 
-try:
-    from mpi4py import MPI
-    comm = MPI.COMM_WORLD
-    parallel = comm.Get_size() >=2
-    rank = comm.Get_rank()
-except ImportError:
-    parallel = False
-    rank = 0
-
-print 'To test fully, remember to do both:'
-print '    1) python testdmd.py'
-print '    2) mpiexec -n <# procs> python testdmd.py\n'
+mpi = util.MPIInstance
+if mpi.isRankZero():
+    print 'To test fully, remember to do both:'
+    print '    1) python testpod.py'
+    print '    2) mpiexec -n <# procs> python testpod.py\n'
 
 class TestDMD(unittest.TestCase):
     """ Test all the DMD class methods 
@@ -33,20 +27,11 @@ class TestDMD(unittest.TestCase):
         self.numSnaps = 6 # number of snapshots to generate
         self.numStates = 7 # dimension of state vector
         self.indexFrom = 2
-        self.dmd = DMD(verbose=False, load_field=util.load_mat_text, 
-            save_field=util.save_mat_text, save_mat=util.save_mat_text, 
-            inner_product=util.inner_product)
+        self.dmd = DMD(load_field=util.load_mat_text, save_field=util.\
+            save_mat_text, save_mat=util.save_mat_text, inner_product=util.\
+            inner_product, verbose=False)
         self.generate_data_set()
    
-        # Default data members for constructor test
-        self.defaultMPI = util.MPI()
-        self.defaultDataMembers = {'load_field': None, 'save_field': None, 
-            'save_mat': util.save_mat_text, 'inner_product': None, 
-            'maxFieldsPerNode': 2, 'maxFieldsPerProc': 2, 'mpi': self.\
-            defaultMPI, 'numNodes': 1, 'snapPaths': None, 'buildCoeff': None,
-            'pod': None, 'verbose': False}
-
-
     def generate_data_set(self):
         # create data set (saved to file)
         self.snapPath = 'files_modaldecomp_test/dmd_snap_%03d.txt'
@@ -85,13 +70,14 @@ class TestDMD(unittest.TestCase):
         self.buildCoeffTrue = W * (SigmaMat ** -1) * evecs * scaling
         self.modeNormsTrue = N.zeros(self.ritzVecsTrue.shape[1])
         for i in xrange(self.ritzVecsTrue.shape[1]):
-            self.modeNormsTrue[i] = self.dmd.inner_product(N.array(self.\
-                ritzVecsTrue[:,i]), N.array(self.ritzVecsTrue[:,i])).real
+            self.modeNormsTrue[i] = self.dmd.fieldOperations.inner_product(N.\
+                array(self.ritzVecsTrue[:,i]), N.array(self.ritzVecsTrue[:, 
+                i])).real
 
         # Generate modes if we are on the first processor
         if self.dmd.mpi.isRankZero():
             for i in xrange(self.ritzVecsTrue.shape[1]):
-                util.save_mat_text(self.ritzVecsTrue[:,i], self.trueModePath%\
+                util.save_mat_text(self.ritzVecsTrue[:,i], self.trueModePath %\
                     (i+1))
 
     def tearDown(self):
@@ -102,58 +88,58 @@ class TestDMD(unittest.TestCase):
 
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
-        dataMembersOriginal = util.get_data_members(DMD(verbose=False))
-        self.assertEqual(dataMembersOriginal, self.defaultDataMembers)
+        # Get default data member values
+        # Set verbose to false, to avoid printing warnings during tests
+        
+        dataMembersDefault = {'save_mat': util.save_mat_text, 'load_mat': util.\
+            load_mat_text, 'pod': None, 'mpi': util.MPIInstance, 'verbose':\
+            False, 'fieldOperations': FieldOperations(load_field=None, 
+            save_field=None, inner_product=None, maxFieldsPerNode=2, numNodes=1,
+            verbose=False)}
+        
+        self.assertEqual(util.get_data_members(DMD(verbose=False)), \
+            dataMembersDefault)
 
         def my_load(fname): pass
         myDMD = DMD(load_field=my_load, verbose=False)
-        dataMembers = copy.deepcopy(dataMembersOriginal)
-        dataMembers['load_field'] = my_load
-        self.assertEqual(util.get_data_members(myDMD), dataMembers)
+        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified['fieldOperations'].load_field = my_load
+        self.assertEqual(util.get_data_members(myDMD), dataMembersModified)
         
-        def my_save(data, fname): pass 
+        myDMD = DMD(load_mat=my_load, verbose=False)
+        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified['load_mat'] = my_load
+        self.assertEqual(util.get_data_members(myDMD), dataMembersModified)
+
+        def my_save(data,fname): pass 
         myDMD = DMD(save_field=my_save, verbose=False)
-        dataMembers = copy.deepcopy(dataMembersOriginal)
-        dataMembers['save_field'] = my_save
-        self.assertEqual(util.get_data_members(myDMD), dataMembers)
- 
+        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified['fieldOperations'].save_field = my_save
+        self.assertEqual(util.get_data_members(myDMD), dataMembersModified)
+        
         myDMD = DMD(save_mat=my_save, verbose=False)
-        dataMembers = copy.deepcopy(dataMembersOriginal)
-        dataMembers['save_mat'] = my_save
-        self.assertEqual(util.get_data_members(myDMD), dataMembers)
- 
-        def my_ip(f1,f2): pass
+        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified['save_mat'] = my_save
+        self.assertEqual(util.get_data_members(myDMD), dataMembersModified)
+        
+        def my_ip(f1, f2): pass
         myDMD = DMD(inner_product=my_ip, verbose=False)
-        dataMembers = copy.deepcopy(dataMembersOriginal)
-        dataMembers['inner_product'] = my_ip
-        self.assertEqual(util.get_data_members(myDMD), dataMembers)
- 
+        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified['fieldOperations'].inner_product = my_ip
+        self.assertEqual(util.get_data_members(myDMD), dataMembersModified)
+
         maxFieldsPerNode = 500
         myDMD = DMD(maxFieldsPerNode=maxFieldsPerNode, verbose=False)
-        dataMembers = copy.deepcopy(dataMembersOriginal)
-        dataMembers['maxFieldsPerNode'] = maxFieldsPerNode
-        dataMembers['maxFieldsPerProc'] = maxFieldsPerNode * myDMD.numNodes /\
-            myDMD.mpi.getNumProcs() / myDMD.numNodes
-        self.assertEqual(util.get_data_members(myDMD), dataMembers)
- 
-        snapPathList=['a', 'b']
-        myDMD = DMD(snapPaths=snapPathList, verbose=False)
-        dataMembers = copy.deepcopy(dataMembersOriginal)
-        dataMembers['snapPaths'] = snapPathList
-        self.assertEqual(util.get_data_members(myDMD), dataMembers)
-
-        buildCoeff = N.mat(N.random.random((2,2)))
-        myDMD = DMD(buildCoeff=buildCoeff, verbose=False)
-        dataMembers = copy.deepcopy(dataMembersOriginal)
-        dataMembers['buildCoeff'] = buildCoeff
-        self.assertEqual(util.get_data_members(myDMD), dataMembers)
-        
-        podObj = POD(verbose=False)
-        myDMD = DMD(pod=podObj, verbose=False)
-        dataMembers = copy.deepcopy(dataMembersOriginal)
-        dataMembers['pod'] = podObj
-        self.assertEqual(util.get_data_members(myDMD), dataMembers)
-
+        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified['fieldOperations'].maxFieldsPerNode =\
+            maxFieldsPerNode
+        dataMembersModified['fieldOperations'].maxFieldsPerProc =\
+            maxFieldsPerNode * myDMD.fieldOperations.numNodes / mpi.\
+            getNumProcs()
+        self.assertEqual(util.get_data_members(myDMD), dataMembersModified)
+       
+        self.assertRaises(util.MPIError, DMD, numNodes=mpi.getNumProcs() + 1, 
+            verbose=False)
 
     def test_compute_decomp(self):
         """ 
@@ -168,9 +154,9 @@ class TestDMD(unittest.TestCase):
         ritzValsPath = 'files_modaldecomp_test/dmd_ritzvals.txt'
         modeNormsPath = 'files_modaldecomp_test/dmd_modeenergies.txt'
         buildCoeffPath = 'files_modaldecomp_test/dmd_buildcoeff.txt'
-        self.dmd.compute_decomp(snapPaths=self.snapPathList, ritzValsPath=\
-            ritzValsPath, modeNormsPath=modeNormsPath, buildCoeffPath=\
-            buildCoeffPath)
+
+        self.dmd.compute_decomp(self.snapPathList)
+        self.dmd.save_decomp(ritzValsPath, modeNormsPath, buildCoeffPath)
        
         # Test that matrices were correctly computed
         N.testing.assert_array_almost_equal(self.dmd.ritzVals, self.\

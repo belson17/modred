@@ -15,8 +15,8 @@ class FieldOperations(object):
     in this class as much as possible.
     """
     
-    def __init__(self, load_field=None, save_field=None, save_mat=None, 
-        inner_product=None, maxFieldsPerNode=None, numNodes=1, verbose=True):
+    def __init__(self, load_field=None, save_field=None, inner_product=None, 
+        maxFieldsPerNode=None, numNodes=1, verbose=True):
         """
         Modal decomposition constructor.
     
@@ -26,7 +26,6 @@ class FieldOperations(object):
         """
         self.load_field = load_field
         self.save_field = save_field
-        self.save_mat = save_mat
         self.inner_product = inner_product
         self.verbose = verbose
 
@@ -93,7 +92,8 @@ class FieldOperations(object):
           raise ValueError('Original object modified by addition!')       
         
         objAddMult = testObj*factor + testObj
-        if abs(self.inner_product(objAddMult,objAddMult)-objCopyMag2*(factor+1)**2)>tol:
+        if abs(self.inner_product(objAddMult, objAddMult) - objCopyMag2 * (
+            factor + 1 ) ** 2 ) > tol:
           raise ValueError('Multiplication and addition of snap/mode are '+\
             'inconsistent')
         

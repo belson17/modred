@@ -11,24 +11,22 @@ class POD(object):
     
     """
         
-    def __init__(self, load_field=None, save_field=None, save_mat=\
-        util.save_mat_text, inner_product=None, maxFieldsPerNode=None, 
-        numNodes=1, load_mat=util.load_mat_text, verbose=True):
+    def __init__(self, load_field=None, save_field=None, load_mat=util.\
+        load_mat_text, save_mat=util.save_mat_text, inner_product=None, 
+        maxFieldsPerNode=None, numNodes=1,  verbose=True):
         """
         POD constructor
         
         """
         self.fieldOperations = FieldOperations(load_field=load_field, 
-            save_field=save_field,
-            save_mat=save_mat, inner_product=inner_product, maxFieldsPerNode=\
-            maxFieldsPerNode, numNodes=numNodes, verbose=verbose)
-        
+            save_field=save_field, inner_product=inner_product, 
+            maxFieldsPerNode=maxFieldsPerNode, numNodes=numNodes, verbose=\
+            verbose)
         self.mpi = util.MPIInstance
-        self.save_mat = save_mat
+
         self.load_mat = load_mat
+        self.save_mat = save_mat
         self.verbose = verbose
-     
-     
      
     def load_decomp(self, singVecsPath, singValsPath):
         """
@@ -55,15 +53,13 @@ class POD(object):
     def save_decomp(self, singVecsPath, singValsPath):
         """Save the decomposition matrices to file."""
         if self.save_mat is None and self.mpi.isRankZero():
-            raise util.UndefinedError('save_mat is undefined, cant save')
+            raise util.UndefinedError("save_mat is undefined, can't save")
             
         if self.mpi.isRankZero():
             self.save_mat(self.singVecs, singVecsPath)
             self.save_mat(self.singVals, singValsPath)
 
-
-    def compute_decomp(self, correlationMatPath=None, singVecsPath=None, 
-        singValsPath=None, snapPaths=None):
+    def compute_decomp(self, snapPaths=None, correlationMatPath=None):
         """
         Compute POD decomposition
         """
@@ -74,8 +70,8 @@ class POD(object):
                 self.correlationMat = self.load_mat(correlationMatPath)
         elif snapPaths is not None:
             self.snapPaths = snapPaths
-            self.correlationMat = self.fieldOperations.compute_symmetric_inner_product_mat(
-                self.snapPaths)
+            self.correlationMat = self.fieldOperations.\
+                compute_symmetric_inner_product_mat(self.snapPaths)
         else:
             raise util.UndefinedError('Must provide either snap paths or '+\
                 'correlation matrix path to pod.compute_decomp')
@@ -89,7 +85,6 @@ class POD(object):
         if self.mpi.isParallel():
             self.singVecs = self.mpi.comm.bcast(self.singVecs, root=0)
             self.singVals = self.mpi.comm.bcast(self.singVals, root=0)
-            
             
     def compute_modes(self, modeNumList, modePath, indexFrom=1, snapPaths=None):
         """
@@ -121,8 +116,8 @@ class POD(object):
         buildCoeffMat = N.mat(self.singVecs) * N.mat(N.diag(self.singVals **\
             -0.5))
 
-        self.fieldOperations._compute_modes(modeNumList, modePath, self.snapPaths, 
-            buildCoeffMat, indexFrom=indexFrom)
+        self.fieldOperations._compute_modes(modeNumList, modePath, self.\
+            snapPaths, buildCoeffMat, indexFrom=indexFrom)
     
 
 

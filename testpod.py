@@ -29,8 +29,6 @@ class TestPOD(unittest.TestCase):
             util.save_mat_text, save_mat=util.save_mat_text, inner_product=\
             util.inner_product, verbose=False)
         self.generate_data_set()
-   
-      
 
     def tearDown(self):
         mpi.sync()
@@ -72,16 +70,12 @@ class TestPOD(unittest.TestCase):
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
         
-        dataMembersDefault = {'save_mat': util.save_mat_text, 'load_mat': util.load_mat_text, 
-            'mpi': util.MPIInstance, 'verbose': False,
+        dataMembersDefault = {'save_mat': util.save_mat_text, 'load_mat': util.\
+            load_mat_text, 'mpi': util.MPIInstance, 'verbose': False,
             'fieldOperations': FieldOperations(load_field=None, save_field=None,
-            save_mat=util.save_mat_text, inner_product=None, maxFieldsPerNode=\
-            2, numNodes=1, verbose=False)}
+            inner_product=None, maxFieldsPerNode=2, numNodes=1, verbose=False)}
         
-        for k,v in dataMembersDefault.iteritems():
-            print k,v,util.get_data_members(POD(verbose=False))[k]
-            print v==util.get_data_members(POD(verbose=False))[k]
-        self.assertEqual(util.get_data_members(POD(verbose=False)), \
+        self.assertEqual(util.get_data_members(POD(verbose=False)), 
             dataMembersDefault)
 
         def my_load(fname): pass
@@ -89,8 +83,13 @@ class TestPOD(unittest.TestCase):
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['fieldOperations'].load_field = my_load
         self.assertEqual(util.get_data_members(myPOD), dataMembersModified)
-        
-        def my_save(data,fname): pass 
+       
+        myPOD = POD(load_mat=my_load, verbose=False)
+        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified['load_mat'] = my_load
+        self.assertEqual(util.get_data_members(myPOD), dataMembersModified)
+ 
+        def my_save(data, fname): pass 
         myPOD = POD(save_field=my_save, verbose=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['fieldOperations'].save_field = my_save
@@ -101,19 +100,7 @@ class TestPOD(unittest.TestCase):
         dataMembersModified['save_mat'] = my_save
         self.assertEqual(util.get_data_members(myPOD), dataMembersModified)
         
-        print 'testing save mat in field ops'
-        myPOD = POD(save_mat=my_save, verbose=False)
-        dataMembersModified = copy.deepcopy(dataMembersDefault)
-        dataMembersModified['fieldOperations'].save_mat = my_save
-        dataMembersModified['save_mat'] = my_save
-        for k,v in dataMembersModified.iteritems():
-            print k,v,util.get_data_members(myPOD)[k]
-            print v==util.get_data_members(myPOD)[k]
-        
-        self.assertEqual(util.get_data_members(myPOD), dataMembersModified)
-        
-              
-        def my_ip(f1,f2): pass
+        def my_ip(f1, f2): pass
         myPOD = POD(inner_product=my_ip, verbose=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['fieldOperations'].inner_product = my_ip
@@ -122,13 +109,15 @@ class TestPOD(unittest.TestCase):
         maxFieldsPerNode = 500
         myPOD = POD(maxFieldsPerNode=maxFieldsPerNode, verbose=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
-        dataMembersModified['fieldOperations'].maxFieldsPerNode = maxFieldsPerNode
-        dataMembersModified['fieldOperations'].maxFieldsPerProc = maxFieldsPerNode * \
-            myPOD.fieldOperations.numNodes / mpi.getNumProcs()
+        dataMembersModified['fieldOperations'].maxFieldsPerNode =\
+            maxFieldsPerNode
+        dataMembersModified['fieldOperations'].maxFieldsPerProc =\
+            maxFieldsPerNode * myPOD.fieldOperations.numNodes / mpi.\
+            getNumProcs()
         self.assertEqual(util.get_data_members(myPOD), dataMembersModified)
-        
-        self.assertRaises(util.MPIError, POD, numNodes=mpi.getNumProcs()+1, verbose=\
-            False)
+       
+        self.assertRaises(util.MPIError, POD, numNodes=mpi.getNumProcs() + 1, 
+            verbose=False)
     
         
     def test_compute_decomp(self):
