@@ -29,13 +29,12 @@ def save_mat_text(A,filename,delimiter=' '):
     writer = csv.writer(open(filename,'w'),delimiter=delimiter)
        
     for rowNum in range(numRows):
-        row=[]
-        for colNum in range(numCols):
-            row.append(str(AMat[rowNum,colNum]))
+        row=[str(AMat[rowNum,colNum]) for colNum in range(numCols)]
         writer.writerow(row)
     
 def load_mat_text(filename,delimiter=' ',isComplex=False):
-    """ Reads a matrix written by write_mat_text, plain text"""
+    """ Reads a matrix written by write_mat_text, plain text, returns ARRAY"""
+    #print 'loading*file'
     import csv
     f = open(filename,'r')
     matReader = csv.reader(f,delimiter=delimiter)
@@ -449,7 +448,18 @@ def eval_func_tuple(f_args):
     
 # Simple function for testing
 def add(x,y): return x+y
-
+def my_random(arg):
+    return N.random.random(arg)
+def inner_product_wrapper(args):
+    assert(len(args)==2)
+    return inner_product(*args)
+    
+def my_inner_product(a,b):
+    ip = 0
+    for r in range(a.shape[0]):
+        for c in range(a.shape[1]):
+            ip += a[r,c]*b[r,c]
+    return ip
 # Create an instance of MPI class that is used everywhere, "singleton"
 MPIInstance = MPI(verbose=True)
 

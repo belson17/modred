@@ -13,7 +13,8 @@ import time as T
 mpi = util.MPI(verbose = True)
 
 save_field = util.save_mat_text
-load_field = util.load_mat_text
+load_field= util.load_mat_text
+
 inner_product = util.inner_product
 dataDir = './files_benchmark/'
 
@@ -39,7 +40,6 @@ def inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode):
     
     Remember that rows correspond to adjoint modes and cols to direct modes
     """
-    
     colFieldName = 'col_%04d.txt'
     rowFieldName = 'row_%04d.txt'
     
@@ -73,24 +73,19 @@ def lin_combine_fields(numStates, numBases, numProducts, maxFieldsPerNode):
     # numBases is number of fields to be linearly combined
     # numProducts is the resulting number of fields
 
-
     basisName = 'snap_%04d.txt'
     productName = 'product_%04d.txt'
     generate_fields(numStates, numBases, dataDir, basisName)
+    
     myFO = FO.FieldOperations(maxFieldsPerNode = maxFieldsPerNode,
-    save_field = save_field, load_field=load_field, inner_product=inner_product)
+        save_field = save_field, load_field=load_field, inner_product=inner_product)
     coeffMat = N.random.random((numBases, numProducts))
     
-    basisPaths = []
-    for basisNum in range(numBases):
-        basisPaths.append(dataDir + basisName%basisNum)
-    
-    productPaths = []
-    for productNum in range(numProducts):
-        productPaths.append(dataDir + productName%productNum)
+    basisPaths = [dataDir+basisName%basisNum for basisNum in range(numBases)]
+    productPaths = [dataDir + productName%productNum for productNum in range(numProducts)]
     
     startTime = T.time()
-    myFO.lin_combine_fields(productPaths, basisPaths, coeffMat)
+    myFO.lin_combine(productPaths, basisPaths, coeffMat)
     totalTime = T.time() - startTime
     return totalTime
     
@@ -99,18 +94,18 @@ def clean_up():
 
 
 def main():
-    numStates = 100
-    numBases = 100
-    numProducts = 10
+    numStates = 3000
+    numBases = 300
+    numProducts = 100
     maxFieldsPerNode = 50
     numRows = 100
-    numCols = 1000
+    numCols = 200
     
-    #t= lin_combine_fields(numStates, numBases, numProducts, maxFieldsPerNode)
-    #print 'time for lin_combine_fields is',t
-    t= inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode)
-    print 'time for inner_product_mat is',t
-    clean_up()
+    t= lin_combine_fields(numStates, numBases, numProducts, maxFieldsPerNode)
+    print 'time for lin_combine_fields is',t
+    #t= inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode)
+    #print 'time for inner_product_mat is',t
+    #clean_up()
 
 
 if __name__ == '__main__':

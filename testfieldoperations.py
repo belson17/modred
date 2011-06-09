@@ -146,7 +146,8 @@ class TestFieldOperations(unittest.TestCase):
         for snapIndex in range(numSnaps):
             snapMat[:,snapIndex] = N.random.random((numStates,1))
         modeMat = snapMat*buildCoeffMat
-        return snapMat,modeNumList,buildCoeffMat,modeMat 
+        modeArray = N.array(modeMat)
+        return snapMat,modeNumList,buildCoeffMat,modeArray 
         
     
     # def test__compute_modes_chunk(self):
@@ -276,7 +277,8 @@ class TestFieldOperations(unittest.TestCase):
 
                         mpi.sync()
                         
-                        # Do tests on processor 0
+                        # Do tests on processor 0, all computed modes are saved
+                        # to file and all true modes are on all procs
                         if self.fieldOperations.mpi.isRankZero():
                             for modeNum in modeNumList:
                                 computedMode = util.load_mat_text(
@@ -285,9 +287,10 @@ class TestFieldOperations(unittest.TestCase):
                                 #print 'true mode',trueModes[:,
                                     #modeNum-indexFrom]
                                 #print 'computed mode',computedMode
+                                
                                 N.testing.assert_array_almost_equal(
-                                    computedMode, trueModes[:,modeNum-\
-                                    indexFrom])
+                                    computedMode.squeeze(), trueModes[:,modeNum-\
+                                    indexFrom].squeeze())
                                 
                         mpi.sync()
        
@@ -300,7 +303,6 @@ class TestFieldOperations(unittest.TestCase):
         chunks, both in parallel (compute_inner_product_matrix) and serial
         (compute_inner_product_chunk)
         """ 
-        
         
         def assert_equal_mat_products(mat1, mat2, paths1, paths2):
             # Path list may actually be a string, in which case covert to list
