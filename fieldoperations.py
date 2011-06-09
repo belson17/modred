@@ -243,38 +243,8 @@ class FieldOperations(object):
             # Print after this many cols are computed
             printAfterNumCols = (numCols/5)+1 
         
-        # Should all of the computing subchunks and rows/cols per chunk 
-        # be moved to the MPI class or util module??? It is copied in 
-        # a few places.
-        # A sub chunk is the unit of "work" to be done by each processor
-        # in the shared memory setting. For efficiency, we give pool jobs
-        # that have # tasks = some multiple of the number of procs/node.
-        # numSubChunks is the number of these work units.
-        numSubChunks = self.maxFieldsPerNode / self.mpi.getNumProcsPerNode()
-        
-        # If can read more than 2 subChunks, where a sub chunk has
-        # procs/node fields, then distribute
-        # reading with one sub chunk in col, rest of the sub chunks in rows.
-        # That is, maximize the number of rows per chunk.
-        # iterate:
-        #  rows
-        #    cols
-        if numSubChunks >= 2:
-            numColsPerChunk = 1*self.mpi.getNumProcsPerNode() 
-            numRowsPerChunk = self.maxFieldsPerNode - numColsPerChunk
-            
-        # If not, still maximize the number of rows per chunk, leftovers for col
-        elif numSubChunks == 1:
-            numRowsPerChunk = self.mpi.getNumProcsPerNode()
-            numColsPerChunk = self.maxFieldsPerNode - numRowsPerChunk
-            
-        # If can't get even numProcsPerNode fields in memory at once, then
-        # default to slowest option, will not make full use of shared memory
-        # NOTE: I'm not sure this is the fastest way for this case
-        else:
-            numColsPerChunk = 1
-            numRowsPerChunk = self.maxFieldsPerNode - numColsPerChunk
-
+        numRowsPerChunk, numColsPerChunk = \
+            self.mpi.find_numRows_numCols_per_chunk(self.maxFieldsPerNode)
         innerProductMat = N.mat(N.zeros((numRows,numCols)))
         
         IPStartTime = T.time()
@@ -429,37 +399,8 @@ class FieldOperations(object):
             # Print after this many cols are computed
             printAfterNumCols = (numCols / 5) + 1 
         
-        # Should all of the computing subchunks and rows/cols per chunk 
-        # be moved to the MPI class or util module??? It is copied in 
-        # a few places.
-        # A sub chunk is the unit of "work" to be done by each processor
-        # in the shared memory setting. For efficiency, we give pool jobs
-        # that have # tasks = some multiple of the number of procs/node.
-        # numSubChunks is the number of these work units.
-        numSubChunks = self.maxFieldsPerNode / self.mpi.getNumProcsPerNode()
-        
-        # If can read more than 2 subChunks, where a sub chunk has
-        # procs/node fields, then distribute
-        # reading with one sub chunk in col, rest of the sub chunks in rows.
-        # That is, maximize the number of rows per chunk.
-        # iterate:
-        #  rows
-        #    cols
-        if numSubChunks >= 2:
-            numColsPerChunk = 1*self.mpi.getNumProcsPerNode() 
-            numRowsPerChunk = self.maxFieldsPerNode - numColsPerChunk
-            
-        # If not, still maximize the number of rows per chunk, leftovers for col
-        elif numSubChunks == 1:
-            numRowsPerChunk = self.mpi.getNumProcsPerNode()
-            numColsPerChunk = self.maxFieldsPerNode - numRowsPerChunk
-            
-        # If can't get even numProcsPerNode fields in memory at once, then
-        # default to slowest option, will not make full use of shared memory
-        # NOTE: I'm not sure this is the fastest way for this case
-        else:
-            numColsPerChunk = 1
-            numRowsPerChunk = self.maxFieldsPerNode - numColsPerChunk
+        numRowsPerChunk, numColsPerChunk = \
+            self.mpi.find_numRows_numCols_per_chunk(self.maxFieldsPerNode)
 
         # If computing a square chunk (upper triangular part) and all rows can
         # be loaded simultaneously, no need to save room for a column chunk

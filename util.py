@@ -325,7 +325,45 @@ class MPI(object):
         objList = self.gather_pickle(obj)
         # bcast objList from rank 0 to all other ranks
         return self.bcast_pickle(objList)
-    
+
+    def find_numRows_numCols_per_chunk(self, memoryLimit):
+        """
+        Returns optimal number of rows and columns for inner prod mat
+        
+        Maximizes the number of rows while making numCols big enough to
+        make use of the shared memory. The argument memoryLimit is the
+        maximum number of elements (fields) that can be in memory on a 
+        node at once.
+        """
+        # A sub chunk is the unit of "work" to be done by each processor
+        # in the shared memory setting. For efficiency, we give pool jobs
+        # that have # tasks = some multiple of the number of procs/node.
+        # numSubChunks is the number of these work units.
+        numSubChunks = memoryLimit / self.getNumProcsPerNode()
+        
+        # If can read more than 2 subChunks, where a sub chunk has
+        # procs/node fields, then distribute
+        # reading with one sub chunk in col, rest of the sub chunks in rows.
+        # That is, maximize the number of rows per chunk.
+        # iterate:
+        #  rows
+        #    cols
+        if numSubChunks >= 2:
+            numColsPerChunk = 1*self.getNumProcsPerNode() 
+            numRowsPerChunk = memoryLimit - numColsPerChunk
+            
+        # If not, still maximize the number of rows per chunk, leftovers for col
+        elif numSubChunks == 1:
+            numRowsPerChunk = self.getNumProcsPerNode()
+            numColsPerChunk = memoryLimit - numRowsPerChunk
+            
+        # If can't get even numProcsPerNode fields in memory at once, then
+        # default to slowest option, will not make full use of shared memory
+        # NOTE: I'm not sure this is the fastest way for this case
+        else:
+            numColsPerChunk = 1
+            numRowsPerChunk = memoryLimit - numColsPerChunk
+        return numRowsPerChunk, numColsPerChunk
 
     # CURRENTLY THIS FUNCTION DOESNT WORK
     def evaluate_and_bcast(self,outputs, function, arguments=[], keywords={}):
