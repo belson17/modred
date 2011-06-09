@@ -17,9 +17,9 @@ class MPIError(Exception):
     pass
 
 def save_mat_text(A,filename,delimiter=' '):
-    """
-    Writes a matrix to file, 1D or 2D, in text with delimeter and a space
-    seperating the elements.
+    """Writes a 1D or 2D array or matrix to a text file
+    
+    delimeter seperates the elements.
     """
     import csv
     if len(N.shape(A))>2:
@@ -28,9 +28,10 @@ def save_mat_text(A,filename,delimiter=' '):
     numRows,numCols = N.shape(AMat) #must be 2D since it is a matrix
     writer = csv.writer(open(filename,'w'),delimiter=delimiter)
        
-    for rowNum in range(numRows):
+    for rowNum in xrange(numRows):
         row=[str(AMat[rowNum,colNum]) for colNum in range(numCols)]
         writer.writerow(row)
+    
     
 def load_mat_text(filename,delimiter=' ',isComplex=False):
     """ Reads a matrix written by write_mat_text, plain text, returns ARRAY"""
@@ -38,25 +39,15 @@ def load_mat_text(filename,delimiter=' ',isComplex=False):
     import csv
     f = open(filename,'r')
     matReader = csv.reader(f,delimiter=delimiter)
-    #read the entire file first to get dimensions.
-    numLines = 0
-    for line in matReader:
-        if numLines ==0:
-            lineLength = len(line)
-        numLines+=1
-    if numLines == 0:
-        raise RuntimeError('File is empty! '+filename)
-    #rewind to beginning of file and read again
-    f.seek(0)
+    A=[]
     if isComplex:
-        A = N.zeros((numLines,lineLength),dtype=complex)
-        for i,line in enumerate(matReader):
-            A[i,:] =  N.array([complex(j) for j in line])
+        dtype = complex
     else:
-        A = N.zeros((numLines,lineLength))
-        for i,line in enumerate(matReader):
-            A[i,:] =  N.array([float(j) for j in line])
-    return A
+        dtype = float
+    for i,line in enumerate(matReader):
+        A.append(N.array([dtype(j) for j in line]))
+    return N.array(A)
+
 
 def inner_product(snap1,snap2):
     """ A default inner product for n-dimensional numpy arrays """
@@ -436,10 +427,7 @@ def sum_lists(list1,list2):
     This function is used in MPI reduce commands, but could be used
     elsewhere too"""
     assert len(list1)==len(list2)
-    list3=[]
-    for i in xrange(len(list1)):
-        list3.append(list1[i]+list2[i])
-    return list3
+    return [list1[i]+list2[i] for i in xrange(len(list1))]
 
 
 def eval_func_tuple(f_args):

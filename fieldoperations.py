@@ -67,8 +67,8 @@ class FieldOperations(object):
         if testObjPath is not None:
           testObj = self.load_field(testObjPath)
         if testObj is None:
-            raise RuntimeError('Supply snap (or mode) object or path to one '+\
-                'for idiot check!')
+            raise RuntimeError('Supply a field object or a path to one '+\
+                'for the idiot check')
         objCopy = copy.deepcopy(testObj)
         objCopyMag2 = self.inner_product(objCopy,objCopy)
         
@@ -79,14 +79,14 @@ class FieldOperations(object):
           raise ValueError('Multiplication of snap/mode object failed')
         
         if abs(self.inner_product(testObj,testObj)-objCopyMag2)>tol:  
-          raise ValueError('Original object modified by multiplication!')        
+          raise ValueError('Original object modified by multiplication')        
         
         objAdd = testObj + testObj
         if abs(self.inner_product(objAdd,objAdd) - objCopyMag2*4)>tol:
           raise ValueError('Addition does not give correct result')
         
         if abs(self.inner_product(testObj,testObj)-objCopyMag2)>tol:  
-          raise ValueError('Original object modified by addition!')       
+          raise ValueError('Original object modified by addition')       
         
         objAddMult = testObj*factor + testObj
         if abs(self.inner_product(objAddMult,objAddMult)-objCopyMag2*(factor+1)**2)>tol:
@@ -94,13 +94,13 @@ class FieldOperations(object):
             'inconsistent')
         
         if abs(self.inner_product(testObj,testObj)-objCopyMag2)>tol:  
-          raise ValueError('Original object modified by combo of mult/add!') 
+          raise ValueError('Original object modified by combo of mult/add') 
         
         #objSub = 3.5*testObj - testObj
         #N.testing.assert_array_almost_equal(objSub,2.5*testObj)
         #N.testing.assert_array_almost_equal(testObj,objCopy)
         if self.verbose:
-            print 'Passed the idiot check'
+            print 'Congratulations, you passed the idiot check'
 
     
     def _print_inner_product_progress(self, startRowIndex, endRowIndex, 
