@@ -85,7 +85,10 @@ class MPI(object):
             self._rank=0
             self.comm = None
             self.parallel=False
-        # Shared memory, available since python 2.6
+        
+        # Used when writing files for MPI communication - needed since
+        # multiprocessing breaks mpi4py
+        self._MPIDirectory = 'mpi_files_delete/'
         
         self._numProcsPerNode = multiprocessing.cpu_count()
         
@@ -109,7 +112,7 @@ class MPI(object):
                 'is '+str(self._numNodes)+' but the number of MPI tasks is '+\
                 str(self._numMPITasks)+' (from mpiexec -n <MPI tasks> '+\
                 'or a submission script processors per node variable not being 1). '+\
-                'You probably need to change your submission script or mpiexec')     
+                'You probably need to change your submission script or mpiexec')  
                 
     
     def findNodeID(self):
@@ -255,21 +258,25 @@ class MPI(object):
             obj = None
         obj = mpi.bcast_pickle(obj)
         """
-        if fileName is None:
-            fileName = 'bcast.pickle'
-        
-        if self.getNodeNum() == root:
-            pickleFile = open(fileName,'wb')
-            pickle.dump(obj,pickleFile)
-            pickleFile.close()
+        if self.parallel:
+            if fileName is None:
+                fileName = self._MPIDirectory+'bcast.pickle'
+            if not os.path.isdir(self._MPIDirectory):
+                SP.call(['mkdir',self._MPIDirectory])
             
-        self.sync()
-        pickleFile = open(fileName,'rb')
-        obj = pickle.load(pickleFile)
-        pickleFile.close()
-        self.sync()
-        if self.isRankZero():
-            SP.call(['rm', fileName])
+            if self.getNodeNum() == root:
+                pickleFile = open(fileName,'wb')
+                pickle.dump(obj,pickleFile)
+                pickleFile.close()
+                
+            self.sync()
+            pickleFile = open(fileName,'rb')
+            obj = pickle.load(pickleFile)
+            pickleFile.close()
+            self.sync()
+            if self.isRankZero():
+                SP.call(['rm', fileName])
+                
         return obj
         
     def gather_pickle(self, obj, root=0, fileName = None):
@@ -285,26 +292,31 @@ class MPI(object):
         Usage:
         obj = N.random.random(4)
         objList = mpi.gather_pickle(obj)
-        # objList is only non-None on root node (default 0)
+        # objList is non-None on root node (default 0), None on all others
         """
-        if fileName is None:
-            fileName = 'gather_node_%03d.pickle'
+        if self.parallel:
+            if fileName is None:
+                fileName = self._MPIDirectory + 'gather_node_%03d.pickle'
+            if not os.path.isdir(self._MPIDirectory):
+                SP.call(['mkdir',self._MPIDirectory])
             
-        pickleFile = open(fileName % self.getNodeNum(), 'wb')
-        pickle.dump(obj,pickleFile)
-        pickleFile.close()
-        
-        self.sync()
-        if self.getNodeNum() == root:
-            objList = []
-            for nodeNum in range(self.getNumNodes()):
-                pickleFile = open(fileName % nodeNum,'rb')
-                objList.append(pickle.load(pickleFile))
-                pickleFile.close()
-                SP.call(['rm',fileName % nodeNum]) 
-            return objList
+            pickleFile = open(fileName % self.getNodeNum(), 'wb')
+            pickle.dump(obj,pickleFile)
+            pickleFile.close()
+            
+            self.sync()
+            if self.getNodeNum() == root:
+                objList = []
+                for nodeNum in range(self.getNumNodes()):
+                    pickleFile = open(fileName % nodeNum,'rb')
+                    objList.append(pickle.load(pickleFile))
+                    pickleFile.close()
+                    SP.call(['rm',fileName % nodeNum]) 
+                return objList
+            else:
+                return None
         else:
-            return None
+            return [obj]
     
     def allgather_pickle(self, obj, fileName = None):
         """
@@ -320,11 +332,41 @@ class MPI(object):
         # objList is the same list of arrays on all nodes
         """
         if fileName is None:
-            fileName = 'allgather_node_%03d.pickle'
+            fileName = self._MPIDirectory + 'allgather_node_%03d.pickle'
         # gather obj's into objList, only non-None on rank 0
         objList = self.gather_pickle(obj)
         # bcast objList from rank 0 to all other ranks
         return self.bcast_pickle(objList)
+    
+    def my_sync(self, fileName = None):
+        """
+        Syncs all MPI tasks by waiting for them to write a file.
+        
+        Each MPI task (node) writes a file and all nodes wait until
+        all files have been created. This is a slow way to get around
+        mpi4py not working with multiprocessing. The MPI.sync freezes
+        all nodes with multiprocessing.
+        """
+        if self.parallel:
+            if fileName is None:
+                fileName = 'mpi_sync_node_%03d.txt'
+                pathName = self._MPIDirectory + fileName
+            if not os.path.isdir(self._MPIDirectory):
+                SP.call(['mkdir',self._MPIDirectory])
+            SP.call(['touch',fileName%self.getNodeNum()])
+            
+            # Now enter a loop and wait for all MPI tasks to create a file
+            numNodesCompleted = 0
+            while(numNodesCompleted != self.getNumNodes()):
+                fileList = getFileList(self._MPIDirectory)
+                numNodesCompleted = 0
+                for nodeNum in self.getNumNodes():
+                    for file in fileList:
+                        if file%nodeNum == fileName%nodeNum:
+                            numNodesCompleted += 1   
+            
+            SP.call(['rm',pathName%self.getNodeNum()])
+        
 
     def find_numRows_numCols_per_chunk(self, memoryLimit):
         """
@@ -447,6 +489,18 @@ def svd(A):
         E=E[:indexZeroSingVal[0][0]]
     
     return U,E,V
+
+def getFileList(dir,fileExtension=''):
+    """Returns list of files in dir with file extension fileExtension"""
+    fileList = os.listdir(dir)
+    if len(fileExtension)>=1:
+        filteredFileList = []
+        for f in fileList:
+            if f[-len(fileExtension):] == fileExtension:
+                filteredFileList.append(f)
+        return filteredFileList
+    else:
+        return fileList
 
 
 def get_data_members(obj):

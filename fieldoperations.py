@@ -582,15 +582,14 @@ class FieldOperations(object):
         numOutputFields = len(outputFieldPaths)
         
         if numInputFields > fieldCoeffMat.shape[0]:
-            print 'numInputFields',numInputFields
-            print 'rows of fieldCoeffMat',fieldCoeffMat.shape[0]
-            raise ValueError('coeff mat has fewer rows than num of input paths')
+            raise ValueError((('coeff mat has fewer rows, %d, than num of '+\
+                'input paths, %d'),fieldCoeffMat.shape[0],numInputFields))
         if numOutputFields > fieldCoeffMat.shape[1]:
             raise ValueError('Coeff matrix has fewer cols than num of ' +\
                 'output paths')            
         if numInputFields < self.mpi.getNumNodes():
             raise util.MPIError('Cannot find outputs when fewer inputs '+\
-               'than number of processors')
+               'than number of nodes')
                
         if numInputFields < fieldCoeffMat.shape[0] and self.mpi.isRankZero():
             print 'Warning - fewer input paths than cols in the coeff matrix'
@@ -601,6 +600,7 @@ class FieldOperations(object):
         
         inputNodeAssignments = self.mpi.find_assignments(range(len(
             inputFieldPaths)))
+        
         for assignment in inputNodeAssignments:
             if len(assignment) == 0:
                 raise MPIError('At least one processor has no tasks'+\
@@ -632,7 +632,7 @@ class FieldOperations(object):
                   inputNodeAssignments[self.mpi.getNodeNum()][-1]+1,
                   startOutputIndex:endOutputIndex],\
                   numInputsPerChunk=numInputsPerChunk)
-            
+
             if self.mpi.isParallel():
                 outputLayers = self.mpi.custom_comm.allreduce(outputLayers, 
                   op=util.sum_lists)

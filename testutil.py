@@ -78,7 +78,7 @@ class TestUtil(unittest.TestCase):
         """
         #not sure how to test this
         
-    @unittest.skipIf(not distributed,'Only test in distributed case')
+    #@unittest.skipIf(not distributed,'Only test in distributed case')
     def test_bcast_pickle(self):
         """
         Test that can bcast when multiprocess.Pool() instance created
@@ -101,7 +101,7 @@ class TestUtil(unittest.TestCase):
         self.myMPI.sync()
         print '\n done bcast on node num',self.myMPI.getNodeNum()
         
-    @unittest.skipIf(not distributed,'Only test in distributed case')    
+    #@unittest.skipIf(not distributed,'Only test in distributed case')    
     def test_gather_pickle(self):
         """Test that can gather when multiprocess.Pool() instance created"""
         
@@ -115,7 +115,7 @@ class TestUtil(unittest.TestCase):
         self.myMPI.sync()
         print '\n done gather on node num',self.myMPI.getNodeNum()
         
-    @unittest.skipIf(not distributed,'Only test in distributed case')
+    #@unittest.skipIf(not distributed,'Only test in distributed case')
     def test_allgather_pickle(self):
         """Test that can allgather when multiprocess.Pool() instance created"""
         data = self.myMPI.getNodeNum()**2
@@ -128,6 +128,17 @@ class TestUtil(unittest.TestCase):
         #print 'allgather 4, node num',self.myMPI.getNodeNum()
         self.myMPI.sync()  
         print '\n done allgather on node num',self.myMPI.getNodeNum()
+        
+    #@unittest.skipIf(not distributed,'Only test in distributed case')
+    def test_my_sync(self):
+        """Test can sync properly using text files"""
+        value = 0
+        value = self.myMPI.getNodeNum()
+        self.myMPI.my_sync()
+        self.assertEqual(value, self.myMPI.getNodeNum())
+        value = value**2
+        self.myMPI.my_sync()
+        self.assertEqual(value, self.myMPI.getNodeNum()**2)
     
     def test_MPI_init(self):
         """Test that the MPI object uses arguments correctly.
