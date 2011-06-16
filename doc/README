@@ -1,21 +1,37 @@
 Sphinx Documentation
 --------------------
 
-Note: Sphinx actually runs and imports python code, so broken code, or code not in conf.py sys.path, cannot be documented!
+Note: Sphinx actually runs and imports python code, so broken code,
+      or code not in conf.py sys.path, cannot be documented!
 
-1.  Get Sphinx [http://sphinx.pocoo.org/]
+-  Get Sphinx [http://sphinx.pocoo.org/]
     [python setup.py build/install]
+    [easy_install sphinx]
 
-2.  (Optional, do this step if you activate numpy extension in conf.py) 
-    Install numpydoc [http://pypi.python.org/pypi/numpydoc] 
+-  (Optional, do this step if you activate numpy extension in conf.py) 
+    Install numpydoc 
+    [http://pypi.python.org/pypi/numpydoc] 
+    [easy_install numpydoc]
+    
+Choose method 1 or 2, 1 might be easier.
 
-3.  Copy Makefile.sav to Makefile - this is your local file that you will modify    and is not under version control. Do not modify Makefile.sav.
+Method 1:
+- From the modaldecomp directory, run 
+      sphinx-build -b html doc doc/_build
+      
+- Open doc/_build/index.html to view the documentation
 
-4.  In Makefile point to your own copy of sphinx-build, e.g.
+
+Method 2:
+-  In Makefile point to your own copy of sphinx-build, e.g.
     [SPHINXBUILD   = /Users/yourname/CODES/Sphinx-1.0.6/sphinx-build.py]
 
-5.  From within the doc/ directory 
-    $ touch *.rst
-    $ make html  [or make latex]
+-  From within doc/ directory 
+    >> touch *.rst
+    >> make html  [or make latex]
 
-6.  Navigate to doc/_build/html and open index.html to view and browse the documentation
+-  Navigate to doc/_build/html and open index.html to view and browse the documentation
+
+
+
+
