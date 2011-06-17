@@ -1,94 +1,69 @@
 #!/usr/bin/env python
 
 import subprocess as SP
+import multiprocessing
 import os
 import copy
 import inspect #makes it possible to find information about a function
 import unittest
 import numpy as N
-from fieldoperations import FieldOperations
+import fieldoperations as FO
 import util
-
-
-mpi = util.MPIInstance
-
-print 'To test fully, remember to do both:'
-print '    1) python testmodaldecomp.py'
-print '    2) mpiexec -n <# procs> python testmodaldecomp.py'
 
 class TestFieldOperations(unittest.TestCase):
     """ Tests of the self.fieldOperations class """
     
     def setUp(self):
-        # Default data members (verbose set to false even though default is true
-        # so messages won't print during tests
-        self.defaultMPI = util.MPIInstance 
-        self.defaultDataMembers = {'load_field': None, 'save_field': None, 
-            'save_mat': None, 'inner_product': None, 'maxFieldsPerNode': 2,
-            'maxFieldsPerProc': 2, 'mpi': self.defaultMPI, 'numNodes': 1, 
-            'verbose': False}
        
-        self.maxFieldsPerProc = 10
-        self.totalNumFieldsInMem = mpi.getNumProcs() * self.maxFieldsPerProc
+        self.maxFields = 10
+        self.totalNumFieldsInMem = 1 * self.maxFields
 
         # FieldOperations object for running tests
-        self.fieldOperations = FieldOperations( 
+        self.fieldOperations = FO.FieldOperations( 
             load_field=util.load_mat_text, 
             save_field=util.save_mat_text, 
-            inner_product=util.inner_product, 
-            verbose=False)
-        self.fieldOperations.maxFieldsPerProc = self.maxFieldsPerProc
+            inner_product=util.inner_product,
+            verbose=False, 
+            maxFields = self.maxFields)
 
     def tearDown(self):
-        mpi.sync()
-        if mpi.isRankZero():
-            SP.call(['rm -rf files_modaldecomp_test/*'], shell=True)
-        mpi.sync()
+        SP.call(['rm -rf files_modaldecomp_test/*'], shell=True)       
  
     #@unittest.skip('testing other things')
     def test_init(self):
         """
         Test arguments passed to the constructor are assigned properly
         """
-        
-        dataMembersOriginal = util.get_data_members(FieldOperations(verbose=False))
-        self.assertEqual(dataMembersOriginal, self.defaultDataMembers)
+        dataMembersDefault = {'load_field': None, 'save_field': None, 
+            'inner_product': None, 'maxFields': 2,
+            'verbose': False}
+        self.assertEqual(util.get_data_members(FO.FieldOperations(verbose=False)), 
+            dataMembersDefault)
         
         def my_load(fname): pass
-        myFO = FieldOperations(load_field=my_load, verbose=False)
-        dataMembers = copy.deepcopy(dataMembersOriginal)
-        dataMembers['load_field'] = my_load
-        self.assertEqual(util.get_data_members(myFO), dataMembers)
+        myFO = FO.FieldOperations(load_field=my_load, verbose=False)
+        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified['load_field'] = my_load
+        self.assertEqual(util.get_data_members(myFO), dataMembersModified)
         
         def my_save(data,fname): pass
-        myFO = FieldOperations(save_field=my_save, verbose=False)
-        dataMembers = copy.deepcopy(dataMembersOriginal)
-        dataMembers['save_field'] = my_save
-        self.assertEqual(util.get_data_members(myFO), dataMembers)
-        
-        myFO = FieldOperations(save_mat=my_save, verbose=False)
-        dataMembers = copy.deepcopy(dataMembersOriginal)
-        dataMembers['save_mat'] = my_save
-        self.assertEqual(util.get_data_members(myFO), dataMembers)
+        myFO = FO.FieldOperations(save_field=my_save, verbose=False)
+        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified['save_field'] = my_save
+        self.assertEqual(util.get_data_members(myFO), dataMembersModified)
         
         def my_ip(f1,f2): pass
-        myFO = FieldOperations(inner_product=my_ip, verbose=False)
-        dataMembers = copy.deepcopy(dataMembersOriginal)
-        dataMembers['inner_product'] = my_ip
-        self.assertEqual(util.get_data_members(myFO), dataMembers)
+        myFO = FO.FieldOperations(inner_product=my_ip, verbose=False)
+        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified['inner_product'] = my_ip
+        self.assertEqual(util.get_data_members(myFO), dataMembersModified)
         
-        maxFieldsPerNode = 500
-        myFO = FieldOperations(maxFieldsPerNode=maxFieldsPerNode, verbose=False)
-        dataMembers = copy.deepcopy(dataMembersOriginal)
-        dataMembers['maxFieldsPerNode'] = maxFieldsPerNode
-        dataMembers['maxFieldsPerProc'] = maxFieldsPerNode * myFO.numNodes/ \
-            myFO.mpi.getNumProcs()
-        self.assertEqual(util.get_data_members(myFO), dataMembers)
-        
-        self.assertRaises(util.MPIError, FieldOperations, numNodes=mpi.getNumProcs() + 1, 
-            verbose=False)
-        #MPI class is tested by utils
-        
+        maxFields = 500
+        myFO = FO.FieldOperations(maxFields=maxFields, verbose=False)
+        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified['maxFields'] = maxFields
+        self.assertEqual(util.get_data_members(myFO), dataMembersModified)
+      
 
     #@unittest.skip('testing other things')
     def test_idiot_check(self):
@@ -101,7 +76,7 @@ class TestFieldOperations(unittest.TestCase):
         testArray = N.random.random((nx,ny))
         def inner_product(a,b):
             return N.sum(a.arr*b.arr)
-        myFO = FieldOperations(inner_product=util.inner_product, verbose=False)
+        myFO = FO.FieldOperations(inner_product=util.inner_product, verbose=False)
         myFO.idiot_check(testObj=testArray)
         
         # An idiot's class that redefines multiplication to modify its data
@@ -157,7 +132,8 @@ class TestFieldOperations(unittest.TestCase):
         for snapIndex in range(numSnaps):
             snapMat[:,snapIndex] = N.random.random((numStates,1))
         modeMat = snapMat*buildCoeffMat
-        return snapMat,modeNumList,buildCoeffMat,modeMat 
+        modeArray = N.array(modeMat)
+        return snapMat,modeNumList,buildCoeffMat,modeArray 
         
     
     # def test__compute_modes_chunk(self):
@@ -198,9 +174,8 @@ class TestFieldOperations(unittest.TestCase):
         #modePath = 'proc'+str(self.fieldOperations.mpi._rank)+'/mode_%03d.txt'
         modePath = 'files_modaldecomp_test/mode_%03d.txt'
         snapPath = 'files_modaldecomp_test/snap_%03d.txt'
-        if self.fieldOperations.mpi.isRankZero():
-            if not os.path.isdir('files_modaldecomp_test'):
-                SP.call(['mkdir','files_modaldecomp_test'])
+        if not os.path.isdir('files_modaldecomp_test'):
+            SP.call(['mkdir','files_modaldecomp_test'])
         
         for numSnaps in numSnapsList:
             for numModes in numModesList:
@@ -210,32 +185,15 @@ class TestFieldOperations(unittest.TestCase):
                     #print 'numSnaps =',numSnaps
                     #print 'numStates =',numStates
                     #print 'numModes =',numModes
-                    #print 'maxFieldsPerNode =',maxFieldsPerNode                          
+                    #print 'maxFields =',maxFields                          
                     #print 'indexFrom =',indexFrom
-                    snapPaths = []
-                    for snapIndex in range(numSnaps):
-                        snapPaths.append(snapPath % snapIndex)
+                    snapPaths = [snapPath % snapIndex for snapIndex in range(numSnaps)]
                     
-                    if self.fieldOperations.mpi.isRankZero():
-                        snapMat,modeNumList, buildCoeffMat, trueModes = \
-                          self.generate_snaps_modes(numStates, numSnaps,
-                          numModes, indexFrom=indexFrom)
-                        for snapIndex,s in enumerate(snapPaths):
-                            util.save_mat_text(snapMat[:,snapIndex], s)
-                    else:
-                        modeNumList = None
-                        buildCoeffMat = None
-                        snapMat = None
-                        trueModes = None
-                    if self.fieldOperations.mpi.isParallel():
-                        modeNumList = self.fieldOperations.mpi.comm.bcast(
-                            modeNumList, root=0)
-                        buildCoeffMat = self.fieldOperations.mpi.comm.bcast(
-                            buildCoeffMat,root=0)
-                        snapMat = self.fieldOperations.mpi.comm.bcast(
-                            snapMat, root=0)
-                        trueModes = self.fieldOperations.mpi.comm.bcast(
-                            trueModes, root=0)
+                    snapMat,modeNumList, buildCoeffMat, trueModes = \
+                        self.generate_snaps_modes(numStates, numSnaps,
+                        numModes, indexFrom=indexFrom)
+                    for snapIndex,s in enumerate(snapPaths):
+                        util.save_mat_text(snapMat[:,snapIndex], s)
                         
                     # if any mode number (minus starting indxex)
                     # is greater than the number of coeff mat columns,
@@ -263,13 +221,7 @@ class TestFieldOperations(unittest.TestCase):
                           self.fieldOperations._compute_modes, modeNumList,
                           modePath, snapPaths, buildCoeffMat,
                           indexFrom=indexFrom)
-                    # If more processors than number of snaps available,
-                    # then some procs will not have a task, not allowed.
-                    elif self.fieldOperations.mpi.getNumProcs() > numSnaps:
-                        self.assertRaises(util.MPIError, self.\
-                            fieldOperations._compute_modes, modeNumList, 
-                            modePath, snapPaths, buildCoeffMat, 
-                            indexFrom=indexFrom)
+                          
                     else:
                         # Test the case that only one mode is desired,
                         # in which case user might pass in an int
@@ -284,26 +236,21 @@ class TestFieldOperations(unittest.TestCase):
                         # Change back to list so is iterable
                         if isinstance(modeNumList, int):
                             modeNumList = [modeNumList]
-
-                        self.fieldOperations.mpi.sync()
                         
-                        # Do tests on processor 0
-                        if self.fieldOperations.mpi.isRankZero():
-                            for modeNum in modeNumList:
-                                computedMode = util.load_mat_text(
-                                    modePath % modeNum)
-                                #print 'mode number',modeNum
-                                #print 'true mode',trueModes[:,
-                                    #modeNum-indexFrom]
-                                #print 'computed mode',computedMode
-                                N.testing.assert_array_almost_equal(
-                                    computedMode, trueModes[:,modeNum-\
-                                    indexFrom])
+                        # all computed modes are saved
+                        for modeNum in modeNumList:
+                            computedMode = util.load_mat_text(
+                                modePath % modeNum)
+                            #print 'mode number',modeNum
+                            #print 'true mode',trueModes[:,
+                                #modeNum-indexFrom]
+                            #print 'computed mode',computedMode
+                            
+                            N.testing.assert_array_almost_equal(
+                                computedMode.squeeze(), trueModes[:,modeNum-\
+                                indexFrom].squeeze())
                                 
-                        self.fieldOperations.mpi.sync()
-       
-        self.fieldOperations.mpi.sync()
-
+                                
     #@unittest.skip('testing other things')
     def test_compute_inner_product_mats(self):
         """
@@ -311,6 +258,7 @@ class TestFieldOperations(unittest.TestCase):
         chunks, both in parallel (compute_inner_product_matrix) and serial
         (compute_inner_product_chunk)
         """ 
+        
         def assert_equal_mat_products(mat1, mat2, paths1, paths2):
             # Path list may actually be a string, in which case covert to list
             if isinstance(paths1, str):
@@ -322,17 +270,17 @@ class TestFieldOperations(unittest.TestCase):
             productTrue = mat1 * mat2
            
             # Test computation as chunk (a serial method, tested on each proc)
-            productComputedAsChunk = self.fieldOperations.\
-                _compute_inner_product_chunk(paths1, paths2)
-            N.testing.assert_array_almost_equal(productComputedAsChunk, 
-                productTrue)
+            #productComputedAsChunk = self.fieldOperations.\
+            #    _compute_inner_product_chunk(paths1, paths2)
+            #N.testing.assert_array_almost_equal(productComputedAsChunk, 
+            #    productTrue)
 
             # Test paralleized computation.  
             productComputedAsMat = self.fieldOperations.\
                 compute_inner_product_mat(paths1, paths2)
             N.testing.assert_array_almost_equal(productComputedAsMat, 
                 productTrue)
-           
+            
             # Test computation of upper triangular inner product matrix chunk
             if paths1 == paths2:
                 # Test computation as chunk (serial).  
@@ -362,7 +310,7 @@ class TestFieldOperations(unittest.TestCase):
                 self.assertRaises(ValueError, self.fieldOperations.\
                     _compute_upper_triangular_inner_product_chunk, paths1, 
                     paths2)
-
+            
         numRowSnapsList =[1, int(round(self.totalNumFieldsInMem / 2.)), self.\
             totalNumFieldsInMem, self.totalNumFieldsInMem *2]
         numColSnapsList = numRowSnapsList
@@ -372,40 +320,26 @@ class TestFieldOperations(unittest.TestCase):
             SP.call(['mkdir', 'files_modaldecomp_test'])
         rowSnapPath = 'files_modaldecomp_test/row_snap_%03d.txt'
         colSnapPath = 'files_modaldecomp_test/col_snap_%03d.txt'
+
         
         for numRowSnaps in numRowSnapsList:
             for numColSnaps in numColSnapsList:
-                # generate snapshots and save to file, only do on proc 0
-                self.fieldOperations.mpi.sync()
-                if self.fieldOperations.mpi.isRankZero():
-                    rowSnapMat = N.mat(N.random.random((numStates,
-                        numRowSnaps)))
-                    colSnapMat = N.mat(N.random.random((numStates,
-                        numColSnaps)))
-                    rowSnapPaths = []
-                    colSnapPaths = []
-                    for snapIndex in xrange(numRowSnaps):
-                        path = rowSnapPath % snapIndex
-                        util.save_mat_text(rowSnapMat[:,snapIndex],path)
-                        rowSnapPaths.append(path)
-                    for snapIndex in xrange(numColSnaps):
-                        path = colSnapPath % snapIndex
-                        util.save_mat_text(colSnapMat[:,snapIndex],path)
-                        colSnapPaths.append(path)
-                else:
-                    rowSnapMat = None
-                    colSnapMat = None
-                    rowSnapPaths = None
-                    colSnapPaths = None
-                if self.fieldOperations.mpi.isParallel():
-                    rowSnapMat = self.fieldOperations.mpi.comm.bcast(
-                        rowSnapMat, root=0)
-                    colSnapMat = self.fieldOperations.mpi.comm.bcast(
-                        colSnapMat, root=0)
-                    rowSnapPaths = self.fieldOperations.mpi.comm.bcast(
-                        rowSnapPaths, root=0)
-                    colSnapPaths = self.fieldOperations.mpi.comm.bcast(
-                        colSnapPaths, root=0)
+                # print '---- Case with numRowSnaps =',numRowSnaps,'and numColSnaps =',numColSnaps
+                # generate snapshots and save to file
+                rowSnapMat = N.mat(N.random.random((numStates,
+                    numRowSnaps)))
+                colSnapMat = N.mat(N.random.random((numStates,
+                    numColSnaps)))
+                rowSnapPaths = []
+                colSnapPaths = []
+                for snapIndex in xrange(numRowSnaps):
+                    path = rowSnapPath % snapIndex
+                    util.save_mat_text(rowSnapMat[:,snapIndex],path)
+                    rowSnapPaths.append(path)
+                for snapIndex in xrange(numColSnaps):
+                    path = colSnapPath % snapIndex
+                    util.save_mat_text(colSnapMat[:,snapIndex],path)
+                    colSnapPaths.append(path)
 
                 # If number of rows/cols is 1, test case that a string, not
                 # a list, is passed in
@@ -425,7 +359,7 @@ class TestFieldOperations(unittest.TestCase):
                 # method.
                 assert_equal_mat_products(rowSnapMat.T, rowSnapMat,
                     rowSnapPaths, rowSnapPaths)
-                        
+        
 if __name__=='__main__':
     unittest.main(verbosity=2)    
 

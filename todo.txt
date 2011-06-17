@@ -2,21 +2,21 @@
 # MODALDECOMP LIBRARY #
 #######################
 
+Write a user guide
+
+Use MKL or LAPACK and numexpr and numpy for parallel (sh mem) inner products
+and array operations. Also, multiprocessing might be pickling data unnecessarily,
+so should try threading, see: http://www.scipy.org/Cookbook/Multithreading.
+
+
+Include shared memory for much improved scaling. Each node will hve one
+MPI proc, and many shared memory procs. Jobs will always be submitted
+to use 1 proc/node.
+
 add an option for svd thresholding in DMD.  when the svd singular values are
 ill-conditioned, then the resulting computation results can be invalid.  for
 instance the mode norms may come out negative...(when computed using
 coefficients rather than the modes themselves).
-
-modaldecomp objects shouldn't own the MPI instance in the way they currently
-do. Really MPI is common to everything in the program, and so shouldn't be
-contained  only within this class. An instance of the MPI class, or whatever form
-the MPI takes if not a class, it should be available to 
-everything.
-Another way of dealing with this would be to pass an MPI class instance to
-modaldecomp objects. Then the class would only be able to use the processors
-in the MPI class and functions defined in it. In this way multiple MPI
-instances could exist and be consistent. This does require the user who
-writes a main function to at least create a single MPI class instance. 
 
 
 Change snapNum and similar to snapIndex. This is because the "number" of a 
@@ -35,13 +35,9 @@ The tests for DMD should be updated so that we check that the internal POD
 object has the correct arguments passed to it.
 
 
-Write the POD object and tests for POD.
+Write tests directly for lin_combine in fieldoperations, not just _compute_modes.
 
-
-Write tests directly for _lin_combine_fields in modaldecomp. Right now only
-_compute_modes is tested. This isn't that bad since _compute_modes is mostly
-a wrapper for _lin_combine_fields, but it would be ideal to test it
-individually as well. 
+Rename/move _compute_modes. As it is, it doesn't make sense to be in fieldoperations.
 
 
 Profiling with cProfile could expose potentially easy speed increases.

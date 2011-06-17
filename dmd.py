@@ -1,9 +1,7 @@
-# Parent class
+
 from fieldoperations import FieldOperations
 from pod import POD
 import numpy as N
-
-# Common functions
 import util
 
 # Derived class
@@ -11,21 +9,20 @@ class DMD(object):
     """
     Dynamic Mode Decomposition/Koopman Mode Decomposition
         
-    Generate Ritz vectors from simulation snapshots.
-    
+    Generate Ritz vectors from simulation snapshots. Uses POD and FieldOperations
+    instances for low-level parallel processing.    
     """
 
     def __init__(self, load_field=None, save_field=None, load_mat=util.\
         load_mat_text, save_mat=util.save_mat_text, inner_product=None, 
-        maxFieldsPerNode=None, numNodes=1, pod=None, verbose=True):
+        maxFields=None, pod=None, verbose=True):
         """
         DMD constructor
         """
         self.fieldOperations = FieldOperations(load_field=load_field,\
             save_field=save_field, inner_product=inner_product,
-            maxFieldsPerNode=maxFieldsPerNode, numNodes=numNodes, verbose=\
+            maxFields=maxFields, verbose=\
             verbose)
-        self.mpi = util.MPIInstance
 
         self.load_mat = load_mat
         self.save_mat = save_mat
@@ -38,28 +35,18 @@ class DMD(object):
         """
         if self.load_mat is None:
             raise UndefinedError('Must specify a load_mat function')
-        if self.mpi.isRankZero():
-            self.ritzVals = N.squeeze(N.array(self.load_mat(ritzValsPath)))
-            self.modeNorms = N.squeeze(N.array(self.load_mat(modeNormsPath)))
-            self.buildCoeff = self.load_mat(buildCoeffPath)
-        else:
-            self.ritzVals = None
-            self.modeNorms = None
-            self.buildCoeff = None
-        if self.mpi.parallel:
-            self.ritzVals = self.mpi.comm.bcast(self.ritzVals, root=0)
-            self.modeNorms = self.mpi.comm.bcast(self.modeNorms, root=0)
-            self.buildCoeff = self.mpi.comm.bcast(self.buildCoeff, root=0)
+        self.ritzVals = N.squeeze(N.array(self.load_mat(ritzValsPath)))
+        self.modeNorms = N.squeeze(N.array(self.load_mat(modeNormsPath)))
+        self.buildCoeff = self.load_mat(buildCoeffPath)
             
     def save_decomp(self, ritzValsPath, modeNormsPath, buildCoeffPath):
         """Save the decomposition matrices to file."""
-        if self.save_mat is None and self.mpi.isRankZero():
+        if self.save_mat is None:
             raise util.UndefinedError("save_mat is undefined, can't save")
             
-        if self.mpi.isRankZero():
-            self.save_mat(self.ritzVals, ritzValsPath)
-            self.save_mat(self.modeNorms, modeNormsPath)
-            self.save_mat(self.buildCoeff, buildCoeffPath)
+        self.save_mat(self.ritzVals, ritzValsPath)
+        self.save_mat(self.modeNorms, modeNormsPath)
+        self.save_mat(self.buildCoeff, buildCoeffPath)
 
     def compute_decomp(self, snapPaths):
         """
@@ -75,8 +62,8 @@ class DMD(object):
         if self.pod is None:
             self.pod = POD(load_field=self.fieldOperations.load_field, 
                 inner_product=self.fieldOperations.inner_product, 
-                maxFieldsPerNode=self.fieldOperations.maxFieldsPerNode, 
-                numNodes=self.fieldOperations.numNodes, verbose=self.verbose)
+                maxFields=self.fieldOperations.maxFields, 
+                verbose=self.verbose)
             self.pod.compute_decomp(snapPaths=self.snapPaths[:-1])
         elif self.snaplist[:-1] != self.podsnaplist or len(snapPaths) !=\
             len(self.pod.snapPaths)+1:
@@ -124,29 +111,4 @@ class DMD(object):
 
         
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+             
