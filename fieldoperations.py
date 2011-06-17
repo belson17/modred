@@ -584,8 +584,8 @@ class FieldOperations(object):
                 outputLayers = self.mpi.custom_comm.allreduce(outputLayers, 
                   op=util.sum_lists)
 
-            saveOutputIndexAssignments = \
-              self.mpi.find_proc_assignments(range(len(outputLayers)))
+            saveOutputIndexAssignments = self.mpi.find_proc_assignments(range(
+                len(outputLayers)))
             if len(saveOutputIndexAssignments[self.mpi.getRank()]) != 0:
                 for outputIndex in saveOutputIndexAssignments[self.mpi.\
                     getRank()]:

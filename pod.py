@@ -13,7 +13,7 @@ class POD(object):
         
     def __init__(self, load_field=None, save_field=None, load_mat=util.\
         load_mat_text, save_mat=util.save_mat_text, inner_product=None, 
-        maxFieldsPerNode=None, numNodes=1,  verbose=True):
+        maxFieldsPerNode=None, numNodes=1, verbose=True):
         """
         POD constructor
         

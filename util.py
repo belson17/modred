@@ -184,14 +184,14 @@ class MPI(object):
             else:
                 taskProcAssignments.append([])
 
-            # Warning if some processors have no tasks
-            if self.verbose and self.isRankZero():
-                printedPreviously = False
-                for r, assignment in enumerate(taskProcAssignments):
-                    if len(assignment) == 0 and not printedPreviously:
-                        print ('Warning - %d out of %d processors have no ' +\
-                            'tasks') % (self._numProcs - r, self._numProcs)
-                        printedPreviously = True
+        # Warning if some processors have no tasks
+        if self.verbose and self.isRankZero():
+            printedPreviously = False
+            for r, assignment in enumerate(taskProcAssignments):
+                if len(assignment) == 0 and not printedPreviously:
+                    print ('Warning - %d out of %d processors have no ' +\
+                        'tasks') % (self._numProcs - r, self._numProcs)
+                    printedPreviously = True
 
         return taskProcAssignments
 
