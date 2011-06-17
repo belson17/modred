@@ -4,6 +4,11 @@
 
 Write a user guide
 
+Use MKL or LAPACK and numexpr and numpy for parallel (sh mem) inner products
+and array operations. Also, multiprocessing might be pickling data unnecessarily,
+so should try threading, see: http://www.scipy.org/Cookbook/Multithreading.
+
+
 Include shared memory for much improved scaling. Each node will hve one
 MPI proc, and many shared memory procs. Jobs will always be submitted
 to use 1 proc/node.

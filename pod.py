@@ -7,23 +7,24 @@ class POD(object):
     """
     Proper Orthogonal Decomposition
     
-    Generate orthonormal modes from simulation snapshots.
+    Generate orthonormal modes from simulation snapshots. Uses an
+    instance of FieldOperations for low level functions and parallel
+    processing.
     
     """
         
     def __init__(self, load_field=None, save_field=None, save_mat=\
-        util.save_mat_text, inner_product=None, maxFieldsPerNode=None, 
-        numNodes=1, load_mat=util.load_mat_text, verbose=True):
+        util.save_mat_text, inner_product=None, maxFields=None, 
+        load_mat=util.load_mat_text, verbose=True):
         """
         POD constructor
         
         """
         self.fieldOperations = FieldOperations(load_field=load_field, 
             save_field=save_field,
-            save_mat=save_mat, inner_product=inner_product, maxFieldsPerNode=\
-            maxFieldsPerNode, numNodes=numNodes, verbose=verbose)
+            inner_product=inner_product,
+            maxFields=maxFields, verbose=verbose)
         
-        self.mpi = util.MPIInstance
         self.save_mat = save_mat
         self.load_mat = load_mat
         self.verbose = verbose
@@ -36,30 +37,20 @@ class POD(object):
         """
         if self.load_mat is None:
             raise UndefinedError('Must specify a load_mat function')
-        if self.mpi.isRankZero():
             self.singVecs = self.load_mat(singVecsPath)
-            self.singVals = N.squeeze(N.array(self.load_mat(singValsPath)))
-        else:
-            self.singVecs = None
-            self.singVals = None
-        if self.mpi.parallel:
-            self.singVecs = self.mpi.comm.bcast(self.singVecs, root=0)
-            self.singVals = self.mpi.comm.bcast(self.singVals, root=0)
+        self.singVals = N.squeeze(N.array(self.load_mat(singValsPath)))
  
     def save_correlation_mat(self, correlationMatPath):
         if self.save_mat is None and self.mpi.isRankZero():
             raise util.UndefinedError('save_mat is undefined, cant save')
-        if self.mpi.isRankZero():
-            self.save_mat(self.correlationMat, correlationMatPath)
+        self.save_mat(self.correlationMat, correlationMatPath)
         
     def save_decomp(self, singVecsPath, singValsPath):
         """Save the decomposition matrices to file."""
         if self.save_mat is None and self.mpi.isRankZero():
-            raise util.UndefinedError('save_mat is undefined, cant save')
-            
-        if self.mpi.isRankZero():
-            self.save_mat(self.singVecs, singVecsPath)
-            self.save_mat(self.singVals, singValsPath)
+            raise util.UndefinedError('save_mat is undefined, cant save')            
+        self.save_mat(self.singVecs, singVecsPath)
+        self.save_mat(self.singVals, singValsPath)
 
 
     def compute_decomp(self, correlationMatPath=None, singVecsPath=None, 
@@ -70,8 +61,7 @@ class POD(object):
         if correlationMatPath is not None:
             if self.load_mat is None:
                 raise util.UndefinedError('load_mat is undefined')
-            elif self.mpi.isRankZero():
-                self.correlationMat = self.load_mat(correlationMatPath)
+            self.correlationMat = self.load_mat(correlationMatPath)
         elif snapPaths is not None:
             self.snapPaths = snapPaths
             self.correlationMat = self.fieldOperations.compute_symmetric_inner_product_mat(
@@ -80,16 +70,9 @@ class POD(object):
             raise util.UndefinedError('Must provide either snap paths or '+\
                 'correlation matrix path to pod.compute_decomp')
                 
-        if self.mpi.isRankZero():
-            self.singVecs, self.singVals, dummy = util.svd(self.correlationMat)
-            del dummy
-        else:
-            self.singVecs = None
-            self.singVals = None
-        if self.mpi.isParallel():
-            self.singVecs = self.mpi.comm.bcast(self.singVecs, root=0)
-            self.singVals = self.mpi.comm.bcast(self.singVals, root=0)
-            
+        self.singVecs, self.singVals, dummy = util.svd(self.correlationMat)
+        del dummy
+
             
     def compute_modes(self, modeNumList, modePath, indexFrom=1, snapPaths=None):
         """

@@ -8,19 +8,6 @@ import subprocess as SP
 import os
 import copy
 
-try:
-    from mpi4py import MPI
-    comm = MPI.COMM_WORLD
-    parallel = comm.Get_size() >=2
-    rank = comm.Get_rank()
-except ImportError:
-    parallel = False
-    rank = 0
-
-print 'To test fully, remember to do both:'
-print '    1) python testdmd.py'
-print '    2) mpiexec -n <# procs> python testdmd.py\n'
-
 class TestDMD(unittest.TestCase):
     """ Test all the DMD class methods 
     
@@ -39,12 +26,10 @@ class TestDMD(unittest.TestCase):
         self.generate_data_set()
    
         # Default data members for constructor test
-        self.defaultMPI = util.MPI()
-        self.defaultDataMembers = {'load_field': None, 'save_field': None, 
-            'save_mat': util.save_mat_text, 'inner_product': None, 
-            'maxFieldsPerNode': 2, 'maxFieldsPerProc': 2, 'mpi': self.\
-            defaultMPI, 'numNodes': 1, 'snapPaths': None, 'buildCoeff': None,
+        self.defaultDataMembers = {'save_mat': util.save_mat_text,
+            'maxFields': 2, 
             'pod': None, 'verbose': False}
+            #'snapPaths': None, 'buildCoeff': None,
 
 
     def generate_data_set(self):
@@ -54,22 +39,14 @@ class TestDMD(unittest.TestCase):
         self.snapPathList = []
        
         # Generate modes if we are on the first processor
-        if self.dmd.mpi.isRankZero():
             # A random matrix of data (#cols = #snapshots)
-            self.snapMat = N.mat(N.random.random((self.numStates, self.\
-                numSnaps)))
-            
-            for snapNum in range(self.numSnaps):
-                util.save_mat_text(self.snapMat[:,snapNum], self.snapPath %\
-                    snapNum)
-                self.snapPathList.append(self.snapPath % snapNum) 
-        else:
-            self.snapPathList=None
-            self.snapMat = None
-        if self.dmd.mpi.isParallel():
-            self.snapPathList = self.dmd.mpi.comm.bcast(self.snapPathList, 
-                root=0)
-            self.snapMat = self.dmd.mpi.comm.bcast(self.snapMat, root=0)
+        self.snapMat = N.mat(N.random.random((self.numStates, self.\
+            numSnaps)))
+        
+        for snapNum in range(self.numSnaps):
+            util.save_mat_text(self.snapMat[:,snapNum], self.snapPath %\
+                snapNum)
+            self.snapPathList.append(self.snapPath % snapNum) 
 
         # Do direct DMD decomposition on all processors
         U, Sigma, W = util.svd(self.snapMat[:,:-1])
@@ -89,16 +66,12 @@ class TestDMD(unittest.TestCase):
                 ritzVecsTrue[:,i]), N.array(self.ritzVecsTrue[:,i])).real
 
         # Generate modes if we are on the first processor
-        if self.dmd.mpi.isRankZero():
-            for i in xrange(self.ritzVecsTrue.shape[1]):
-                util.save_mat_text(self.ritzVecsTrue[:,i], self.trueModePath%\
-                    (i+1))
+        for i in xrange(self.ritzVecsTrue.shape[1]):
+            util.save_mat_text(self.ritzVecsTrue[:,i], self.trueModePath%\
+                (i+1))
 
     def tearDown(self):
-        self.dmd.mpi.sync()
-        if self.dmd.mpi.isRankZero():
-            SP.call(['rm -rf files_modaldecomp_test/*'],shell=True)
-        self.dmd.mpi.sync()
+        SP.call(['rm -rf files_modaldecomp_test/*'],shell=True)
 
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
@@ -114,7 +87,7 @@ class TestDMD(unittest.TestCase):
         def my_save(data, fname): pass 
         myDMD = DMD(save_field=my_save, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
-        dataMembers['save_field'] = my_save
+        dataMembers['fieldOperations'].save_field = my_save
         self.assertEqual(util.get_data_members(myDMD), dataMembers)
  
         myDMD = DMD(save_mat=my_save, verbose=False)
@@ -128,12 +101,10 @@ class TestDMD(unittest.TestCase):
         dataMembers['inner_product'] = my_ip
         self.assertEqual(util.get_data_members(myDMD), dataMembers)
  
-        maxFieldsPerNode = 500
-        myDMD = DMD(maxFieldsPerNode=maxFieldsPerNode, verbose=False)
+        maxFields = 500
+        myDMD = DMD(maxFields=maxFields, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
-        dataMembers['maxFieldsPerNode'] = maxFieldsPerNode
-        dataMembers['maxFieldsPerProc'] = maxFieldsPerNode * myDMD.numNodes /\
-            myDMD.mpi.getNumProcs() / myDMD.numNodes
+        dataMembers['maxFields'] = maxFields
         self.assertEqual(util.get_data_members(myDMD), dataMembers)
  
         snapPathList=['a', 'b']
@@ -181,22 +152,11 @@ class TestDMD(unittest.TestCase):
             modeNormsTrue, decimal=tol)
 
         # Test that matrices were correctly stored
-        if self.dmd.mpi.isRankZero():
-            ritzValsLoaded = N.array(util.load_mat_text(ritzValsPath,isComplex=\
-                True)).squeeze()
-            buildCoeffLoaded = util.load_mat_text(buildCoeffPath,isComplex=True)
-            modeNormsLoaded = N.array(util.load_mat_text(modeNormsPath).\
-                squeeze())
-        else:   
-            ritzValsLoaded = None
-            buildCoeffLoaded = None
-            modeNormsLoaded = None
-
-        if self.dmd.mpi.isParallel():
-            ritzValsLoaded = self.dmd.mpi.comm.bcast(ritzValsLoaded,root=0)
-            buildCoeffLoaded = self.dmd.mpi.comm.bcast(buildCoeffLoaded,root=0)
-            modeNormsLoaded = self.dmd.mpi.comm.bcast(modeNormsLoaded,
-                root=0)
+        ritzValsLoaded = N.array(util.load_mat_text(ritzValsPath,isComplex=\
+            True)).squeeze()
+        buildCoeffLoaded = util.load_mat_text(buildCoeffPath,isComplex=True)
+        modeNormsLoaded = N.array(util.load_mat_text(modeNormsPath).\
+            squeeze())
 
         N.testing.assert_array_almost_equal(ritzValsLoaded, self.\
             ritzValsTrue, decimal=tol)
@@ -219,16 +179,11 @@ class TestDMD(unittest.TestCase):
             snapPaths=self.snapPathList)
        
         # Load all snapshots into matrix
-        if self.dmd.mpi.isRankZero():
-            modeMat = N.mat(N.zeros((self.numStates, self.numSnaps-1)), dtype=\
-                complex)
-            for i in range(self.numSnaps-1):
-                modeMat[:,i] = util.load_mat_text(modePath % (i+self.indexFrom),
-                    isComplex=True)
-        else:
-            modeMat = None
-        if self.dmd.mpi.isParallel():
-            modeMat = self.dmd.mpi.comm.bcast(modeMat,root=0)
+        modeMat = N.mat(N.zeros((self.numStates, self.numSnaps-1)), dtype=\
+            complex)
+        for i in range(self.numSnaps-1):
+            modeMat[:,i] = util.load_mat_text(modePath % (i+self.indexFrom),
+                isComplex=True)
         N.testing.assert_array_almost_equal(modeMat,self.ritzVecsTrue, decimal=\
             tol)
 
@@ -241,7 +196,5 @@ class TestDMD(unittest.TestCase):
 
 if __name__=='__main__':
     unittest.main(verbosity=2)
-
-
 
 

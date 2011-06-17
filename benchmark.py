@@ -10,8 +10,6 @@ import util
 import fieldoperations as FO
 import time as T
 
-mpi = util.MPI(verbose = True)
-
 save_field = util.save_mat_text
 load_field= util.load_mat_text
 
@@ -29,12 +27,11 @@ def generate_fields(numStates, numFields, fieldDir, fieldName):
     if not os.path.exists(fieldDir):
         SP.call(['mkdir', fieldDir])
     
-    if mpi.isRankZero():
-        for fieldNum in range(numFields):
-            field = N.random.random(numStates)
-            save_field(field, fieldDir + fieldName%fieldNum)
+    for fieldNum in range(numFields):
+        field = N.random.random(numStates)
+        save_field(field, fieldDir + fieldName%fieldNum)
 
-def inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode):
+def inner_product_mat(numStates, numRows, numCols, maxFields):
     """
     Computes inner products from known fields.
     
@@ -43,18 +40,13 @@ def inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode):
     colFieldName = 'col_%04d.txt'
     rowFieldName = 'row_%04d.txt'
     
-    rowFieldPaths = []
-    for rowNum in range(numRows):
-        rowFieldPaths.append(dataDir + rowFieldName%rowNum)
-    
-    colFieldPaths = []
-    for colNum in range(numCols):
-        colFieldPaths.append(dataDir + colFieldName%colNum)
+    rowFieldPaths = [dataDir + rowFieldName%rowNum for rowNum in range(numRows)]   
+    colFieldPaths = [dataDir + colFieldName%colNum for colNum in range(numCols)]
     
     generate_fields(numStates, numRows, dataDir, rowFieldName)
     generate_fields(numStates, numCols, dataDir, colFieldName)
     
-    myFO = FO.FieldOperations(maxFieldsPerNode = maxFieldsPerNode,
+    myFO = FO.FieldOperations(maxFields = maxFields,
         save_field = save_field, load_field=load_field, 
         inner_product=inner_product) 
     
@@ -65,7 +57,7 @@ def inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode):
     return totalTime
 
 
-def lin_combine_fields(numStates, numBases, numProducts, maxFieldsPerNode):
+def lin_combine_fields(numStates, numBases, numProducts, maxFields):
     """
     Computes linear combination of fields from saved fields and random coeffs
     lin_combine_fields(self,outputFieldPaths,inputFieldPaths,fieldCoeffMat):
@@ -77,7 +69,7 @@ def lin_combine_fields(numStates, numBases, numProducts, maxFieldsPerNode):
     productName = 'product_%04d.txt'
     generate_fields(numStates, numBases, dataDir, basisName)
     
-    myFO = FO.FieldOperations(maxFieldsPerNode = maxFieldsPerNode,
+    myFO = FO.FieldOperations(maxFields = maxFields,
         save_field = save_field, load_field=load_field, inner_product=inner_product)
     coeffMat = N.random.random((numBases, numProducts))
     
@@ -94,16 +86,16 @@ def clean_up():
 
 
 def main():
-    numStates = 3000
+    numStates = 300
     numBases = 300
     numProducts = 100
-    maxFieldsPerNode = 50
+    maxFields = 50
     numRows = 100
     numCols = 200
     
-    t= lin_combine_fields(numStates, numBases, numProducts, maxFieldsPerNode)
+    t= lin_combine_fields(numStates, numBases, numProducts, maxFields)
     print 'time for lin_combine_fields is',t
-    #t= inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode)
+    #t= inner_product_mat(numStates, numRows, numCols, maxFields)
     #print 'time for inner_product_mat is',t
     #clean_up()
 

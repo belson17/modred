@@ -11,12 +11,14 @@ Contents:
 .. toctree::
    
    intro
-   modaldecomp_string
+   fieldoperations_string
    bpod_string
    pod_string
    dmd_string
    era_string
+   bpodltirom_string
    util_string
+   
 
 Indices and tables
 ==================

@@ -22,7 +22,7 @@ class FieldOperations(object):
     """
     
     def __init__(self, load_field=None, save_field=None, 
-        inner_product=None, maxFieldsPerNode=None, verbose=True):
+        inner_product=None, maxFields=None, verbose=True):
         """
         Field operations constructor.
     
@@ -34,16 +34,14 @@ class FieldOperations(object):
         self.inner_product = inner_product
         self.verbose = verbose
 
-        self.mpi = util.MPIInstance
-        self.mpi.verbose = self.verbose
-        if maxFieldsPerNode is None:
-            self.maxFieldsPerNode = 2
-            if self.mpi.isRankZero() and self.verbose:
-                print 'Warning - maxFieldsPerNode was not specified. ' +\
+        if maxFields is None:
+            self.maxFields = 2
+            if self.verbose:
+                print 'Warning - maxFields was not specified. ' +\
                     'Assuming 2 fields can be loaded per node. Increase ' +\
-                    'maxFieldsPerNode for a speedup.'
+                    'maxFields for a speedup.'
         else:
-            self.maxFieldsPerNode = maxFieldsPerNode
+            self.maxFields = maxFields
 
             
     def copy(self):
@@ -111,8 +109,8 @@ class FieldOperations(object):
             percentCompletedIPs = 100. * numCompletedIPs / (numCols *\
                 numRows)
             print >> sys.stderr, ('Completed %.1f%% of inner ' +\
-                'products on node %d - IPMat[:%d, :%d] of IPMat[:%d, :%d]') %(\
-                percentCompletedIPs, self.mpi.getNodeNum(), endRowIndex, endColIndex, 
+                'products - IPMat[:%d, :%d] of IPMat[:%d, :%d]') %(\
+                percentCompletedIPs, endRowIndex, endColIndex, 
                 numRows, numCols)
   
     def compute_inner_product_mat(self, rowFieldPaths, colFieldPaths):
@@ -122,9 +120,9 @@ class FieldOperations(object):
         into pieces for each processor, then passes this onto 
         self._compute_inner_product_chunk(...). After 
         _compute_inner_product_chunk returns chunks of the inner product matrix,
-        they are concatenated into a completed, single, matrix on processor 0. 
-        This completed matrix is broadcast to all other processors (if 
-        parallel).
+        they are concatenated into a completed, single, matrix on rank 0. 
+        This completed matrix is broadcast to all other ranks (if 
+        distributed).
         """
         if isinstance(rowFieldPaths,str):
             rowFieldPaths = [rowFieldPaths]
@@ -149,45 +147,19 @@ class FieldOperations(object):
         else: 
             transpose = False
 
-        rowFieldNodeAssignments = self.mpi.find_assignments(range(
-            numRowFields))
-
-        if self.mpi.isRankZero() and rowFieldNodeAssignments[0][-1] -\
-            rowFieldNodeAssignments[0][0] > self.maxFieldsPerNode and self.\
-            verbose:
-            print ('Warning: Each node will have to read the column ' +\
+        if numRowFields > self.maxFields and self.verbose:
+            print ('Warning: Will have to read the column ' +\
                 'fields (%d total) multiple times. Increase number of ' +\
-                'nodes to avoid this and get a big speedup.') %\
+                'maxFields to avoid this and get a big speedup.') %\
                 numColFields
 
         # Only compute if task list is nonempty
         #print 'rowFieldNodeAssignments is',rowFieldNodeAssignments
         innerProductMatChunk = None
-        if len(rowFieldNodeAssignments[self.mpi.getNodeNum()]) != 0:
-            innerProductMatChunk = self._compute_inner_product_chunk(
-                rowFieldPaths[rowFieldNodeAssignments[self.mpi.getNodeNum()][0]:
-                rowFieldNodeAssignments[self.mpi.getNodeNum()][-1]+1], 
-                colFieldPaths)
-        else:  
-            innerProductMatChunk = None
-
-        # Gather list of chunks from each processor, ordered by rank
-        if self.mpi.isParallel():
-            #print 'gathering inner product mat chunk list'
-            innerProductMatChunkList = self.mpi.comm.allgather(
-                innerProductMatChunk)
-            #print 'finished gathering inner product mat chunk list'
-            innerProductMat = N.mat(N.zeros((numRowFields, numColFields)))
-
-            # concatenate the chunks of inner product matrix
-            for rank, currentInnerProductMatChunk in enumerate(
-                innerProductMatChunkList):
-                if currentInnerProductMatChunk is not None:
-                    innerProductMat[rowFieldNodeAssignments[rank][0]:\
-                        rowFieldNodeAssignments[rank][-1]+1] =\
-                        currentInnerProductMatChunk
-        else:
-            innerProductMat = innerProductMatChunk 
+        innerProductMatChunk = self._compute_inner_product_chunk(
+            rowFieldPaths, colFieldPaths)
+        
+        innerProductMat = innerProductMatChunk 
 
         if transpose:
             innerProductMat = innerProductMat.T
@@ -202,11 +174,7 @@ class FieldOperations(object):
         The 'chunk' refers to the fact that within this method, the snapshots
         are read in memory-efficient ways such that they are not all in memory 
         at once. This results in finding 'chunks' of the eventual matrix that 
-        is returned. It is also true that this function is meant to be used in 
-        parallel - individually on each processor. In this case, each processor 
-        has different lists of snapshots to take inner products of. Each processor
-        is then responsible for a 'chunk' of the full inner product matrix
-        computed by compute_inner_product_mat().
+        is returned. 
             rows = number of row snapshot files passed in (BPOD adjoint snaps)
             columns = number column snapshot files passed in (BPOD direct snaps)
         This method only supports finding rectangular inner product matrices.
@@ -244,7 +212,7 @@ class FieldOperations(object):
             printAfterNumCols = (numCols/5)+1 
         
         numRowsPerChunk, numColsPerChunk = \
-            self.mpi.find_numRows_numCols_per_chunk(self.maxFieldsPerNode)
+            util.find_numRows_numCols_per_chunk(self.maxFields)
         innerProductMat = N.mat(N.zeros((numRows,numCols)))
         
         IPStartTime = T.time()
@@ -314,46 +282,17 @@ class FieldOperations(object):
       
         if isinstance(fieldPaths,str):
             fieldPaths = [fieldPaths]
-          
+            
         numFields = len(fieldPaths)
  
-        rowFieldNodeAssignments = self.mpi.find_assignments(range(
-            numFields), taskWeights=range(numFields, 0, -1))
-
-        if self.mpi.isRankZero() and rowFieldNodeAssignments[0][-1] -\
-            rowFieldNodeAssignments[0][0] > self.maxFieldsPerNode and self.\
-            verbose:
-            print ('Warning: Each processor may have to read the snapshots ' +\
-                '(%d total) multiple times. Increase number of processors ' +\
+        if numFields > self.maxFields and self.verbose:
+            print ('Warning: May have to read the snapshots ' +\
+                '(%d total) multiple times. Increase maxFields ' +\
                 'to avoid this and get a big speedup.') % numFields
 
-        # Perform task if task assignment is not empty
-        if len(rowFieldNodeAssignments[self.mpi.getNodeNum()]) != 0:
-            innerProductMatChunk = self.\
-                _compute_upper_triangular_inner_product_chunk(fieldPaths[
-                rowFieldNodeAssignments[self.mpi.getNodeNum()][0]:
-                rowFieldNodeAssignments[self.mpi.getNodeNum()][-1] + 1], 
-                fieldPaths[rowFieldNodeAssignments[self.mpi.getNodeNum()][0]:])
-        else:
-            innerProductMatChunk = None
-
-        # Gather list of chunks from each processor, ordered by rank
-        if self.mpi.isParallel():
-            innerProductMatChunkList = self.mpi.comm.allgather(
-                innerProductMatChunk)
-            innerProductMat = N.mat(N.zeros((numFields, numFields)))
-
-            # concatenate the chunks of inner product matrix for procs with
-            # nonempty tasks
-            for rank, currentInnerProductMatChunk in enumerate(
-                innerProductMatChunkList):
-                if currentInnerProductMatChunk is not None:
-                    innerProductMat[rowFieldNodeAssignments[rank][0]:\
-                        rowFieldNodeAssignments[rank][-1] + 1,
-                        rowFieldNodeAssignments[rank][0]:] =\
-                        currentInnerProductMatChunk
-        else:
-            innerProductMat = innerProductMatChunk 
+        innerProductMatChunk = self._compute_upper_triangular_inner_product_chunk(
+            fieldPaths, fieldPaths)
+        innerProductMat = innerProductMatChunk 
 
         # Symmetrize matrix
         innerProductMat += N.triu(innerProductMat, 1).T
@@ -400,17 +339,17 @@ class FieldOperations(object):
             printAfterNumCols = (numCols / 5) + 1 
         
         numRowsPerChunk, numColsPerChunk = \
-            self.mpi.find_numRows_numCols_per_chunk(self.maxFieldsPerNode)
+            util.find_numRows_numCols_per_chunk(self.maxFields)
 
         # If computing a square chunk (upper triangular part) and all rows can
         # be loaded simultaneously, no need to save room for a column chunk
-        #if self.maxFieldsPerNode >= numRows and numRows == numCols:
+        #if self.maxFields >= numRows and numRows == numCols:
         #    numColsPerChunk = 0
         #else:
         #    numColsPerChunk = 1 
         # The functionality above is complicating shared memory and may not be
         # necessary
-        #numRowsPerChunk = self.maxFieldsPerNode - numColsPerChunk         
+        #numRowsPerChunk = self.maxFields - numColsPerChunk         
 
         innerProductMatChunk = N.mat(N.zeros((numRows, numCols)))
         
@@ -533,12 +472,7 @@ class FieldOperations(object):
                     'indexFrom')
             elif modeNum-indexFrom >= fieldCoeffMat.shape[1]:
                 raise ValueError('Cannot compute if mode index is greater '+\
-                    'than number of columns in the build coefficient matrix')
-
-        if numSnaps < self.mpi.getNumNodes():
-            raise util.MPIError('Cannot find modes when fewer snapshots '+\
-               'than number of nodes')
-        
+                    'than number of columns in the build coefficient matrix')       
         
         # Construct fieldCoeffMat and outputPaths for lin_combine_fields
         modeNumListFromZero = [modeNum-indexFrom for modeNum in modeNumList]
@@ -587,9 +521,6 @@ class FieldOperations(object):
         if numOutputFields > fieldCoeffMat.shape[1]:
             raise ValueError('Coeff matrix has fewer cols than num of ' +\
                 'output paths')            
-        if numInputFields < self.mpi.getNumNodes():
-            raise util.MPIError('Cannot find outputs when fewer inputs '+\
-               'than number of nodes')
                
         if numInputFields < fieldCoeffMat.shape[0] and self.mpi.isRankZero():
             print 'Warning - fewer input paths than cols in the coeff matrix'
@@ -597,26 +528,18 @@ class FieldOperations(object):
         if numOutputFields < fieldCoeffMat.shape[1] and self.mpi.isRankZero():
             print 'Warning - fewer output paths than rows in the coeff matrix'
             print '  some cols of coeff matrix will not be used'
-        
-        inputNodeAssignments = self.mpi.find_assignments(range(len(
-            inputFieldPaths)))
-        
-        for assignment in inputNodeAssignments:
-            if len(assignment) == 0:
-                raise MPIError('At least one processor has no tasks'+\
-                  ', currently this is unsupported, lower num of procs')
                   
         # Each node will have up to the number of procs per node of 
         # partially computed output fields in memory at a time (outputLayers).
         # Then, the maximum number of input fields that can be loaded 
-        # without exceeding maxFieldsPerNode are loaded. These two variables
+        # without exceeding maxFields are loaded. These two variables
         # are numOutputsPerNode and numInputsPerChunk. 
 
-        if self.maxFieldsPerNode > self.mpi.getNumProcsPerNode():
-            numInputsPerChunk = self.mpi.getNumProcsPerNode()
+        if self.maxFields > util.getNumProcs():
+            numInputsPerChunk = util.getNumProcs()
         else: 
-            numInputsPerChunk = max(self.maxFieldsPerNode - self.mpi.getNumProcsPerNode()-1,1)
-        numOutputsPerNode = self.maxFieldsPerNode - numInputsPerChunk    
+            numInputsPerChunk = max(self.maxFields - util.getNumProcs()-1,1)
+        numOutputsPerNode = self.maxFields - numInputsPerChunk    
         #print 'numOutputsPerNode is',numOutputsPerNode,'numInputsPerChunk is',numInputsPerChunk
         #print 'numOutputFields is',numOutputFields
         
@@ -626,39 +549,26 @@ class FieldOperations(object):
             # Pass the work to individual nodes    
             
             outputLayers = self.lin_combine_chunk(
-                inputFieldPaths[inputNodeAssignments[self.mpi.getNodeNum()][0] : \
-                  inputNodeAssignments[self.mpi.getNodeNum()][-1]+1],
-                fieldCoeffMat[inputNodeAssignments[self.mpi.getNodeNum()][0] : \
-                  inputNodeAssignments[self.mpi.getNodeNum()][-1]+1,
-                  startOutputIndex:endOutputIndex],\
+                inputFieldPaths,
+                fieldCoeffMat[:,startOutputIndex:endOutputIndex],\
                   numInputsPerChunk=numInputsPerChunk)
-
-            if self.mpi.isParallel():
-                outputLayers = self.mpi.custom_comm.allreduce(outputLayers, 
-                  op=util.sum_lists)
-
-            saveOutputIndexAssignments = \
-                self.mpi.find_assignments(range(len(outputLayers)))
-            if len(saveOutputIndexAssignments[self.mpi.getNodeNum()]) != 0:
-                """
-                #non shared mem
-                for outputIndex in saveOutputIndexAssignments[self.mpi.\
-                    getNodeNum()]:
-                    self.save_field(outputLayers[outputIndex], 
-                      outputFieldPaths[startOutputIndex + outputIndex])
-                """
-                #shared mem
-                #print 'about to save',len(outputLayers),'fields to file w/sh mem'
-                pool.map(util.eval_func_tuple, itertools.izip(\
-                    itertools.repeat(self.save_field), outputLayers,\
-                    outputFieldPaths[startOutputIndex+saveOutputIndexAssignments[self.mpi.getNodeNum()][0]:\
-                        startOutputIndex+saveOutputIndexAssignments[self.mpi.getNodeNum()][-1]+1]))
-                
-            if self.verbose and self.mpi.isRankZero():
+            """
+            #non shared mem
+            for outputIndex in saveOutputIndexAssignments[self.mpi.\
+                getNodeNum()]:
+                self.save_field(outputLayers[outputIndex], 
+                  outputFieldPaths[startOutputIndex + outputIndex])
+            """
+            #shared mem
+            #print 'about to save',len(outputLayers),'fields to file w/sh mem'
+            pool.map(util.eval_func_tuple, itertools.izip(\
+                itertools.repeat(self.save_field), outputLayers,\
+                outputFieldPaths[startOutputIndex:endOutputIndex]))
+            
+            if self.verbose:
                 print >> sys.stderr, 'Computed and saved',\
                   round(1000.*endOutputIndex/numOutputFields)/10.,\
                   '% of output fields,',endOutputIndex,'out of',numOutputFields
-            self.mpi.sync() # Not sure if necessary
             
     
 
@@ -689,10 +599,10 @@ class FieldOperations(object):
         numOutputs = fieldCoeffMat.shape[1]
         assert fieldCoeffMat.shape[0] == numInputs       
         if numInputsPerChunk is None:
-            if self.maxFieldsPerNode > self.mpi.getNumProcsPerNode():
-                numInputsPerChunk = self.mpi.getNumProcsPerNode()
+            if self.maxFields > util.getNumProcs():
+                numInputsPerChunk = util.getNumProcs()
             else: 
-                numInputsPerChunk = max(self.maxFieldsPerNode - self.mpi.getNumProcsPerNode()-1,1)
+                numInputsPerChunk = max(self.maxFields - util.getNumProcs()-1,1)
             print 'Using numInputsPerChunk =',numInputsPerChunk
         
         outputLayers = []
@@ -710,7 +620,8 @@ class FieldOperations(object):
             """
             # shared mem
             inputs = pool.map(util.eval_func_tuple, itertools.izip(\
-                itertools.repeat(self.load_field), inputFieldPaths[startInputIndex:endInputIndex]))
+                itertools.repeat(self.load_field),
+                inputFieldPaths[startInputIndex:endInputIndex]))
             
             timeReadingFiles+=T.time()-startTime
             
@@ -734,20 +645,17 @@ class FieldOperations(object):
         #print 'time reading files was',timeReadingFiles
         return outputLayers  
 
+
+
     def __eq__(self, other):
         #print 'comparing fieldOperations classes'
         a = (self.inner_product == other.inner_product and \
         self.load_field == other.load_field and self.save_field == other.save_field \
-        and self.maxFieldsPerNode==other.maxFieldsPerNode and\
+        and self.maxFields==other.maxFields and\
         self.verbose==other.verbose)
         return a
     def __ne__(self,other):
         return not (self.__eq__(other))
 
-
-
-
-    
-    
 
 
