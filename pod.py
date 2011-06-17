@@ -41,13 +41,13 @@ class POD(object):
         self.singVals = N.squeeze(N.array(self.load_mat(singValsPath)))
  
     def save_correlation_mat(self, correlationMatPath):
-        if self.save_mat is None and self.mpi.isRankZero():
+        if self.save_mat is None:
             raise util.UndefinedError('save_mat is undefined, cant save')
         self.save_mat(self.correlationMat, correlationMatPath)
         
     def save_decomp(self, singVecsPath, singValsPath):
         """Save the decomposition matrices to file."""
-        if self.save_mat is None and self.mpi.isRankZero():
+        if self.save_mat is None:
             raise util.UndefinedError('save_mat is undefined, cant save')            
         self.save_mat(self.singVecs, singVecsPath)
         self.save_mat(self.singVals, singValsPath)

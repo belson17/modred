@@ -522,10 +522,10 @@ class FieldOperations(object):
             raise ValueError('Coeff matrix has fewer cols than num of ' +\
                 'output paths')            
                
-        if numInputFields < fieldCoeffMat.shape[0] and self.mpi.isRankZero():
+        if numInputFields < fieldCoeffMat.shape[0]:
             print 'Warning - fewer input paths than cols in the coeff matrix'
             print '  some rows of coeff matrix will not be used'
-        if numOutputFields < fieldCoeffMat.shape[1] and self.mpi.isRankZero():
+        if numOutputFields < fieldCoeffMat.shape[1]:
             print 'Warning - fewer output paths than rows in the coeff matrix'
             print '  some cols of coeff matrix will not be used'
                   
