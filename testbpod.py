@@ -69,44 +69,44 @@ class TestBPOD(unittest.TestCase):
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         # Default data members for constructor test
-
-        dataMembersDefault = {'save_mat': util.save_mat_text,
-            'load_mat': util.load_mat_text, 
-            'verbose': False,
-            'fieldOperations': FieldOperations(load_field=None, save_field=None,
-            inner_product=None, maxFields=2, verbose=False)}
+        def getDataMembersDefault():
+            return {'save_mat': util.save_mat_text,
+                'load_mat': util.load_mat_text, 
+                'verbose': False,
+                'fieldOperations': FieldOperations(load_field=None, save_field=None,
+                inner_product=None, maxFields=2, verbose=False)}
         
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
         self.assertEqual(util.get_data_members(BPOD(verbose=False)), \
-            dataMembersDefault)
+            getDataMembersDefault())
         
         def my_load(fname): pass
         myBPOD = BPOD(load_field=my_load, verbose=False)
-        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified = getDataMembersDefault()
         dataMembersModified['fieldOperations'].load_field = my_load
         self.assertEqual(util.get_data_members(myBPOD), dataMembersModified)
         
         def my_save(data,fname): pass 
         myBPOD = BPOD(save_field=my_save, verbose=False)
-        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified = getDataMembersDefault()
         dataMembersModified['fieldOperations'].save_field = my_save
         self.assertEqual(util.get_data_members(myBPOD), dataMembersModified)
         
         myBPOD = BPOD(save_mat=my_save, verbose=False)
-        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified = getDataMembersDefault()
         dataMembersModified['save_mat'] = my_save
         self.assertEqual(util.get_data_members(myBPOD), dataMembersModified)
                 
         def my_ip(f1,f2): pass
         myBPOD = BPOD(inner_product=my_ip, verbose=False)
-        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified = getDataMembersDefault()
         dataMembersModified['fieldOperations'].inner_product = my_ip
         self.assertEqual(util.get_data_members(myBPOD), dataMembersModified)
                                 
         maxFields = 500
         myBPOD = BPOD(maxFields=maxFields, verbose=False)
-        dataMembersModified = copy.deepcopy(dataMembersDefault)
+        dataMembersModified = getDataMembersDefault()
         dataMembersModified['fieldOperations'].maxFields = maxFields
         self.assertEqual(util.get_data_members(myBPOD), dataMembersModified)
         

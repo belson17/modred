@@ -9,8 +9,6 @@ import util
 import numpy as N
 import time as T
 
-pool = multiprocessing.Pool(processes = multiprocessing.cpu_count())
-
 class FieldOperations(object):
     """
     Does many useful operations on fields.
@@ -29,6 +27,7 @@ class FieldOperations(object):
         This constructor sets the default values for data members common to all
         derived classes.
         """
+        self.pool = multiprocessing.Pool(processes = util.getNumProcs())
         self.load_field = load_field
         self.save_field = save_field
         self.inner_product = inner_product
@@ -223,7 +222,7 @@ class FieldOperations(object):
             #for rowPath in rowFieldPaths[startRowIndex:endRowIndex]:
             #    rowSnaps.append(self.load_field(rowPath))
             #print 'about to submit row loading of',len(rowFieldPaths[startRowIndex:endRowIndex]),'fields'
-            rowSnaps = pool.map(self.load_field, rowFieldPaths[startRowIndex:endRowIndex])
+            rowSnaps = self.pool.map(self.load_field, rowFieldPaths[startRowIndex:endRowIndex])
             
             
             for startColIndex in range(0,numCols,numColsPerChunk):
@@ -233,7 +232,7 @@ class FieldOperations(object):
                 #for colPath in colFieldPaths[startColIndex:endColIndex]:
                 #    colSnaps.append(self.load_field(colPath))
                 #print 'about to submit col loading of',len(colFieldPaths[startColIndex:endColIndex])
-                colSnaps = pool.map(self.load_field, colFieldPaths[startColIndex:endColIndex])
+                colSnaps = self.pool.map(self.load_field, colFieldPaths[startColIndex:endColIndex])
                 
                 # Non shared mem                 
                 for rowIndex in range(startRowIndex,endRowIndex):
@@ -248,7 +247,7 @@ class FieldOperations(object):
                 # Shared mem                      
                 for rowIndex in xrange(startRowIndex,endRowIndex):
                     #print 'about to compute',len(colSnaps),'IPs'
-                    innerProductList = pool.map(util.eval_func_tuple,
+                    innerProductList = self.pool.map(util.eval_func_tuple,
                         itertools.izip(itertools.repeat(self.inner_product),
                             itertools.repeat(rowSnaps[rowIndex-startRowIndex]),
                             colSnaps))
@@ -360,7 +359,7 @@ class FieldOperations(object):
             #rowFields = []
             #for rowPath in rowFieldPaths[startRowIndex:endRowIndex]:
             #    rowFields.append(self.load_field(rowPath))
-            rowFields = pool.map(util.eval_func_tuple, 
+            rowFields = self.pool.map(util.eval_func_tuple, 
               itertools.izip(itertools.repeat(self.load_field),
                   rowFieldPaths[startRowIndex:endRowIndex]))
            
@@ -400,7 +399,7 @@ class FieldOperations(object):
                     #colFields = []
                     #for colPath in colFieldPaths[startColIndex:endColIndex]:
                     #    colFields.append(self.load_field(colPath))
-                    colFields = pool.map(util.eval_func_tuple,
+                    colFields = self.pool.map(util.eval_func_tuple,
                         itertools.izip(itertools.repeat(self.load_field),
                             colFieldPaths[startColIndex:endColIndex]))
                     
@@ -561,7 +560,7 @@ class FieldOperations(object):
             """
             #shared mem
             #print 'about to save',len(outputLayers),'fields to file w/sh mem'
-            pool.map(util.eval_func_tuple, itertools.izip(\
+            self.pool.map(util.eval_func_tuple, itertools.izip(\
                 itertools.repeat(self.save_field), outputLayers,\
                 outputFieldPaths[startOutputIndex:endOutputIndex]))
             
@@ -619,7 +618,7 @@ class FieldOperations(object):
                 for inputIndex in xrange(startInputIndex,endInputIndex)]
             """
             # shared mem
-            inputs = pool.map(util.eval_func_tuple, itertools.izip(\
+            inputs = self.pool.map(util.eval_func_tuple, itertools.izip(\
                 itertools.repeat(self.load_field),
                 inputFieldPaths[startInputIndex:endInputIndex]))
             

@@ -37,32 +37,41 @@ class TestFieldOperations(unittest.TestCase):
         dataMembersDefault = {'load_field': None, 'save_field': None, 
             'inner_product': None, 'maxFields': 2,
             'verbose': False}
-        self.assertEqual(util.get_data_members(FO.FieldOperations(verbose=False)), 
-            dataMembersDefault)
+        dataMembersObserved = util.get_data_members(FO.FieldOperations(verbose=False))
+        del dataMembersObserved['pool']
+        self.assertEqual(dataMembersObserved, dataMembersDefault)
         
         def my_load(fname): pass
         myFO = FO.FieldOperations(load_field=my_load, verbose=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['load_field'] = my_load
-        self.assertEqual(util.get_data_members(myFO), dataMembersModified)
+        dataMembersObserved = util.get_data_members(myFO)
+        del dataMembersObserved['pool']
+        self.assertEqual(dataMembersObserved, dataMembersModified)
         
         def my_save(data,fname): pass
         myFO = FO.FieldOperations(save_field=my_save, verbose=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['save_field'] = my_save
-        self.assertEqual(util.get_data_members(myFO), dataMembersModified)
+        dataMembersObserved = util.get_data_members(myFO)
+        del dataMembersObserved['pool']
+        self.assertEqual(dataMembersObserved, dataMembersModified)
         
         def my_ip(f1,f2): pass
         myFO = FO.FieldOperations(inner_product=my_ip, verbose=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['inner_product'] = my_ip
-        self.assertEqual(util.get_data_members(myFO), dataMembersModified)
+        dataMembersObserved = util.get_data_members(myFO)
+        del dataMembersObserved['pool']
+        self.assertEqual(dataMembersObserved, dataMembersModified)
         
         maxFields = 500
         myFO = FO.FieldOperations(maxFields=maxFields, verbose=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['maxFields'] = maxFields
-        self.assertEqual(util.get_data_members(myFO), dataMembersModified)
+        dataMembersObserved = util.get_data_members(myFO)
+        del dataMembersObserved['pool']
+        self.assertEqual(dataMembersObserved, dataMembersModified)
       
 
     #@unittest.skip('testing other things')
