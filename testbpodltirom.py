@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 import subprocess as SP
 import bpodltirom as BPR

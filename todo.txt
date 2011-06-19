@@ -4,14 +4,20 @@
 
 Write a user guide
 
-Use MKL or LAPACK and numexpr and numpy for parallel (sh mem) inner products
-and array operations. Also, multiprocessing might be pickling data unnecessarily,
-so should try threading, see: http://www.scipy.org/Cookbook/Multithreading.
+Write a check to make sure that tests are running on multiple cores, otherwise
+shared memory functionality may not get tested.  Should print a warning if only
+one core is available/being used.
 
 
-Include shared memory for much improved scaling. Each node will hve one
-MPI proc, and many shared memory procs. Jobs will always be submitted
-to use 1 proc/node.
+Use MKL or LAPACK and numexpr and numpy for parallel (sh mem) inner products and
+array operations. Also, multiprocessing might be pickling data unnecessarily, so
+should try threading, see: http://www.scipy.org/Cookbook/Multithreading.
+
+
+Include shared memory for much improved scaling. Each node will hve one MPI
+proc, and many shared memory procs. Jobs will always be submitted to use 1
+proc/node.
+
 
 add an option for svd thresholding in DMD.  when the svd singular values are
 ill-conditioned, then the resulting computation results can be invalid.  for
@@ -19,64 +25,56 @@ instance the mode norms may come out negative...(when computed using
 coefficients rather than the modes themselves).
 
 
-Change snapNum and similar to snapIndex. This is because the "number" of a 
-mode is generally different than its index. The most common example of this
-is the first mode is called mode number 1 but has index 0 (indexFrom=1). To
-be clear, I differentiate between a mode number and mode index. To be consistent
-with all naming conventions, index should be used instead of num when 
-referring to some object's "number/index" internally and starting from 0. 
-Number is more of a name, index is hidden from the user and starts from 0.
-  - This has been done for modaldecomp and bpod, and their tests. All
-  future code should make the distinction between xxxNum and xxxIndex
-  notation.
+Change snapNum and similar to snapIndex. This is because the "number" of a mode
+is generally different than its index. The most common example of this is the
+first mode is called mode number 1 but has index 0 (indexFrom=1). To be clear, I
+differentiate between a mode number and mode index. To be consistent with all
+naming conventions, index should be used instead of num when referring to some
+object's "number/index" internally and starting from 0.  Number is more of a
+name, index is hidden from the user and starts from 0.
+  - This has been done for modaldecomp and bpod, and their tests. All future
+    code should make the distinction between xxxNum and xxxIndex notation.
 
 
 The tests for DMD should be updated so that we check that the internal POD
 object has the correct arguments passed to it.
 
 
-Write tests directly for lin_combine in fieldoperations, not just _compute_modes.
+Write tests directly for lin_combine in fieldoperations, not just
+_compute_modes.
 
-Rename/move _compute_modes. As it is, it doesn't make sense to be in fieldoperations.
-
-
-Profiling with cProfile could expose potentially easy speed increases.
-However, some of these results could be dependent on the user's use of
-the library, we shouldn't optimize for a particular case at expense of other
-cases.
-
-Sphinx documentation. We tried to follow the right format, so this should
-be just a matter of cleaning up comments and formats, and learning to use
-sphinx.
+Rename/move _compute_modes. As it is, it doesn't make sense to be in
+fieldoperations.
 
 
-Automatically detect the maxSnapsPerNode. This would require some
-fancier things, like determining the available RAM and the size of a snapshot
-object. It might not be possible since some memory is used by the snap/mode
-objects when doing inner products, etc. We could leave a safety factor though,
-and maybe leave space for 1-2 snaps/modes for scratch space for the user's
-functions. 
+Profiling with cProfile could expose potentially easy speed increases.  However,
+some of these results could be dependent on the user's use of the library, we
+shouldn't optimize for a particular case at expense of other cases.
 
 
-#################
-## ROM LIBRARY ##
-#################
+Sphinx documentation. We tried to follow the right format, so this should be
+just a matter of cleaning up comments and formats, and learning to use sphinx.
 
-This is a separate library that would compute ROMs. It would interact
-well with modaldecomp when necessary (for example for BPOD). The main idea
-is that there would be a base class that defined mostly the interface, and
-derived classes that would implement computing the ROM ODEs for a 
-specific PDE. The easiest example would be computing a ROM that is an LTI
-system with:
-dx/dt = Ax + Bu
-y = Cx (+ Du)
-This has been done (by Brandt) for the BPOD case (see bpodltirom.py).
-The A, B, and C matrices
-are computed, given the direct modes, the adjoint modes, and the direct
-modes advanced one small time step (these are used to calculate the time-
-derivatives of the direct modes via finite difference).
-More thought needs to be put into this before it is attempted, but it might
-be able to handle general PDEs and general forms of the ROM.
+Automatically detect the maxSnapsPerNode. This would require some fancier
+things, like determining the available RAM and the size of a snapshot object. It
+might not be possible since some memory is used by the snap/mode objects when
+doing inner products, etc. We could leave a safety factor though, and maybe
+leave space for 1-2 snaps/modes for scratch space for the user's functions. 
+
+
+################# ## ROM LIBRARY ## #################
+
+This is a separate library that would compute ROMs. It would interact well with
+modaldecomp when necessary (for example for BPOD). The main idea is that there
+would be a base class that defined mostly the interface, and derived classes
+that would implement computing the ROM ODEs for a specific PDE. The easiest
+example would be computing a ROM that is an LTI system with: dx/dt = Ax + Bu y =
+Cx (+ Du) This has been done (by Brandt) for the BPOD case (see bpodltirom.py).
+The A, B, and C matrices are computed, given the direct modes, the adjoint
+modes, and the direct modes advanced one small time step (these are used to
+calculate the time- derivatives of the direct modes via finite difference).
+More thought needs to be put into this before it is attempted, but it might be
+able to handle general PDEs and general forms of the ROM.
 
 
 

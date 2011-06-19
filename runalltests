@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+# A bash shell to run all tests
+clear
+./testfieldoperations.py
+./testbpod.py
+./testpod.py
+./testdmd.py
+./testutil.py
+./testera.py
+#./testbpodltirom.py
