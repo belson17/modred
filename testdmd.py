@@ -132,31 +132,35 @@ class TestDMD(unittest.TestCase):
         ritzValsPath = 'files_modaldecomp_test/dmd_ritzvals.txt'
         modeNormsPath = 'files_modaldecomp_test/dmd_modeenergies.txt'
         buildCoeffPath = 'files_modaldecomp_test/dmd_buildcoeff.txt'
+        
+        for sharedMemLoad in [True, False]:
+            for sharedMemInnerProduct in [True, False]:
+                self.dmd.compute_decomp(self.snapPathList, sharedMemLoad=\
+                    sharedMemLoad, sharedMemInnerProduct=sharedMemInnerProduct)
+                self.dmd.save_decomp(ritzValsPath, modeNormsPath, buildCoeffPath)
+               
+                # Test that matrices were correctly computed
+                N.testing.assert_array_almost_equal(self.dmd.ritzVals, self.\
+                    ritzValsTrue, decimal=tol)
+                N.testing.assert_array_almost_equal(self.dmd.buildCoeff, self.\
+                    buildCoeffTrue, decimal=tol)
+                N.testing.assert_array_almost_equal(self.dmd.modeNorms, self.\
+                    modeNormsTrue, decimal=tol)
 
-        self.dmd.compute_decomp(self.snapPathList)
-        self.dmd.save_decomp(ritzValsPath, modeNormsPath, buildCoeffPath)
-       
-        # Test that matrices were correctly computed
-        N.testing.assert_array_almost_equal(self.dmd.ritzVals, self.\
-            ritzValsTrue, decimal=tol)
-        N.testing.assert_array_almost_equal(self.dmd.buildCoeff, self.\
-            buildCoeffTrue, decimal=tol)
-        N.testing.assert_array_almost_equal(self.dmd.modeNorms, self.\
-            modeNormsTrue, decimal=tol)
+                # Test that matrices were correctly stored
+                ritzValsLoaded = N.array(util.load_mat_text(ritzValsPath,
+                    isComplex=True)).squeeze()
+                buildCoeffLoaded = util.load_mat_text(buildCoeffPath,isComplex=\
+                    True)
+                modeNormsLoaded = N.array(util.load_mat_text(modeNormsPath).\
+                    squeeze())
 
-        # Test that matrices were correctly stored
-        ritzValsLoaded = N.array(util.load_mat_text(ritzValsPath,isComplex=\
-            True)).squeeze()
-        buildCoeffLoaded = util.load_mat_text(buildCoeffPath,isComplex=True)
-        modeNormsLoaded = N.array(util.load_mat_text(modeNormsPath).\
-            squeeze())
-
-        N.testing.assert_array_almost_equal(ritzValsLoaded, self.\
-            ritzValsTrue, decimal=tol)
-        N.testing.assert_array_almost_equal(buildCoeffLoaded, self.\
-            buildCoeffTrue, decimal=tol)
-        N.testing.assert_array_almost_equal(modeNormsLoaded, self.\
-            modeNormsTrue, decimal=tol)
+                N.testing.assert_array_almost_equal(ritzValsLoaded, self.\
+                    ritzValsTrue, decimal=tol)
+                N.testing.assert_array_almost_equal(buildCoeffLoaded, self.\
+                    buildCoeffTrue, decimal=tol)
+                N.testing.assert_array_almost_equal(modeNormsLoaded, self.\
+                    modeNormsTrue, decimal=tol)
 
     def test_compute_modes(self):
         """
@@ -168,24 +172,30 @@ class TestDMD(unittest.TestCase):
         modePath ='files_modaldecomp_test/dmd_mode_%03d.txt'
         self.dmd.buildCoeff = self.buildCoeffTrue
         modeNumList = list(N.array(range(self.numSnaps-1))+self.indexFrom)
-        self.dmd.compute_modes(modeNumList, modePath, indexFrom=self.indexFrom, 
-            snapPaths=self.snapPathList)
-       
-        # Load all snapshots into matrix
-        modeMat = N.mat(N.zeros((self.numStates, self.numSnaps-1)), dtype=\
-            complex)
-        for i in range(self.numSnaps-1):
-            modeMat[:,i] = util.load_mat_text(modePath % (i+self.indexFrom),
-                isComplex=True)
-        N.testing.assert_array_almost_equal(modeMat,self.ritzVecsTrue, decimal=\
-            tol)
+        
+        for sharedMemLoad in [True, False]:
+            for sharedMemSave in [True, False]:
+        
+                self.dmd.compute_modes(modeNumList, modePath, indexFrom=self.\
+                    indexFrom, snapPaths=self.snapPathList, sharedMemLoad=\
+                    sharedMemLoad, sharedMemSave=sharedMemSave)
+               
+                # Load all snapshots into matrix
+                modeMat = N.mat(N.zeros((self.numStates, self.numSnaps-1)), 
+                    dtype=complex)
+                for i in range(self.numSnaps-1):
+                    modeMat[:,i] = util.load_mat_text(modePath % (i+self.\
+                        indexFrom), isComplex=True)
+                N.testing.assert_array_almost_equal(modeMat,self.ritzVecsTrue, 
+                    decimal=tol)
 
-        vandermondeMat = N.fliplr(N.vander(self.ritzValsTrue,self.numSnaps-1))
-        N.testing.assert_array_almost_equal(self.snapMat[:,:-1], self.\
-            ritzVecsTrue * vandermondeMat, decimal=tol)
+                vandermondeMat = N.fliplr(N.vander(self.ritzValsTrue,self.\
+                    numSnaps-1))
+                N.testing.assert_array_almost_equal(self.snapMat[:,:-1], self.\
+                    ritzVecsTrue * vandermondeMat, decimal=tol)
 
-        util.save_mat_text(vandermondeMat, 'files_modaldecomp_test/' +\
-            'dmd_vandermonde.txt')
+                util.save_mat_text(vandermondeMat, 'files_modaldecomp_test/' +\
+                    'dmd_vandermonde.txt')
 
 if __name__=='__main__':
     unittest.main(verbosity=2)

@@ -48,7 +48,8 @@ class DMD(object):
         self.save_mat(self.modeNorms, modeNormsPath)
         self.save_mat(self.buildCoeff, buildCoeffPath)
 
-    def compute_decomp(self, snapPaths):
+    def compute_decomp(self, snapPaths, sharedMemLoad=True, 
+        sharedMemInnerProduct=True):
         """
         Compute DMD decomposition
         """
@@ -64,8 +65,10 @@ class DMD(object):
                 inner_product=self.fieldOperations.inner_product, 
                 maxFields=self.fieldOperations.maxFields, 
                 verbose=self.verbose)
-            self.pod.compute_decomp(snapPaths=self.snapPaths[:-1])
-        elif self.snaplist[:-1] != self.podsnaplist or len(snapPaths) !=\
+            self.pod.compute_decomp(snapPaths=self.snapPaths[:-1], 
+                sharedMemLoad=sharedMemLoad, sharedMemInnerProduct=\
+                sharedMemInnerProduct)
+        elif self.snapPaths[:-1] != self.pod.snapPaths or len(snapPaths) !=\
             len(self.pod.snapPaths)+1:
             raise RuntimeError('Snapshot mistmatch between POD and DMD '+\
                 'objects.')     
@@ -78,7 +81,8 @@ class DMD(object):
         podModesStarTimesSnaps[:, :-1] = self.pod.correlationMat[:,1:]  
         podModesStarTimesSnaps[:, -1] = self.fieldOperations.\
             compute_inner_product_mat(self.snapPaths[:-1], self.snapPaths[
-            -1])
+            -1], sharedMemLoad=sharedMemLoad, sharedMemInnerProduct=\
+            sharedMemInnerProduct)
         podModesStarTimesSnaps = _podSingValsSqrtMat * self.pod.\
             singVecs.H * podModesStarTimesSnaps
             
@@ -100,14 +104,16 @@ class DMD(object):
         self.modeNorms = N.diag(self.buildCoeff.H * self.pod.\
             correlationMat * self.buildCoeff).real
         
-    def compute_modes(self, modeNumList, modePath, indexFrom=1, snapPaths=None):
+    def compute_modes(self, modeNumList, modePath, indexFrom=1, snapPaths=None,
+        sharedMemLoad=True, sharedMemSave=True):
         if self.buildCoeff is None:
             raise util.UndefinedError('Must define self.buildCoeff')
         # User should specify ALL snapshots, even though all but last are used
         if snapPaths is not None:
             self.snapPaths = snapPaths
         self.fieldOperations._compute_modes(modeNumList, modePath, self.\
-            snapPaths[:-1], self.buildCoeff, indexFrom=indexFrom)
+            snapPaths[:-1], self.buildCoeff, indexFrom=indexFrom, 
+            sharedMemLoad=sharedMemLoad, sharedMemSave=sharedMemSave)
 
         
         

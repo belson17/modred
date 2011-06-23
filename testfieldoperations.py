@@ -37,8 +37,8 @@ class TestFieldOperations(unittest.TestCase):
         dataMembersDefault = {'load_field': None, 'save_field': None, 
             'inner_product': None, 'maxFields': 2,
             'verbose': False}
-        dataMembersObserved = util.get_data_members(FO.FieldOperations(verbose=False))
-        del dataMembersObserved['pool']
+        dataMembersObserved = util.get_data_members(FO.FieldOperations(verbose=\
+            False))
         self.assertEqual(dataMembersObserved, dataMembersDefault)
         
         def my_load(fname): pass
@@ -46,7 +46,6 @@ class TestFieldOperations(unittest.TestCase):
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['load_field'] = my_load
         dataMembersObserved = util.get_data_members(myFO)
-        del dataMembersObserved['pool']
         self.assertEqual(dataMembersObserved, dataMembersModified)
         
         def my_save(data,fname): pass
@@ -54,7 +53,6 @@ class TestFieldOperations(unittest.TestCase):
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['save_field'] = my_save
         dataMembersObserved = util.get_data_members(myFO)
-        del dataMembersObserved['pool']
         self.assertEqual(dataMembersObserved, dataMembersModified)
         
         def my_ip(f1,f2): pass
@@ -62,7 +60,6 @@ class TestFieldOperations(unittest.TestCase):
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['inner_product'] = my_ip
         dataMembersObserved = util.get_data_members(myFO)
-        del dataMembersObserved['pool']
         self.assertEqual(dataMembersObserved, dataMembersModified)
         
         maxFields = 500
@@ -70,7 +67,6 @@ class TestFieldOperations(unittest.TestCase):
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['maxFields'] = maxFields
         dataMembersObserved = util.get_data_members(myFO)
-        del dataMembersObserved['pool']
         self.assertEqual(dataMembersObserved, dataMembersModified)
       
 
@@ -189,75 +185,79 @@ class TestFieldOperations(unittest.TestCase):
         for numSnaps in numSnapsList:
             for numModes in numModesList:
                 for indexFrom in indexFromList:
-                    #generate data and then broadcast to all procs
-                    #print '----- new case ----- '
-                    #print 'numSnaps =',numSnaps
-                    #print 'numStates =',numStates
-                    #print 'numModes =',numModes
-                    #print 'maxFields =',maxFields                          
-                    #print 'indexFrom =',indexFrom
-                    snapPaths = [snapPath % snapIndex for snapIndex in range(numSnaps)]
-                    
-                    snapMat,modeNumList, buildCoeffMat, trueModes = \
-                        self.generate_snaps_modes(numStates, numSnaps,
-                        numModes, indexFrom=indexFrom)
-                    for snapIndex,s in enumerate(snapPaths):
-                        util.save_mat_text(snapMat[:,snapIndex], s)
-                        
-                    # if any mode number (minus starting indxex)
-                    # is greater than the number of coeff mat columns,
-                    # or is less than zero
-                    checkAssertRaises = False
-                    for modeNum in modeNumList:
-                        modeNumFromZero = modeNum-indexFrom
-                        if modeNumFromZero < 0 or modeNumFromZero >=\
-                            buildCoeffMat.shape[1]:
-                            checkAssertRaises = True
-                    if checkAssertRaises:
-                        self.assertRaises(ValueError, self.fieldOperations.\
-                            _compute_modes, modeNumList, modePath, 
-                            snapPaths, buildCoeffMat, indexFrom=\
-                            indexFrom)
-                    # If the coeff mat has more rows than there are 
-                    # snapshot paths
-                    elif numSnaps > buildCoeffMat.shape[0]:
-                        self.assertRaises(ValueError, self.fieldOperations.\
-                            _compute_modes, modeNumList, modePath,
-                            snapPaths, buildCoeffMat, indexFrom=\
-                            indexFrom)
-                    elif numModes > numSnaps:
-                        self.assertRaises(ValueError,
-                          self.fieldOperations._compute_modes, modeNumList,
-                          modePath, snapPaths, buildCoeffMat,
-                          indexFrom=indexFrom)
-                          
-                    else:
-                        # Test the case that only one mode is desired,
-                        # in which case user might pass in an int
-                        if len(modeNumList) == 1:
-                            modeNumList = modeNumList[0]
-
-                        # Saves modes to files
-                        self.fieldOperations._compute_modes(modeNumList, 
-                            modePath, snapPaths, buildCoeffMat, 
-                            indexFrom=indexFrom)
-
-                        # Change back to list so is iterable
-                        if isinstance(modeNumList, int):
-                            modeNumList = [modeNumList]
-                        
-                        # all computed modes are saved
-                        for modeNum in modeNumList:
-                            computedMode = util.load_mat_text(
-                                modePath % modeNum)
-                            #print 'mode number',modeNum
-                            #print 'true mode',trueModes[:,
-                                #modeNum-indexFrom]
-                            #print 'computed mode',computedMode
+                    for sharedMemLoad in [True, False]:
+                        for sharedMemSave in [True, False]:
+                            #generate data and then broadcast to all procs
+                            #print '----- new case ----- '
+                            #print 'numSnaps =',numSnaps
+                            #print 'numStates =',numStates
+                            #print 'numModes =',numModes
+                            #print 'maxFields =',maxFields                          
+                            #print 'indexFrom =',indexFrom
+                            snapPaths = [snapPath % snapIndex for snapIndex in \
+                                range(numSnaps)]
                             
-                            N.testing.assert_array_almost_equal(
-                                computedMode.squeeze(), trueModes[:,modeNum-\
-                                indexFrom].squeeze())
+                            snapMat,modeNumList, buildCoeffMat, trueModes = \
+                                self.generate_snaps_modes(numStates, numSnaps,
+                                numModes, indexFrom=indexFrom)
+                            for snapIndex,s in enumerate(snapPaths):
+                                util.save_mat_text(snapMat[:,snapIndex], s)
+                                
+                            # if any mode number (minus starting indxex)
+                            # is greater than the number of coeff mat columns,
+                            # or is less than zero
+                            checkAssertRaises = False
+                            for modeNum in modeNumList:
+                                modeNumFromZero = modeNum-indexFrom
+                                if modeNumFromZero < 0 or modeNumFromZero >=\
+                                    buildCoeffMat.shape[1]:
+                                    checkAssertRaises = True
+                            if checkAssertRaises:
+                                self.assertRaises(ValueError, self.\
+                                    fieldOperations._compute_modes, 
+                                    modeNumList, modePath, snapPaths, 
+                                    buildCoeffMat, indexFrom=indexFrom)
+                                    
+                            # If the coeff mat has more rows than there are 
+                            # snapshot paths
+                            elif numSnaps > buildCoeffMat.shape[0]:
+                                self.assertRaises(ValueError, self.\
+                                    fieldOperations._compute_modes, modeNumList,
+                                    modePath, snapPaths, buildCoeffMat, 
+                                    indexFrom=indexFrom)
+                            elif numModes > numSnaps:
+                                self.assertRaises(ValueError,
+                                    self.fieldOperations._compute_modes, 
+                                    modeNumList, modePath, snapPaths, 
+                                    buildCoeffMat, indexFrom=indexFrom)
+                                  
+                            else:
+                                # Test the case that only one mode is desired,
+                                # in which case user might pass in an int
+                                if len(modeNumList) == 1:
+                                    modeNumList = modeNumList[0]
+
+                                # Saves modes to files
+                                self.fieldOperations._compute_modes(modeNumList, 
+                                    modePath, snapPaths, buildCoeffMat, 
+                                    indexFrom=indexFrom)
+
+                                # Change back to list so is iterable
+                                if isinstance(modeNumList, int):
+                                    modeNumList = [modeNumList]
+                                
+                                # all computed modes are saved
+                                for modeNum in modeNumList:
+                                    computedMode = util.load_mat_text(
+                                        modePath % modeNum)
+                                    #print 'mode number',modeNum
+                                    #print 'true mode',trueModes[:,
+                                        #modeNum-indexFrom]
+                                    #print 'computed mode',computedMode
+                                    
+                                    N.testing.assert_array_almost_equal(
+                                        computedMode.squeeze(), trueModes[:,
+                                        modeNum-indexFrom].squeeze())
                                 
                                 
     #@unittest.skip('testing other things')
@@ -284,41 +284,49 @@ class TestFieldOperations(unittest.TestCase):
             #N.testing.assert_array_almost_equal(productComputedAsChunk, 
             #    productTrue)
 
-            # Test paralleized computation.  
-            productComputedAsMat = self.fieldOperations.\
-                compute_inner_product_mat(paths1, paths2)
-            N.testing.assert_array_almost_equal(productComputedAsMat, 
-                productTrue)
-            
-            # Test computation of upper triangular inner product matrix chunk
-            if paths1 == paths2:
-                # Test computation as chunk (serial).  
-                # First test complete upper triangular computation
-                productComputedAsFullSymmChunk = self.fieldOperations.\
-                    _compute_upper_triangular_inner_product_chunk(paths1, 
-                        paths2)
-                N.testing.assert_array_almost_equal(
-                    productComputedAsFullSymmChunk, N.triu(productTrue))
-
-                # Also test non-square upper triangular computation
-                numRows = int(N.ceil(len(paths1) / 2.))
-                productComputedAsPartialSymmChunk = self.fieldOperations.\
-                    _compute_upper_triangular_inner_product_chunk(paths1[
-                        :numRows], paths2)
-                N.testing.assert_array_almost_equal(
-                    productComputedAsPartialSymmChunk, N.triu(productTrue[
-                    :numRows, :]))
+            # Test parallelized computation.  
+            for sharedMemLoad in [True, False]:
+                for sharedMemInnerProduct in [True, False]:
+                    productComputedAsMat = self.fieldOperations.\
+                        compute_inner_product_mat(paths1, paths2, sharedMemLoad=\
+                        sharedMemLoad, sharedMemInnerProduct=\
+                        sharedMemInnerProduct)
+                    N.testing.assert_array_almost_equal(productComputedAsMat, 
+                        productTrue)
                 
-                # Test computation in parallel
-                productComputedAsSymmMat = self.fieldOperations.\
-                    compute_symmetric_inner_product_mat(paths1)
-                N.testing.assert_array_almost_equal(productComputedAsSymmMat, 
-                    productTrue)
-            # If lists are not the same, should return an error
-            else:
-                self.assertRaises(ValueError, self.fieldOperations.\
-                    _compute_upper_triangular_inner_product_chunk, paths1, 
-                    paths2)
+                # Test computation of upper triangular inner product mat chunk
+                if paths1 == paths2:
+                    # Test computation as chunk (serial).  
+                    # First test complete upper triangular computation
+                    productComputedAsFullSymmChunk = self.fieldOperations.\
+                        _compute_upper_triangular_inner_product_chunk(paths1, 
+                            paths2, sharedMemLoad=sharedMemLoad, 
+                            sharedMemInnerProduct=sharedMemInnerProduct)
+                    N.testing.assert_array_almost_equal(
+                        productComputedAsFullSymmChunk, N.triu(productTrue))
+
+                    # Also test non-square upper triangular computation
+                    numRows = int(N.ceil(len(paths1) / 2.))
+                    productComputedAsPartialSymmChunk = self.fieldOperations.\
+                        _compute_upper_triangular_inner_product_chunk(paths1[
+                            :numRows], paths2, sharedMemLoad=sharedMemLoad, 
+                            sharedMemInnerProduct=sharedMemInnerProduct)
+                    N.testing.assert_array_almost_equal(
+                        productComputedAsPartialSymmChunk, N.triu(productTrue[
+                        :numRows, :]))
+                    
+                    # Test computation in parallel
+                    productComputedAsSymmMat = self.fieldOperations.\
+                        compute_symmetric_inner_product_mat(paths1, 
+                            sharedMemLoad=sharedMemLoad, sharedMemInnerProduct=\
+                            sharedMemInnerProduct)
+                    N.testing.assert_array_almost_equal(productComputedAsSymmMat, 
+                        productTrue)
+                # If lists are not the same, should return an error
+                else:
+                    self.assertRaises(ValueError, self.fieldOperations.\
+                        _compute_upper_triangular_inner_product_chunk, paths1, 
+                        paths2)
             
         numRowSnapsList =[1, int(round(self.totalNumFieldsInMem / 2.)), self.\
             totalNumFieldsInMem, self.totalNumFieldsInMem *2]

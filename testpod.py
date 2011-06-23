@@ -111,28 +111,32 @@ class TestPOD(unittest.TestCase):
         singValsPath = 'files_modaldecomp_test/singvals.txt'
         correlationMatPath = 'files_modaldecomp_test/correlation.txt'
         
-        self.pod.compute_decomp(snapPaths=self.snapPaths)
-        self.pod.save_correlation_mat(correlationMatPath)
-        self.pod.save_decomp(singVecsPath, singValsPath)
-        
-        singVecsLoaded = util.load_mat_text(singVecsPath)
-        singValsLoaded = N.squeeze(N.array(util.load_mat_text(
-            singValsPath)))
-        correlationMatLoaded = util.load_mat_text(correlationMatPath)
-        
-        N.testing.assert_array_almost_equal(self.pod.correlationMat, self.\
-            correlationMatTrue, decimal=tol)
-        N.testing.assert_array_almost_equal(self.pod.singVecs, self.\
-            singVecsTrue, decimal=tol)
-        N.testing.assert_array_almost_equal(self.pod.singVals, self.\
-            singValsTrue, decimal=tol)
-          
-        N.testing.assert_array_almost_equal(correlationMatLoaded, self.\
-            correlationMatTrue, decimal=tol)
-        N.testing.assert_array_almost_equal(singVecsLoaded, self.singVecsTrue,
-            decimal=tol)
-        N.testing.assert_array_almost_equal(singValsLoaded, self.singValsTrue,
-            decimal=tol)
+        for sharedMemLoad in [True, False]:
+            for sharedMemInnerProduct in [True, False]:
+                self.pod.compute_decomp(snapPaths=self.snapPaths, 
+                    sharedMemLoad=sharedMemLoad, sharedMemInnerProduct=\
+                    sharedMemInnerProduct)
+                self.pod.save_correlation_mat(correlationMatPath)
+                self.pod.save_decomp(singVecsPath, singValsPath)
+                
+                singVecsLoaded = util.load_mat_text(singVecsPath)
+                singValsLoaded = N.squeeze(N.array(util.load_mat_text(
+                    singValsPath)))
+                correlationMatLoaded = util.load_mat_text(correlationMatPath)
+                
+                N.testing.assert_array_almost_equal(self.pod.correlationMat, 
+                    self.correlationMatTrue, decimal=tol)
+                N.testing.assert_array_almost_equal(self.pod.singVecs, self.\
+                    singVecsTrue, decimal=tol)
+                N.testing.assert_array_almost_equal(self.pod.singVals, self.\
+                    singValsTrue, decimal=tol)
+                  
+                N.testing.assert_array_almost_equal(correlationMatLoaded, self.\
+                    correlationMatTrue, decimal=tol)
+                N.testing.assert_array_almost_equal(singVecsLoaded, self.\
+                    singVecsTrue, decimal=tol)
+                N.testing.assert_array_almost_equal(singValsLoaded, self.\
+                    singValsTrue, decimal=tol)
         
 
     def test_compute_modes(self):
@@ -150,23 +154,27 @@ class TestPOD(unittest.TestCase):
         self.pod.singVecs = self.singVecsTrue
         self.pod.singVals = self.singValsTrue
         
-        self.pod.compute_modes(self.modeNumList, modePath, indexFrom=self.\
-            indexFrom, snapPaths=self.snapPaths)
-          
-        for modeNum in self.modeNumList:
-            mode = util.load_mat_text(modePath % modeNum)
-            N.testing.assert_array_almost_equal(mode, self.modeMat[:, 
-                modeNum - self.indexFrom])
-        
-        for modeNum1 in self.modeNumList:
-            mode1 = util.load_mat_text(modePath % modeNum1)
-            for modeNum2 in self.modeNumList:
-                mode2 = util.load_mat_text(modePath % modeNum2)
-                innerProduct = self.pod.fieldOperations.inner_product(mode1, mode2)
-                if modeNum1 != modeNum2:
-                    self.assertAlmostEqual(innerProduct, 0.)
-                else:
-                    self.assertAlmostEqual(innerProduct, 1.)
+        for sharedMemLoad in [True, False]:
+            for sharedMemSave in [True, False]:
+                self.pod.compute_modes(self.modeNumList, modePath, indexFrom=\
+                    self.indexFrom, snapPaths=self.snapPaths, sharedMemLoad=\
+                    sharedMemLoad, sharedMemSave=sharedMemSave)
+                  
+                for modeNum in self.modeNumList:
+                    mode = util.load_mat_text(modePath % modeNum)
+                    N.testing.assert_array_almost_equal(mode, self.modeMat[:, 
+                        modeNum - self.indexFrom])
+                
+                for modeNum1 in self.modeNumList:
+                    mode1 = util.load_mat_text(modePath % modeNum1)
+                    for modeNum2 in self.modeNumList:
+                        mode2 = util.load_mat_text(modePath % modeNum2)
+                        innerProduct = self.pod.fieldOperations.inner_product(
+                            mode1, mode2)
+                        if modeNum1 != modeNum2:
+                            self.assertAlmostEqual(innerProduct, 0.)
+                        else:
+                            self.assertAlmostEqual(innerProduct, 1.)
 
 
 if __name__=='__main__':

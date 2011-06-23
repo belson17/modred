@@ -52,9 +52,9 @@ class POD(object):
         self.save_mat(self.singVecs, singVecsPath)
         self.save_mat(self.singVals, singValsPath)
 
-
     def compute_decomp(self, correlationMatPath=None, singVecsPath=None, 
-        singValsPath=None, snapPaths=None):
+        singValsPath=None, snapPaths=None, sharedMemLoad=True, 
+        sharedMemInnerProduct=True):
         """
         Compute POD decomposition
         """
@@ -64,8 +64,10 @@ class POD(object):
             self.correlationMat = self.load_mat(correlationMatPath)
         elif snapPaths is not None:
             self.snapPaths = snapPaths
-            self.correlationMat = self.fieldOperations.compute_symmetric_inner_product_mat(
-                self.snapPaths)
+            self.correlationMat = self.fieldOperations.\
+                compute_symmetric_inner_product_mat(self.snapPaths, 
+                sharedMemLoad=sharedMemLoad, sharedMemInnerProduct=\
+                sharedMemInnerProduct)
         else:
             raise util.UndefinedError('Must provide either snap paths or '+\
                 'correlation matrix path to pod.compute_decomp')
@@ -74,7 +76,8 @@ class POD(object):
         del dummy
 
             
-    def compute_modes(self, modeNumList, modePath, indexFrom=1, snapPaths=None):
+    def compute_modes(self, modeNumList, modePath, indexFrom=1, snapPaths=None,
+        sharedMemLoad=True, sharedMemSave=True):
         """
         Computes the POD modes and saves them to file.
         
@@ -97,8 +100,9 @@ class POD(object):
         buildCoeffMat = N.mat(self.singVecs) * N.mat(N.diag(self.singVals **\
             -0.5))
 
-        self.fieldOperations._compute_modes(modeNumList, modePath, self.snapPaths, 
-            buildCoeffMat, indexFrom=indexFrom)
+        self.fieldOperations._compute_modes(modeNumList, modePath, self.\
+            snapPaths, buildCoeffMat, indexFrom=indexFrom, sharedMemLoad=\
+            sharedMemLoad, sharedMemSave=sharedMemSave)
     
 
 

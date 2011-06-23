@@ -30,8 +30,8 @@ class BPOD(object):
         self.save_mat = save_mat
         # Class that contains all of the low-level field operations
         # and parallelizes them.
-        self.fieldOperations = FieldOperations(load_field=load_field, save_field=save_field,
-            inner_product=inner_product, maxFields=\
+        self.fieldOperations = FieldOperations(load_field=load_field, 
+            save_field=save_field, inner_product=inner_product, maxFields=\
             maxFields, verbose=verbose)
     
 
@@ -59,7 +59,7 @@ class BPOD(object):
         self.save_mat(self.singVals, singValsPath)
             
     def compute_decomp(self, directSnapPaths=None, adjointSnapPaths=None,
-        hankelMatPath=None):
+        hankelMatPath=None, sharedMemLoad=True, sharedMemInnerProduct=True):
         """
         Compute BPOD decomposition from given data.
         
@@ -79,18 +79,19 @@ class BPOD(object):
         elif directSnapPaths is not None and adjointSnapPaths is not None:
             self.directSnapPaths = directSnapPaths
             self.adjointSnapPaths = adjointSnapPaths
-            self.hankelMat = self.fieldOperations.compute_inner_product_mat(\
-                self.adjointSnapPaths, self.directSnapPaths)
+            self.hankelMat = self.fieldOperations.compute_inner_product_mat(
+                self.adjointSnapPaths, self.directSnapPaths, sharedMemLoad=\
+                sharedMemLoad, sharedMemInnerProduct=sharedMemInnerProduct)
         else:
             raise util.UndefinedError('Must provide either snap paths or '+\
                 'hankel matrix path to bpod.compute_decomp')
                 
         self.LSingVecs, self.singVals, self.RSingVecs = util.svd(self.\
-                hankelMat)
+            hankelMat)
      
      
     def compute_direct_modes(self, modeNumList, modePath, indexFrom=1,
-        directSnapPaths=None):
+        directSnapPaths=None, sharedMemLoad=True, sharedMemSave=True):
         """
         Computes the direct modes and saves them to file.
         
@@ -117,10 +118,11 @@ class BPOD(object):
             N.mat(N.diag(self.singVals **-0.5))
 
         self.fieldOperations._compute_modes(modeNumList, modePath, 
-            self.directSnapPaths, buildCoeffMat, indexFrom=indexFrom)
+            self.directSnapPaths, buildCoeffMat, indexFrom=indexFrom,
+            sharedMemLoad=sharedMemLoad, sharedMemSave=sharedMemSave)
     
     def compute_adjoint_modes(self, modeNumList, modePath, indexFrom=1,
-        adjointSnapPaths=None):
+        adjointSnapPaths=None, sharedMemLoad=True, sharedMemSave=True):
         """
         Computes the adjoint modes and saves them to file.
         
@@ -148,5 +150,6 @@ class BPOD(object):
             -0.5))
                  
         self.fieldOperations._compute_modes(modeNumList, modePath,
-            self.adjointSnapPaths, buildCoeffMat, indexFrom=indexFrom)
+            self.adjointSnapPaths, buildCoeffMat, indexFrom=indexFrom,
+            sharedMemLoad=sharedMemLoad, sharedMemSave=sharedMemSave)
     

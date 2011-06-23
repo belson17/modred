@@ -73,8 +73,8 @@ class TestBPOD(unittest.TestCase):
             return {'save_mat': util.save_mat_text,
                 'load_mat': util.load_mat_text, 
                 'verbose': False,
-                'fieldOperations': FieldOperations(load_field=None, save_field=None,
-                inner_product=None, maxFields=2, verbose=False)}
+                'fieldOperations': FieldOperations(load_field=None, save_field=\
+                None, inner_product=None, maxFields=2, verbose=False)}
         
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
@@ -127,34 +127,38 @@ class TestBPOD(unittest.TestCase):
         singValsPath = 'files_modaldecomp_test/singvals.txt'
         hankelMatPath = 'files_modaldecomp_test/hankel.txt'
         
-        self.bpod.compute_decomp(directSnapPaths=self.directSnapPaths, 
-            adjointSnapPaths=self.adjointSnapPaths)
-        
-        self.bpod.save_hankel_mat(hankelMatPath)
-        self.bpod.save_decomp(LSingVecsPath, singValsPath, RSingVecsPath)
-        LSingVecsLoaded = util.load_mat_text(LSingVecsPath)
-        RSingVecsLoaded = util.load_mat_text(RSingVecsPath)
-        singValsLoaded = N.squeeze(N.array(util.load_mat_text(
-            singValsPath)))
-        hankelMatLoaded = util.load_mat_text(hankelMatPath)
-        
-        N.testing.assert_array_almost_equal(self.bpod.hankelMat,
-          self.hankelMatTrue,decimal=tol)
-        N.testing.assert_array_almost_equal(self.bpod.LSingVecs,
-          self.LSingVecsTrue,decimal=tol)
-        N.testing.assert_array_almost_equal(self.bpod.RSingVecs,
-          self.RSingVecsTrue,decimal=tol)
-        N.testing.assert_array_almost_equal(self.bpod.singVals,
-          self.singValsTrue,decimal=tol)
-          
-        N.testing.assert_array_almost_equal(hankelMatLoaded,
-          self.hankelMatTrue,decimal=tol)
-        N.testing.assert_array_almost_equal(LSingVecsLoaded,
-          self.LSingVecsTrue,decimal=tol)
-        N.testing.assert_array_almost_equal(RSingVecsLoaded,
-          self.RSingVecsTrue,decimal=tol)
-        N.testing.assert_array_almost_equal(singValsLoaded,
-          self.singValsTrue,decimal=tol)
+        for sharedMemLoad in [True, False]:
+            for sharedMemInnerProduct in [True, False]:
+                self.bpod.compute_decomp(directSnapPaths=self.directSnapPaths, 
+                    adjointSnapPaths=self.adjointSnapPaths, sharedMemLoad=\
+                    sharedMemLoad, sharedMemInnerProduct=sharedMemInnerProduct)
+                
+                self.bpod.save_hankel_mat(hankelMatPath)
+                self.bpod.save_decomp(LSingVecsPath, singValsPath, 
+                    RSingVecsPath)
+                LSingVecsLoaded = util.load_mat_text(LSingVecsPath)
+                RSingVecsLoaded = util.load_mat_text(RSingVecsPath)
+                singValsLoaded = N.squeeze(N.array(util.load_mat_text(
+                    singValsPath)))
+                hankelMatLoaded = util.load_mat_text(hankelMatPath)
+                
+                N.testing.assert_array_almost_equal(self.bpod.hankelMat,
+                  self.hankelMatTrue,decimal=tol)
+                N.testing.assert_array_almost_equal(self.bpod.LSingVecs,
+                  self.LSingVecsTrue,decimal=tol)
+                N.testing.assert_array_almost_equal(self.bpod.RSingVecs,
+                  self.RSingVecsTrue,decimal=tol)
+                N.testing.assert_array_almost_equal(self.bpod.singVals,
+                  self.singValsTrue,decimal=tol)
+                  
+                N.testing.assert_array_almost_equal(hankelMatLoaded,
+                  self.hankelMatTrue,decimal=tol)
+                N.testing.assert_array_almost_equal(LSingVecsLoaded,
+                  self.LSingVecsTrue,decimal=tol)
+                N.testing.assert_array_almost_equal(RSingVecsLoaded,
+                  self.RSingVecsTrue,decimal=tol)
+                N.testing.assert_array_almost_equal(singValsLoaded,
+                  self.singValsTrue,decimal=tol)
         
 
     def test_compute_modes(self):
@@ -174,30 +178,37 @@ class TestBPOD(unittest.TestCase):
         self.bpod.LSingVecs = self.LSingVecsTrue
         self.bpod.singVals = self.singValsTrue
         
-        self.bpod.compute_direct_modes(self.modeNumList,directModePath,
-          indexFrom=self.indexFrom,directSnapPaths=self.directSnapPaths)
-          
-        self.bpod.compute_adjoint_modes(self.modeNumList,adjointModePath,
-          indexFrom=self.indexFrom,adjointSnapPaths=self.adjointSnapPaths)
-          
-        for modeNum in self.modeNumList:
-            directMode = util.load_mat_text(directModePath % modeNum)
-            adjointMode = util.load_mat_text(adjointModePath % modeNum)
-            N.testing.assert_array_almost_equal(directMode,self.directModeMat[:,
-                modeNum-self.indexFrom])
-            N.testing.assert_array_almost_equal(adjointMode,self.\
-                adjointModeMat[:,modeNum-self.indexFrom])
-        
-        for modeNum1 in self.modeNumList:
-            directMode = util.load_mat_text(directModePath%modeNum1)
-            for modeNum2 in self.modeNumList:
-                adjointMode = util.load_mat_text(adjointModePath%modeNum2)
-                innerProduct = self.bpod.fieldOperations.inner_product(
-                  directMode,adjointMode)
-                if modeNum1 != modeNum2:
-                    self.assertAlmostEqual(innerProduct,0.)
-                else:
-                    self.assertAlmostEqual(innerProduct,1.)
+        for sharedMemLoad in [True, False]:
+            for sharedMemSave in [True, False]:
+                self.bpod.compute_direct_modes(self.modeNumList, directModePath,
+                    indexFrom=self.indexFrom, directSnapPaths=self.\
+                    directSnapPaths, sharedMemLoad=sharedMemLoad, 
+                    sharedMemSave=sharedMemSave)
+                  
+                self.bpod.compute_adjoint_modes(self.modeNumList, 
+                    adjointModePath, indexFrom=self.indexFrom, 
+                    adjointSnapPaths=self.adjointSnapPaths, sharedMemLoad=\
+                    sharedMemLoad, sharedMemSave=sharedMemSave)
+                  
+                for modeNum in self.modeNumList:
+                    directMode = util.load_mat_text(directModePath % modeNum)
+                    adjointMode = util.load_mat_text(adjointModePath % modeNum)
+                    N.testing.assert_array_almost_equal(directMode, self.\
+                        directModeMat[:, modeNum-self.indexFrom])
+                    N.testing.assert_array_almost_equal(adjointMode,self.\
+                        adjointModeMat[:,modeNum-self.indexFrom])
+                
+                for modeNum1 in self.modeNumList:
+                    directMode = util.load_mat_text(directModePath%modeNum1)
+                    for modeNum2 in self.modeNumList:
+                        adjointMode = util.load_mat_text(adjointModePath %\
+                            modeNum2)
+                        innerProduct = self.bpod.fieldOperations.inner_product(
+                            directMode, adjointMode)
+                        if modeNum1 != modeNum2:
+                            self.assertAlmostEqual(innerProduct,0.)
+                        else:
+                            self.assertAlmostEqual(innerProduct,1.)
       
 if __name__=='__main__':
     unittest.main(verbosity=2)
