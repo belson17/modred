@@ -7,5 +7,5 @@ clear
 ./testpod.py
 ./testdmd.py
 ./testutil.py
-./testera.py
+#./testera.py
 #./testbpodltirom.py
