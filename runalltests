@@ -1,11 +1,24 @@
 #!/usr/bin/env bash
 
 # A bash shell to run all tests
+# This should eventually be moved into a single python test script that
+# automatically discovers tests and runs them as a group, giving a single
+# summary about pass/fails. Brandt did this for pycontrol and should be
+# able to do it again.
 clear
 ./testfieldoperations.py
 ./testbpod.py
 ./testpod.py
 ./testdmd.py
 ./testutil.py
-#./testera.py
-#./testbpodltirom.py
+./testera.py
+./testbpodltirom.py
+
+mpiexec -n 3 python testfieldoperations.py
+mpiexec -n 3 python testbpod.py
+mpiexec -n 3 python testpod.py
+mpiexec -n 3 python testdmd.py
+mpiexec -n 3 python testutil.py
+# These are serial only right now:
+#mpiexec -n 3 python testera.py
+#mpiexec -n 3 python testbpodltirom.py
