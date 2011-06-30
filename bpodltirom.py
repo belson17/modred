@@ -1,13 +1,34 @@
 
 import util
 import numpy as N
-""" This is a class which computes the ROM matrices from BPOD
-modes and assuming an LTI plant. Eventually it should be made a derived class of
-a ROM class that computes Galerkin projections for generic PDEs. Each
-PDE would be a derived class"""
 
 
 class BPODROM(object):
+    """
+    Computes the ROM matrices from BPOD modes for an LTI plant.
+    
+    To use it, you must first use the BPOD class to form the BPOD modes.
+    Then, before using this class, you must advance the direct modes
+    forward in time by a time step dt. For a discrete time ROM, this will
+    be the time step of the system. For a continuous time ROM, a first-order
+    approximation of the derivative of the direct modes is made with
+    d(mode)/dt = (mode(t=dt) - mode(t=0)) / dt, see compute_mode_derivs.
+    
+    Usage::
+
+      myBPODROM = bpodltirom.BPODROM(...)
+      # For continuous time systems
+      myBPODROM.compute_mode_derivs(modePaths, modeDtPaths, modeDerivPaths,1e-4)
+      # For continuous time systems, set dt=0
+      myBPODROM.form_A(APath, directModeAdvancedPaths, adjointModePaths, dt)
+      myBPODROM.form_B(BPath, inputPaths, adjointModePaths, dt)
+      myBPODROM.form_C(CPath, outputPaths, directModePaths)
+    
+    Eventually it should be made a derived class of
+    a ROM class that computes Galerkin projections for generic PDEs. Each
+    PDE would be a derived class
+    """
+
     def __init__(self,adjointModePaths=None,
       directModePaths=None,
       directDtModePaths=None,  
@@ -19,29 +40,21 @@ class BPODROM(object):
       load_field=None,
       save_field=None,
       numModes=None,
-      maxFieldsPerNode=2,
-      numNodes=1):
-        
-        numProcs = 1 # not parallelized yet
-        self.adjointModePaths=adjointModePaths
-        self.directModePaths=directModePaths
-        self.directDerivModePaths=directDerivModePaths
-        self.directDtModePaths=directDtModePaths
-        self.discrete = discrete
-        self.dt = dt
-        self.inner_product=inner_product
-        self.save_mat=save_mat
-        self.load_field=load_field
-        self.save_field=save_field
-        self._numProcs=numProcs
-        self.maxFieldsPerNode=maxFieldsPerNode
-        self.numNodes = 1
-        self.maxFieldsPerProc = self.maxFieldsPerNode*self.numNodes/numProcs
-        self.numModes = numModes
-    
+      verbose = True,
+      maxFieldsPerNode=2):
+          self.dt = dt
+          self.inner_product=inner_product
+          self.save_mat=save_mat
+          self.load_field=load_field
+          self.save_field=save_field
+          self.maxFieldsPerNode=maxFieldsPerNode
+          self.maxFieldsPerProc = self.maxFieldsPerNode
+          self.numModes = numModes
+          self.verbose = verbose
+      
     def compute_mode_derivs(self,modePaths,modeDtPaths,modeDerivPaths,dt):
         """
-        Computes time derivatives of modes.
+        Computes time derivatives of modes. dt=1e-4 is a good first choice.
         
         It reads in modes from modePaths and modeDtPaths, and simply
         subtracts them and divides by dt. This requires both __mul__
@@ -61,55 +74,36 @@ class BPODROM(object):
             self.save_field((modeDt - mode)*(1./dt), modeDerivPaths[modeIndex])
         
     
-    def form_A(self, APath, directDerivModePaths=None, directDtModePaths=None,
-      adjointModePaths=None, numModes=None):
+    def form_A(self, APath, directModeAdvancedPaths, adjointModePaths, dt, numModes=None):
         """
-        Computes the A matrix, either discrete or continuous time
+        Computes the continouso or discrete time A matrix
         
-        If directDerivModePaths is define and directDtModePaths is not,
-        then the A matrix will be continuous time. In the other cases,
-        the A matrix will be discrete time with the associated time step
-        being the time step taken to compute the advanced modes saved at
-        directDtModePaths from the direct modes saved at directModePaths.
+        APath
+          where the A matrix will be saved
+        directModeAdvancedPaths
+          For a discrete time system, this is the 
+          paths to the direct modes that have been advanced a time dt.
+          For continuous time systems, this should be paths to the time
+          derivatives of the direct modes.
+        adjointModePaths
+          Paths to the adjoint modes
+        dt
+          The associated time step of the ROM, for continuous time it is 0.
+        numModes
+          number of modes/states to keep in the ROM.
         """
-        
-        if directDerivModePaths is not None:
-            self.directDerivModePaths=directDerivModePaths
-        if directDtModePaths is not None:
-            self.directDtModePaths=directDtModePaths
-        if adjointModePaths is not None:
-            self.adjointModePaths=adjointModePaths
-        
-        if (self.adjointModePaths is None):
-            raise util.UndefinedError('No adjoint mode paths given')    
-        # Determine if finding the discrete or continuous time ROM matrix A
-        if (self.directDerivModePaths is None and self.directDtModePaths is None):
-            raise util.UndefinedError('No dt or deriv of direct mode paths given')
-        elif (self.directDerivModePaths is not None and self.directDtModePaths is None):
-            self.discrete = False
-        elif (self.directDerivModePaths is None and self.directDtModePaths is not None):
-            self.discrete = True
-        else:
-            print 'Warning: Both deriv and dt of direct modes are given '+\
-                'assuming discrete, so using the dt information and not deriv'
-            self.discrete = True
-        
-        # Create a new variable that contains either Dt or Deriv paths.
-        if self.discrete:
-            directAdvancedModePaths = self.directDtModePaths
-        else: 
-            directAdvancedModePaths = self.directDerivModePaths
+        self.dt = dt
+        if self.verbose:
+            if self.dt == 0:
+                print 'Computing the continuous-time A matrix'
+            else:
+                print 'Computing the discrete-time A matrix with time step',self.dt
         
         if numModes is not None:
             self.numModes=numModes
         if self.numModes is None:
-            self.numModes = min(len(directAdvancedModePaths),
-            len(adjointModePaths))
+            self.numModes = min(len(directModeAdvancedPaths), len(adjointModePaths))
         
-        if self.discrete:
-            print 'Computing',self.numModes,'modes of the discrete-time A matrix'
-        else:
-            print 'Computing',self.numModes,'modes of the continuous-time A matrix'
         self.A = N.zeros((self.numModes,self.numModes))
         
         #reading in sets of modes to form A in chunks rather than all at once
@@ -118,47 +112,51 @@ class BPODROM(object):
         
         for startRowNum in range(0,self.numModes,numRowsPerChunk):
             endRowNum = min(startRowNum+numRowsPerChunk,self.numModes)
-            adjointModes = [] #a list of 'row' adjoint modes
-            for adjointPath in self.adjointModePaths[startRowNum:endRowNum]:
-                adjointModes.append(self.load_field(adjointPath))
+            #a list of 'row' adjoint modes (row because Y' has rows of adjoint snaps)
+            adjointModes = [self.load_field(adjointPath) \
+                for adjointPath in adjointModePaths[startRowNum:endRowNum]] 
               
-            #now read in each column (forward time modes advanced dt)
-            for colNum,derivPath in enumerate(directAdvancedModePaths[:self.numModes]):
-                derivMode = self.load_field(derivPath)
+            #now read in each column (direct modes advanced dt or time deriv)
+            for colNum,advancedPath in enumerate(directModeAdvancedPaths[:self.numModes]):
+                advancedMode = self.load_field(advancedPath)
                 for rowNum in range(startRowNum,endRowNum):
-                  self.A[rowNum,colNum] = self.inner_product(adjointModes[rowNum-startRowNum],
-                  derivMode)
+                  self.A[rowNum,colNum] = \
+                      self.inner_product(adjointModes[rowNum-startRowNum], advancedMode)
 
-        self.save_mat(self.A,APath)
+        self.save_mat(self.A, APath)
         print '----- A matrix saved to',APath,'------'
 
       
-      
-    def form_B(self,BPath,inputPaths,adjointModePaths=None,numModes=None,
-        discrete = None, dt=None):
-        """Forms the B matrix, inner product of adjoint mode with sensor input
-        inpuPaths is a list of the input files, representing the actuator field.
-        THE ORDER IS IMPORTANT HERE. The order of the input files determines 
-        the order
-        of the actuators in the ROM and must be kept track of."""
+    def form_B(self, BPath, inputPaths, adjointModePaths, dt, numModes=None):
+        """
+        Forms the B matrix, either continuous or discrete time.
         
-        if adjointModePaths is not None:
-            self.adjointModePaths = adjointModePaths
-        if self.adjointModePaths is None:
-            raise util.UndefinedError('No adjoint mode paths given')
+        Computes inner products of adjoint mode with sensor inputs.
+        BPath 
+          where the B matrix will be saved
+        inputPaths 
+          is a list of the actuator fields' files (spatial representation
+          of the B matrix in the full system).
+          THE ORDER IS IMPORTANT. The order of the input files determines 
+          the order of the actuators in the ROM and must be kept track of.
+        adjointModePaths
+          Paths to the adjoint modes
+        Set dt = 0 for continuous time systems.
+        
+        numModes
+          number of modes/states to keep in the ROM.
+        """
+        
+        if self.dt is None:
+            self.dt = dt
+        elif self.dt != dt:
+            print "WARNING: dt values are inconsistent, using new value",dt
+            self.dt = dt
+        
         if numModes is not None:
             self.numModes = numModes
         if self.numModes is None:
             self.numModes = len(adjointModePaths)
-        if discrete is not None:
-            self.discrete = discrete
-        if self.discrete is None:
-            print 'Warning: did not specify discrete or continuous time, assuming '+\
-            'discrete'
-            self.discrete = True
-        if dt is not None: self.dt = dt
-        if self.discrete and self.dt is None:
-            raise ValueError('Must specify a dt for a discrete-time B matrix')
             
         numInputs = len(inputPaths)
         self.B = N.zeros((self.numModes,numInputs))
@@ -166,36 +164,46 @@ class BPODROM(object):
         numRowsPerChunk = self.maxFieldsPerProc - 1
         for startRowNum in range(0,self.numModes,numRowsPerChunk):
             endRowNum = min(startRowNum+numRowsPerChunk,self.numModes)
-            adjointModes = [] #a list of 'row' adjoint modes
-            for adjointPath in self.adjointModePaths[startRowNum:endRowNum]:
-                adjointModes.append(self.load_field(adjointPath))
-              
-            #now read in each column (forward time modes advanced dt)
+            #a list of 'row' adjoint modes
+            adjointModes = [self.load_field(adjointPath) \
+                for adjointPath in adjointModePaths[startRowNum:endRowNum]] 
+                
+            #now read in each column (actuator fields)
             for colNum,inputPath in enumerate(inputPaths):
                 inputField = self.load_field(inputPath)
                 for rowNum in range(startRowNum,endRowNum):
                     self.B[rowNum,colNum] = \
                       self.inner_product(adjointModes[rowNum-startRowNum],inputField)
-        if self.discrete:
+        
+        if self.dt != 0:
             self.B *= self.dt
             
-        self.save_mat(self.B,BPath)
-        if self.discrete:
+        self.save_mat(self.B, BPath)
+        if self.dt!=0:
             print '----- B matrix, discrete-time, saved to',BPath,'-----'
         else:
             print '----- B matrix, continuous-time, saved to',BPath,'-----'
         
     
-    def form_C(self,CPath,outputPaths,directModePaths=None,numModes=None):
-        """Forms the C matrix, multiplication of adjoint mode with sensor input
-        outputFiles is a list of the output files, representing the sensor fields.
-        THE ORDER IS IMPORTANT HERE. The order of the output files determines the order
-        of the sensors in the ROM and must be kept track of."""
+    def form_C(self, CPath, outputPaths, directModePaths, numModes=None):
+        """
+        Forms the C matrix, either continuous or discrete.
         
-        if directModePaths is not None:
-            self.directModePaths = directModePaths
-        if self.directModePaths is None:
-            raise util.UndefinedError('No adjoint mode paths given')
+        Computes inner products of adjoint mode with sensor inputs.
+        CPath 
+          where the C matrix will be saved
+        outputPaths
+          is a list of the senor fields' files (spatial representation
+          of the C matrix in the full system).
+          THE ORDER IS IMPORTANT. The order of the output files determines 
+          the order of the sensors in the ROM and must be kept track of.
+        directModePaths 
+          Paths to the direct modes
+        numModes
+          number of modes/states to keep in the ROM.
+        dt
+          does not matter for the C matrix.
+        """
         if numModes is not None:
             self.numModes = numModes
         if self.numModes is None:
@@ -208,18 +216,18 @@ class BPODROM(object):
         for startColNum in range(0,self.numModes,numColsPerChunk):
             endColNum = min(startColNum+numColsPerChunk,self.numModes)
             
-            directModes = [] #a list of 'row' adjoint modes
-            for directPath in self.directModePaths[startColNum:endColNum]:
-                directModes.append(self.load_field(directPath))
-              
+            #a list of 'row' adjoint modes
+            directModes = [self.load_field(directPath) \
+                for directPath in directModePaths[startColNum:endColNum]]
+            
             #now read in each row (outputs)
             for rowNum,outputPath in enumerate(outputPaths):
                 outputField = self.load_field(outputPath)
                 for colNum in range(startColNum,endColNum):
                     self.C[rowNum,colNum] = \
-                      self.inner_product(outputField,directModes[colNum-startColNum])      
+                        self.inner_product(outputField,directModes[colNum-startColNum])      
   
-        self.save_mat(self.C,CPath)
+        self.save_mat(self.C, CPath)
         print '----- C matrix saved to',CPath,'-----'
     
     

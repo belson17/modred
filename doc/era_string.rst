@@ -1,7 +1,6 @@
 ERA Class
 ********** 
 
-.. module:: era
-   :noindex:
-.. autoclass:: ERA
+.. automodule:: era
    :members:
+

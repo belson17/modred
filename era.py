@@ -4,15 +4,17 @@ import util
 
 class ERA(object):
     """ Forms the ERA ROM, following Ma 2010 
-    
-    Usage:
+
     The simplest way to use this class is to call 
-    myERA = ERA()
-    myERA.load_impulse_outputs(['/path/input1ToOutputs.txt',\
-      '/path/input2ToOutputs.txt',...])
-    myERA.compute_decomp()
-    myERA.save_decomp('H.txt','H2.txt','U.txt','E.txt','V.txt')
-    myERA.compute_ROM(50, APath='A.txt',BPath='B.txt',CPath='C.txt')
+    
+    Usage::
+
+      myERA = ERA()
+      myERA.load_impulse_outputs(['/path/input1ToOutputs.txt',
+        '/path/input2ToOutputs.txt',...])
+      myERA.compute_decomp()
+      myERA.save_decomp('H.txt','H2.txt','U.txt','E.txt','V.txt')
+      myERA.compute_ROM(50, APath='A.txt',BPath='B.txt',CPath='C.txt')
     
     This would generate a 50-state LTI ROM with A,B,C matrices saved in text
     format. 
@@ -26,8 +28,7 @@ class ERA(object):
     Currently everything only works in serial, but ERA is fast once the 
     input-output signals are given. In the future this class could be extended
     to compute input-to-output signals from saved snapshots as well.
-    """
-  
+    """  
     def __init__(self, save_mat=util.save_mat_text, \
         load_mat=util.load_mat_text,
         dtSample=None, dtModel=None, mc=None, mo=None, numStates=100):
@@ -67,11 +68,14 @@ class ERA(object):
         """
         Computes the A,B,C ROM discrete-time matrices, with dtModel time step.
         
-        dtSample - is the time step between the snapshots. If it is not given,
-        assume it is already known.
-        dtModel - time step after snapshots to A*snapshot. If not given, 
-        assume already known.
-        numStates is the number of states in the ROM.
+        dtSample 
+          is the time step between the snapshots. If it is not given,
+          assume it is already known.
+        dtModel 
+          time step after snapshots to A*snapshot. If not given, 
+          assume already known.
+        numStates
+          os the number of states in the ROM.
         """
         self.numStates = numStates
         if dtSample is not None: self.dtSample = dtSample
@@ -119,8 +123,11 @@ class ERA(object):
         to have columns
         [t output1 output2 ...] 
         for each impulse response in separate files. The times must be:
+        
         t0, t0+dtModel, t0+dtSample, t0+dtSample+dtModel, t0+2*dtSample, ...
+        
         OR, if dtModel and dtSample are equal
+        
         t0, t0+dtSample, t0+2*dtSample, ...
         
         IOPaths is a list of the files, each file corresponds to a particular
@@ -128,7 +135,9 @@ class ERA(object):
         
         If the impulse output signals are not saved in this format, one
         can form the  required IOSignals array with data stored as
+        
         [output #, input #, snap #]
+        
         and pass that array to the ERA instance with
         self.set_impulse_outputs(IOSignals)
         

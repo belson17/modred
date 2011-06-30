@@ -1,7 +1,6 @@
 FieldOperations Class
 ********** 
 
-.. module:: fieldoperations
-   :noindex:
-.. autoclass:: FieldOperations
+.. automodule:: fieldoperations
    :members:
+

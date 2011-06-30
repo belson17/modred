@@ -2,69 +2,17 @@
 
 import os
 import subprocess as SP
-import multiprocessing
-from multiprocessing import Pool
 import numpy as N
 import inspect 
 import copy
-import operator
-import pickle #cPickle?
+
 
 class UndefinedError(Exception): pass
-
-def getNumProcs():
-    """Returns number of processors available (on a node)"""
-    return multiprocessing.cpu_count()
-
-def find_numRows_numCols_per_chunk(memoryLimit):
-    """
-    Returns optimal number of rows and columns for inner prod mat
     
-    Maximizes the number of rows while making numCols big enough to
-    make use of the shared memory. The argument memoryLimit is the
-    maximum number of elements (fields) that can be in memory on a 
-    node at once.
-    This function might belong in fieldoperations module
-    """
-    # A sub chunk is the unit of "work" to be done by each processor
-    # in the shared memory setting. For efficiency, we give pool jobs
-    # that have # tasks = some multiple of the number of procs/node.
-    # numSubChunks is the number of these work units.
-    numSubChunks = memoryLimit / getNumProcs()
+class ParallelError(Exception):
+    """For MPI related errors"""
+    pass
     
-    # If can read more than 2 subChunks, where a sub chunk has
-    # procs/node fields, then distribute
-    # reading with one sub chunk in col, rest of the sub chunks in rows.
-    # That is, maximize the number of rows per chunk.
-    # iterate:
-    #  rows
-    #    cols
-    if numSubChunks >= 2:
-        numColsPerChunk = getNumProcs() 
-        numRowsPerChunk = memoryLimit - numColsPerChunk
-        
-    # If not, still maximize the number of rows per chunk, leftovers for col
-    elif numSubChunks == 1:
-        numRowsPerChunk = getNumProcs()
-        numColsPerChunk = memoryLimit - numRowsPerChunk
-        
-    # If can't get even numProcsPerNode fields in memory at once, then
-    # default to slowest option, will not make full use of shared memory
-    # NOTE: I'm not sure this is the fastest way for this case
-    else:
-        numColsPerChunk = 1
-        numRowsPerChunk = memoryLimit - numColsPerChunk
-    return numRowsPerChunk, numColsPerChunk
-
-
-def addSlash(s):
-    if len(s) > 0:
-        if s[-1] != '/':
-            s+='/'
-        return s
-    else:
-        raise RuntimeError('empty string, cant add directory slash')
-
 def save_mat_text(A,filename,delimiter=' '):
     """Writes a 1D or 2D array or matrix to a text file
     
@@ -100,7 +48,7 @@ def load_mat_text(filename,delimiter=' ',isComplex=False):
 
 def inner_product(snap1,snap2):
     """ A default inner product for n-dimensional numpy arrays """
-    return N.sum(snap1*snap2.conj()) 
+    return (snap1*snap2.conj()).sum()
 
     
 def svd(A):
@@ -139,19 +87,7 @@ def getFileList(dir,fileExtension=''):
         return filteredFileList
     else:
         return fileList
-
-def getFileListSubprocess(dir, fileExtension=''):
-    """Gets the files in dir with 'ls' and subprocess"""
-    rawList = SP.Popen(['ls '+dir+'*'+fileExtension],stdout=SP.PIPE,shell=True).communicate()[0]
-    fileList = ['']
-    for chari,char in enumerate(rawList):
-        if char != '\n':
-            fileList[-1]+=char
-        elif chari != len(rawList)-1:
-            fileList.append('')
-    
-    return [file[len(dir):] for file in fileList]
-
+        
 
 def get_data_members(obj):
     """ Returns a dictionary containing data members of an object"""
@@ -161,7 +97,7 @@ def get_data_members(obj):
         if not name.startswith('__') and not inspect.ismethod(value):
             pr[name] = value
     return pr
-    
+
     
 def sum_lists(list1,list2):
     """Sum the elements of each list, return a new list.
@@ -170,29 +106,5 @@ def sum_lists(list1,list2):
     elsewhere too"""
     assert len(list1)==len(list2)
     return [list1[i]+list2[i] for i in xrange(len(list1))]
-
-
-
-def eval_func_tuple(f_args):
-    """Takes a tuple of a function and args, evaluates and returns result"""
-    return f_args[0](*f_args[1:])
-    
-# Simple function for testing
-def add(x,y): return x+y
-def my_random(arg):
-    return N.random.random(arg)
-def inner_product_wrapper(args):
-    assert(len(args)==2)
-    return inner_product(*args)
-    
-def my_inner_product(a,b):
-    ip = 0
-    for r in range(a.shape[0]):
-        for c in range(a.shape[1]):
-            ip += a[r,c]*b[r,c]
-    return ip
-
-
-
 
 

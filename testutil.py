@@ -1,14 +1,21 @@
-#!/usr/bin/env python
+#!/usr/local/bin/env python
 
 import numpy as N
-import util
 import unittest
 import subprocess as SP
-import sys
 import os
-import multiprocessing
+import util
 
-pool = multiprocessing.Pool()
+try: 
+    from mpi4py import MPI
+    distributed = MPI.COMM_WORLD.Get_size() > 1
+except ImportError:
+    print 'WARNING: no mpi4py module, only serial behavior can be tested'
+    distributed = False
+    
+print 'To fully test, must do both:'
+print ' 1) python testutil.py'
+print ' 2) mpiexec -n <# procs> python testutil.py'
 
 class TestUtil(unittest.TestCase):
     """Tests all of the functions in util.py
@@ -17,12 +24,20 @@ class TestUtil(unittest.TestCase):
     Some parallel features are tested even when running in serial.
     If you run this test with mpiexec, mpi4py MUST be installed or you will
     receive meaningless errors. 
-    """
-    
-    def setUp(self):        
+    """    
+    def setUp(self):
+        try:
+            from mpi4py import MPI
+            self.comm=MPI.COMM_WORLD
+            self.numMPITasks = self.comm.Get_size()
+            self.rank = self.comm.Get_rank()
+        except ImportError:
+            self.numProcs=1
+            self.rank=0
         if not os.path.isdir('testfiles'):
             SP.call(['mkdir','testfiles'])
         
+    @unittest.skipIf(distributed,'Only save/load matrices in serial')
     def test_load_save_mat_text(self):
         """Test that can read/write text matrices"""
         tol = 8
@@ -39,7 +54,8 @@ class TestUtil(unittest.TestCase):
                     N.testing.assert_array_almost_equal(mat,matRead,
                       decimal=tol)
         SP.call(['rm',matPath])
-    
+                       
+        
     def test_svd(self):
         numInternalList = [10,50]
         numRowsList = [3,5,40]
@@ -62,9 +78,9 @@ class TestUtil(unittest.TestCase):
                     N.testing.assert_array_almost_equal(LSingVecs,U)
                     N.testing.assert_array_almost_equal(singVals,E)
                     N.testing.assert_array_almost_equal(RSingVecs,V)
-        
+    
     
 if __name__=='__main__':
-    unittest.main(verbosity=1)
+    unittest.main(verbosity=2)
 
 

@@ -1,7 +1,5 @@
 BPOD Class
 ********** 
 
-.. module:: bpod
-   :noindex:
-.. autoclass:: BPOD
+.. automodule:: bpod
    :members:

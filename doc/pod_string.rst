@@ -1,7 +1,5 @@
 POD Class
 ********** 
 
-.. module:: pod
-   :noindex:
-.. autoclass:: POD
+.. automodule:: pod
    :members:

@@ -1,4 +1,4 @@
-.. Python-Control documentation master file, created by
+.. Modaldecomp documentation master file, created by
    sphinx-quickstart on Thu Jan  6 09:49:36 2011.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
@@ -18,6 +18,8 @@ Contents:
    era_string
    bpodltirom_string
    util_string
+   parallel_string
+   benchmark_string
    
 
 Indices and tables

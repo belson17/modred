@@ -1,7 +1,6 @@
 DMD Class
 ********** 
 
-.. module:: dmd
-   :noindex:
-.. autoclass:: DMD
+.. automodule:: dmd
    :members:
+
