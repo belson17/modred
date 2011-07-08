@@ -389,8 +389,10 @@ class FieldOperations(object):
             # variable would not be defined.)
             endColIndex = endRowIndex
             if self.verbose:
-                self._print_inner_product_progress(startRowIndex, endRowIndex,
-                    endColIndex, numRows, numCols, printAfterNumCols)
+                pass
+                # JON- THIS NEEDS TO BE UPDATED, I changed how print progress works!!
+                #self._print_inner_product_progress(startRowIndex, endRowIndex,
+                #    endColIndex, numRows, numCols, printAfterNumCols)
 
             # Now compute the part that relies on snapshots that haven't been
             # loaded (ie for columns whose indices are greater than the largest
@@ -412,9 +414,11 @@ class FieldOperations(object):
                                 startRowIndex], colFields[colIndex -\
                                 startColIndex])
                     if self.verbose:
-                        self._print_inner_product_progress(startRowIndex, 
-                            endRowIndex, endColIndex, numRows, numCols, 
-                            printAfterNumCols)
+                        pass
+                        # JON - ALSO UPDATE THIS!!!
+                        #self._print_inner_product_progress(startRowIndex, 
+                        #    endRowIndex, endColIndex, numRows, numCols, 
+                        #    printAfterNumCols)
  
         return innerProductMatChunk
       
