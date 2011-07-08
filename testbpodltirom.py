@@ -23,6 +23,9 @@ class TestBPODROM(unittest.TestCase):
             util.load_mat_text,inner_product=util.inner_product, save_field=\
             util.save_mat_text)
         self.testDir = 'files_bpodltirom_test/'
+        import os.path
+        if not os.path.exists(self.testDir):
+            SP.call(['mkdir',self.testDir])
         self.directModePath = self.testDir+'direct_mode_%03d.txt'
         self.adjointModePath = self.testDir +'adjoint_mode_%03d.txt'
         self.directDerivModePath =self.testDir + 'direct_deriv_mode_%03d.txt'

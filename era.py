@@ -14,7 +14,7 @@ class ERA(object):
         '/path/input2ToOutputs.txt',...])
       myERA.compute_decomp()
       myERA.save_decomp('H.txt','H2.txt','U.txt','E.txt','V.txt')
-      myERA.compute_ROM(50, APath='A.txt',BPath='B.txt',CPath='C.txt')
+      myERA.compute_ROM(50)
     
     This would generate a 50-state LTI ROM with A,B,C matrices saved in text
     format. 
@@ -75,7 +75,7 @@ class ERA(object):
           time step after snapshots to A*snapshot. If not given, 
           assume already known.
         numStates
-          os the number of states in the ROM.
+          the number of states in the ROM.
         """
         self.numStates = numStates
         if dtSample is not None: self.dtSample = dtSample

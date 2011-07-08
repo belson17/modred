@@ -98,6 +98,9 @@ def get_data_members(obj):
             pr[name] = value
     return pr
 
+def sum_arrays(arr1,arr2):
+    """Used for allreduce command, may not be necessary"""
+    return arr1+arr2
     
 def sum_lists(list1,list2):
     """Sum the elements of each list, return a new list.

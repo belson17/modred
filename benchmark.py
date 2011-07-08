@@ -10,11 +10,24 @@ import util
 import time as T
 import parallel as parallel_mod
 import fieldoperations as FO
+import cPickle
 
 parallel = parallel_mod.parallelInstance
+def save_pickle(obj, filename):
+    fid = open(filename,'wb')
+    cPickle.dump(obj,fid)
+    fid.close()
+    
+def load_pickle(filename):
+    fid = open(filename,'rb')
+    obj = cPickle.load(fid)
+    fid.close()
+    return obj
 
-save_field = util.save_mat_text
-load_field = util.load_mat_text
+save_field = save_pickle 
+load_field = load_pickle
+#save_field = util.save_mat_text
+#load_field = util.load_mat_text
 inner_product = util.inner_product
 dataDir = './files_benchmark/'
 
@@ -25,7 +38,6 @@ def generate_fields(numStates, numFields, fieldDir, fieldName):
     fieldDir is the directory
     fieldName is the name and must include a %03d type string.
     """
-    
     if not os.path.exists(fieldDir):
         SP.call(['mkdir', fieldDir])
     
@@ -97,7 +109,7 @@ def main():
     maxFieldsPerNode = 50
     #t= lin_combine_fields(numStates, numBases, numProducts, maxFieldsPerNode)
     #print 'time for lin_combine_fields is',t
-    numRows = 1000
+    numRows = 2000
     numCols = 500
     t= inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode)
     print 'time for inner_product_mat is',t

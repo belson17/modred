@@ -116,7 +116,7 @@ class FieldOperations(object):
             numCompletedIPs = endRowIndex * numCols
             percentCompletedIPs = 100. * numCompletedIPs/(numCols*numRows)
             print >> sys.stderr, ('Processor %d completed %.1f%% of inner ' +\
-                'products: IPMat[:%d, :%d] of IPMat[:%d, :%d]') % \
+                'products: IPMat[:%d, :%d] of IPMat[%d, %d]') % \
                 (self.parallel.getRank(), percentCompletedIPs, endRowIndex, \
                 numCols, numRows, numCols)
 
@@ -125,69 +125,183 @@ class FieldOperations(object):
         """ 
         Computes a matrix of inner products (Y'*X) and returns it.
         
-        This method assigns the task of computing the a matrix of inner products
-        into pieces for each processor, then passes this onto 
-        self._compute_inner_product_chunk(...). After 
-        _compute_inner_product_chunk returns chunks of the inner product matrix,
-        they are concatenated into a completed, single, matrix on all processors 
-        """      
-        if isinstance(rowFieldPaths,str):
-            rowFieldPaths = [rowFieldPaths]
-        if isinstance(colFieldPaths,str):
-            colFieldPaths = [colFieldPaths]
-          
-        numColFields = len(colFieldPaths)
-        numRowFields = len(rowFieldPaths)
+        It is generally best to use all available processors, however this
+        depends on the computer and the nature of the load and IP functions
+        supplied. In some cases, loading in parallel is slower.
+        
+          rowFieldPaths = row snapshot files (BPOD adjoint snaps, ~Y)
+          colFieldPaths = column snapshot files (BPOD direct snaps, ~X)
 
-        # Enforce that there are more rows than columns for efficiency
-        # Each column is read by one proc and then sent to others, so
-        # processors are responsible for unique rows.
-        # It might not matter which is larger since there is no repeated
-        # load in any direction, only send/receives
-        if numColFields > numRowFields:
+        Within this method, the snapshots
+        are read in memory-efficient ways such that they are not all in memory 
+        at once. This results in finding 'chunks' of the eventual matrix that 
+        is returned.
+        This method only supports finding a full rectangular mat. For POD, a different
+        method is used to take advantage of the symmetric matrix.
+        
+        Each processor is responsible for loading
+        a subset of the rows and columns. The processor which reads a particular
+        column field then sends it to each successive processor so it
+        can be used to compute all IPs for the current row chunk on each
+        processor. This is repeated
+        until all processors are done with all of their row chunks. If there
+        are 2 processors::
+           
+                | r0c0 o  |
+          rank0 | r1c0 o  |
+                | r2c0 o  |
+            -
+                | o  r3c1 |
+          rank1 | o  r4c1 |
+                | o  r5c1 |
+        
+        Rank 0 reads column 0 (c0) and fills out IPs for all rows in a row chunk (r*c*)
+        Here there is only one row chunk for each processor for simplicity.
+        Rank 1 reads column 1 (c1) and fills out IPs for all rows in a row chunk.
+        In the next step, rank 0 sends c0 to rank 1 and rank 1 sends c1 to rank 1.
+        The remaining IPs are filled in::
+        
+                | r0c0 r0c1 |
+          rank0 | r1c0 r1c1 |
+                | r2c0 r2c1 |
+            -
+                | r3c0 r3c1 |
+          rank1 | r4c0 r4c1 |
+                | r5c0 r5c1 |
+          
+        In reality it is more complicated since the number of cols and rows
+        may not be divisible by the number of processors. This is handled
+        internally, by allowing the last processor to have fewer tasks, however
+        it is still part of the passing circle, and rows and cols are
+        handled independently.
+        This is also generalized to allow the columns to be read in chunks, 
+        rather than only 1 at a time.
+        This could be useful, for example, in a shared memory setting where
+        it is best to work in operation-units (loads, IPs, etc) of procs/node.
+        
+        The scaling is:
+        
+          num loads / processor ~ (n_r/(max*n_p))*n_c/n_p + n_r/n_p
+          num MPI sends / processor ~ (n_r/(max*n_p))*(n_p-1)*n_c/n_p
+          num inner products / processor ~ n_r*n_c/n_p
+        
+        where n_r is number of rows, n_c number of columns, max is 
+        maxFieldsPerProc-1 = maxFieldsPerNode/numNodesPerProc - 1, and
+        n_p is number of processors.
+        
+        It is enforced that there are more columns than rows by doing an
+        internal transpose and un-transpose. This improves efficiency.
+        
+        From these scaling laws, it can be seen that it is generally 
+        good to use all available processors, even though it lowers max.
+        This depends though on the particular system. Sometimes multiple 
+        simultaneous loads actually makes each load very slow. 
+        
+        As an example, consider doing a case with len(rowFieldPaths)=8
+        and len(colFieldPaths) = 12, 2 processors, 1 node, and maxFieldsPerNode=3.
+        n_p=2, max=2, n_r=8, n_c=12 (n_r < n_c).
+        
+        num loads / proc = 16
+        
+        If we flip n_r and n_c, num loads / proc = 18.
+        """      
+        if not isinstance(rowFieldPaths,list):
+            rowFieldPaths = [rowFieldPaths]
+        if not isinstance(colFieldPaths,list):
+            colFieldPaths = [colFieldPaths]
+            
+        numCols = len(colFieldPaths)
+        numRows = len(rowFieldPaths)
+
+        if numRows < numCols:
             transpose = True
             temp = rowFieldPaths
             rowFieldPaths = colFieldPaths
             colFieldPaths = temp
-            temp = numRowFields
-            numRowFields = numColFields
-            numColFields = temp
+            temp = numRows
+            numRows = numCols
+            numCols = temp
         else: 
             transpose = False
 
-        rowFieldProcAssignments = self.parallel.find_assignments(range(
-            numRowFields))
+        # numColsPerChunk is the number of cols each proc loads at once        
+        numColsPerProcChunk = 1
+        numRowsPerProcChunk = self.maxFieldsPerProc-numColsPerProcChunk         
+        
+        # Determine how the loading and inner products will be split up.
+        numColChunks = int(N.ceil(numCols*1./(numColsPerProcChunk*self.parallel.getNumProcs())))
+        numRowChunks = int(N.ceil(numRows*1./(numRowsPerProcChunk*self.parallel.getNumProcs())))
 
-        if self.parallel.isRankZero() and rowFieldProcAssignments[0][-1] -\
-            rowFieldProcAssignments[0][0] > self.maxFieldsPerProc and self.\
-            verbose:
-            print ('Warning: Each processor will have to read the direct ' +\
-                'snapshots (%d total) multiple times. Increase number of ' +\
-                'processors to avoid this and get a big speedup.') %\
-                numColFields
+        if self.parallel.isRankZero() and numRowChunks > 1 and self.verbose:
+            print ('Warning: The direct ' +\
+                'snapshots (%d total) will be read multiple times. Increase number of ' +\
+                'processors or maxFielsPerNode to avoid this and get a big speedup.') %\
+                numCols
+        
+        #print 'numColChunks',numColChunks,'numRowChunks',numRowChunks
+        # Currently using a little trick to finding all of the inner product mat chunks
+        # Each processor has a full innerProductMat with numRows x numCols even
+        # though each processor is not responsible for filling in all of these entries
+        # After each proc fills in what it is responsible for, the other entries are 0's 
+        # still. Then, an allgather is done and all the chunk mats are simply summed.
+        # This is simpler than trying to figure out the size of each chunk mat
+        # The efficiency is not expected to be an issue, the size of the mats are
+        # small compared to the size of the fields (at least in cases where
+        # the data is big and memory is a constraint).
+        innerProductMatChunk = N.mat(N.zeros((numRows,numCols)))
+        
+        for rowChunkNum in xrange(numRowChunks):
+            startRowIndex = rowChunkNum*numRowsPerProcChunk*self.parallel.getNumProcs() + \
+                numRowsPerProcChunk*self.parallel.getRank()
+            endRowIndex = min(numRows,startRowIndex+numRowsPerProcChunk)
+            
+            rowFields = [self.load_field(rowPath) \
+                for rowPath in rowFieldPaths[startRowIndex:endRowIndex]]
 
-        # Only compute if task list is nonempty
-        if len(rowFieldProcAssignments[self.parallel.getRank()]) != 0:
-            innerProductMatChunk = self._compute_inner_product_chunk(
-                rowFieldPaths[rowFieldProcAssignments[self.parallel.getRank()][0]:
-                rowFieldProcAssignments[self.parallel.getRank()][-1]+1], 
-                colFieldPaths)
-        else:  
-            innerProductMatChunk = None
-
-        # Gather list of chunks from each processor, ordered by rank
+            for colChunkNum in xrange(numColChunks):
+                startColIndex = colChunkNum*numColsPerProcChunk*self.parallel.getNumProcs() + \
+                    numColsPerProcChunk*self.parallel.getRank()
+                endColIndex = min(startColIndex+numColsPerProcChunk,numCols)
+                # Pass the col fields to proc with rank -> mod(rank+1,numProcs) 
+                # Must do this for each processor, until data makes a circle
+                colFieldsRecv = (None, None)
+                colIndices = range(startColIndex,endColIndex)
+                for numPasses in xrange(self.parallel.getNumProcs()):
+                    # If on the first pass, load the col fields, no send/recv
+                    # This is all that is called when in serial, loop iterates once.
+                    if numPasses == 0:
+                        colFields = [self.load_field(colPath) \
+                            for colPath in colFieldPaths[startColIndex:endColIndex]]
+            
+                    else:
+                        colFieldsSend = (colFields, colIndices)
+                        dest = (self.parallel.getRank()+1) % self.parallel.getNumProcs()
+                        #Create unique tag based on ranks
+                        sendTag = self.parallel.getRank()*(self.parallel.getNumProcs()+1) + dest
+                        self.parallel.comm.send(colFieldsSend, dest=dest, tag=sendTag)
+                        
+                        source = (self.parallel.getRank()-1) % self.parallel.getNumProcs()
+                        recvTag = source*(self.parallel.getNumProcs()+1) + self.parallel.getRank()
+                        colFieldsRecv = self.parallel.comm.recv(source=source, tag=recvTag)
+                        
+                        colIndices = colFieldsRecv[1]
+                        colFields = colFieldsRecv[0]
+                    # Compute the IPs for this set of data
+                    # colIndices stores the indices of the innerProductMatChunk columns
+                    # to be filled in.
+                    for rowIndex in xrange(startRowIndex,endRowIndex):
+                        for colFieldIndex,colField in enumerate(colFields):
+                            innerProductMatChunk[rowIndex,colIndices[colFieldIndex]] = \
+                              self.inner_product(rowFields[rowIndex-startRowIndex],colField)
+                    #self.parallel.sync() # necessary?  
+                # Completed a chunk of rows and all columns on all processors.
+            self._print_inner_product_progress(endRowIndex, numRows, numCols)
+        
+        #self.parallel.sync() # necessary?
+        # Assign these chunks into innerProductMat.
         if self.parallel.isDistributed():
-            innerProductMatChunkList = self.parallel.comm.allgather(
+            innerProductMat = self.parallel.custom_comm.allreduce( \
                 innerProductMatChunk)
-            innerProductMat = N.mat(N.zeros((numRowFields, numColFields)))
-
-            # concatenate the chunks of inner product matrix for nonempty tasks
-            for rank, currentInnerProductMatChunk in enumerate(
-                innerProductMatChunkList):
-                if currentInnerProductMatChunk is not None:
-                    innerProductMat[rowFieldProcAssignments[rank][0]:\
-                        rowFieldProcAssignments[rank][-1]+1] =\
-                        currentInnerProductMatChunk
         else:
             innerProductMat = innerProductMatChunk 
 
@@ -195,173 +309,6 @@ class FieldOperations(object):
             innerProductMat = innerProductMat.T
 
         return innerProductMat
-  
-          
-    def _compute_inner_product_chunk(self, rowFieldPaths, colFieldPaths):
-        """ 
-        Computes inner products of snapshots in memory-efficient chunks
-        
-        The 'chunk' refers to the fact that within this method, the snapshots
-        are read in memory-efficient ways such that they are not all in memory 
-        at once. This results in finding 'chunks' of the eventual matrix that 
-        is returned. It is also true that this function is meant to be used in 
-        distributed - individually on each processor. In this case, each processor 
-        has different lists of snapshots to take inner products of.
-            rows = number of row snapshot files passed in (BPOD adjoint snaps)
-            columns = number column snapshot files passed in (BPOD direct snaps)
-        Currently this method only supports finding rectangular chunks.  In the 
-        future this method can be expanded to find more general shapes of the 
-        matrix. It returns a matrix with the above number of rows and columns.
-        
-        To determine how the columns will be split up, it is important to see
-        how the columns are handled. Each processor is responsible for loading
-        a subset of the columns. The processor which read a particular
-        column field then sends it to each successive processor so it
-        can be used to compute all IPs for the current row chunk on each
-        processor. This process is done on each processor. It is repeated
-        until all processors are done with all of their row chunks. If there
-        are 2 processors:
-         
-          | c0 o  |
-        r0| c0 o  |
-          | c0 o  |
-          -
-          | o  c1 |
-        r1| o  c1 |
-          | o  c1 |
-        
-        Rank 0 (r0) reads column 0 (c0) and fills out IPs for all rows in a row chunk
-        Here there is only one row chunk for each processor for simplicity.
-        Rank 1 reads column 1 (c1) and fills out IPs for all rows in a row chunk.
-        In the next step, rank 0 sends c0 to rank 1 and rank 1 sends c1 to rank 1.
-        The remaining IPs are filled in.
-        
-          | c0 c1 |
-        r0| c0 c1 |
-          | c0 c1 |
-          -
-          | c0 c1 |
-        r1| c0 c1 |
-          | c0 c1 |
-        This is complicated by having uneven loads in the rows and columns
-        on each processor. Specifically, there are multiple row chunks,
-        possibly different #s of row chunks for each processor, and each 
-        processor can be responsible for a different number of columns.
-        This is also generalized to allow the columns to be read in chunks.
-        This could be useful, for example, in a shared memory setting where
-        it is best to work in operation-units (loads, IPs, etc) of procs/node.
-        """
-        # Must check that these are lists, in case method is called directly
-        # When called as part of compute_inner_product_matrix, paths are
-        # generated by getProcAssignments, and are called such that a list is
-        # always passed in
-        if not isinstance(rowFieldPaths,list):
-            rowFieldPaths = [rowFieldPaths]
-        if not isinstance(colFieldPaths,list):
-            colFieldPaths = [colFieldPaths]
-        
-        numRows = len(rowFieldPaths)
-        numCols = len(colFieldPaths)
-        
-        # Enforce more columns than rows for efficiency - no longer necessary??
-                
-        numColsPerChunk = 1
-        numRowsPerChunk = self.maxFieldsPerProc-numColsPerChunk         
-        
-        # Determine how the columns will be split up.
-        # For now the proc assignments must all have an equal number of 
-        # elements otherwise some processors will stop executing a loop
-        # and a barrier/sync command will fail. The "leftover" col fields are
-        # simply read by ALL processors. Inefficient, but minor for our
-        # typical usage of # processors.
-        numColsParallel = numCols - (numCols%self.parallel.getNumProcs())
-        colFieldProcAssignments = \
-            self.parallel.find_assignments(range(numColsParallel))
-        # Quick check to be sure that each assignment has equal length
-        lenAssignment = len(colFieldProcAssignments[0])
-        if self.parallel.getNumProcs() != \
-            [len(assign) for assign in colFieldProcAssignments].count(lenAssignment):
-            print 'length of all colFieldProcAssignments are',\
-            [len(assign) for assign in colFieldProcAssignments],'and lenAssignment is',lenAssignment,\
-            'and count of them is',[len(assign) for assign in colFieldProcAssignments].count(lenAssignment),\
-            'and numProcs is',self.parallel.getNumProcs() 
-            raise ValueError('Assignments have different length')
-        """
-        # Set up the colFieldProcAssignments using all columns.
-        # The loop over the assignments must be changed to account for
-        # different numbers of assignments for each processor.
-        colFieldProcAssignments = self.parallel.find_assignments(range(numCols))
-        # Find the maximum number of assignments given to a processor
-        maxAssignments = N.ceil(\
-            max([len(assgn) for assgn in colFieldProcAssignments])/(1.*numColsPerChunk))
-        """
-        innerProductMatChunk = N.mat(N.zeros((numRows,numCols)))
-        
-        for startRowIndex in range(0,numRows,numRowsPerChunk):
-            endRowIndex = min(numRows,startRowIndex+numRowsPerChunk)
-            
-            rowFields = [self.load_field(rowPath) \
-                for rowPath in rowFieldPaths[startRowIndex:endRowIndex]]
-            
-            # New method which increases speed by factor of ~numprocs
-            if lenAssignment > 0:
-                for startColIndex in xrange(colFieldProcAssignments[self.parallel.getRank()][0],\
-                    colFieldProcAssignments[self.parallel.getRank()][-1]+1,numColsPerChunk):
-                    endColIndex = min(numCols,startColIndex+numColsPerChunk)
-                    # Pass the col fields to proc with rank -> mod(rank+1,numProcs) 
-                    #if self.parallel.isDistributed():
-                    # Must do this for each processor, until data makes a circle
-                    # should change the while loop to a for loop in the future
-                    colFieldsRecv = (None, None)
-                    colIndices = range(startColIndex,endColIndex)
-                    for numPasses in xrange(self.parallel.getNumProcs()):
-                        # If on the first pass, load the col fields, no send/recv
-                        # This is all that is called when in serial, loop iterates once.
-                        if numPasses == 0:
-                            colFields = [self.load_field(colPath) \
-                                for colPath in colFieldPaths[startColIndex:endColIndex]]
-                
-                        else:
-                            colFieldsSend = (colFields, colIndices)
-                            dest = (self.parallel.getRank()+1) % self.parallel.getNumProcs()
-                            #Create unique tag based on ranks
-                            sendTag = self.parallel.getRank()*(self.parallel.getNumProcs()+1) + dest
-                            self.parallel.comm.send(colFieldsSend, dest=dest, tag=sendTag)
-                            
-                            source = (self.parallel.getRank()-1) % self.parallel.getNumProcs()
-                            recvTag = source*(self.parallel.getNumProcs()+1) + self.parallel.getRank()
-                            colFieldsRecv = self.parallel.comm.recv(source=source, tag=recvTag)
-                            
-                            colIndices = colFieldsRecv[1]
-                            colFields = colFieldsRecv[0]
-                        # Compute the IPs for this set of data
-                        # colIndices stores the indices of the innerProductMatChunk columns
-                        # to be filled in. The length of the list is <=numColsPerChunk, less 
-                        # than when at the end of the columns. Currently numColsPerChunk=1.
-                        for rowIndex in xrange(startRowIndex,endRowIndex):
-                            for colFieldIndex,colField in enumerate(colFields):
-                                innerProductMatChunk[rowIndex,colIndices[colFieldIndex]] = \
-                                  self.inner_product(rowFields[rowIndex-startRowIndex],colField)
-                        self.parallel.sync() # necessary?  
-                    
-            # Done the loop through the col fields that were parallelized,
-            # now finish of the remaining ending cols the slow way, each
-            # proc reading each col. This should eventually be removed, and
-            # all of the columns should be done in parallel
-            for startColIndex in xrange(numColsParallel,numCols,numColsPerChunk):
-                endColIndex = min(numCols,startColIndex+numColsPerChunk)
-                # Load a subset of the column fields this proc is responsible for
-                colFields = [self.load_field(colPath) \
-                    for colPath in colFieldPaths[startColIndex:endColIndex]]
-                # Compute the IPs that are possible with this set of the snapshots
-                for rowIndex in xrange(startRowIndex,endRowIndex):
-                    for colIndex in xrange(startColIndex,endColIndex):
-                        innerProductMatChunk[rowIndex,colIndex] = \
-                          self.inner_product(rowFields[rowIndex-startRowIndex],
-                          colFields[colIndex-startColIndex])                    
-            self._print_inner_product_progress(endRowIndex, numRows, numCols)
-        
-        return innerProductMatChunk
       
 
 
@@ -595,23 +542,23 @@ class FieldOperations(object):
         """
         Linearly combines the basis fields and saves them.
         
-        sumFieldPaths is a list of the files where the linear combinations
-          will be saved.
-        basisFieldPaths is a list of files where the basis fields will
-          be read from.
-        fieldCoeffMat is a matrix where each row corresponds to an basis field
-          and each column corresponds to a sum (lin. comb.) field. The rows and columns
-          are assumed to correspond, by index, to the lists basisFieldPaths and 
-          sumFieldPaths.
-          sums = basis * fieldCoeffMat
+          sumFieldPaths is a list of the files where the linear combinations
+            will be saved.
+          basisFieldPaths is a list of files where the basis fields will
+            be read from.
+          fieldCoeffMat is a matrix where each row corresponds to an basis field
+            and each column corresponds to a sum (lin. comb.) field. The rows and columns
+            are assumed to correspond, by index, to the lists basisFieldPaths and 
+            sumFieldPaths.
+            sums = basis * fieldCoeffMat
         
         Each processor reads a subset of the basis fields to compute as many
         outputs as a processor can have in memory at once. Each processor
         computes the "layers" from the basis it is resonsible for, and for
         as many modes as it can fit in memory. The layers from all procs are
         then
-        summed together to form the full outputs. The modes are then saved
-        to file.        
+        summed together to form the full outputs. The output sumFields 
+        are then saved to file.
         """
         if self.save_field is None:
             raise util.UndefinedError('save_field is undefined')
@@ -630,7 +577,7 @@ class FieldOperations(object):
             raise ValueError('coeff mat has fewer rows than num of basis paths')
         if numSumFields > fieldCoeffMat.shape[1]:
             raise ValueError('Coeff matrix has fewer cols than num of ' +\
-                'output paths')            
+                'output paths')
         if numBasisFields < self.parallel.getNumProcs():
             raise util.ParallelError('Cannot find outputs when fewer basiss '+\
                'than number of processors')

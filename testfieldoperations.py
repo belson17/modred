@@ -12,10 +12,10 @@ import util
 
 
 parallel = parallel_mod.parallelInstance
-
-print 'To test fully, remember to do both:'
-print '    1) python testmodaldecomp.py'
-print '    2) mpiexec -n <# procs> python testmodaldecomp.py'
+if parallel.isRankZero():
+    print 'To test fully, remember to do both:'
+    print '    1) python testfieldoperations.py'
+    print '    2) mpiexec -n <# procs> python testfieldoperations.py'
 
 class TestFieldOperations(unittest.TestCase):
     """ Tests of the FieldOperations class """
@@ -313,10 +313,10 @@ class TestFieldOperations(unittest.TestCase):
             productTrue = mat1 * mat2
            
             # Test computation as chunk (a serial method, tested on each proc)
-            productComputedAsChunk = self.fieldOperations.\
-                _compute_inner_product_chunk(paths1, paths2)
-            N.testing.assert_array_almost_equal(productComputedAsChunk, 
-                productTrue)
+            #productComputedAsChunk = self.fieldOperations.\
+            #    _compute_inner_product_chunk(paths1, paths2)
+            #N.testing.assert_array_almost_equal(productComputedAsChunk, 
+            #    productTrue)
 
             # Test paralleized computation.  
             productComputedAsMat = self.fieldOperations.\
