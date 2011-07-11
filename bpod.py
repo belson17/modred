@@ -12,21 +12,15 @@ class BPOD(object):
     snapshots. BPOD inherits from ModalDecomp and uses it for low level
     functions.
     
-    Usage:
+    Usage::
     
-      import bpod
-      
-      myBPOD = bpod.BPOD(load_field = my_load_field, save_field=my_save_field,\
-        inner_product = my_inner_product, maxFieldsPerNode = 500)
-        
-      myBPOD.compute_decomp(directSnapPaths,adjointSnapPaths)
-      
+      import bpod      
+      myBPOD = bpod.BPOD(load_field = my_load_field, save_field=my_save_field,
+          inner_product = my_inner_product, maxFieldsPerNode = 500)
+      myBPOD.compute_decomp(directSnapPaths,adjointSnapPaths)      
       myBPOD.save_hankel_mat(hankelPath)
-      
       myBPOD.save_decomp(LSingVecsPath, singValsPath, RSingVecsPath)
-      
       myBPOD.compute_direct_modes(range(1,r), 'bpod_direct_mode_%03d.txt')
-      
       myBPOD.compute_adjoint_modes(range(1,r), 'bpod_adjoint_mode_%03d.txt')
     """
     def __init__(self, load_field=None, save_field=None, 

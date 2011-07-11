@@ -15,7 +15,7 @@ parallel = parallel_mod.parallelInstance
 if parallel.isRankZero():
     print 'To test fully, remember to do both:'
     print '    1) python testfieldoperations.py'
-    print '    2) mpiexec -n <# procs> python testfieldoperations.py'
+    print '    2) mpiexec -n <# procs> python testfieldoperations.py\n\n'
 
 class TestFieldOperations(unittest.TestCase):
     """ Tests of the FieldOperations class """
@@ -255,13 +255,6 @@ class TestFieldOperations(unittest.TestCase):
                           self.fieldOperations._compute_modes, modeNumList,
                           modePath, snapPaths, buildCoeffMat,
                           indexFrom=indexFrom)
-                    # If more processors than number of snaps available,
-                    # then some procs will not have a task, not allowed.
-                    elif parallel.getNumProcs() > numSnaps:
-                        self.assertRaises(util.ParallelError, self.\
-                            fieldOperations._compute_modes, modeNumList, 
-                            modePath, snapPaths, buildCoeffMat, 
-                            indexFrom=indexFrom)
                     else:
                         # Test the case that only one mode is desired,
                         # in which case user might pass in an int
@@ -278,20 +271,20 @@ class TestFieldOperations(unittest.TestCase):
                             modeNumList = [modeNumList]
 
                         parallel.sync()
-                        
+                        #print 'modeNumList',modeNumList
                         #if parallel.isRankZero():
                         for modeNum in modeNumList:
                             computedMode = util.load_mat_text(
                                 modePath % modeNum)
                             #print 'mode number',modeNum
-                            #print 'true mode',trueModes[:,
-                                #modeNum-indexFrom]
+                            #print 'true mode',trueModes[:,\
+                            #    modeNum-indexFrom]
                             #print 'computed mode',computedMode
                             N.testing.assert_array_almost_equal(
                                 computedMode, trueModes[:,modeNum-\
                                 indexFrom])
                                 
-                        #parallel.sync()
+                        parallel.sync()
        
         parallel.sync()
 
@@ -299,8 +292,7 @@ class TestFieldOperations(unittest.TestCase):
     def test_compute_inner_product_mats(self):
         """
         Test computation of matrix of inner products in memory-efficient
-        chunks, both in parallel (compute_inner_product_matrix) and serial
-        (compute_inner_product_chunk)
+        chunks, both in parallel (compute_inner_product_mat).
         """ 
         def assert_equal_mat_products(mat1, mat2, paths1, paths2):
             # Path list may actually be a string, in which case covert to list
@@ -319,11 +311,12 @@ class TestFieldOperations(unittest.TestCase):
             #    productTrue)
 
             # Test paralleized computation.  
-            productComputedAsMat = self.fieldOperations.\
-                compute_inner_product_mat(paths1, paths2)
+            productComputedAsMat = \
+                self.fieldOperations.compute_inner_product_mat(paths1, paths2)
             N.testing.assert_array_almost_equal(productComputedAsMat, 
                 productTrue)
-           
+            
+            
             # Test computation of upper triangular inner product matrix chunk
             if paths1 == paths2:
                 # Test computation as chunk (serial).  
@@ -353,6 +346,7 @@ class TestFieldOperations(unittest.TestCase):
                 self.assertRaises(ValueError, self.fieldOperations.\
                     _compute_upper_triangular_inner_product_chunk, paths1, 
                     paths2)
+            
 
         numRowSnapsList =[1, int(round(self.totalNumFieldsInMem / 2.)), self.\
             totalNumFieldsInMem, self.totalNumFieldsInMem *2]

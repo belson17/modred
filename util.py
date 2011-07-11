@@ -9,10 +9,6 @@ import copy
 
 class UndefinedError(Exception): pass
     
-class ParallelError(Exception):
-    """For MPI related errors"""
-    pass
-    
 def save_mat_text(A,filename,delimiter=' '):
     """Writes a 1D or 2D array or matrix to a text file
     

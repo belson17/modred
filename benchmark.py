@@ -77,12 +77,10 @@ def inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode):
 def lin_combine_fields(numStates, numBases, numProducts, maxFieldsPerNode):
     """
     Computes linear combination of fields from saved fields and random coeffs
-    lin_combine_fields(self,outputFieldPaths,inputFieldPaths,fieldCoeffMat):
+    
+    numBases is number of fields to be linearly combined
+    numProducts is the resulting number of fields
     """
-    # numBases is number of fields to be linearly combined
-    # numProducts is the resulting number of fields
-
-
     basisName = 'snap_%04d.txt'
     productName = 'product_%04d.txt'
     generate_fields(numStates, numBases, dataDir, basisName)
@@ -103,14 +101,14 @@ def clean_up():
 
 
 def main():
-    numStates = 2000
-    numBases = 100
-    numProducts = 10
+    numStates = 50
+    numBases = 3000
+    numProducts = 1000
     maxFieldsPerNode = 50
     #t= lin_combine_fields(numStates, numBases, numProducts, maxFieldsPerNode)
     #print 'time for lin_combine_fields is',t
     numRows = 2000
-    numCols = 500
+    numCols = 1000
     t= inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode)
     print 'time for inner_product_mat is',t
     clean_up()

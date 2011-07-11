@@ -132,17 +132,18 @@ class BPODROM(object):
         Forms the B matrix, either continuous or discrete time.
         
         Computes inner products of adjoint mode with sensor inputs.
+        
         BPath 
-          where the B matrix will be saved
+          is where the B matrix will be saved
         inputPaths 
           is a list of the actuator fields' files (spatial representation
           of the B matrix in the full system).
           THE ORDER IS IMPORTANT. The order of the input files determines 
           the order of the actuators in the ROM and must be kept track of.
         adjointModePaths
-          Paths to the adjoint modes
-        Set dt = 0 for continuous time systems.
-        
+          is a list of paths to the adjoint modes
+        dt
+          Set dt = 0 for continuous time systems.
         numModes
           number of modes/states to keep in the ROM.
         """
@@ -190,19 +191,20 @@ class BPODROM(object):
         Forms the C matrix, either continuous or discrete.
         
         Computes inner products of adjoint mode with sensor inputs.
+        
         CPath 
-          where the C matrix will be saved
+          is where the C matrix will be saved
         outputPaths
           is a list of the senor fields' files (spatial representation
           of the C matrix in the full system).
           THE ORDER IS IMPORTANT. The order of the output files determines 
           the order of the sensors in the ROM and must be kept track of.
         directModePaths 
-          Paths to the direct modes
+          is a list of paths to the direct modes
         numModes
           number of modes/states to keep in the ROM.
-        dt
-          does not matter for the C matrix.
+        
+        Note: dt does not matter for the C matrix.
         """
         if numModes is not None:
             self.numModes = numModes

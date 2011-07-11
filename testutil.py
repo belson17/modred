@@ -8,14 +8,17 @@ import util
 
 try: 
     from mpi4py import MPI
+    rank = MPI.COMM_WORLD.Get_rank()
     distributed = MPI.COMM_WORLD.Get_size() > 1
 except ImportError:
     print 'WARNING: no mpi4py module, only serial behavior can be tested'
     distributed = False
-    
-print 'To fully test, must do both:'
-print ' 1) python testutil.py'
-print ' 2) mpiexec -n <# procs> python testutil.py'
+    rank = 0
+
+if rank==0:
+    print 'To fully test, must do both:'
+    print '  1) python testutil.py'
+    print '  2) mpiexec -n <# procs> python testutil.py\n\n'
 
 class TestUtil(unittest.TestCase):
     """Tests all of the functions in util.py
@@ -34,8 +37,17 @@ class TestUtil(unittest.TestCase):
         except ImportError:
             self.numProcs=1
             self.rank=0
-        if not os.path.isdir('testfiles'):
-            SP.call(['mkdir','testfiles'])
+        self.testDir = 'testfiles/'
+        if not os.path.exists(self.testDir):
+            SP.call(['mkdir',self.testDir])
+    
+    def tearDown(self):
+        if distributed:
+            MPI.COMM_WORLD.barrier()
+        SP.call(['rm -rf '+self.testDir], shell=True)
+        if distributed:
+            MPI.COMM_WORLD.barrier()
+        
         
     @unittest.skipIf(distributed,'Only save/load matrices in serial')
     def test_load_save_mat_text(self):
@@ -43,7 +55,7 @@ class TestUtil(unittest.TestCase):
         tol = 8
         maxNumRows = 20
         maxNumCols = 8
-        matPath = 'testMatrix.txt'
+        matPath = self.testDir+'testMatrix.txt'
         delimiters = [',',' ',';']
         for delimiter in delimiters:
             for numRows in range(1,maxNumRows):
@@ -53,8 +65,7 @@ class TestUtil(unittest.TestCase):
                     matRead = util.load_mat_text(matPath,delimiter=delimiter)
                     N.testing.assert_array_almost_equal(mat,matRead,
                       decimal=tol)
-        SP.call(['rm',matPath])
-                       
+                      
         
     def test_svd(self):
         numInternalList = [10,50]

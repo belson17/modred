@@ -3,6 +3,10 @@ import os
 import numpy as N
 import copy
 
+class ParallelError(Exception):
+    """For MPI related errors"""
+    pass
+    
 class Parallel(object):
     """Simple container for information about how many processors there are.
     It ensures no failure in case mpi4py is not installed or running serial.
@@ -105,7 +109,7 @@ class Parallel(object):
         Evenly distributing the tasks in taskList, allowing for uneven
         task weights. 
         It returns a list that has numMPITasks entries. 
-        Proc n is responsible for taskMPITaskAssignments[n][...]
+        Proc n is responsible for task MPITaskAssignments[n][...]
         where the 2nd dimension of the 2D list contains the tasks (whatever
         they were in the original taskList).
         """
@@ -154,23 +158,22 @@ class Parallel(object):
                 _taskWeights = _taskWeights[newMaxTaskIndex + 1:]
             else:
                 taskMPITasksAssignments.append([])
-
         # Warning if some processors have no tasks
         if self.verbose and self.isRankZero():
             printedPreviously = False
             for r, assignment in enumerate(taskMPITasksAssignments):
                 if len(assignment) == 0 and not printedPreviously:
                     print ('Warning - %d out of %d processors have no ' +\
-                        'tasks') % (self._MPITasks - r, self._MPITasks)
+                        'tasks') % (self._numMPITasks - r, self._numMPITasks)
                     printedPreviously = True
-
         return taskMPITasksAssignments
 
-    # CURRENTLY THIS FUNCTION DOESNT WORK
     def evaluate_and_bcast(self,outputs, function, arguments=[], keywords={}):
         """
         Evaluates function with inputs and broadcasts outputs to procs
         
+        CURRENTLY THIS FUNCTION DOESNT WORK
+    
         outputs 
           must be a list
 

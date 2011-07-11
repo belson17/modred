@@ -2,37 +2,29 @@
 # MODALDECOMP LIBRARY #
 #######################
 
-Write a user guide
+Write a user guide, or add more Usage examples in sphinx docs
 
-Write a check to make sure that tests are running on multiple cores, otherwise
-shared memory functionality may not get tested.  Should print a warning if only
-one core is available/being used.
-
-
-Use MKL or LAPACK and numexpr and numpy for parallel (sh mem) inner products and
+Write explanation of parallelization and scaling. Do more serious study
+of this for a given case, experiment with code for speedups (maybe just use
+pickle for saving objects).
+Mention that users should experirment with MKL or LAPACK and numexpr 
+and numpy for parallel (sh mem) inner products and
 array operations. Also, multiprocessing might be pickling data unnecessarily, so
 should try threading, see: http://www.scipy.org/Cookbook/Multithreading.
-
-
-Include shared memory for much improved scaling. Each node will hve one MPI
-proc, and many shared memory procs. Jobs will always be submitted to use 1
-proc/node.
-
 
 add an option for svd thresholding in DMD.  when the svd singular values are
 ill-conditioned, then the resulting computation results can be invalid.  for
 instance the mode norms may come out negative...(when computed using
 coefficients rather than the modes themselves).
 
-
-Change snapNum and similar to snapIndex. This is because the "number" of a mode
+snapNum and similar should be called snapIndex. This is because the "number" of a mode
 is generally different than its index. The most common example of this is the
 first mode is called mode number 1 but has index 0 (indexFrom=1). To be clear, I
 differentiate between a mode number and mode index. To be consistent with all
 naming conventions, index should be used instead of num when referring to some
-object's "number/index" internally and starting from 0.  Number is more of a
+object's "index" internally and starting from 0.  Number is more of a
 name, index is hidden from the user and starts from 0.
-  - This has been done for modaldecomp and bpod, and their tests. All future
+  - This has been done for fieldopersations and bpod, and their tests. All future
     code should make the distinction between xxxNum and xxxIndex notation.
 
 
@@ -49,13 +41,9 @@ fieldoperations.
 
 Profiling with cProfile could expose potentially easy speed increases.  However,
 some of these results could be dependent on the user's use of the library, we
-shouldn't optimize for a particular case at expense of other cases.
+shouldn't optimize for a particular case at expense of other cases. Use on benchmark.py.
 
-
-Sphinx documentation. We tried to follow the right format, so this should be
-just a matter of cleaning up comments and formats, and learning to use sphinx.
-
-Automatically detect the maxSnapsPerNode. This would require some fancier
+Automatically detect the maxFieldsPerNode. This would require some fancier
 things, like determining the available RAM and the size of a snapshot object. It
 might not be possible since some memory is used by the snap/mode objects when
 doing inner products, etc. We could leave a safety factor though, and maybe
