@@ -585,6 +585,8 @@ class FieldOperations(object):
           
           scalar multiplies/proc = n_s*n_b/n_p
           
+        Where n_s is number of sum fields, n_b is number of basis fields,
+        n_p is number of processors, max = maxFieldsPerNode-1.
         """
         if self.save_field is None:
             raise util.UndefinedError('save_field is undefined')
