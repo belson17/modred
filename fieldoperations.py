@@ -241,28 +241,30 @@ class FieldOperations(object):
         
         numColsPerChunk = int(N.ceil(numCols*1./numColChunks))
         numRowsPerChunk = int(N.ceil(numRows*1./numRowChunks))
+
         if self.parallel.isRankZero() and numRowChunks > 1 and self.verbose:
             print ('Warning: The column fields (direct ' +\
-                'snapshots), of which there are %d, will be read multiple times. '+\
+                'snapshots), of which there are %d, will be read %d times each. '+\
                 'Increase number of ' +\
-                'nodes or maxFielsPerNode to avoid this and get a big speedup.') %\
-                numCols
+                'nodes or maxFieldsPerNode to reduce redundant loads and get a big speedup.') %\
+                (numCols,numRowChunks)
         #print 'numColChunks',numColChunks,'numRowChunks',numRowChunks
         # Currently using a little trick to finding all of the inner product mat chunks
         # Each processor has a full innerProductMat with numRows x numCols even
         # though each processor is not responsible for filling in all of these entries
         # After each proc fills in what it is responsible for, the other entries are 0's 
-        # still. Then, an allgather is done and all the chunk mats are simply summed.
-        # This is simpler than trying to figure out the size of each chunk mat
+        # still. Then, an allreduce is done and all the chunk mats are simply summed.
+        # This is simpler than trying to figure out the size of each chunk mat for allgather.
         # The efficiency is not expected to be an issue, the size of the mats are
         # small compared to the size of the fields (at least in cases where
         # the data is big and memory is a constraint).
         innerProductMatChunk = N.mat(N.zeros((numRows,numCols)))
         for startRowIndex in xrange(0, numRows, numRowsPerChunk):
             endRowIndex = min(numRows,startRowIndex+numRowsPerChunk)
-            rowAssignments = self.parallel.find_assignments(range(startRowIndex,endRowIndex))
             # Convenience variable, has the rows which this rank is responsible for.
-            procRowAssignments = rowAssignments[self.parallel.getRank()]
+            procRowAssignments = \
+                self.parallel.find_assignments(range(startRowIndex,endRowIndex))\
+                [self.parallel.getRank()]
             if len(procRowAssignments)!=0:
                 rowFields = [self.load_field(rowPath) \
                     for rowPath in rowFieldPaths[procRowAssignments[0]:procRowAssignments[-1]+1]]
@@ -271,8 +273,9 @@ class FieldOperations(object):
 
             for startColIndex in xrange(0, numCols, numColsPerChunk):
                 endColIndex = min(startColIndex+numColsPerChunk, numCols)
-                colAssignments = self.parallel.find_assignments(range(startColIndex,endColIndex))
-                procColAssignments = colAssignments[self.parallel.getRank()]
+                procColAssignments = \
+                    self.parallel.find_assignments(range(startColIndex,endColIndex))\
+                    [self.parallel.getRank()]
                 # Pass the col fields to proc with rank -> mod(rank+1,numProcs) 
                 # Must do this for each processor, until data makes a circle
                 colFieldsRecv = (None, None)
@@ -456,9 +459,11 @@ class FieldOperations(object):
         if self.parallel.isRankZero() and rowFieldProcAssignments[0][-1] -\
             rowFieldProcAssignments[0][0] > self.maxFieldsPerProc and self.\
             verbose:
-            print ('Warning: Each processor may have to read the snapshots ' +\
-                '(%d total) multiple times. Increase number of processors ' +\
-                'to avoid this and get a big speedup.') % numFields
+            print ('Warning: The fields (snapshots), ' +\
+                'of which there are %d, will be read multiple times. If possible, '+\
+                'increase number of ' +\
+                'nodes or maxFieldsPerNode to avoid this and get a big speedup.') %\
+                numFields
 
         # Perform task if task assignment is not empty
         if len(rowFieldProcAssignments[self.parallel.getRank()]) != 0:
@@ -542,10 +547,6 @@ class FieldOperations(object):
             elif modeNum-indexFrom >= fieldCoeffMat.shape[1]:
                 raise ValueError('Cannot compute if mode index is greater '+\
                     'than number of columns in the build coefficient matrix')
-
-        #if numSnaps < self.parallel.getNumProcs():
-        #    raise util.ParallelError('Cannot find modes when fewer snapshots '+\
-        #       'than number of processors')
         
         # Construct fieldCoeffMat and outputPaths for lin_combine_fields
         modeNumListFromZero = [modeNum-indexFrom for modeNum in modeNumList]
@@ -629,10 +630,10 @@ class FieldOperations(object):
 
         if self.parallel.isRankZero() and numSumChunks > 1 and self.verbose:
             print ('Warning: The basis fields (snapshots), ' +\
-                'of which there are %d, will be read multiple times. If possible, '+\
+                'of which there are %d, will be loaded from file %d times each. If possible, '+\
                 'increase number of ' +\
-                'nodes or maxFielsPerNode to avoid this and get a big speedup.') %\
-                numBases
+                'nodes or maxFieldsPerNode to reduce redundant loads and get a big speedup.') %\
+                (numBases, numSumChunks)
                
         for startSumIndex in xrange(0, numSums, numSumsPerChunk):
             endSumIndex = min(startSumIndex+numSumsPerChunk, numSums)

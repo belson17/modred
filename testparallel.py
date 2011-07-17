@@ -1,8 +1,10 @@
 
 import os
 import unittest
+import copy
 import numpy as N
 import parallel as parallel_mod
+
 
 parallel = parallel_mod.parallelInstance
 
@@ -17,7 +19,7 @@ class TestParallel(unittest.TestCase):
         try:
             from mpi4py import MPI
             self.comm=MPI.COMM_WORLD
-            self.numMPITasks = self.comm.Get_size()
+            self.numMPIWorkers = self.comm.Get_size()
             self.rank = self.comm.Get_rank()
         except ImportError:
             self.numProcs=1
@@ -36,7 +38,7 @@ class TestParallel(unittest.TestCase):
     def test_init(self):
         """Test that the MPI object uses arguments correctly.
         """
-        self.assertEqual(self.myParallel._numMPITasks,self.numMPITasks)
+        self.assertEqual(self.myParallel._numMPIWorkers,self.numMPIWorkers)
         self.assertEqual(self.myParallel._rank,self.rank)
                         
     def test_find_assignments(self):
@@ -50,13 +52,16 @@ class TestParallel(unittest.TestCase):
         """
         # Assume each item in task list has equal weight
         taskList = ['1', '2', '4', '3', '6', '7', '5']
-        self.myParallel._numMPITasks = 5
+        copyTaskList = copy.deepcopy(taskList)
+        self.myParallel._numMPIWorkers = 5
         correctAssignments = [['1'], ['2'], ['4', '3'], ['6'], ['7', '5']]
         self.assertEqual(self.myParallel.find_assignments(taskList), 
             correctAssignments)
+        # Check that the original list is not modified.
+        self.assertEqual(taskList, copyTaskList)
          
         taskList = [3, 4, 1, 5]
-        self.myParallel._numMPITasks = 2
+        self.myParallel._numMPIWorkers = 2
         correctAssignments=[[3, 4], [1, 5]]
         self.assertEqual(self.myParallel.find_assignments(taskList),
             correctAssignments)
@@ -64,7 +69,7 @@ class TestParallel(unittest.TestCase):
         # Allow for uneven weighting of items in task list
         taskList = ['1', '2', '4', '3', '6', '7', '5']
         taskWeights = [1, 3, 2, 3, 3, 2, 1]
-        self.myParallel._numMPITasks = 5
+        self.myParallel._numMPIWorkers = 5
         correctAssignments = [['1','2'], ['4'], ['3'], ['6'], ['7', '5']]
         self.assertEqual(self.myParallel.find_assignments(taskList, 
             taskWeights=taskWeights), correctAssignments)
@@ -74,7 +79,7 @@ class TestParallel(unittest.TestCase):
         # not []
         taskList = [3, 4, 2, 6, 1]
         taskWeights = [5, 0.25, 1.75, 0.5, 0.5]
-        self.myParallel._numMPITasks = 4
+        self.myParallel._numMPIWorkers = 4
         correctAssignments = [[3], [4], [2], [6, 1]]
         self.assertEqual(self.myParallel.find_assignments(taskList, 
             taskWeights=taskWeights), correctAssignments)
@@ -83,11 +88,12 @@ class TestParallel(unittest.TestCase):
         # the first 3 tasks, leaving none for the last processor
         taskList = ['a', 4, (2, 1), 4.3]
         taskWeights = [.1, .1, .1, .7]
-        self.myParallel._numMPITasks = 3
+        copyTaskWeights = copy.deepcopy(taskWeights)
+        self.myParallel._numMPIWorkers = 3
         correctAssignments = [['a', 4, (2, 1)], [4.3], []]
         self.assertEqual(self.myParallel.find_assignments(taskList, 
             taskWeights=taskWeights), correctAssignments)
-       
+        self.assertEqual(taskWeights, copyTaskWeights)
 
     @unittest.skip('Currently function isnt completed or used')
     def test_evaluate_and_bcast(self):

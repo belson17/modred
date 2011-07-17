@@ -1,0 +1,48 @@
+This is BibTeX, Version 0.99d (TeX Live 2010)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
+The top-level auxiliary file: modaldecomp_guide.aux
+The style file: abbrv.bst
+Database file #1: references.bib
+Warning--I didn't find a database entry for ""
+You've used 1 entry,
+            2118 wiz_defined-function locations,
+            506 strings with 3880 characters,
+and the built_in function-call counts, 328 in all, are:
+= -- 33
+> -- 7
+< -- 0
++ -- 3
+- -- 2
+* -- 27
+:= -- 59
+add.period$ -- 3
+call.type$ -- 1
+change.case$ -- 4
+chr.to.int$ -- 0
+cite$ -- 1
+duplicate$ -- 11
+empty$ -- 29
+format.name$ -- 2
+if$ -- 64
+int.to.chr$ -- 0
+int.to.str$ -- 1
+missing$ -- 1
+newline$ -- 8
+num.names$ -- 2
+pop$ -- 2
+preamble$ -- 1
+purify$ -- 3
+quote$ -- 0
+skip$ -- 7
+stack$ -- 0
+substring$ -- 33
+swap$ -- 1
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 4
+warning$ -- 0
+while$ -- 4
+width$ -- 2
+write$ -- 13
+(There was 1 warning)

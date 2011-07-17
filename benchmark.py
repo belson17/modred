@@ -41,13 +41,22 @@ def generate_fields(numStates, numFields, fieldDir, fieldName):
     if not os.path.exists(fieldDir):
         SP.call(['mkdir', fieldDir])
     
+    """
+    # Parallelize saving of fields (may slow down sequoia)
+    procFieldNumAssignments = \
+        parallel.find_assignments(range(numFields))[parallel.getRank()]
+    for fieldNum in procFieldNumAssignments:
+        field = N.random.random(numStates)
+        save_field(field, fieldDir + fieldName%fieldNum)
+    """
     if parallel.isRankZero():
-        for fieldNum in range(numFields):
+        for fieldNum in xrange(numFields):
             field = N.random.random(numStates)
             save_field(field, fieldDir + fieldName%fieldNum)
+    
     parallel.sync()
 
-def inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode):
+def inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode,profName=None):
     """
     Computes inner products from known fields.
     
@@ -74,7 +83,7 @@ def inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode):
     return totalTime
 
 
-def lin_combine_fields(numStates, numBases, numProducts, maxFieldsPerNode):
+def lin_combine(numStates, numBases, numProducts, maxFieldsPerNode):
     """
     Computes linear combination of fields from saved fields and random coeffs
     
@@ -101,16 +110,16 @@ def clean_up():
 
 
 def main():
-    numStates = 50
-    numBases = 3000
+    numStates = 8000
+    numBases = 2500
     numProducts = 1000
     maxFieldsPerNode = 50
-    #t= lin_combine_fields(numStates, numBases, numProducts, maxFieldsPerNode)
-    #print 'time for lin_combine_fields is',t
+    t= lin_combine(numStates, numBases, numProducts, maxFieldsPerNode)
+    print 'time for lin_combine is',t
     numRows = 2000
     numCols = 1000
-    t= inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode)
-    print 'time for inner_product_mat is',t
+    #t= inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode)
+    #print 'time for inner_product_mat is',t
     clean_up()
 
 

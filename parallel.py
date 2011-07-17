@@ -36,15 +36,15 @@ class Parallel(object):
             self.custom_comm = Intracomm(self.comm)
             
             # To adjust number of procs, use submission script/mpiexec
-            self._numMPITasks = self.comm.Get_size()          
+            self._numMPIWorkers = self.comm.Get_size()          
             self._rank = self.comm.Get_rank()
-            if self._numMPITasks > 1:
+            if self._numMPIWorkers > 1:
                 self.distributed = True
             else:
                 self.distributed = False
         except ImportError:
             self._numNodes = 1
-            self._numMPITasks = 1
+            self._numMPIWorkers = 1
             self._rank = 0
             self.comm = None
             self.distributed = False
@@ -95,14 +95,15 @@ class Parallel(object):
         """Returns the rank of this processor"""
         return self._rank
     
-    def getNumMPITasks(self):
-        """Returns the number of MPI tasks, currently same as numProcs"""
-        return self._numMPITasks
+    def getNumMPIWorkers(self):
+        """Returns the number of MPI workers, currently same as numProcs"""
+        return self._numMPIWorkers
     
     def getNumProcs(self):
         """Returns the number of processors"""
-        return self.getNumMPITasks()
+        return self.getNumMPIWorkers()
 
+    
     def find_assignments(self, taskList, taskWeights=None):
         """ Returns a 2D list of tasks, [rank][taskIndex], 
         
@@ -113,60 +114,54 @@ class Parallel(object):
         where the 2nd dimension of the 2D list contains the tasks (whatever
         they were in the original taskList).
         """
-        taskMPITasksAssignments= []
-        _taskList = copy.deepcopy(taskList)
-
+        taskAssignments= []
+        
         # If no weights are given, assume each task has uniform weight
         if taskWeights is None:
-            _taskWeights = N.ones(len(taskList))
+            taskWeights = N.ones(len(taskList))
         else:
-            _taskWeights = N.array(taskWeights)
+            taskWeights = N.array(taskWeights)
+        
+        firstUnassignedIndex = 0
 
-        numTasks = sum(_taskWeights)
+        for workerNum in range(self._numMPIWorkers):
+            # amount of work to do, float (scaled by weights)
+            workRemaining = sum(taskWeights[firstUnassignedIndex:]) 
 
-        # Function that searches for closest match to val in valList
-        def find_closest_val(val, valArray):
-            closestVal = min(abs(valArray - val))
-            for testInd, testVal in enumerate(valList):
-                if testVal == closestVal:
-                    ind = testInd
-            return closestVal, ind
+            # Number of MPI workers whose jobs have not yet been assigned
+            numRemainingWorkers = self._numMPIWorkers - workerNum
 
-        for MPITaskNum in range(self._numMPITasks):
-            # Number of remaining tasks (scaled by weights)
-            numRemainingTasks = sum(_taskWeights) 
-
-            # Number of processors/MPITasks whose jobs have not yet been assigned
-            numRemainingMPITasks = self._numMPITasks - MPITaskNum
-
-            # Distribute weighted task list evenly across processors
-            numTasksPerMPITasks = 1. * numRemainingTasks / numRemainingMPITasks
+            # Distribute work load evenly across workers
+            workPerWorker = 1. * workRemaining / numRemainingWorkers
 
             # If task list is not empty, compute assignments
-            if _taskWeights.size != 0:
-                # Index of task list element such that sum(_taskList[:ind]) 
-                # comes closest to numTasksPerProc
-                newMaxTaskIndex = N.abs(N.cumsum(_taskWeights) -\
-                    numTasksPerMPITasks).argmin()
-
-                # Add all tasks up to and including newMaxTaskIndex to the
-                # assignment list
-                taskMPITasksAssignments.append(_taskList[:newMaxTaskIndex + 1])
-
-                # Remove assigned tasks, weights from list
-                del _taskList[:newMaxTaskIndex + 1]
-                _taskWeights = _taskWeights[newMaxTaskIndex + 1:]
+            if taskWeights[firstUnassignedIndex:].size != 0:
+                # Index of taskList element which has sum(taskList[:ind]) 
+                # closest to workPerWorker
+                newMaxTaskIndex = N.abs(N.cumsum(taskWeights[firstUnassignedIndex:]) -\
+                    workPerWorker).argmin() + firstUnassignedIndex
+                # Append all tasks up to and including newMaxTaskIndex
+                taskAssignments.append(taskList[firstUnassignedIndex:\
+                    newMaxTaskIndex+1])
+                firstUnassignedIndex = newMaxTaskIndex+1
             else:
-                taskMPITasksAssignments.append([])
-        # Warning if some processors have no tasks
-        if self.verbose and self.isRankZero():
-            printedPreviously = False
-            for r, assignment in enumerate(taskMPITasksAssignments):
-                if len(assignment) == 0 and not printedPreviously:
-                    print ('Warning - %d out of %d processors have no ' +\
+                taskAssignments.append([])
+                
+        return taskAssignments
+        
+        
+
+    def checkEmptyTasks(self, taskAssignments):
+        """Convenience function that checks if empty worker assignments"""
+        emptyTasks = False
+        for r, assignment in enumerate(taskMPITasksAssignments):
+            if len(assignment) == 0 and not emptyTasks:
+                if self.verbose and self.isRankZero():
+                    print ('Warning: %d out of %d processors have no ' +\
                         'tasks') % (self._numMPITasks - r, self._numMPITasks)
-                    printedPreviously = True
-        return taskMPITasksAssignments
+                emptyTasks = True
+        return emptyTasks
+
 
     def evaluate_and_bcast(self,outputs, function, arguments=[], keywords={}):
         """
