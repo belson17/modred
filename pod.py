@@ -89,8 +89,10 @@ class POD(object):
                 self.correlationMat = self.load_mat(correlationMatPath)
         elif snapPaths is not None:
             self.snapPaths = snapPaths
+            #self.correlationMat = self.fieldOperations.\
+            #    compute_symmetric_inner_product_mat(self.snapPaths)
             self.correlationMat = self.fieldOperations.\
-                compute_symmetric_inner_product_mat(self.snapPaths)
+                compute_inner_product_mat(self.snapPaths, self.snapPaths)
         else:
             raise util.UndefinedError('Must provide either snap paths or '+\
                 'correlation matrix path to pod.compute_decomp')

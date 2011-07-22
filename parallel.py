@@ -218,7 +218,7 @@ class Parallel(object):
         
         
     def __eq__(self, other):
-        a = (self._numMPITasks == other.getNumMPITasks() and \
+        a = (self._numMPIWorkers == other.getNumMPIWorkers() and \
         self._rank == other.getRank() and \
         self.distributed == other.isDistributed())
         #print self._numProcs == other.getNumProcs() ,\
