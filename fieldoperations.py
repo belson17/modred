@@ -670,7 +670,7 @@ class FieldOperations(object):
                         dest = (self.parallel.getRank()+1) % self.parallel.getNumProcs()
                         #Create unique tag based on ranks
                         sendTag = self.parallel.getRank()*(self.parallel.getNumProcs()+1) + dest
-                        self.parallel.comm.send(basisFieldsSend, dest=dest, tag=sendTag)
+                        self.parallel.comm.isend(basisFieldsSend, dest=dest, tag=sendTag)
                         source = (self.parallel.getRank()-1) % self.parallel.getNumProcs()
                         recvTag = source*(self.parallel.getNumProcs()+1) + self.parallel.getRank()
                         basisFieldsRecv = self.parallel.comm.recv(source=source, tag=recvTag)
