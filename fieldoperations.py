@@ -270,7 +270,6 @@ class FieldOperations(object):
                     for rowPath in rowFieldPaths[procRowAssignments[0]:procRowAssignments[-1]+1]]
             else:
                 rowFields = []
-
             for startColIndex in xrange(0, numCols, numColsPerChunk):
                 endColIndex = min(startColIndex+numColsPerChunk, numCols)
                 procColAssignments = \
@@ -299,17 +298,18 @@ class FieldOperations(object):
                         dest = (self.parallel.getRank()+1) % self.parallel.getNumProcs()
                         #Create unique tag based on ranks
                         sendTag = self.parallel.getRank()*(self.parallel.getNumProcs()+1) + dest
-                        self.parallel.comm.send(colFieldsSend, dest=dest, tag=sendTag)
-                        
+                        self.parallel.comm.isend(colFieldsSend, dest=dest, tag=sendTag)
                         source = (self.parallel.getRank()-1) % self.parallel.getNumProcs()
                         recvTag = source*(self.parallel.getNumProcs()+1) + self.parallel.getRank()
                         colFieldsRecv = self.parallel.comm.recv(source=source, tag=recvTag)
-                        
+                        self.parallel.sync()
                         colIndices = colFieldsRecv[1]
                         colFields = colFieldsRecv[0]
+                        
                     # Compute the IPs for this set of data
                     # colIndices stores the indices of the innerProductMatChunk columns
                     # to be filled in.
+                        
                     if len(procRowAssignments) > 0:
                         for rowIndex in xrange(procRowAssignments[0],procRowAssignments[-1]+1):
                             for colFieldIndex,colField in enumerate(colFields):
@@ -497,6 +497,7 @@ class FieldOperations(object):
         innerProductMat += N.triu(innerProductMat, 1).T
 
         return innerProductMat
+        
     
     def _compute_modes(self, modeNumList, modePath, snapPaths, fieldCoeffMat,
         indexFrom=1):
@@ -544,14 +545,16 @@ class FieldOperations(object):
             if modeNum < indexFrom:
                 raise ValueError('Cannot compute if mode number is less than '+\
                     'indexFrom')
-            elif modeNum-indexFrom >= fieldCoeffMat.shape[1]:
-                raise ValueError('Cannot compute if mode index is greater '+\
-                    'than number of columns in the build coefficient matrix')
+            elif modeNum-indexFrom > fieldCoeffMat.shape[1]:
+                raise ValueError(('Mode index, %d, is greater '+\
+                    'than number of columns in the build coefficient '+\
+                    'matrix, %d')%(modeNum-indexFrom,fieldCoeffMat.shape[1]))
         
         # Construct fieldCoeffMat and outputPaths for lin_combine_fields
         modeNumListFromZero = [modeNum-indexFrom for modeNum in modeNumList]
         fieldCoeffMatReordered = fieldCoeffMat[:,modeNumListFromZero]
         modePaths = [modePath%modeNum for modeNum in modeNumList]
+        
         self.lin_combine(modePaths, snapPaths, fieldCoeffMatReordered)
     
     
@@ -596,7 +599,6 @@ class FieldOperations(object):
             sumFieldPaths = [sumFieldPaths]
         if not isinstance(basisFieldPaths, list):
             basisFieldPaths = [basisFieldPaths]
-        
         numBases = len(basisFieldPaths)
         numSums = len(sumFieldPaths)
         if numBases > fieldCoeffMat.shape[0]:
@@ -669,13 +671,13 @@ class FieldOperations(object):
                         #Create unique tag based on ranks
                         sendTag = self.parallel.getRank()*(self.parallel.getNumProcs()+1) + dest
                         self.parallel.comm.send(basisFieldsSend, dest=dest, tag=sendTag)
-                        
                         source = (self.parallel.getRank()-1) % self.parallel.getNumProcs()
                         recvTag = source*(self.parallel.getNumProcs()+1) + self.parallel.getRank()
                         basisFieldsRecv = self.parallel.comm.recv(source=source, tag=recvTag)
-                        
+                        self.parallel.sync()
                         basisIndices = basisFieldsRecv[1]
                         basisFields = basisFieldsRecv[0]
+                    
                     # Compute the scalar multiplications for this set of data
                     # basisIndices stores the indices of the fieldCoeffMat to use.
                     
