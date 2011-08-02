@@ -695,8 +695,8 @@ class FieldOperations(object):
                 self.save_field(sumLayers[sumIndex],\
                     sumFieldPaths[sumIndex+procSumAssignments[0]])
             if self.parallel.isRankZero() and self.verbose:    
-                print ('Completed %.1f%% of sum fields, %d of %d'%\
-                    (endSumIndex*100./numSums,endSumIndex,numSums))
+                print >> sys.stderr, ('Completed %.1f%% of sum fields, %d ' +\
+                    'of %d') % (endSumIndex*100./numSums,endSumIndex,numSums)
 
     def __eq__(self, other):
         #print 'comparing fieldOperations classes'
