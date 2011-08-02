@@ -66,6 +66,10 @@ class Parallel(object):
         
         Could be improved to better mimic if isRankZero(): print a,b,...
         """
+        # If not a list, convert to list
+        if not isinstance(msgs, list):
+            msgs = [msgs]
+            
         if self.isRankZero():
             for msg in msgs:
                 print msg
