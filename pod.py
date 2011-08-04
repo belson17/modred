@@ -67,39 +67,24 @@ class POD(object):
             self.save_mat(self.singVecs, singVecsPath)
             self.save_mat(self.singVals, singValsPath)
 
-    def compute_decomp(self, snapPaths=None, correlationMatPath=None):
+    
+    def compute_decomp(self, snapPaths):
         """
         Compute POD decomposition.
         
-        If correlationMatPath is given, use that. Otherwise, compute
-        correlation matrix with snapPaths.
-        
-        In the future this might be changed to make
-        snapPaths a required argument, and there should be additional
-        functions load_correlation_mat and compute_SVD. To load a correlation
-        mat from file, use this function. To compute the SVD once correlation
-        mat is in memory, use compute_SVD. To compute the correlation mat
-        and SVD from snaps, use this function. Other organiziations are possible,
-        but how it is might be kind of confusing.
+        First compute correlation mat X*X, then the SVD of this matrix.
         """
-        if correlationMatPath is not None:
-            if self.load_mat is None:
-                raise util.UndefinedError('load_mat is undefined')
-            elif self.parallel.isRankZero():
-                self.correlationMat = self.load_mat(correlationMatPath)
-        elif snapPaths is not None:
-            self.snapPaths = snapPaths
-            self.correlationMat = self.fieldOperations.\
-                compute_symmetric_inner_product_mat(self.snapPaths)
-            #self.correlationMat = self.fieldOperations.\
-            #    compute_inner_product_mat(self.snapPaths, self.snapPaths)
-        else:
-            raise util.UndefinedError('Must provide either snap paths or '+\
-                'correlation matrix path to pod.compute_decomp')
-                
+        #self.snapPaths = snapPaths
+        #self.correlationMat = self.fieldOperations.\
+        #    compute_symmetric_inner_product_mat(self.snapPaths)
+        self.correlationMat = self.fieldOperations.\
+            compute_inner_product_mat(self.snapPaths, self.snapPaths)
+        self.compute_SVD()
+        
+        
+    def compute_SVD(self):
         if self.parallel.isRankZero():
             self.singVecs, self.singVals, dummy = util.svd(self.correlationMat)
-            del dummy
         else:
             self.singVecs = None
             self.singVals = None

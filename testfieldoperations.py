@@ -317,37 +317,15 @@ class TestFieldOperations(unittest.TestCase):
                 productTrue)
             
             
-            # Test computation of upper triangular inner product matrix chunk
+            # Test computation of symmetric inner product matrix
             if paths1 == paths2:
                 # Test computation as chunk (serial).  
                 # First test complete upper triangular computation
                 productComputedAsFullSymmChunk = self.fieldOperations.\
-                    _compute_upper_triangular_inner_product_chunk(paths1, 
-                        paths2)
+                    compute_symmetric_inner_product_mat(paths1)
                 N.testing.assert_array_almost_equal(
-                    productComputedAsFullSymmChunk, N.triu(productTrue))
-
-                # Also test non-square upper triangular computation
-                numRows = int(N.ceil(len(paths1) / 2.))
-                productComputedAsPartialSymmChunk = \
-                    self.fieldOperations._compute_upper_triangular_inner_product_chunk(\
-                    paths1[:numRows], paths2)
-                N.testing.assert_array_almost_equal(
-                    productComputedAsPartialSymmChunk, \
-                    N.triu(productTrue[:numRows, :]))
-                
-                # Test computation in parallel
-                productComputedAsSymmMat = \
-                    self.fieldOperations.compute_symmetric_inner_product_mat(paths1)
-                N.testing.assert_array_almost_equal(productComputedAsSymmMat, 
-                    productTrue)
-            # If lists are not the same, should return an error
-            else:
-                self.assertRaises(ValueError, self.fieldOperations.\
-                    _compute_upper_triangular_inner_product_chunk, paths1, 
-                    paths2)
+                    productComputedAsFullSymmChunk, productTrue)
             
-
         numRowSnapsList =[1, int(round(self.totalNumFieldsInMem / 2.)), self.\
             totalNumFieldsInMem, self.totalNumFieldsInMem *2]
         numColSnapsList = numRowSnapsList

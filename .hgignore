@@ -1,6 +1,22 @@
 syntax: glob
 .*
+._*
 *.pyc
-doc/_static
+doc/_build
 doc/Makefile
-testfiles/*
+doc/user_guide/*.pdf
+*.aux
+*.bbl
+*.blg
+*.log
+*.mp
+*.fdf
+*.swp
+*.synctex.gz
+*.spl
+*.tmp
+*.tui
+*.dvi
+*.ps
+*.pdfsync
+*.out
