@@ -53,7 +53,7 @@ class TestPOD(unittest.TestCase):
                     snapIndex)
                 self.snapPaths.append(self.snapPath % snapIndex)
         else:
-            self.snapPaths=None
+            self.snapPaths = None
             self.snapMat = None
         if parallel.isDistributed():
             self.snapPaths = parallel.comm.bcast(self.snapPaths,root=0)
@@ -136,7 +136,7 @@ class TestPOD(unittest.TestCase):
         singValsPath = 'files_modaldecomp_test/singvals.txt'
         correlationMatPath = 'files_modaldecomp_test/correlation.txt'
         
-        self.pod.compute_decomp(snapPaths=self.snapPaths)
+        self.pod.compute_decomp(self.snapPaths)
         self.pod.save_correlation_mat(correlationMatPath)
         self.pod.save_decomp(singVecsPath, singValsPath)
         

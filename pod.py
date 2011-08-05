@@ -54,7 +54,7 @@ class POD(object):
  
     def save_correlation_mat(self, correlationMatPath):
         if self.save_mat is None and self.parallel.isRankZero():
-            raise util.UndefinedError('save_mat is undefined, cant save')
+            raise util.UndefinedError("save_mat is undefined, can't save")
         if self.parallel.isRankZero():
             self.save_mat(self.correlationMat, correlationMatPath)
         
@@ -74,7 +74,7 @@ class POD(object):
         
         First compute correlation mat X*X, then the SVD of this matrix.
         """
-        #self.snapPaths = snapPaths
+        self.snapPaths = snapPaths
         #self.correlationMat = self.fieldOperations.\
         #    compute_symmetric_inner_product_mat(self.snapPaths)
         self.correlationMat = self.fieldOperations.\

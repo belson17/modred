@@ -318,13 +318,12 @@ class TestFieldOperations(unittest.TestCase):
             
             
             # Test computation of symmetric inner product matrix
-            if paths1 == paths2:
-                # Test computation as chunk (serial).  
+            if paths1 == paths2:  
                 # First test complete upper triangular computation
-                productComputedAsFullSymmChunk = self.fieldOperations.\
+                productComputedAsSymmMat = self.fieldOperations.\
                     compute_symmetric_inner_product_mat(paths1)
                 N.testing.assert_array_almost_equal(
-                    productComputedAsFullSymmChunk, productTrue)
+                    productComputedAsSymmMat, productTrue)
             
         numRowSnapsList =[1, int(round(self.totalNumFieldsInMem / 2.)), self.\
             totalNumFieldsInMem, self.totalNumFieldsInMem *2]
