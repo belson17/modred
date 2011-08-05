@@ -55,7 +55,7 @@ def lin_n1p_rainier():
     PLT.figure()
     width = .4
     numProcs = 8
-    PLT.plot([1,numProcs], [lin[0].total, lin[0].total*1./numProcs],'k--')
+    PLT.plot(N.arange(1,numProcs+1), lin[0].total/N.arange(1,numProcs+1),'k--')
     PLT.plot(1+N.arange(numProcs),[lin[i].total for i in range(numProcs)],'r--')
     for i in range(numProcs):
         bottom = 0
@@ -120,7 +120,7 @@ def ip_n1p_rainier():
     PLT.figure()
     width = .4
     numProcs = 8
-    PLT.plot([1,numProcs], [ip[0].total, ip[0].total*1./numProcs],'k--')
+    PLT.plot(N.arange(1,numProcs+1), ip[0].total/N.arange(1,numProcs+1),'k--')
     PLT.plot(1+N.arange(numProcs),[ip[i].total for i in range(numProcs)],'r--')
     for i in range(numProcs):
         bottom = 0
@@ -134,8 +134,8 @@ def ip_n1p_rainier():
     PLT.legend(['linear','measured','send/recvs','IPs','loads','other'])
     PLT.xlabel('number of processors/node')
     PLT.ylabel('seconds per processor')
-    PLT.savefig('scaling_n1p_rainier.eps')
-    #PLT.show()
+    PLT.savefig('scaling_ipmat_n1p_rainier.eps')
+    PLT.show()
     
 
 def ip_np1_della():
@@ -206,7 +206,7 @@ def ip_np1_della():
     
     PLT.figure()
     width = .4
-    PLT.plot([1,numNodes], [ip[0].total, ip[0].total*1./numNodes],'k--')
+    PLT.plot(N.arange(1,numNodes+1), ip[0].total/N.arange(1,numNodes+1),'k--')
     PLT.plot([1,2,3,4,6,8,10,12],[ip[0].total,ip[1].total,ip[2].total,ip[3].total,\
         ip[5].total,ip[7].total,ip[9].total,ip[11].total],'r--')
 
@@ -223,14 +223,14 @@ def ip_np1_della():
     PLT.xlabel('number of nodes (1 processor/node)')
     PLT.ylabel('seconds per node (1 node = 1 processor)')
     PLT.axis([1,13,0,250])
-    PLT.savefig('scaling_np1_della.eps')
+    PLT.savefig('scaling_ipmat_np1_della.eps')
     PLT.show()
     
     
     
     
 if __name__=='__main__':
-    #ip_n1p_rainier()
+    ip_n1p_rainier()
     #ip_n1p_della()
     ip_np1_della()
-    #lin_n1p_rainier()
+    lin_n1p_rainier()
