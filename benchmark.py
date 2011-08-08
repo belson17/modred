@@ -82,11 +82,11 @@ def inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode):
     """    
     colFieldName = 'col_%04d.txt'
     colFieldPaths = [dataDir + colFieldName%colNum for colNum in range(numCols)]
-    generate_fields(numStates, numRows, dataDir, rowFieldName)
+    generate_fields(numStates, numCols, dataDir, colFieldName)
     
     rowFieldName = 'row_%04d.txt'    
     rowFieldPaths = [dataDir + rowFieldName%rowNum for rowNum in range(numRows)]
-    generate_fields(numStates, numCols, dataDir, colFieldName)
+    generate_fields(numStates, numRows, dataDir, rowFieldName)
     
     myFO = FO.FieldOperations(maxFieldsPerNode=maxFieldsPerNode, save_field=\
         save_field, load_field=load_field, inner_product=inner_product, 
