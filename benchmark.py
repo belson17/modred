@@ -147,8 +147,8 @@ def clean_up():
 
 
 def main():
-    methodToTest = 'lin_combine'
-    #methodToTest = 'inner_product_mat'
+    #methodToTest = 'lin_combine'
+    methodToTest = 'inner_product_mat'
     #methodToTest = 'symmetric_inner_product_mat'
     
     # Common parameters
@@ -164,7 +164,7 @@ def main():
     elif methodToTest == 'inner_product_mat':
         # inner_product_mat test
         numRows = 2000
-        numCols = 1000
+        numCols = 2000
         t= inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode)
     elif methodToTest == 'symmetric_inner_product_mat':
         # symmetric_inner_product_mat test
