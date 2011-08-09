@@ -751,14 +751,19 @@ class FieldOperations(object):
                                 for basisPath in basisFieldPaths[basisIndices[0]:basisIndices[-1]+1]]
                         else: basisFields = []
                     else:
-                        basisFieldsSend = (basisFields, basisIndices)
-                        dest = (self.parallel.getRank()+1) % self.parallel.getNumProcs()
-                        #Create unique tag based on ranks
-                        sendTag = self.parallel.getRank()*(self.parallel.getNumProcs()+1) + dest
-                        self.parallel.comm.isend(basisFieldsSend, dest=dest, tag=sendTag)
+                        # Figure out whom to communicate with
                         source = (self.parallel.getRank()-1) % self.parallel.getNumProcs()
+                        dest = (self.parallel.getRank()+1) % self.parallel.getNumProcs()
+                        
+                        #Create unique tags based on ranks
+                        sendTag = self.parallel.getRank()*(self.parallel.getNumProcs()+1) + dest
                         recvTag = source*(self.parallel.getNumProcs()+1) + self.parallel.getRank()
+                        
+                        # Send/receive data
+                        basisFieldsSend = (basisFields, basisIndices)
+                        request = self.parallel.comm.isend(basisFieldsSend, dest=dest, tag=sendTag)                       
                         basisFieldsRecv = self.parallel.comm.recv(source=source, tag=recvTag)
+                        request.Wait()
                         self.parallel.sync()
                         basisIndices = basisFieldsRecv[1]
                         basisFields = basisFieldsRecv[0]
