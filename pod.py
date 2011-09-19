@@ -11,12 +11,13 @@ class POD(object):
     
     Generate orthonormal modes from simulation snapshots.  
     
-    Usage:
-    myPOD = POD(...)
-    myPOD.compute_decomp(snapPaths=mySnapPaths)
-    myPOD.save_correlation_mat(...)
-    myPOD.save_decomp(...)
-    myPOD.compute_modes(range(1,100), modePath
+    Usage::
+      
+      myPOD = POD(...)
+      myPOD.compute_decomp(snapPaths=mySnapPaths)
+      myPOD.save_correlation_mat(...)
+      myPOD.save_decomp(...)
+      myPOD.compute_modes(range(1,100), modePath
     """
         
     def __init__(self, load_field=None, save_field=None, \
