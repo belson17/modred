@@ -1,11 +1,12 @@
 
-"""Collection of useful functions for modaldecomp library"""
+"""Collection of low level functions for modaldecomp library"""
 
 import sys  
 import copy
 import numpy as N
 import util
 import parallel as parallel_mod
+import time as T
 
 # Should this be a data member? Only reason to make it a data member
 # is parallel can then take the verbose argument
@@ -13,29 +14,43 @@ import parallel as parallel_mod
 
 class FieldOperations(object):
     """
-    Does many useful operations on fields.
+    Does many useful and low level operations on fields.
 
-    All modal decomp classes should use the common functionality provided
+    All modaldecomp classes should use the common functionality provided
     in this class as much as possible.
     
-    Only advanced users should ever use this class, it is mostly a collection
-    of functions used in the higher level modal decomp classes like POD,
+    Only advanced users should use this class, it is mostly a collection
+    of functions used in the high level modaldecomp classes like POD,
     BPOD, and DMD.
+    
+    It is generally best to use all available processors for this class,
+    however this
+    depends on the computer and the nature of the load and inner_product functions
+    supplied. In some cases, loading in parallel is slower.
     """
     
     def __init__(self, load_field=None, save_field=None, inner_product=None, 
-        maxFieldsPerNode=None, verbose=True):
+        maxFieldsPerNode=None, verbose=True, printInterval=10):
         """
         Sets the default values for data members. 
         
         BPOD, POD, DMD, other classes, should make heavy use of the low
         level functions in this class.
+        Arguments:
+          maxFieldsPerNode: maximum number of fields that can be in memory
+            simultaneously on a node.
+          verbose: true/false, sets if progress is printed or not
+          printInterval: seconds, maximum of how frequently progress is printed
+            Only relevant if verbose is true. (Maybe only verbose or printInterval
+            is necessary?) 
         """
         self.load_field = load_field
         self.save_field = save_field
         self.inner_product = inner_product
         self.verbose = verbose
-
+        self.printInterval = printInterval
+        self.prevPrintTime = 0.
+        
         self.parallel = parallel_mod.parallelInstance
         self.parallel.verbose = self.verbose
         if maxFieldsPerNode is None:
@@ -58,6 +73,7 @@ class FieldOperations(object):
         else:
             self.maxFieldsPerProc = self.maxFieldsPerNode * \
                 self.parallel.getNumNodes()/self.parallel.getNumProcs()
+
 
     def idiot_check(self, testObj=None, testObjPath=None):
         """
@@ -126,15 +142,11 @@ class FieldOperations(object):
   
     def compute_inner_product_mat(self, rowFieldPaths, colFieldPaths):
         """ 
-        Computes a matrix of inner products (Y'*X) and returns it.
+        Computes a matrix of inner products (for BPOD, Y'*X) and returns it.
         
-        It is generally best to use all available processors, however this
-        depends on the computer and the nature of the load and IP functions
-        supplied. In some cases, loading in parallel is slower.
-        
-          rowFieldPaths = row snapshot files (BPOD adjoint snaps, ~Y)
+          rowFieldPaths: row snapshot files (BPOD adjoint snaps, ~Y)
           
-          colFieldPaths = column snapshot files (BPOD direct snaps, ~X)
+          colFieldPaths: column snapshot files (BPOD direct snaps, ~X)
 
         Within this method, the snapshots are read in memory-efficient ways
         such that they are not all in memory at once. This results in finding
@@ -171,14 +183,14 @@ class FieldOperations(object):
           rank1 | r4c0 r4c1 |
                 | r5c0 r5c1 |
           
-        In reality it is more complicated since the number of cols and rows may
-        not be divisible by the number of processors. This is handled
+        This is more complicated when the number of cols and rows is
+        not divisible by the number of processors. This is handled
         internally, by allowing the last processor to have fewer tasks, however
         it is still part of the passing circle, and rows and cols are handled
         independently.  This is also generalized to allow the columns to be
         read in chunks, rather than only 1 at a time.  This could be useful,
         for example, in a shared memory setting where it is best to work in
-        operation-units (loads, IPs, etc) of procs/node.
+        operation-units (loads, IPs, etc) of multiples of procs/node.
         
         The scaling is:
         
@@ -197,8 +209,8 @@ class FieldOperations(object):
         
         From these scaling laws, it can be seen that it is generally good to
         use all available processors, even though it lowers max.  This depends
-        though on the particular system. Sometimes multiple simultaneous loads
-        actually makes each load very slow. 
+        though on the particular system and hardward.
+        Sometimes multiple simultaneous loads actually makes each load very slow. 
         
         As an example, consider doing a case with len(rowFieldPaths)=8 and
         len(colFieldPaths) = 12, 2 processors, 1 node, and maxFieldsPerNode=3.
@@ -219,7 +231,7 @@ class FieldOperations(object):
         numCols = len(colFieldPaths)
         numRows = len(rowFieldPaths)
 
-        if numRows < numCols:
+        if numRows > numCols:
             transpose = True
             temp = rowFieldPaths
             rowFieldPaths = colFieldPaths
@@ -230,11 +242,13 @@ class FieldOperations(object):
         else: 
             transpose = False
 
-        # numColsPerChunk is the number of cols each proc loads at once        
+        # numColsPerProcChunk is the number of cols each proc loads at once        
         numColsPerProcChunk = 1
         numRowsPerProcChunk = self.maxFieldsPerProc-numColsPerProcChunk         
         
         # Determine how the loading and inner products will be split up.
+        # These variables are the total number of chunks of data to be read across
+        # all nodes and processors
         numColChunks = int(N.ceil(numCols * 1. / (numColsPerProcChunk * self.\
             parallel.getNumProcs())))
         numRowChunks = int(N.ceil(numRows * 1. / (numRowsPerProcChunk * self.\
@@ -243,11 +257,12 @@ class FieldOperations(object):
         
         ### MAYBE DON'T USE THIS, IT EVENLY DISTRIBUTES CHUNKSIZE, WHICH WA
         ### ALREADY SET ABOVE TO BE NUMCOLSPERPROCCHUNK * NUMPROCS
+        # These variables are the number of cols and rows in each chunk of data.
         numColsPerChunk = int(N.ceil(numCols * 1. / numColChunks))
         numRowsPerChunk = int(N.ceil(numRows * 1. / numRowChunks))
 
         if self.parallel.isRankZero() and numRowChunks > 1 and self.verbose:
-            print ('Warning: The column fields (direct snapshots), of which ' +\
+            print ('Warning: The column fields, of which ' +\
                 'there are %d, will be read %d times each. Increase number ' +\
                 'of nodes or maxFieldsPerNode to reduce redundant loads and ' +\
                 'get a big speedup.') % (numCols,numRowChunks)
@@ -337,7 +352,9 @@ class FieldOperations(object):
                                     rowFields[rowIndex - procRowAssignments[0]],
                                     colField)
             # Completed a chunk of rows and all columns on all processors.
-            self._print_inner_product_progress(endRowIndex, numRows, numCols)
+            if (T.time() - self.prevPrintTime > self.printInterval):
+                self._print_inner_product_progress(endRowIndex, numRows, numCols)
+                self.prevPrintTime = T.time()
         
         # Assign these chunks into innerProductMat.
         if self.parallel.isDistributed():
@@ -564,7 +581,20 @@ class FieldOperations(object):
                                     colFieldIndex]] = self.inner_product(
                                     rowFields[rowIndex - procRowAssignments[0]],
                                     colField)
-                   
+            # Completed a chunk of rows and all columns on all processors.
+            # NOTE: THIS IS NOT AN APPROPRIATE PRINT FUNCTION.
+            # This print progress function assumes
+            # a rectangular set of IPs, while POD's is triangular
+            if (self.verbose and (T.time() - self.prevPrintTime > self.printInterval) and
+                self.parallel.isRankZero()):
+                numCompletedIPs = endRowIndex*numCols - endRowIndex**2 *.5
+                percentCompletedIPs = 100. * numCompletedIPs/(.5*numCols*numRows)           
+                print >> sys.stderr, ('Completed %.1f%% of inner ' +\
+                    'products') % (percentCompletedIPs, endRowIndex, 
+                    numCols, numRows, numCols)
+
+                self.prevPrintTime = T.time()
+                             
         # Assign the triangular portion chunks into innerProductMat.
         if self.parallel.isDistributed():
             innerProductMat = self.parallel.custom_comm.allreduce( 
@@ -784,9 +814,10 @@ class FieldOperations(object):
             for sumIndex in xrange(len(procSumAssignments)):
                 self.save_field(sumLayers[sumIndex],\
                     sumFieldPaths[sumIndex+procSumAssignments[0]])
-            if self.parallel.isRankZero() and self.verbose:    
+            if self.parallel.isRankZero() and self.verbose and T.time()-self.prevPrintTime>self.printInterval:    
                 print >> sys.stderr, ('Completed %.1f%% of sum fields, %d ' +\
                     'of %d') % (endSumIndex*100./numSums,endSumIndex,numSums)
+                self.prevPrintTime = T.time()
 
     def __eq__(self, other):
         #print 'comparing fieldOperations classes'

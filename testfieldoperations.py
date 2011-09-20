@@ -27,7 +27,7 @@ class TestFieldOperations(unittest.TestCase):
         self.defaultDataMembers = {'load_field': None, 'save_field': None, 
             'inner_product': None, 'maxFieldsPerNode': 2,
             'maxFieldsPerProc': 2, 'parallel': self.defaultParallel, 
-            'verbose': False}
+            'verbose': False, 'printInterval':10, 'prevPrintTime':0}
        
         self.maxFieldsPerProc = 10
         self.totalNumFieldsInMem = parallel.getNumProcs() * self.maxFieldsPerProc

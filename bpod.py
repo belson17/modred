@@ -9,7 +9,7 @@ class BPOD(object):
     Balanced Proper Orthogonal Decomposition
     
     Generate direct and adjoint modes from direct and adjoint simulation 
-    snapshots. BPOD inherits from ModalDecomp and uses it for low level
+    snapshots. BPOD uses FieldOperations for low level
     functions.
     
     Usage::
@@ -17,16 +17,16 @@ class BPOD(object):
       import bpod      
       myBPOD = bpod.BPOD(load_field = my_load_field, save_field=my_save_field,
           inner_product = my_inner_product, maxFieldsPerNode = 500)
-      myBPOD.compute_decomp(directSnapPaths,adjointSnapPaths)      
+      myBPOD.compute_decomp(directSnapPaths, adjointSnapPaths)      
       myBPOD.save_hankel_mat(hankelPath)
       myBPOD.save_decomp(LSingVecsPath, singValsPath, RSingVecsPath)
-      myBPOD.compute_direct_modes(range(1,r), 'bpod_direct_mode_%03d.txt')
-      myBPOD.compute_adjoint_modes(range(1,r), 'bpod_adjoint_mode_%03d.txt')
+      myBPOD.compute_direct_modes(range(1, 50), 'bpod_direct_mode_%03d.txt')
+      myBPOD.compute_adjoint_modes(range(1, 50), 'bpod_adjoint_mode_%03d.txt')
     """
+    
     def __init__(self, load_field=None, save_field=None, 
         save_mat=util.save_mat_text, load_mat=util.load_mat_text,
-        inner_product=None,
-        maxFieldsPerNode=2, verbose=True):
+        inner_product=None, maxFieldsPerNode=2, verbose=True):
         """
         BPOD constructor
         

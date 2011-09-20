@@ -1,4 +1,4 @@
-#!/usr/local/bin/env python
+#!/usr/bin/env python
 
 import numpy as N
 import unittest
@@ -11,7 +11,7 @@ try:
     rank = MPI.COMM_WORLD.Get_rank()
     distributed = MPI.COMM_WORLD.Get_size() > 1
 except ImportError:
-    print 'WARNING: no mpi4py module, only serial behavior can be tested'
+    print 'Warning: without mpi4py module, only serial behavior is tested'
     distributed = False
     rank = 0
 
@@ -25,8 +25,6 @@ class TestUtil(unittest.TestCase):
     
     To test all parallel features, use "mpiexec -n 2 python testutil.py"
     Some parallel features are tested even when running in serial.
-    If you run this test with mpiexec, mpi4py MUST be installed or you will
-    receive meaningless errors. 
     """    
     def setUp(self):
         try:

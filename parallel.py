@@ -4,7 +4,7 @@ import numpy as N
 import copy
 
 class ParallelError(Exception):
-    """For MPI related errors"""
+    """For Parallel related errors"""
     pass
     
 class Parallel(object):
@@ -111,10 +111,9 @@ class Parallel(object):
     def find_assignments(self, taskList, taskWeights=None):
         """ Returns a 2D list of tasks, [rank][taskIndex], 
         
-        Evenly distributing the tasks in taskList, allowing for uneven
-        task weights. 
-        It returns a list that has numMPITasks entries. 
-        Proc n is responsible for task MPITaskAssignments[n][...]
+        Evenly distributes the tasks in taskList, allowing for arbitrary task
+        weights. 
+        MPI worker n is responsible for task taskAssignments[n][...]
         where the 2nd dimension of the 2D list contains the tasks (whatever
         they were in the original taskList).
         """
