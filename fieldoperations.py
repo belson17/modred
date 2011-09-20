@@ -8,8 +8,7 @@ import util
 import parallel as parallel_mod
 import time as T
 
-# Should this be a data member? Only reason to make it a data member
-# is parallel can then take the verbose argument
+# Should this be a data member? Currently it is
 #parallel = parallel_mod.parallelInstance
 
 class FieldOperations(object):
@@ -30,7 +29,7 @@ class FieldOperations(object):
     """
     
     def __init__(self, load_field=None, save_field=None, inner_product=None, 
-        maxFieldsPerNode=None, verbose=True, printInterval=10):
+        maxFieldsPerNode=None, warnings=True, printInterval=10):
         """
         Sets the default values for data members. 
         
@@ -39,23 +38,21 @@ class FieldOperations(object):
         Arguments:
           maxFieldsPerNode: maximum number of fields that can be in memory
             simultaneously on a node.
-          verbose: true/false, sets if progress is printed or not
+          warnings: true/false, sets if warnings are printed or not
           printInterval: seconds, maximum of how frequently progress is printed
-            Only relevant if verbose is true. (Maybe only verbose or printInterval
-            is necessary?) 
         """
         self.load_field = load_field
         self.save_field = save_field
         self.inner_product = inner_product
-        self.verbose = verbose
+        self.warnings = warnings
         self.printInterval = printInterval
         self.prevPrintTime = 0.
         
         self.parallel = parallel_mod.parallelInstance
-        self.parallel.verbose = self.verbose
+        self.parallel.warnings = self.warnings
         if maxFieldsPerNode is None:
             self.maxFieldsPerNode = 2
-            if self.parallel.isRankZero() and self.verbose:
+            if self.parallel.isRankZero() and self.warnings:
                 print 'Warning: maxFieldsPerNode was not specified. ' +\
                     'Assuming 2 fields can be loaded per node. Increase ' +\
                     'maxFieldsPerNode for a speedup.'
@@ -65,7 +62,7 @@ class FieldOperations(object):
         if self.maxFieldsPerNode < \
             2 * self.parallel.getNumProcs() / self.parallel.getNumNodes(): 
             self.maxFieldsPerProc = 2
-            if self.verbose and self.parallel.isRankZero():
+            if self.warnings and self.parallel.isRankZero():
                 print 'Warning: maxFieldsPerNode too small for given ' +\
                     'number of nodes and procs.  Assuming 2 fields can be ' +\
                     'loaded per processor. Increase maxFieldsPerNode for a ' +\
@@ -124,20 +121,9 @@ class FieldOperations(object):
         #objSub = 3.5*testObj - testObj
         #N.testing.assert_array_almost_equal(objSub,2.5*testObj)
         #N.testing.assert_array_almost_equal(testObj,objCopy)
-        if self.verbose:
+        if self.warnings:
             print 'Passed the idiot check'
 
-    
-    def _print_inner_product_progress(self, endRowIndex, numRows, numCols):
-        """Prints progress if verbose is True"""
-        if self.verbose and self.parallel.isRankZero():
-            #if endColIndex % printAfterNumCols==0 or endColIndex==numCols: 
-            numCompletedIPs = endRowIndex * numCols
-            percentCompletedIPs = 100. * numCompletedIPs/(numCols*numRows)           
-            print >> sys.stderr, ('Completed %.1f%% of inner ' +\
-                'products: IPMat[:%d, :%d] of IPMat[%d, %d]') % \
-                (percentCompletedIPs, endRowIndex, \
-                numCols, numRows, numCols)
 
   
     def compute_inner_product_mat(self, rowFieldPaths, colFieldPaths):
@@ -222,7 +208,8 @@ class FieldOperations(object):
         
             num loads / proc = 18.
             
-        """      
+        """
+             
         if not isinstance(rowFieldPaths,list):
             rowFieldPaths = [rowFieldPaths]
         if not isinstance(colFieldPaths,list):
@@ -241,7 +228,18 @@ class FieldOperations(object):
             numCols = temp
         else: 
             transpose = False
-
+        
+        # Estimate the amount of time this will take
+        if self.warnings and self.parallel.isRankZero():
+            rowField = self.load_field(rowFieldPaths[0])
+            colField = self.load_field(colFieldPaths[0])
+            startTime = T.time()
+            ip = self.inner_product(rowField, colField)
+            endTime = T.time()
+            duration = endTime - startTime
+            print ('Computing the inner product matrix will take at least %.1f '+
+                'minutes')%(numRows*numCols*duration/(60.*self.parallel.getNumProcs()))
+            del rowField, colField
         # numColsPerProcChunk is the number of cols each proc loads at once        
         numColsPerProcChunk = 1
         numRowsPerProcChunk = self.maxFieldsPerProc-numColsPerProcChunk         
@@ -261,7 +259,7 @@ class FieldOperations(object):
         numColsPerChunk = int(N.ceil(numCols * 1. / numColChunks))
         numRowsPerChunk = int(N.ceil(numRows * 1. / numRowChunks))
 
-        if self.parallel.isRankZero() and numRowChunks > 1 and self.verbose:
+        if self.parallel.isRankZero() and numRowChunks > 1 and self.warnings:
             print ('Warning: The column fields, of which ' +\
                 'there are %d, will be read %d times each. Increase number ' +\
                 'of nodes or maxFieldsPerNode to reduce redundant loads and ' +\
@@ -352,8 +350,13 @@ class FieldOperations(object):
                                     rowFields[rowIndex - procRowAssignments[0]],
                                     colField)
             # Completed a chunk of rows and all columns on all processors.
-            if (T.time() - self.prevPrintTime > self.printInterval):
-                self._print_inner_product_progress(endRowIndex, numRows, numCols)
+            if ((T.time() - self.prevPrintTime > self.printInterval) and 
+                self.warnings and self.parallel.isRankZero()):
+                numCompletedIPs = endRowIndex * numCols
+                percentCompletedIPs = 100. * numCompletedIPs/(numCols*numRows)           
+                print >> sys.stderr, ('Completed %.1f%% of inner ' +\
+                    'products: IPMat[:%d, :%d] of IPMat[%d, %d]') % \
+                    (percentCompletedIPs, endRowIndex, numCols, numRows, numCols)
                 self.prevPrintTime = T.time()
         
         # Assign these chunks into innerProductMat.
@@ -393,7 +396,7 @@ class FieldOperations(object):
 
         # <numRowChunks> is the number of sets that must be computed.
         numRowChunks = int(N.ceil(numFields * 1. / numRowsPerChunk)) 
-        if self.parallel.isRankZero() and numRowChunks > 1 and self.verbose:
+        if self.parallel.isRankZero() and numRowChunks > 1 and self.warnings:
             print ('Warning: The column fields will be read ~%d times each. ' +\
                 'Increase number of nodes or maxFieldsPerNode to reduce ' +\
                 'redundant loads and get a big speedup.') % numRowChunks    
@@ -582,10 +585,7 @@ class FieldOperations(object):
                                     rowFields[rowIndex - procRowAssignments[0]],
                                     colField)
             # Completed a chunk of rows and all columns on all processors.
-            # NOTE: THIS IS NOT AN APPROPRIATE PRINT FUNCTION.
-            # This print progress function assumes
-            # a rectangular set of IPs, while POD's is triangular
-            if (self.verbose and (T.time() - self.prevPrintTime > self.printInterval) and
+            if (self.warnings and (T.time() - self.prevPrintTime > self.printInterval) and
                 self.parallel.isRankZero()):
                 numCompletedIPs = endRowIndex*numCols - endRowIndex**2 *.5
                 percentCompletedIPs = 100. * numCompletedIPs/(.5*numCols*numRows)           
@@ -725,10 +725,10 @@ class FieldOperations(object):
                 'output paths %d')%(fieldCoeffMat.shape[1],numSums))
                                
         if numBases < fieldCoeffMat.shape[0] and self.parallel.isRankZero():
-            print 'Warning - fewer basis paths than cols in the coeff matrix'
+            print 'Warning: fewer basis paths than cols in the coeff matrix'
             print '  some rows of coeff matrix will not be used'
         if numSums < fieldCoeffMat.shape[1] and self.parallel.isRankZero():
-            print 'Warning - fewer output paths than rows in the coeff matrix'
+            print 'Warning: fewer output paths than rows in the coeff matrix'
             print '  some cols of coeff matrix will not be used'
         
         # numBasesPerProcChunk is the number of bases each proc loads at once        
@@ -745,7 +745,7 @@ class FieldOperations(object):
         numBasesPerChunk = int(N.ceil(numBases*1./numBasisChunks))
         numSumsPerChunk = int(N.ceil(numSums*1./numSumChunks))
 
-        if self.parallel.isRankZero() and numSumChunks > 1 and self.verbose:
+        if self.parallel.isRankZero() and numSumChunks > 1 and self.warnings:
             print ('Warning: The basis fields (snapshots), ' +\
                 'of which there are %d, will be loaded from file %d times each. If possible, '+\
                 'increase number of ' +\
@@ -814,18 +814,20 @@ class FieldOperations(object):
             for sumIndex in xrange(len(procSumAssignments)):
                 self.save_field(sumLayers[sumIndex],\
                     sumFieldPaths[sumIndex+procSumAssignments[0]])
-            if self.parallel.isRankZero() and self.verbose and T.time()-self.prevPrintTime>self.printInterval:    
+            if self.parallel.isRankZero() and self.warnings and T.time()-self.prevPrintTime>self.printInterval:    
                 print >> sys.stderr, ('Completed %.1f%% of sum fields, %d ' +\
                     'of %d') % (endSumIndex*100./numSums,endSumIndex,numSums)
                 self.prevPrintTime = T.time()
+
 
     def __eq__(self, other):
         #print 'comparing fieldOperations classes'
         a = (self.inner_product == other.inner_product and \
         self.load_field == other.load_field and self.save_field == other.save_field \
         and self.maxFieldsPerNode==other.maxFieldsPerNode and\
-        self.verbose==other.verbose)
+        self.warnings==other.warnings)
         return a
+
     def __ne__(self,other):
         return not (self.__eq__(other))
 

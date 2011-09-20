@@ -13,8 +13,7 @@ class Parallel(object):
     
     Almost always one should use the given instance of this class, parallel.parallelInstance!
     """
-    def __init__(self, verbose=True):
-        self.verbose = verbose
+    def __init__(self):
         try:
             # Must call MPI module MPI_mod to avoid naming confusion with
             # the MPI class
@@ -159,9 +158,9 @@ class Parallel(object):
         emptyTasks = False
         for r, assignment in enumerate(taskMPITasksAssignments):
             if len(assignment) == 0 and not emptyTasks:
-                if self.verbose and self.isRankZero():
-                    print ('Warning: %d out of %d processors have no ' +\
-                        'tasks') % (self._numMPITasks - r, self._numMPITasks)
+                #if self.isRankZero():
+                #    print ('Warning: %d out of %d processors have no ' +\
+                #        'tasks') % (self._numMPITasks - r, self._numMPITasks)
                 emptyTasks = True
         return emptyTasks
 

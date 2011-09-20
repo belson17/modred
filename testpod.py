@@ -31,7 +31,7 @@ class TestPOD(unittest.TestCase):
         self.indexFrom = 2
         self.pod = POD(load_field=util.load_mat_text, save_field=\
             util.save_mat_text, save_mat=util.save_mat_text, inner_product=\
-            util.inner_product, verbose=False)
+            util.inner_product, warnings=False)
         self.generate_data_set()
 
     def tearDown(self):
@@ -72,47 +72,47 @@ class TestPOD(unittest.TestCase):
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
-        # Set verbose to false, to avoid printing warnings during tests
+        # Set warnings to false, to avoid printing warnings during tests
         
         dataMembersDefault = {'save_mat': util.save_mat_text, 'load_mat': util.\
             load_mat_text, 'parallel': parallel_mod.parallelInstance,\
-            'verbose': False,
+            'warnings': False,
             'fieldOperations': FieldOperations(load_field=None, save_field=None,
-            inner_product=None, maxFieldsPerNode=2, verbose=False)}
+            inner_product=None, maxFieldsPerNode=2, warnings=False)}
         
-        self.assertEqual(util.get_data_members(POD(verbose=False)), 
+        self.assertEqual(util.get_data_members(POD(warnings=False)), 
             dataMembersDefault)
 
         def my_load(fname): pass
-        myPOD = POD(load_field=my_load, verbose=False)
+        myPOD = POD(load_field=my_load, warnings=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['fieldOperations'].load_field = my_load
         self.assertEqual(util.get_data_members(myPOD), dataMembersModified)
        
-        myPOD = POD(load_mat=my_load, verbose=False)
+        myPOD = POD(load_mat=my_load, warnings=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['load_mat'] = my_load
         self.assertEqual(util.get_data_members(myPOD), dataMembersModified)
  
         def my_save(data, fname): pass 
-        myPOD = POD(save_field=my_save, verbose=False)
+        myPOD = POD(save_field=my_save, warnings=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['fieldOperations'].save_field = my_save
         self.assertEqual(util.get_data_members(myPOD), dataMembersModified)
         
-        myPOD = POD(save_mat=my_save, verbose=False)
+        myPOD = POD(save_mat=my_save, warnings=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['save_mat'] = my_save
         self.assertEqual(util.get_data_members(myPOD), dataMembersModified)
         
         def my_ip(f1, f2): pass
-        myPOD = POD(inner_product=my_ip, verbose=False)
+        myPOD = POD(inner_product=my_ip, warnings=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['fieldOperations'].inner_product = my_ip
         self.assertEqual(util.get_data_members(myPOD), dataMembersModified)
 
         maxFieldsPerNode = 500
-        myPOD = POD(maxFieldsPerNode=maxFieldsPerNode, verbose=False)
+        myPOD = POD(maxFieldsPerNode=maxFieldsPerNode, warnings=False)
         dataMembersModified = copy.deepcopy(dataMembersDefault)
         dataMembersModified['fieldOperations'].maxFieldsPerNode =\
             maxFieldsPerNode

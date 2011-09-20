@@ -24,7 +24,7 @@ class TestParallel(unittest.TestCase):
         except ImportError:
             self.numProcs=1
             self.rank=0
-        self.myParallel=parallel_mod.Parallel(verbose=False)
+        self.myParallel=parallel_mod.Parallel()
         #if not os.path.isdir('testfiles'):
         #    SP.call(['mkdir','testfiles'])
     
