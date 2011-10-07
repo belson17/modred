@@ -44,8 +44,21 @@ load_field = load_pickle
 #save_field = util.save_mat_text
 #load_field = util.load_mat_text
 inner_product = util.inner_product
-dataDir = './files_benchmark/'
 
+
+
+import argparse
+parser = argparse.ArgumentParser(description='Get directory in which to ' +\
+    'save data.')
+parser.add_argument('--outdir', default='./files_benchmark', help='Path in ' +\
+    'which to save data for benchmark.')
+parser.add_argument('--benchmarkfunc', required=True, choices=['lin_combine',
+    'inner_product_mat', 'symmetric_inner_product_mat'], help='Function to ' +\
+    'benchmark.')
+args = parser.parse_args()
+dataDir = args.outdir
+if dataDir[-1] != '/':
+    dataDir += '/'
 
 def generate_fields(numStates, numFields, fieldDir, fieldName):
     """
@@ -148,8 +161,9 @@ def clean_up():
 
 def main():
     #methodToTest = 'lin_combine'
-    methodToTest = 'inner_product_mat'
+    #methodToTest = 'inner_product_mat'
     #methodToTest = 'symmetric_inner_product_mat'
+    methodToTest = args.benchmarkfunc
     
     # Common parameters
     maxFieldsPerNode = 50
@@ -174,7 +188,7 @@ def main():
     
     # Delete files
     clean_up()
-
+    
 
 if __name__ == '__main__':
     main()
