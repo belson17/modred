@@ -21,13 +21,13 @@ class TestFieldOperations(unittest.TestCase):
     """ Tests of the FieldOperations class """
     
     def setUp(self):
-        # Default data members (warnings set to false even though default is true
+        # Default data members (verbose set to false even though default is true
         # so messages won't print during tests
         self.defaultParallel = parallel_mod.parallelInstance 
         self.defaultDataMembers = {'load_field': None, 'save_field': None, 
             'inner_product': None, 'maxFieldsPerNode': 2,
             'maxFieldsPerProc': 2, 'parallel': self.defaultParallel, 
-            'warnings': False, 'printInterval':10, 'prevPrintTime':0}
+            'verbose': False, 'printInterval':10, 'prevPrintTime':0}
        
         self.maxFieldsPerProc = 10
         self.totalNumFieldsInMem = parallel.getNumProcs() * self.maxFieldsPerProc
@@ -37,7 +37,7 @@ class TestFieldOperations(unittest.TestCase):
             load_field=util.load_mat_text, 
             save_field=util.save_mat_text, 
             inner_product=util.inner_product, 
-            warnings=False)
+            verbose=False)
         self.fieldOperations.maxFieldsPerProc = self.maxFieldsPerProc
 
     def tearDown(self):
@@ -52,29 +52,29 @@ class TestFieldOperations(unittest.TestCase):
         Test arguments passed to the constructor are assigned properly
         """
         
-        dataMembersOriginal = util.get_data_members(FieldOperations(warnings=False))
+        dataMembersOriginal = util.get_data_members(FieldOperations(verbose=False))
         self.assertEqual(dataMembersOriginal, self.defaultDataMembers)
         
         def my_load(fname): pass
-        myFO = FieldOperations(load_field=my_load, warnings=False)
+        myFO = FieldOperations(load_field=my_load, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['load_field'] = my_load
         self.assertEqual(util.get_data_members(myFO), dataMembers)
         
         def my_save(data,fname): pass
-        myFO = FieldOperations(save_field=my_save, warnings=False)
+        myFO = FieldOperations(save_field=my_save, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['save_field'] = my_save
         self.assertEqual(util.get_data_members(myFO), dataMembers)
         
         def my_ip(f1,f2): pass
-        myFO = FieldOperations(inner_product=my_ip, warnings=False)
+        myFO = FieldOperations(inner_product=my_ip, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['inner_product'] = my_ip
         self.assertEqual(util.get_data_members(myFO), dataMembers)
         
         maxFieldsPerNode = 500
-        myFO = FieldOperations(maxFieldsPerNode=maxFieldsPerNode, warnings=False)
+        myFO = FieldOperations(maxFieldsPerNode=maxFieldsPerNode, verbose=False)
         dataMembers = copy.deepcopy(dataMembersOriginal)
         dataMembers['maxFieldsPerNode'] = maxFieldsPerNode
         dataMembers['maxFieldsPerProc'] = maxFieldsPerNode * myFO.parallel.getNumNodes()/ \
@@ -94,7 +94,7 @@ class TestFieldOperations(unittest.TestCase):
         testArray = N.random.random((nx,ny))
         def inner_product(a,b):
             return N.sum(a.arr*b.arr)
-        myFO = FieldOperations(inner_product=util.inner_product, warnings=False)
+        myFO = FieldOperations(inner_product=util.inner_product, verbose=False)
         myFO.idiot_check(testObj=testArray)
         
         # An idiot's class that redefines multiplication to modify its data

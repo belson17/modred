@@ -29,7 +29,7 @@ class FieldOperations(object):
     """
     
     def __init__(self, load_field=None, save_field=None, inner_product=None, 
-        maxFieldsPerNode=None, warnings=True, printInterval=10):
+        maxFieldsPerNode=None, verbose=True, printInterval=10):
         """
         Sets the default values for data members. 
         
@@ -38,21 +38,21 @@ class FieldOperations(object):
         Arguments:
           maxFieldsPerNode: maximum number of fields that can be in memory
             simultaneously on a node.
-          warnings: true/false, sets if warnings are printed or not
+          verbose: true/false, sets if warnings are printed or not
           printInterval: seconds, maximum of how frequently progress is printed
         """
         self.load_field = load_field
         self.save_field = save_field
         self.inner_product = inner_product
-        self.warnings = warnings
+        self.verbose = verbose 
         self.printInterval = printInterval
         self.prevPrintTime = 0.
         
         self.parallel = parallel_mod.parallelInstance
-        self.parallel.warnings = self.warnings
+        self.parallel.verbose = self.verbose
         if maxFieldsPerNode is None:
             self.maxFieldsPerNode = 2
-            if self.parallel.isRankZero() and self.warnings:
+            if self.parallel.isRankZero() and self.verbose:
                 print 'Warning: maxFieldsPerNode was not specified. ' +\
                     'Assuming 2 fields can be loaded per node. Increase ' +\
                     'maxFieldsPerNode for a speedup.'
@@ -62,7 +62,7 @@ class FieldOperations(object):
         if self.maxFieldsPerNode < \
             2 * self.parallel.getNumProcs() / self.parallel.getNumNodes(): 
             self.maxFieldsPerProc = 2
-            if self.warnings and self.parallel.isRankZero():
+            if self.verbose and self.parallel.isRankZero():
                 print 'Warning: maxFieldsPerNode too small for given ' +\
                     'number of nodes and procs.  Assuming 2 fields can be ' +\
                     'loaded per processor. Increase maxFieldsPerNode for a ' +\
@@ -121,7 +121,7 @@ class FieldOperations(object):
         #objSub = 3.5*testObj - testObj
         #N.testing.assert_array_almost_equal(objSub,2.5*testObj)
         #N.testing.assert_array_almost_equal(testObj,objCopy)
-        if self.warnings:
+        if self.verbose:
             print 'Passed the idiot check'
 
 
@@ -230,7 +230,7 @@ class FieldOperations(object):
             transpose = False
         
         # Estimate the amount of time this will take
-        if self.warnings and self.parallel.isRankZero():
+        if self.verbose and self.parallel.isRankZero():
             rowField = self.load_field(rowFieldPaths[0])
             colField = self.load_field(colFieldPaths[0])
             startTime = T.time()
@@ -259,7 +259,7 @@ class FieldOperations(object):
         numColsPerChunk = int(N.ceil(numCols * 1. / numColChunks))
         numRowsPerChunk = int(N.ceil(numRows * 1. / numRowChunks))
 
-        if self.parallel.isRankZero() and numRowChunks > 1 and self.warnings:
+        if self.parallel.isRankZero() and numRowChunks > 1 and self.verbose:
             print ('Warning: The column fields, of which ' +\
                 'there are %d, will be read %d times each. Increase number ' +\
                 'of nodes or maxFieldsPerNode to reduce redundant loads and ' +\
@@ -351,7 +351,7 @@ class FieldOperations(object):
                                     colField)
             # Completed a chunk of rows and all columns on all processors.
             if ((T.time() - self.prevPrintTime > self.printInterval) and 
-                self.warnings and self.parallel.isRankZero()):
+                self.verbose and self.parallel.isRankZero()):
                 numCompletedIPs = endRowIndex * numCols
                 percentCompletedIPs = 100. * numCompletedIPs/(numCols*numRows)           
                 print >> sys.stderr, ('Completed %.1f%% of inner ' +\
@@ -396,7 +396,7 @@ class FieldOperations(object):
 
         # <numRowChunks> is the number of sets that must be computed.
         numRowChunks = int(N.ceil(numFields * 1. / numRowsPerChunk)) 
-        if self.parallel.isRankZero() and numRowChunks > 1 and self.warnings:
+        if self.parallel.isRankZero() and numRowChunks > 1 and self.verbose:
             print ('Warning: The column fields will be read ~%d times each. ' +\
                 'Increase number of nodes or maxFieldsPerNode to reduce ' +\
                 'redundant loads and get a big speedup.') % numRowChunks    
@@ -585,7 +585,7 @@ class FieldOperations(object):
                                     rowFields[rowIndex - procRowAssignments[0]],
                                     colField)
             # Completed a chunk of rows and all columns on all processors.
-            if (self.warnings and (T.time() - self.prevPrintTime > self.printInterval) and
+            if (self.verbose and (T.time() - self.prevPrintTime > self.printInterval) and
                 self.parallel.isRankZero()):
                 numCompletedIPs = endRowIndex*numCols - endRowIndex**2 *.5
                 percentCompletedIPs = 100. * numCompletedIPs/(.5*numCols*numRows)           
@@ -745,7 +745,7 @@ class FieldOperations(object):
         numBasesPerChunk = int(N.ceil(numBases*1./numBasisChunks))
         numSumsPerChunk = int(N.ceil(numSums*1./numSumChunks))
 
-        if self.parallel.isRankZero() and numSumChunks > 1 and self.warnings:
+        if self.parallel.isRankZero() and numSumChunks > 1 and self.verbose:
             print ('Warning: The basis fields (snapshots), ' +\
                 'of which there are %d, will be loaded from file %d times each. If possible, '+\
                 'increase number of ' +\
@@ -814,7 +814,7 @@ class FieldOperations(object):
             for sumIndex in xrange(len(procSumAssignments)):
                 self.save_field(sumLayers[sumIndex],\
                     sumFieldPaths[sumIndex+procSumAssignments[0]])
-            if self.parallel.isRankZero() and self.warnings and T.time()-self.prevPrintTime>self.printInterval:    
+            if self.parallel.isRankZero() and self.verbose and T.time()-self.prevPrintTime>self.printInterval:    
                 print >> sys.stderr, ('Completed %.1f%% of sum fields, %d ' +\
                     'of %d') % (endSumIndex*100./numSums,endSumIndex,numSums)
                 self.prevPrintTime = T.time()
@@ -825,7 +825,7 @@ class FieldOperations(object):
         a = (self.inner_product == other.inner_product and \
         self.load_field == other.load_field and self.save_field == other.save_field \
         and self.maxFieldsPerNode==other.maxFieldsPerNode and\
-        self.warnings==other.warnings)
+        self.verbose==other.verbose)
         return a
 
     def __ne__(self,other):

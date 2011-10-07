@@ -22,7 +22,7 @@ class POD(object):
         
     def __init__(self, load_field=None, save_field=None, \
         load_mat=util.load_mat_text, save_mat=util.save_mat_text, \
-        inner_product=None, maxFieldsPerNode=None, warnings=True, 
+        inner_product=None, maxFieldsPerNode=None, verbose=True, 
         printInterval=10):
         """
         POD constructor
@@ -30,13 +30,13 @@ class POD(object):
         """
         self.fieldOperations = FieldOperations(load_field=load_field, 
             save_field=save_field, inner_product=inner_product, 
-            maxFieldsPerNode=maxFieldsPerNode, warnings=\
-            warnings, printInterval=printInterval)
+            maxFieldsPerNode=maxFieldsPerNode, verbose=\
+            verbose, printInterval=printInterval)
         self.parallel = parallel.parallelInstance
 
         self.load_mat = load_mat
         self.save_mat = save_mat
-        self.warnings = warnings
+        self.verbose = verbose
      
     def load_decomp(self, singVecsPath, singValsPath):
         """
