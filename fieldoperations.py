@@ -369,6 +369,7 @@ class FieldOperations(object):
         if transpose:
             innerProductMat = innerProductMat.T
 
+        self.parallel.sync() # ensure that all procs leave function at same time
         return innerProductMat
 
         
@@ -610,7 +611,8 @@ class FieldOperations(object):
         
         # Symmetrize matrix
         innerProductMat = N.triu(innerProductMat) + N.triu(innerProductMat, 1).T
-        
+
+        self.parallel.sync() # ensure that all procs leave function at same time
         return innerProductMat
         
         
@@ -671,7 +673,7 @@ class FieldOperations(object):
         modePaths = [modePath%modeNum for modeNum in modeNumList]
         
         self.lin_combine(modePaths, snapPaths, fieldCoeffMatReordered)
-    
+        self.parallel.sync() # ensure that all procs leave function at same time
     
     
     def lin_combine(self, sumFieldPaths, basisFieldPaths, fieldCoeffMat):
@@ -819,6 +821,7 @@ class FieldOperations(object):
                     'of %d') % (endSumIndex*100./numSums,endSumIndex,numSums)
                 self.prevPrintTime = T.time()
 
+        self.parallel.sync() # ensure that all procs leave function at same time
 
     def __eq__(self, other):
         #print 'comparing fieldOperations classes'

@@ -35,14 +35,16 @@ class TestUtil(unittest.TestCase):
         except ImportError:
             self.numProcs=1
             self.rank=0
-        self.testDir = 'testfiles/'
-        if not os.path.exists(self.testDir):
-            SP.call(['mkdir',self.testDir])
+        self.testDir = 'files_modaldecomp_test/'
+        if rank == 0:
+            if not os.path.isdir(self.testDir):
+                SP.call(['mkdir', self.testDir])
     
     def tearDown(self):
         if distributed:
             MPI.COMM_WORLD.barrier()
-        SP.call(['rm -rf '+self.testDir], shell=True)
+        if rank == 0:
+            SP.call(['rm -rf %s/*' % self.testDir], shell=True)
         if distributed:
             MPI.COMM_WORLD.barrier()
         
