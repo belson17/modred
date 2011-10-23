@@ -288,6 +288,65 @@ class TestFieldOperations(unittest.TestCase):
        
         parallel.sync()
 
+    def test_compute_inner_product_mat_types(self):
+        def load_field_as_complex(path):
+            return (1 + 1j) * util.load_mat_text(path) 
+
+        numRowSnaps = 4
+        numColSnaps = 6
+        numStates = 7
+
+        if not os.path.isdir('files_modaldecomp_test'):
+            SP.call(['mkdir', 'files_modaldecomp_test'])
+        rowSnapPath = 'files_modaldecomp_test/row_snap_%03d.txt'
+        colSnapPath = 'files_modaldecomp_test/col_snap_%03d.txt'
+        
+        # generate snapshots and save to file, only do on proc 0
+        parallel.sync()
+        if parallel.isRankZero():
+            rowSnapMat = N.mat(N.random.random((numStates,
+                numRowSnaps)))
+            colSnapMat = N.mat(N.random.random((numStates,
+                numColSnaps)))
+            rowSnapPaths = []
+            colSnapPaths = []
+            for snapIndex in xrange(numRowSnaps):
+                path = rowSnapPath % snapIndex
+                util.save_mat_text(rowSnapMat[:,snapIndex],path)
+                rowSnapPaths.append(path)
+            for snapIndex in xrange(numColSnaps):
+                path = colSnapPath % snapIndex
+                util.save_mat_text(colSnapMat[:,snapIndex],path)
+                colSnapPaths.append(path)
+        else:
+            rowSnapMat = None
+            colSnapMat = None
+            rowSnapPaths = None
+            colSnapPaths = None
+        if parallel.isDistributed():
+            rowSnapMat = parallel.comm.bcast(rowSnapMat, root=0)
+            colSnapMat = parallel.comm.bcast(colSnapMat, root=0)
+            rowSnapPaths = parallel.comm.bcast(rowSnapPaths, root=0)
+            colSnapPaths = parallel.comm.bcast(colSnapPaths, root=0)
+
+        # If number of rows/cols is 1, test case that a string, not
+        # a list, is passed in
+        if len(rowSnapPaths) == 1:
+            rowSnapPaths = rowSnapPaths[0]
+        if len(colSnapPaths) == 1:
+            colSnapPaths = colSnapPaths[0]
+    
+        # Comptue inner product matrix and check type
+        for load, type in [(load_field_as_complex, complex), (util.\
+            load_mat_text, float)]:
+            self.fieldOperations.load_field = load
+            innerProductMat = self.fieldOperations.compute_inner_product_mat(
+                rowSnapPaths, colSnapPaths)
+            symmInnerProductMat = self.fieldOperations.\
+                compute_symmetric_inner_product_mat(rowSnapPaths)
+            self.assertEqual(innerProductMat.dtype, type)
+            self.assertEqual(symmInnerProductMat.dtype, type)
+
     #@unittest.skip('testing other things')
     def test_compute_inner_product_mats(self):
         """

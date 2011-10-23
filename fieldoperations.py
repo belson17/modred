@@ -228,25 +228,31 @@ class FieldOperations(object):
             numCols = temp
         else: 
             transpose = False
-        
+       
+        # Compute a single inner product in order to determin matrix datatype
+        rowField = self.load_field(rowFieldPaths[0])
+        colField = self.load_field(colFieldPaths[0])
+        startTime = T.time()
+        ip = self.inner_product(rowField, colField)
+        ipType = type(ip)
+        endTime = T.time()
+
         # Estimate the amount of time this will take
         if self.verbose and self.parallel.isRankZero():
-            rowField = self.load_field(rowFieldPaths[0])
-            colField = self.load_field(colFieldPaths[0])
-            startTime = T.time()
-            ip = self.inner_product(rowField, colField)
-            endTime = T.time()
             duration = endTime - startTime
-            print ('Computing the inner product matrix will take at least %.1f '+
-                'minutes')%(numRows*numCols*duration/(60.*self.parallel.getNumProcs()))
-            del rowField, colField
+            print ('Computing the inner product matrix will take at least ' +\
+                '%.1f minutes') % (numRows * numCols * duration / (60. * self.\
+                parallel.getNumProcs()))
+        del rowField, colField
+
         # numColsPerProcChunk is the number of cols each proc loads at once        
+        #print ipType
         numColsPerProcChunk = 1
         numRowsPerProcChunk = self.maxFieldsPerProc-numColsPerProcChunk         
         
         # Determine how the loading and inner products will be split up.
-        # These variables are the total number of chunks of data to be read across
-        # all nodes and processors
+        # These variables are the total number of chunks of data to be read 
+        # across all nodes and processors
         numColChunks = int(N.ceil(numCols * 1. / (numColsPerProcChunk * self.\
             parallel.getNumProcs())))
         numRowChunks = int(N.ceil(numRows * 1. / (numRowsPerProcChunk * self.\
@@ -276,7 +282,7 @@ class FieldOperations(object):
         # The efficiency is not expected to be an issue, the size of the mats
         # are small compared to the size of the fields (at least in cases where
         # the data is big and memory is a constraint).
-        innerProductMatChunk = N.mat(N.zeros((numRows,numCols)))
+        innerProductMatChunk = N.mat(N.zeros((numRows,numCols), dtype=ipType))
         for startRowIndex in xrange(0, numRows, numRowsPerChunk):
             endRowIndex = min(numRows,startRowIndex+numRowsPerChunk)
             # Convenience variable, has the rows which this rank is responsible
@@ -402,11 +408,18 @@ class FieldOperations(object):
                 'Increase number of nodes or maxFieldsPerNode to reduce ' +\
                 'redundant loads and get a big speedup.') % numRowChunks    
         
+        # Compute a single inner product in order to determin matrix datatype
+        testField = self.load_field(fieldPaths[0])
+        ip = self.inner_product(testField, testField)
+        ipType = type(ip)
+        del testField
+        
         # Use the same trick as in compute_inner_product_mat, having each proc
         # fill in elements of a numRows x numRows sized matrix, rather than
         # assembling small chunks. This is done for the triangular portions. For
         # the rectangular portions, the inner product mat is filled in directly.
-        innerProductMatChunk = N.mat(N.zeros((numFields, numFields)))
+        innerProductMatChunk = N.mat(N.zeros((numFields, numFields), dtype=\
+            ipType))
         for startRowIndex in xrange(0, numFields, numRowsPerChunk):
             endRowIndex = min(numFields, startRowIndex + numRowsPerChunk)
             procRowAssignments_all = self.parallel.find_assignments(range(
