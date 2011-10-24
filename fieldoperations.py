@@ -601,11 +601,11 @@ class FieldOperations(object):
             # Completed a chunk of rows and all columns on all processors.
             if (self.verbose and (T.time() - self.prevPrintTime > self.printInterval) and
                 self.parallel.isRankZero()):
-                numCompletedIPs = endRowIndex*numCols - endRowIndex**2 *.5
-                percentCompletedIPs = 100. * numCompletedIPs/(.5*numCols*numRows)           
+                numCompletedIPs = endRowIndex*numFields- endRowIndex**2 *.5
+                percentCompletedIPs = 100. * numCompletedIPs/(.5 *\
+                    numFields **2)           
                 print >> sys.stderr, ('Completed %.1f%% of inner ' +\
-                    'products') % (percentCompletedIPs, endRowIndex, 
-                    numCols, numRows, numCols)
+                    'products') % (percentCompletedIPs)
 
                 self.prevPrintTime = T.time()
                              
