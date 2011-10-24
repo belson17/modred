@@ -68,9 +68,13 @@ def load_mat_text(filename,delimiter=' ', is_complex=False):
         dtype = complex
     else:
         dtype = float
-    A = N.loadtxt(filename, delimiter=delimiter, ndmin=2).view(dtype)
+    A = N.loadtxt(filename, delimiter=delimiter, ndmin=2)
+    if is_complex and A.shape[1]%2 != 0:
+        raise ValueError(('Cannot load complex data, file %s '%filename)+\
+            'has an odd number of columns. Maybe it has real data.')
+            
     # Cast as an array, copies to make it C-contiguous memory
-    return N.array(A)
+    return N.array(A.view(dtype))
 
 
 def inner_product(snap1,snap2):
