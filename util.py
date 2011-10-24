@@ -14,6 +14,7 @@ def save_mat_text(A,filename,delimiter=' '):
     
     delimeter seperates the elements.
     """
+    """
     import csv
     if len(N.shape(A))>2:
         raise RuntimeError('Can only write matrices with 1 or 2 dimensions') 
@@ -24,10 +25,13 @@ def save_mat_text(A,filename,delimiter=' '):
     for rowNum in xrange(numRows):
         row=[str(AMat[rowNum,colNum]) for colNum in range(numCols)]
         writer.writerow(row)
+    """
+    N.savetxt(filename, A.view(float), delimiter=delimiter)
     
     
-def load_mat_text(filename,delimiter=' ',isComplex=False):
+def load_mat_text(filename,delimiter=' ',is_complex=False):
     """ Reads a matrix written by write_mat_text, plain text, returns ARRAY"""
+    """
     #print 'loading*file'
     import csv
     f = open(filename,'r')
@@ -40,6 +44,15 @@ def load_mat_text(filename,delimiter=' ',isComplex=False):
     for i,line in enumerate(matReader):
         A.append(N.array([dtype(j) for j in line]))
     return N.array(A)
+    """
+    if is_complex:
+        dtype = complex
+    else:
+        dtype=float
+      
+    A = N.loadtxt(filename, delimiter=delimiter, ndmin=2).view(dtype)
+    
+    return A
 
 
 def inner_product(snap1,snap2):
