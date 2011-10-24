@@ -34,7 +34,15 @@ def save_mat_text(A,filename,delimiter=' '):
         writer.writerow(row)
     """
     # Must cast A into an array, makes it memory C-contiguous.
-    N.savetxt(filename, N.array(A).view(float), delimiter=delimiter)
+    A_save = N.array(A)
+    
+    # If one-dimensional arry, then make a vector of many rows, 1 column
+    if A_save.ndim == 1:
+        A_save = A_save.reshape((-1,1))
+    elif A_save.ndim > 2:
+        raise RuntimeError('Cannot save a matrix with >2 dimensions')
+
+    N.savetxt(filename, A_save.view(float), delimiter=delimiter)
     
     
 def load_mat_text(filename,delimiter=' ', is_complex=False):

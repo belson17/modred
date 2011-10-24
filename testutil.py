@@ -53,26 +53,32 @@ class TestUtil(unittest.TestCase):
     def test_load_save_mat_text(self):
         """Test that can read/write text matrices"""
         tol = 8
-        maxNumRows = 20
-        maxNumCols = 8
+        rows = [1, 5, 20]
+        cols = [1, 4, 5, 23]
         matPath = self.testDir+'testMatrix.txt'
         delimiters = [',',' ',';']
         for delimiter in delimiters:
             for is_complex in [False, True]:
-                for numRows in range(1,maxNumRows):
-                    for numCols in range(1,maxNumCols):
-                        mat_real=N.random.random((numRows,numCols))
-                        if is_complex:
-                            mat_imag = N.random.random((numRows,numCols))
-                            mat = mat_real + 1J*mat_imag
-                        else:
-                            mat = mat_real
-                        util.save_mat_text(mat,matPath,delimiter=delimiter)
-                        matRead = util.load_mat_text(matPath,delimiter=delimiter,
-                            is_complex=is_complex)
-                        N.testing.assert_array_almost_equal(matRead,mat,
-                          decimal=tol)
-                      
+                for squeeze in [False, True]:
+                    for numRows in rows:
+                        for numCols in cols:
+                            mat_real = N.random.random((numRows,numCols))
+                            if is_complex:
+                                mat_imag = N.random.random((numRows,numCols))
+                                mat = mat_real + 1J*mat_imag
+                            else:
+                                mat = mat_real
+                            # Check row and column vectors, no squeeze (1,1)
+                            if squeeze and (numRows > 1 or numCols > 1):
+                                mat = N.squeeze(mat)
+                            util.save_mat_text(mat,matPath,delimiter=delimiter)
+                            matRead = util.load_mat_text(matPath,delimiter=delimiter,
+                                is_complex=is_complex)
+                            if squeeze:
+                                matRead = N.squeeze(matRead)
+                            N.testing.assert_array_almost_equal(matRead,mat,
+                              decimal=tol)
+                          
         
     def test_svd(self):
         numInternalList = [10,50]
