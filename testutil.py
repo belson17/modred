@@ -58,18 +58,18 @@ class TestUtil(unittest.TestCase):
         matPath = self.testDir+'testMatrix.txt'
         delimiters = [',',' ',';']
         for delimiter in delimiters:
-            for isComplex in [False, True]:
+            for is_complex in [False, True]:
                 for numRows in range(1,maxNumRows):
                     for numCols in range(1,maxNumCols):
                         mat_real=N.random.random((numRows,numCols))
-                        if isComplex:
+                        if is_complex:
                             mat_imag = N.random.random((numRows,numCols))
                             mat = mat_real + 1J*mat_imag
                         else:
                             mat = mat_real
                         util.save_mat_text(mat,matPath,delimiter=delimiter)
                         matRead = util.load_mat_text(matPath,delimiter=delimiter,
-                            isComplex=isComplex)
+                            is_complex=is_complex)
                         N.testing.assert_array_almost_equal(matRead,mat,
                           decimal=tol)
                       

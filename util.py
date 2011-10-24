@@ -12,7 +12,14 @@ class UndefinedError(Exception): pass
 def save_mat_text(A,filename,delimiter=' '):
     """Writes a 1D or 2D array or matrix to a text file
     
-    delimeter seperates the elements.
+    delimeter separates the elements
+    Complex data is saved in the following format (as floats)::
+    
+      real00 imag00 real01 imag01 ...
+      real10 imag10 real11 imag11 ...
+      ...
+  
+    It can easily be read in Matlab (provided .m files?).
     """
     """
     import csv
@@ -26,11 +33,17 @@ def save_mat_text(A,filename,delimiter=' '):
         row=[str(AMat[rowNum,colNum]) for colNum in range(numCols)]
         writer.writerow(row)
     """
-    N.savetxt(filename, A.view(float), delimiter=delimiter)
+    # Must cast A into an array, makes it memory C-contiguous.
+    N.savetxt(filename, N.array(A).view(float), delimiter=delimiter)
     
     
 def load_mat_text(filename,delimiter=' ',is_complex=False):
-    """ Reads a matrix written by write_mat_text, plain text, returns ARRAY"""
+    """ Reads a matrix written by write_mat_text, returns an *array*
+    
+    If the data saved is complex, then is_complex must be set to True.
+    If this is not done, the array returned will be real with 2x the 
+    correct number of columns.
+    """
     """
     #print 'loading*file'
     import csv
@@ -45,14 +58,19 @@ def load_mat_text(filename,delimiter=' ',is_complex=False):
         A.append(N.array([dtype(j) for j in line]))
     return N.array(A)
     """
+    # Check the version of numpy, requires version >= 1.6 for ndmin option
+    numpy_version = int(N.version.version[2])
+    if numpy_version < 6:
+        print 'Warning: load_mat_text requires numpy version >= 1.6 '+\
+            'but you are running version %d'%numpy_version
+    
     if is_complex:
         dtype = complex
     else:
-        dtype=float
-      
+        dtype = float
     A = N.loadtxt(filename, delimiter=delimiter, ndmin=2).view(dtype)
-    
-    return A
+    # Cast as an array, copies to make it C-contiguous memory
+    return N.array(A)
 
 
 def inner_product(snap1,snap2):
