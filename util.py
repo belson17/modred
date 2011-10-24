@@ -37,7 +37,7 @@ def save_mat_text(A,filename,delimiter=' '):
     N.savetxt(filename, N.array(A).view(float), delimiter=delimiter)
     
     
-def load_mat_text(filename,delimiter=' ',is_complex=False):
+def load_mat_text(filename,delimiter=' ', is_complex=False):
     """ Reads a matrix written by write_mat_text, returns an *array*
     
     If the data saved is complex, then is_complex must be set to True.

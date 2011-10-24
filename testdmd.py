@@ -168,9 +168,10 @@ class TestDMD(unittest.TestCase):
 
         # Test that matrices were correctly stored
         if parallel.isRankZero():
-            ritzValsLoaded = N.array(util.load_mat_text(ritzValsPath,isComplex=\
-                True)).squeeze()
-            buildCoeffLoaded = util.load_mat_text(buildCoeffPath,isComplex=True)
+            ritzValsLoaded = N.array(util.load_mat_text(ritzValsPath,
+                is_complex=True)).squeeze()
+            buildCoeffLoaded = util.load_mat_text(buildCoeffPath, 
+                is_complex=True)
             modeNormsLoaded = N.array(util.load_mat_text(modeNormsPath).\
                 squeeze())
         else:   
@@ -210,7 +211,7 @@ class TestDMD(unittest.TestCase):
                 complex)
             for i in range(self.numSnaps-1):
                 modeMat[:,i] = util.load_mat_text(modePath % (i+self.indexFrom),
-                    isComplex=True)
+                    is_complex=True)
         else:
             modeMat = None
         if parallel.isDistributed():
