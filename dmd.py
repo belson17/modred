@@ -1,13 +1,10 @@
-# Parent class
+
+import numpy as N
 from fieldoperations import FieldOperations
 from pod import POD
-import numpy as N
-
-# Common functions
 import util
 import parallel
 
-# Derived class
 class DMD(object):
     """
     Dynamic Mode Decomposition/Koopman Mode Decomposition
@@ -16,112 +13,114 @@ class DMD(object):
     
     """
 
-    def __init__(self, load_field=None, save_field=None, load_mat=util.\
-        load_mat_text, save_mat=util.save_mat_text, inner_product=None, 
-        maxFieldsPerNode=None, pod=None, verbose=True):
+    def __init__(self, load_field=None, save_field=None, 
+        load_mat=util.load_mat_text, save_mat=util.save_mat_text,
+        inner_product=None, 
+        max_fields_per_node=None, POD_slave=None, verbose=True):
         """
         DMD constructor
         """
-        self.fieldOperations = FieldOperations(load_field=load_field,\
+        self.field_ops_slave = FieldOperations(load_field=load_field,\
             save_field=save_field, inner_product=inner_product,
-            maxFieldsPerNode=maxFieldsPerNode, verbose=\
+            max_fields_per_node=max_fields_per_node, verbose=\
             verbose)
-        self.parallel = parallel.parallelInstance
+        self.parallel = parallel.parallel_default
 
         self.load_mat = load_mat
         self.save_mat = save_mat
-        self.pod = pod
+        self.POD_slave = POD_slave
         self.verbose = verbose
 
-    def load_decomp(self, ritzValsPath, modeNormsPath, buildCoeffPath):
+    def load_decomp(self, ritz_vals_path, mode_norms_path, build_coeff_path):
         """
         Loads the decomposition matrices from file. 
         """
         if self.load_mat is None:
             raise UndefinedError('Must specify a load_mat function')
-        if self.parallel.isRankZero():
-            self.ritzVals = N.squeeze(N.array(self.load_mat(ritzValsPath)))
-            self.modeNorms = N.squeeze(N.array(self.load_mat(modeNormsPath)))
-            self.buildCoeff = self.load_mat(buildCoeffPath)
+        if self.parallel.is_rank_zero():
+            self.ritz_vals = N.squeeze(N.array(self.load_mat(ritz_vals_path)))
+            self.mode_norms = N.squeeze(N.array(self.load_mat(mode_norms_path)))
+            self.build_coeff = self.load_mat(build_coeff_path)
         else:
-            self.ritzVals = None
-            self.modeNorms = None
-            self.buildCoeff = None
-        if self.parallel.isDistributed():
-            self.ritzVals = self.parallel.comm.bcast(self.ritzVals, root=0)
-            self.modeNorms = self.parallel.comm.bcast(self.modeNorms, root=0)
-            self.buildCoeff = self.parallel.comm.bcast(self.buildCoeff, root=0)
+            self.ritz_vals = None
+            self.mode_norms = None
+            self.build_coeff = None
+        if self.parallel.is_distributed():
+            self.ritz_vals = self.parallel.comm.bcast(self.ritz_vals, root=0)
+            self.mode_norms = self.parallel.comm.bcast(self.mode_norms, root=0)
+            self.build_coeff = self.parallel.comm.bcast(self.build_coeff, root=0)
             
-    def save_decomp(self, ritzValsPath, modeNormsPath, buildCoeffPath):
+    def save_decomp(self, ritz_vals_path, mode_norms_path, build_coeff_path):
         """Save the decomposition matrices to file."""
-        if self.save_mat is None and self.parallel.isRankZero():
+        if self.save_mat is None and self.parallel.is_rank_zero():
             raise util.UndefinedError("save_mat is undefined, can't save")
             
-        if self.parallel.isRankZero():
-            self.save_mat(self.ritzVals, ritzValsPath)
-            self.save_mat(self.modeNorms, modeNormsPath)
-            self.save_mat(self.buildCoeff, buildCoeffPath)
+        if self.parallel.is_rank_zero():
+            self.save_mat(self.ritz_vals, ritz_vals_path)
+            self.save_mat(self.mode_norms, mode_norms_path)
+            self.save_mat(self.build_coeff, build_coeff_path)
 
-    def compute_decomp(self, snapPaths):
+    def compute_decomp(self, snap_paths):
         """
         Compute DMD decomposition
         """
          
-        if snapPaths is not None:
-            self.snapPaths = snapPaths
-        if self.snapPaths is None:
-            raise util.UndefinedError('snapPaths is not given')
+        if snap_paths is not None:
+            self.snap_paths = snap_paths
+        if self.snap_paths is None:
+            raise util.UndefinedError('snap_paths is not given')
 
         # Compute POD from snapshots (excluding last snapshot)
-        if self.pod is None:
-            self.pod = POD(load_field=self.fieldOperations.load_field, 
-                inner_product=self.fieldOperations.inner_product, 
-                maxFieldsPerNode=self.fieldOperations.maxFieldsPerNode, 
+        if self.POD_slave is None:
+            self.POD_slave = POD(load_field=self.field_ops_slave.load_field, 
+                inner_product=self.field_ops_slave.inner_product, 
+                max_fields_per_node=self.field_ops_slave.max_fields_per_node, 
                 verbose=self.verbose)
-            self.pod.compute_decomp(snapPaths=self.snapPaths[:-1])
-        elif self.snaplist[:-1] != self.podsnaplist or len(snapPaths) !=\
-            len(self.pod.snapPaths)+1:
+            self.POD_slave.compute_decomp(snap_paths=self.snap_paths[:-1])
+        # wtf is self.POD_slavesnaplist and snaplist? I don't see them anywhere else?
+        elif self.snaplist[:-1] != self.POD_slavesnaplist or len(snap_paths) !=\
+            len(self.POD_slave.snap_paths)+1:
             raise RuntimeError('Snapshot mistmatch between POD and DMD '+\
                 'objects.')     
-        _podSingValsSqrtMat = N.mat(N.diag(N.array(self.pod.singVals).\
-            squeeze() ** -0.5))
+        _pod_sing_vals_sqrt_mat = N.mat(
+            N.diag(N.array(self.POD_slave.sing_vals).squeeze() ** -0.5))
 
         # Inner product of snapshots w/POD modes
-        numSnaps = len(self.snapPaths)
-        podModesStarTimesSnaps = N.mat(N.empty((numSnaps-1, numSnaps-1)))
-        podModesStarTimesSnaps[:, :-1] = self.pod.correlationMat[:,1:]  
-        podModesStarTimesSnaps[:, -1] = self.fieldOperations.\
-            compute_inner_product_mat(self.snapPaths[:-1], self.snapPaths[
+        num_snaps = len(self.snap_paths)
+        pod_modes_star_times_snaps = N.mat(N.empty((num_snaps-1, num_snaps-1)))
+        pod_modes_star_times_snaps[:, :-1] = self.POD_slave.correlation_mat[:,1:]  
+        pod_modes_star_times_snaps[:, -1] = self.field_ops_slave.\
+            compute_inner_product_mat(self.snap_paths[:-1], self.snap_paths[
             -1])
-        podModesStarTimesSnaps = _podSingValsSqrtMat * self.pod.\
-            singVecs.H * podModesStarTimesSnaps
+        pod_modes_star_times_snaps = _pod_sing_vals_sqrt_mat * self.POD_slave.\
+            sing_vecs.H * pod_modes_star_times_snaps
             
         # Reduced order linear system
-        lowOrderLinearMap = podModesStarTimesSnaps * self.pod.singVecs * \
-            _podSingValsSqrtMat
-        self.ritzVals, lowOrderEigVecs = N.linalg.eig(lowOrderLinearMap)
+        low_order_linear_map = pod_modes_star_times_snaps * self.POD_slave.sing_vecs * \
+            _pod_sing_vals_sqrt_mat
+        self.ritz_vals, low_order_eig_vecs = N.linalg.eig(low_order_linear_map)
         
         # Scale Ritz vectors
-        ritzVecsStarTimesInitSnap = lowOrderEigVecs.H * _podSingValsSqrtMat * \
-            self.pod.singVecs.H * self.pod.correlationMat[:,0]
-        ritzVecScaling = N.linalg.inv(lowOrderEigVecs.H * lowOrderEigVecs) *\
-            ritzVecsStarTimesInitSnap
-        ritzVecScaling = N.mat(N.diag(N.array(ritzVecScaling).squeeze()))
+        ritz_vecs_star_times_init_snap = low_order_eig_vecs.H * _pod_sing_vals_sqrt_mat * \
+            self.POD_slave.sing_vecs.H * self.POD_slave.correlation_mat[:,0]
+        ritz_vec_scaling = N.linalg.inv(low_order_eig_vecs.H * low_order_eig_vecs) *\
+            ritz_vecs_star_times_init_snap
+        ritz_vec_scaling = N.mat(N.diag(N.array(ritz_vec_scaling).squeeze()))
 
         # Compute mode energies
-        self.buildCoeff = self.pod.singVecs * _podSingValsSqrtMat *\
-            lowOrderEigVecs * ritzVecScaling
-        self.modeNorms = N.diag(self.buildCoeff.H * self.pod.\
-            correlationMat * self.buildCoeff).real
+        self.build_coeff = self.POD_slave.sing_vecs * _pod_sing_vals_sqrt_mat *\
+            low_order_eig_vecs * ritz_vec_scaling
+        self.mode_norms = N.diag(self.build_coeff.H * self.POD_slave.\
+            correlation_mat * self.build_coeff).real
         
-    def compute_modes(self, modeNumList, modePath, indexFrom=1, snapPaths=None):
-        if self.buildCoeff is None:
-            raise util.UndefinedError('Must define self.buildCoeff')
+    def compute_modes(self, mode_nums, mode_path, index_from=1, snap_paths=None):
+        if self.build_coeff is None:
+            raise util.UndefinedError('Must define self.build_coeff')
         # User should specify ALL snapshots, even though all but last are used
-        if snapPaths is not None:
-            self.snapPaths = snapPaths
-        self.fieldOperations._compute_modes(modeNumList, modePath, self.\
-            snapPaths[:-1], self.buildCoeff, indexFrom=indexFrom)
+        if snap_paths is not None:
+            self.snap_paths = snap_paths
+        self.field_ops_slave._compute_modes(mode_nums, mode_path, self.\
+            snap_paths[:-1], self.build_coeff, index_from=index_from)
 
         
         

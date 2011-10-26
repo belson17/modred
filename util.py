@@ -6,10 +6,9 @@ import numpy as N
 import inspect 
 import copy
 
-
 class UndefinedError(Exception): pass
     
-def save_mat_text(A,filename,delimiter=' '):
+def save_mat_text(mat, filename, delimiter=' '):
     """Writes a 1D or 2D array or matrix to a text file
     
     delimeter separates the elements
@@ -19,52 +18,27 @@ def save_mat_text(A,filename,delimiter=' '):
       real10 imag10 real11 imag11 ...
       ...
   
-    It can easily be read in Matlab (provided .m files?).
+    It can easily be read in Matlab (provided .m files?). Brandt has written
+    these matlab functions.
     """
-    """
-    import csv
-    if len(N.shape(A))>2:
-        raise RuntimeError('Can only write matrices with 1 or 2 dimensions') 
-    AMat = N.mat(copy.deepcopy(A))
-    numRows,numCols = N.shape(AMat) #must be 2D since it is a matrix
-    writer = csv.writer(open(filename,'w'),delimiter=delimiter)
-       
-    for rowNum in xrange(numRows):
-        row=[str(AMat[rowNum,colNum]) for colNum in range(numCols)]
-        writer.writerow(row)
-    """
-    # Must cast A into an array, makes it memory C-contiguous.
-    A_save = N.array(A)
+    # Must cast mat into an array, makes it memory C-contiguous.
+    mat_save = N.array(mat)
     
     # If one-dimensional arry, then make a vector of many rows, 1 column
-    if A_save.ndim == 1:
-        A_save = A_save.reshape((-1,1))
-    elif A_save.ndim > 2:
+    if mat_save.ndim == 1:
+        mat_save = mat_save.reshape((-1,1))
+    elif mat_save.ndim > 2:
         raise RuntimeError('Cannot save a matrix with >2 dimensions')
 
-    N.savetxt(filename, A_save.view(float), delimiter=delimiter)
+    N.savetxt(filename, mat_save.view(float), delimiter=delimiter)
     
     
-def load_mat_text(filename,delimiter=' ', is_complex=False):
+def load_mat_text(filename, delimiter=' ', is_complex=False):
     """ Reads a matrix written by write_mat_text, returns an *array*
     
     If the data saved is complex, then is_complex must be set to True.
     If this is not done, the array returned will be real with 2x the 
     correct number of columns.
-    """
-    """
-    #print 'loading*file'
-    import csv
-    f = open(filename,'r')
-    matReader = csv.reader(f,delimiter=delimiter)
-    A=[]
-    if isComplex:
-        dtype = complex
-    else:
-        dtype = float
-    for i,line in enumerate(matReader):
-        A.append(N.array([dtype(j) for j in line]))
-    return N.array(A)
     """
     # Check the version of numpy, requires version >= 1.6 for ndmin option
     numpy_version = int(N.version.version[2])
@@ -76,56 +50,58 @@ def load_mat_text(filename,delimiter=' ', is_complex=False):
         dtype = complex
     else:
         dtype = float
-    A = N.loadtxt(filename, delimiter=delimiter, ndmin=2)
-    if is_complex and A.shape[1]%2 != 0:
+    mat = N.loadtxt(filename, delimiter=delimiter, ndmin=2)
+    if is_complex and mat.shape[1]%2 != 0:
         raise ValueError(('Cannot load complex data, file %s '%filename)+\
             'has an odd number of columns. Maybe it has real data.')
             
     # Cast as an array, copies to make it C-contiguous memory
-    return N.array(A.view(dtype))
+    return N.array(mat.view(dtype))
 
 
-def inner_product(snap1,snap2):
+def inner_product(field1, field2):
     """ A default inner product for n-dimensional numpy arrays """
-    return (snap1*snap2.conj()).sum()
+    return (field1*field2.conj()).sum()
 
     
-def svd(A):
-    """An svd that better meets our needs.
+def svd(mat, tol = 1e-13):
+    """An SVD that better meets our needs.
     
-    Returns U,E,V where U.E.V*=A. It truncates the matrices such that
+    Returns U,E,V where U.E.V* = mat. It truncates the matrices such that
     there are no ~0 singular values. U and V are numpy.matrix's, E is
     a 1D numpy.array.
     """
-    singValTol=1e-13
     
     import copy
-    AMat = N.mat(copy.deepcopy(A))
+    mat_copied = N.mat(copy.deepcopy(mat))
     
-    U,E,VCompConj=N.linalg.svd(AMat,full_matrices=0)
-    V=N.mat(VCompConj).H
-    U=N.mat(U)
+    U, E, V_comp_conj = N.linalg.svd(mat_copied, full_matrices=0)
+    V = N.mat(V_comp_conj).H
+    U = N.mat(U)
     
-    #Take care of case where sing vals are ~0
-    indexZeroSingVal=N.nonzero(abs(E)<singValTol)
-    if len(indexZeroSingVal[0])>0:
-        U=U[:,:indexZeroSingVal[0][0]]
-        V=V[:,:indexZeroSingVal[0][0]]
-        E=E[:indexZeroSingVal[0][0]]
+    # Only return sing vals above the tolerance
+    num_nonzeros = (abs(E) > tol).sum()
+    if num_nonzeros > 0:
+        U=U[:,:num_nonzeros]
+        V=V[:,:num_nonzeros]
+        E=E[:num_nonzeros]
     
     return U,E,V
 
-def getFileList(dir,fileExtension=''):
-    """Returns list of files in dir with file extension fileExtension"""
-    fileList = os.listdir(dir)
-    if len(fileExtension)>=1:
-        filteredFileList = []
-        for f in fileList:
-            if f[-len(fileExtension):] == fileExtension:
-                filteredFileList.append(f)
-        return filteredFileList
+
+def get_file_list(directory, file_extension=None):
+    """Returns list of files in directory with file_extension"""
+    files = os.listdir(directory)
+    if file_extension is not None:
+        if len(file_extension) == 0:
+            print 'Warning: gave an empty file extension'
+        filtered_files = []
+        for f in files:
+            if f[-len(fileExtension):] == file_extension:
+                filtered_files.append(f)
+        return filtered_files
     else:
-        return fileList
+        return files
         
 
 def get_data_members(obj):
@@ -137,9 +113,11 @@ def get_data_members(obj):
             pr[name] = value
     return pr
 
+
 def sum_arrays(arr1,arr2):
     """Used for allreduce command, may not be necessary"""
     return arr1+arr2
+
     
 def sum_lists(list1,list2):
     """Sum the elements of each list, return a new list.

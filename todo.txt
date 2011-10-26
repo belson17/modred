@@ -2,15 +2,10 @@
 # MODALDECOMP LIBRARY #
 #######################
 
-Write a user guide, or add more Usage examples in sphinx docs
-
-Write explanation of parallelization and scaling. Do more serious study
-of this for a given case, experiment with code for speedups (maybe just use
-pickle for saving objects).
-Mention that users should experirment with MKL or LAPACK and numexpr 
-and numpy for parallel (sh mem) inner products and
-array operations. Also, multiprocessing might be pickling data unnecessarily, so
-should try threading, see: http://www.scipy.org/Cookbook/Multithreading.
+Find a better, more natural, way to deal with line continuation/breaks. As it is,
+the code is chopped to bits and is not at all readable. No one would ever write
+code like this, and that's why we always have to go back and redo the formatting.
+It's completely imposed and unnatural currently.
 
 add an option for svd thresholding in DMD.  when the svd singular values are
 ill-conditioned, then the resulting computation results can be invalid.  for
@@ -50,7 +45,11 @@ doing inner products, etc. We could leave a safety factor though, and maybe
 leave space for 1-2 snaps/modes for scratch space for the user's functions. 
 
 
-################# ## ROM LIBRARY ## #################
+
+
+################# 
+## ROM LIBRARY ##
+#################
 
 This is a separate library that would compute ROMs. It would interact well with
 modaldecomp when necessary (for example for BPOD). The main idea is that there

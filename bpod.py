@@ -16,17 +16,17 @@ class BPOD(object):
     
       import bpod      
       myBPOD = bpod.BPOD(load_field = my_load_field, save_field=my_save_field,
-          inner_product = my_inner_product, maxFieldsPerNode = 500)
-      myBPOD.compute_decomp(directSnapPaths, adjointSnapPaths)      
+          inner_product = my_inner_product, max_fields_per_node = 500)
+      myBPOD.compute_decomp(direct_snap_paths, adjoint_snap_paths)      
       myBPOD.save_hankel_mat(hankelPath)
-      myBPOD.save_decomp(LSingVecsPath, singValsPath, RSingVecsPath)
+      myBPOD.save_decomp(L_sing_vecs_path, sing_vals_path, R_sing_vecs_path)
       myBPOD.compute_direct_modes(range(1, 50), 'bpod_direct_mode_%03d.txt')
       myBPOD.compute_adjoint_modes(range(1, 50), 'bpod_adjoint_mode_%03d.txt')
     """
     
     def __init__(self, load_field=None, save_field=None, 
         save_mat=util.save_mat_text, load_mat=util.load_mat_text,
-        inner_product=None, maxFieldsPerNode=2, verbose=True):
+        inner_product=None, max_fields_per_node=2, verbose=True):
         """
         BPOD constructor
         
@@ -43,67 +43,67 @@ class BPOD(object):
         """
         # Class that contains all of the low-level field operations
         # and parallelizes them.
-        self.fieldOperations = FieldOperations(load_field=load_field, 
+        self.field_ops_slave = FieldOperations(load_field=load_field, 
             save_field=save_field, inner_product=inner_product, 
-            maxFieldsPerNode=maxFieldsPerNode, verbose=verbose)
-        self.parallel = parallel.parallelInstance
+            max_fields_per_node=max_fields_per_node, verbose=verbose)
+        self.parallel = parallel.parallel_default
 
         self.load_mat = load_mat
         self.save_mat = save_mat
         self.verbose = verbose
  
 
-    def load_decomp(self, LSingVecsPath, singValsPath, RSingVecsPath):
+    def load_decomp(self, L_sing_vecs_path, sing_vals_path, R_sing_vecs_path):
         """
         Loads the decomposition matrices from file. 
         """
         if self.load_mat is None:
             raise UndefinedError('Must specify a load_mat function')
-        if self.parallel.isRankZero():
-            self.LSingVecs = self.load_mat(LSingVecsPath)
-            self.singVals = N.squeeze(N.array(self.load_mat(singValsPath)))
-            self.RSingVecs = self.load_mat(RSingVecsPath)
+        if self.parallel.is_rank_zero():
+            self.L_sing_vecs = self.load_mat(L_sing_vecs_path)
+            self.sing_vals = N.squeeze(N.array(self.load_mat(sing_vals_path)))
+            self.R_sing_vecs = self.load_mat(R_sing_vecs_path)
         else:
-            self.LSingVecs = None
-            self.singVals = None
-            self.RSingVecs = None
-        if self.parallel.parallel:
-            self.LSingVecs = self.parallel.comm.bcast(self.LSingVecs, root=0)
-            self.singVals = self.parallel.comm.bcast(self.singVals, root=0)
-            self.RSingVecs = self.parallel.comm.bcast(self.LSingVecs, root=0)
+            self.L_sing_vecs = None
+            self.sing_vals = None
+            self.R_sing_vecs = None
+        if self.parallel.is_distributed():
+            self.L_sing_vecs = self.parallel.comm.bcast(self.L_sing_vecs, root=0)
+            self.sing_vals = self.parallel.comm.bcast(self.sing_vals, root=0)
+            self.R_sing_vecs = self.parallel.comm.bcast(self.L_sing_vecs, root=0)
     
     
-    def save_hankel_mat(self, hankelMatPath):
+    def save_hankel_mat(self, hankel_mat_path):
         if self.save_mat is None:
             raise util.UndefinedError('save_mat not specified')
-        elif self.parallel.isRankZero():
-            self.save_mat(self.hankelMat, hankelMatPath)           
+        elif self.parallel.is_rank_zero():
+            self.save_mat(self.hankel_mat, hankel_mat_path)           
     
     
-    def save_decomp(self, LSingVecsPath, singValsPath, RSingVecsPath):
+    def save_decomp(self, L_sing_vecs_path, sing_vals_path, R_sing_vecs_path):
         """Save the decomposition matrices to file."""
         if self.save_mat is None:
             raise util.UndefinedError("save_mat not specified")
-        elif self.parallel.isRankZero():
-            self.save_mat(self.LSingVecs, LSingVecsPath)
-            self.save_mat(self.RSingVecs, RSingVecsPath)
-            self.save_mat(self.singVals, singValsPath)
+        elif self.parallel.is_rank_zero():
+            self.save_mat(self.L_sing_vecs, L_sing_vecs_path)
+            self.save_mat(self.R_sing_vecs, R_sing_vecs_path)
+            self.save_mat(self.sing_vals, sing_vals_path)
 
         
-    def compute_decomp(self, directSnapPaths, adjointSnapPaths):
+    def compute_decomp(self, direct_snap_paths, adjoint_snap_paths):
         """
         Compute BPOD decomposition from given data.
         
         First computes the Hankel mat Y*X, then the SVD of this matrix.
         """        
-        self.directSnapPaths = directSnapPaths
-        self.adjointSnapPaths = adjointSnapPaths
+        self.direct_snap_paths = direct_snap_paths
+        self.adjoint_snap_paths = adjoint_snap_paths
         # Do Y.conj()*X
-        self.hankelMat = self.fieldOperations.compute_inner_product_mat(\
-            self.adjointSnapPaths, self.directSnapPaths)
+        self.hankel_mat = self.field_ops_slave.compute_inner_product_mat(
+            self.adjoint_snap_paths, self.direct_snap_paths)
         self.compute_SVD()        
-        #self.parallel.evaluate_and_bcast([self.LSingVecs,self.singVals,self.\
-        #    RSingVecs], util.svd, arguments = [self.hankelMat])
+        #self.parallel.evaluate_and_bcast([self.L_sing_vecs,self.sing_vals,self.\
+        #    R_sing_vecs], util.svd, arguments = [self.hankel_mat])
 
 
     def compute_SVD(self):
@@ -111,89 +111,90 @@ class BPOD(object):
         
         This is especially useful if you already have the hankel mat and 
         only want to compute the SVD. You can skip using compute_decomp,
-        and instead load the hankel mat, set self.hankelMat, and call this
+        and instead load the hankel mat, set self.hankel_mat, and call this
         function."""
-        if self.parallel.isRankZero():
-            self.LSingVecs, self.singVals, self.RSingVecs = \
-                util.svd(self.hankelMat)
+        if self.parallel.is_rank_zero():
+            self.L_sing_vecs, self.sing_vals, self.R_sing_vecs = \
+                util.svd(self.hankel_mat)
         else:
-            self.LSingVecs = None
-            self.RSingVecs = None
-            self.singVals = None
-        if self.parallel.isDistributed():
-            self.LSingVecs = self.parallel.comm.bcast(self.LSingVecs, root=0)
-            self.singVals = self.parallel.comm.bcast(self.singVals, root=0)
-            self.RSingVecs = self.parallel.comm.bcast(self.RSingVecs, root=0)
+            self.L_sing_vecs = None
+            self.R_sing_vecs = None
+            self.sing_vals = None
+        if self.parallel.is_distributed():
+            self.L_sing_vecs = self.parallel.comm.bcast(self.L_sing_vecs, root=0)
+            self.sing_vals = self.parallel.comm.bcast(self.sing_vals, root=0)
+            self.R_sing_vecs = self.parallel.comm.bcast(self.R_sing_vecs, root=0)
         
 
-    def compute_direct_modes(self, modeNumList, modePath, indexFrom=1,
-        directSnapPaths=None):
+    def compute_direct_modes(self, mode_nums, mode_path, index_from=1,
+        direct_snap_paths=None):
         """
         Computes the direct modes and saves them to file.
         
-        modeNumList
+        mode_nums
           Mode numbers to compute on this processor. This 
-          includes the indexFrom, so if indexFrom=1, examples are:
+          includes the index_from, so if index_from=1, examples are:
           [1,2,3,4,5] or [3,1,6,8]. The mode numbers need not be sorted,
           and sorting does not increase efficiency. 
           Repeated mode numbers is not guaranteed to work. 
 
-        modePath
+        mode_path
           Full path to mode location, e.g /home/user/mode_%d.txt.
 
-        indexFrom
+        index_from
           Choose to index modes starting from 0, 1, or other.
         
-        self.RSingVecs, self.singVals must exist or an UndefinedError.
+        self.R_sing_vecs & self.sing_vals must exist, else an UndefinedError.
         """
-        if self.RSingVecs is None:
-            raise util.UndefinedError('Must define self.RSingVecs')
-        if self.singVals is None:
-            raise util.UndefinedError('Must define self.singVals')
+        if self.R_sing_vecs is None:
+            raise util.UndefinedError('Must define self.R_sing_vecs')
+        if self.sing_vals is None:
+            raise util.UndefinedError('Must define self.sing_vals')
             
-        if directSnapPaths is not None:
-            self.directSnapPaths = directSnapPaths
-        if self.directSnapPaths is None:
-            raise util.UndefinedError('Must specify directSnapPaths')
+        if direct_snap_paths is not None:
+            self.direct_snap_paths = direct_snap_paths
+        if self.direct_snap_paths is None:
+            raise util.UndefinedError('Must specify direct_snap_paths')
         # Switch to N.dot...
-        buildCoeffMat = N.mat(self.RSingVecs)*N.mat(N.diag(self.singVals**-0.5))
+        build_coeff_mat = N.mat(self.R_sing_vecs)*N.mat(N.diag(self.sing_vals**-0.5))
 
-        self.fieldOperations._compute_modes(modeNumList, modePath, 
-            self.directSnapPaths, buildCoeffMat, indexFrom=indexFrom)
+        self.field_ops_slave._compute_modes(mode_nums, mode_path, 
+            self.direct_snap_paths, build_coeff_mat, index_from=index_from)
     
-    def compute_adjoint_modes(self, modeNumList, modePath, indexFrom=1,
-        adjointSnapPaths=None):
+    def compute_adjoint_modes(self, mode_nums, mode_path, index_from=1,
+        adjoint_snap_paths=None):
         """
         Computes the adjoint modes and saves them to file.
         
-        modeNumList
+        mode_nums
           Mode numbers to compute on this processor. This 
-          includes the indexFrom, so if indexFrom=1, examples are:
+          includes the index_from, so if index_from=1, examples are:
           [1,2,3,4,5] or [3,1,6,8]. The mode numbers need not be sorted,
           and sorting does not increase efficiency. 
           Repeated mode numbers is not guaranteed to work.
 
-        modePath
+        mode_path
           Full path to mode location, e.g /home/user/mode_%d.txt.
 
-        indexFrom
+        index_from
           Choose to index modes starting from 0, 1, or other.
         
-        self.LSingVecs, self.singVals must exist or an UndefinedError.
+        self.L_sing_vecs, self.sing_vals must exist or an UndefinedError.
         """
-        if self.LSingVecs is None:
-            raise UndefinedError('Must define self.LSingVecs')
-        if self.singVals is None:
-            raise UndefinedError('Must define self.singVals')
-        if adjointSnapPaths is not None:
-            self.adjointSnapPaths=adjointSnapPaths
-        if self.adjointSnapPaths is None:
-            raise util.UndefinedError('Must specify adjointSnapPaths')
+        if self.L_sing_vecs is None:
+            raise UndefinedError('Must define self.L_sing_vecs')
+        if self.sing_vals is None:
+            raise UndefinedError('Must define self.sing_vals')
+        if adjoint_snap_paths is not None:
+            self.adjoint_snap_paths=adjoint_snap_paths
+        if self.adjoint_snap_paths is None:
+            raise util.UndefinedError('Must specify adjoint_snap_paths')
 
-        self.singVals = N.squeeze(N.array(self.singVals))
+        self.sing_vals = N.squeeze(N.array(self.sing_vals))
         # Switch to N.dot...
-        buildCoeffMat = N.mat(self.LSingVecs) * N.mat(N.diag(self.singVals**-0.5))
+        build_coeff_mat = N.mat(self.L_sing_vecs) * \
+            N.mat(N.diag(self.sing_vals**-0.5))
                  
-        self.fieldOperations._compute_modes(modeNumList, modePath,
-            self.adjointSnapPaths, buildCoeffMat, indexFrom=indexFrom)
+        self.field_ops_slave._compute_modes(mode_nums, mode_path,
+            self.adjoint_snap_paths, build_coeff_mat, index_from=index_from)
     

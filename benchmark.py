@@ -1,29 +1,29 @@
 """
-This script is to be used to determine how fast the code is for profiling
-and scaling. There are individual functions for testing each component of
-modaldecomp. 
+This script is for profiling and scaling. 
+There are individual functions for testing individual components of modaldecomp. 
 
 To profile, do the following:
-    python -m cProfile -o <pathToOutputFile> <pathToPythonScript>
+    python -m cProfile -o <path_to_output_file> <path_to_python_script>
     
 In parallel, simply prepend with:
     mpiexec -n <number of procs> ...
 
 Then in python, do this to view the results:
     import pstats
-    pstats.Stats(<pathToOutputFile>).strip_dirs().sort_stats('cumulative').\
-        print_stats(<numberOfSignificantLinesToPrint>)
+    pstats.Stats(<path_to_output_file>).strip_dirs().sort_stats('cumulative').\
+        print_stats(<number_significant_lines_to_print>)
 """
 
 import os
 import subprocess as SP
-import numpy as N
-import util
-import time as T
-import fieldoperations as FO
 import cPickle
+import time as T
+import numpy as N
+import fieldoperations as FO
+import util
 import parallel as parallel_mod
-parallel = parallel_mod.parallelInstance
+
+parallel = parallel_mod.parallel_default
 
 
 def save_pickle(obj, filename):
@@ -50,141 +50,144 @@ inner_product = util.inner_product
 import argparse
 parser = argparse.ArgumentParser(description='Get directory in which to ' +\
     'save data.')
-parser.add_argument('--outdir', default='./files_benchmark', help='Path in ' +\
-    'which to save data for benchmark.')
-parser.add_argument('--benchmarkfunc', required=True, choices=['lin_combine',
+parser.add_argument('--outdir', default='./files_benchmark', help='Directory in ' +\
+    'which to save data.')
+parser.add_argument('--function', required=True, choices=['lin_combine',
     'inner_product_mat', 'symmetric_inner_product_mat'], help='Function to ' +\
     'benchmark.')
 args = parser.parse_args()
-dataDir = args.outdir
-if dataDir[-1] != '/':
-    dataDir += '/'
+data_dir = args.outdir
+if data_dir[-1] != '/':
+    data_dir += '/'
 
-def generate_fields(numStates, numFields, fieldDir, fieldName):
+def generate_fields(num_states, num_fields, field_dir, field_name):
     """
     Creates a data set of fields, saves to file.
     
-    fieldDir is the directory
-    fieldName is the name and must include a %03d type string.
+    field_dir is the directory
+    field_name is the file name and must include a %03d type string.
     """
-    if not os.path.exists(fieldDir):
-        SP.call(['mkdir', fieldDir])
+    if not os.path.exists(field_dir):
+        SP.call(['mkdir', field_dir])
     
     """
     # Parallelize saving of fields (may slow down sequoia)
-    procFieldNumAssignments = \
-        parallel.find_assignments(range(numFields))[parallel.getRank()]
-    for fieldNum in procFieldNumAssignments:
-        field = N.random.random(numStates)
-        save_field(field, fieldDir + fieldName%fieldNum)
+    proc_field_num_asignments = \
+        parallel.find_assignments(range(num_fields))[parallel.getRank()]
+    for field_num in proc_field_num_asignments:
+        field = N.random.random(num_states)
+        save_field(field, field_dir + field_name%field_num)
     """
     
-    if parallel.isRankZero():
-        for fieldNum in xrange(numFields):
-            field = N.random.random(numStates)
-            save_field(field, fieldDir + fieldName % fieldNum)
+    if parallel.is_rank_zero():
+        for field_num in xrange(num_fields):
+            field = N.random.random(num_states)
+            save_field(field, field_dir + field_name % field_num)
     
     parallel.sync()
 
 
-def inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode):
+def inner_product_mat(num_states, num_rows, num_cols, max_fields_per_node):
     """
     Computes inner products from known fields.
     
     Remember that rows correspond to adjoint modes and cols to direct modes
     """    
-    colFieldName = 'col_%04d.txt'
-    colFieldPaths = [dataDir + colFieldName%colNum for colNum in range(numCols)]
-    generate_fields(numStates, numCols, dataDir, colFieldName)
+    col_field_name = 'col_%04d.txt'
+    col_field_paths = [data_dir + col_field_name%col_num for col_num in range(num_cols)]
+    generate_fields(num_states, num_cols, data_dir, col_field_name)
     
-    rowFieldName = 'row_%04d.txt'    
-    rowFieldPaths = [dataDir + rowFieldName%rowNum for rowNum in range(numRows)]
-    generate_fields(numStates, numRows, dataDir, rowFieldName)
+    row_field_name = 'row_%04d.txt'    
+    row_field_paths = [data_dir + row_field_name%row_num for row_num in range(num_rows)]
+    generate_fields(num_states, num_rows, data_dir, row_field_name)
     
-    myFO = FO.FieldOperations(maxFieldsPerNode=maxFieldsPerNode, save_field=\
+    my_FO = FO.FieldOperations(max_fields_per_node=max_fields_per_node, save_field=\
         save_field, load_field=load_field, inner_product=inner_product, 
         verbose=True) 
     
-    startTime = T.time()
-    innerProductMat = myFO.compute_inner_product_mat(colFieldPaths, 
-        rowFieldPaths)
-    totalTime = T.time() - startTime
-    return totalTime
+    start_time = T.time()
+    inner_product_mat = my_FO.compute_inner_product_mat(col_field_paths, 
+        row_field_paths)
+    total_time = T.time() - start_time
+    return total_time
     
     
-def symmetric_inner_product_mat(numStates, numFields, maxFieldsPerNode):
+def symmetric_inner_product_mat(num_states, num_fields, max_fields_per_node):
     """
     Computes symmetric inner product matrix from known fields (as in POD).
     """    
-    fieldName = 'field_%04d.txt'
-    fieldPaths = [dataDir + fieldName % fieldNum for fieldNum in range(
-        numFields)]
-    generate_fields(numStates, numFields, dataDir, fieldName)
+    field_name = 'field_%04d.txt'
+    fieldPaths = [data_dir + field_name % field_num for field_num in range(
+        num_fields)]
+    generate_fields(num_states, num_fields, data_dir, field_name)
     
-    myFO = FO.FieldOperations(maxFieldsPerNode=maxFieldsPerNode, save_field=\
+    my_FO = FO.FieldOperations(max_fields_per_node=max_fields_per_node, save_field=\
         save_field, load_field=load_field, inner_product=inner_product, 
         verbose=True) 
     
-    startTime = T.time()
-    innerProductMat = myFO.compute_symmetric_inner_product_mat(fieldPaths)
-    totalTime = T.time() - startTime
-    return totalTime
+    start_time = T.time()
+    inner_product_mat = my_FO.compute_symmetric_inner_product_mat(fieldPaths)
+    total_time = T.time() - start_time
+    return total_time
 
 
-def lin_combine(numStates, numBases, numProducts, maxFieldsPerNode):
+def lin_combine(num_states, num_bases, num_products, max_fields_per_node):
     """
     Computes linear combination of fields from saved fields and random coeffs
     
-    numBases is number of fields to be linearly combined
-    numProducts is the resulting number of fields
+    num_bases is number of fields to be linearly combined
+    num_products is the resulting number of fields
     """
-    basisName = 'snap_%04d.txt'
-    productName = 'product_%04d.txt'
-    generate_fields(numStates, numBases, dataDir, basisName)
-    myFO = FO.FieldOperations(maxFieldsPerNode = maxFieldsPerNode,
+    basis_name = 'snap_%04d.txt'
+    product_name = 'product_%04d.txt'
+    generate_fields(num_states, num_bases, data_dir, basis_name)
+    my_FO = FO.FieldOperations(max_fields_per_node = max_fields_per_node,
     save_field = save_field, load_field=load_field, inner_product=inner_product)
-    coeffMat = N.random.random((numBases, numProducts))
+    coeff_mat = N.random.random((num_bases, num_products))
     
-    basisPaths = [dataDir + basisName%basisNum for basisNum in range(numBases)]
-    productPaths = [dataDir + productName%productNum for productNum in range \
-        (numProducts)]
+    basis_paths = [data_dir + basis_name%basis_num for basis_num in range(num_bases)]
+    product_paths = [data_dir + product_name%product_num for product_num in range \
+        (num_products)]
     
-    startTime = T.time()
-    myFO.lin_combine(productPaths, basisPaths, coeffMat)
-    totalTime = T.time() - startTime
-    return totalTime
+    start_time = T.time()
+    my_FO.lin_combine(product_paths, basis_paths, coeff_mat)
+    total_time = T.time() - start_time
+    return total_time
     
     
 def clean_up():
-    SP.call(['rm -rf ' + dataDir + '*'], shell=True)
+    SP.call(['rm -rf ' + data_dir + '*'], shell=True)
 
 
 def main():
-    #methodToTest = 'lin_combine'
-    #methodToTest = 'inner_product_mat'
-    #methodToTest = 'symmetric_inner_product_mat'
-    methodToTest = args.benchmarkfunc
+    #method_to_test = 'lin_combine'
+    #method_to_test = 'inner_product_mat'
+    #method_to_test = 'symmetric_inner_product_mat'
+    method_to_test = args.function
     
     # Common parameters
-    maxFieldsPerNode = 50
-    numStates = 8000
+    max_fields_per_node = 50
+    num_states = 8000
     
     # Run test of choice
-    if methodToTest == 'lin_combine':
+    if method_to_test == 'lin_combine':
         # lin_combine test
-        numBases = 2500
-        numProducts = 1000
-        t = lin_combine(numStates, numBases, numProducts, maxFieldsPerNode)
-    elif methodToTest == 'inner_product_mat':
+        num_bases = 2500
+        num_products = 1000
+        time_elapsed = lin_combine(
+                num_states, num_bases, num_products, max_fields_per_node)
+    elif method_to_test == 'inner_product_mat':
         # inner_product_mat test
-        numRows = 2000
-        numCols = 2000
-        t= inner_product_mat(numStates, numRows, numCols, maxFieldsPerNode)
-    elif methodToTest == 'symmetric_inner_product_mat':
+        num_rows = 2000
+        num_cols = 2000
+        time_elapsed = inner_product_mat(
+                num_states, num_rows, num_cols, max_fields_per_node)
+    elif method_to_test == 'symmetric_inner_product_mat':
         # symmetric_inner_product_mat test
-        numFields = 2000
-        t= symmetric_inner_product_mat(numStates, numFields, maxFieldsPerNode)
-    print 'Time for ' + methodToTest + ' is %f' % t
+        num_fields = 2000
+        time_elapsed = symmetric_inner_product_mat(
+                num_states, num_fields, max_fields_per_node)
+    print 'Time for ' + method_to_test + ' is %f' % time_elapsed
     
     # Delete files
     clean_up()

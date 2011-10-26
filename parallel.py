@@ -1,33 +1,33 @@
 
 import os
-import numpy as N
 import copy
+import numpy as N
 
 class ParallelError(Exception):
     """For Parallel related errors"""
-    pass
     
 class Parallel(object):
-    """Simple container for information about how many processors there are.
-    It ensures no failure in case mpi4py is not installed or running serial.
+    """For parallelization with mpi4py
     
+    Is a wrapper for the mpi4py module.
+    Also, it contains information about how many processors there are.
+    It ensures no failure in case mpi4py is not installed or running serial.
+    In the future, this could be extended to be used with shared memory as well.
     Almost always one should use the given instance of this class, parallel.parallelInstance!
     """
     def __init__(self):
         try:
-            # Must call MPI module MPI_mod to avoid naming confusion with
-            # the MPI class
-            from mpi4py import MPI as MPI_mod
-            self.comm = MPI_mod.COMM_WORLD
+            from mpi4py import MPI
+            self.comm = MPI.COMM_WORLD
             
-            self._nodeID = self.findNodeID()
-            nodeIDs = self.comm.allgather(self._nodeID)
-            nodeIDsWithoutDuplicates = []
-            for ID in nodeIDs:
-                if not (ID in nodeIDsWithoutDuplicates):
-                    nodeIDsWithoutDuplicates.append(ID)
+            self._node_ID = self.find_node_ID()
+            node_IDs = self.comm.allgather(self._node_ID)
+            node_IDs_no_duplicates = []
+            for ID in node_IDs:
+                if not (ID in node_IDs_no_duplicates):
+                    node_IDs_no_duplicates.append(ID)
                 
-            self._numNodes = len(nodeIDsWithoutDuplicates)
+            self._num_nodes = len(node_IDs_no_duplicates)
             
             # Must use custom_comm for reduce commands! This is
             # more scalable, see reductions.py for more details
@@ -35,31 +35,31 @@ class Parallel(object):
             self.custom_comm = Intracomm(self.comm)
             
             # To adjust number of procs, use submission script/mpiexec
-            self._numMPIWorkers = self.comm.Get_size()          
+            self._num_MPI_workers = self.comm.Get_size()          
             self._rank = self.comm.Get_rank()
-            if self._numMPIWorkers > 1:
+            if self._num_MPI_workers > 1:
                 self.distributed = True
             else:
                 self.distributed = False
         except ImportError:
-            self._numNodes = 1
-            self._numMPIWorkers = 1
+            self._num_nodes = 1
+            self._num_MPI_workers = 1
             self._rank = 0
             self.comm = None
             self.distributed = False
     
-    def findNodeID(self):
+    def find_node_ID(self):
         """
         Finds a unique ID number for each node. Taken from mpi4py emails.
         """
         hostname = os.uname()[1]
         return hash(hostname)
     
-    def getNumNodes(self):
+    def get_num_nodes(self):
         """Return the number of nodes"""
-        return self._numNodes
+        return self._num_nodes
     
-    def printRankZero(self,msgs):
+    def print_rank_zero(self,msgs):
         """
         Prints the elements of the list given from rank=0 only.
         
@@ -79,90 +79,92 @@ class Parallel(object):
         Method computes simple formula based on ranks of each proc, then
         asserts that results make sense and each proc reported back. This
         forces all processors to wait for others to "catch up"
-        It is self-testing and for now does not need a unittest."""
+        It is self-testing and for now does not need a unittest.
+        """
         if self.distributed:
             self.comm.Barrier()
     
-    def isRankZero(self):
+    def is_rank_zero(self):
         """Returns True if rank is zero, false if not, useful for prints"""
         if self._rank == 0:
             return True
         else:
             return False
             
-    def isDistributed(self):
+    def is_distributed(self):
         """Returns true if in parallel (requires mpi4py and >1 processor)"""
         return self.distributed
         
-    def getRank(self):
+    def get_rank(self):
         """Returns the rank of this processor"""
         return self._rank
     
-    def getNumMPIWorkers(self):
-        """Returns the number of MPI workers, currently same as numProcs"""
-        return self._numMPIWorkers
+    def get_num_MPI_workers(self):
+        """Returns the number of MPI workers, currently same as num_procs"""
+        return self._num_MPI_workers
     
-    def getNumProcs(self):
+    def get_num_procs(self):
         """Returns the number of processors"""
-        return self.getNumMPIWorkers()
+        return self.get_num_MPI_workers()
 
     
-    def find_assignments(self, taskList, taskWeights=None):
+    def find_assignments(self, tasks, task_weights=None):
         """ Returns a 2D list of tasks, [rank][taskIndex], 
         
-        Evenly distributes the tasks in taskList, allowing for arbitrary task
+        Evenly distributes the tasks in tasks, allowing for arbitrary task
         weights. 
-        MPI worker n is responsible for task taskAssignments[n][...]
+        MPI worker n is responsible for task task_assignments[n][...]
         where the 2nd dimension of the 2D list contains the tasks (whatever
-        they were in the original taskList).
+        they were in the original tasks).
         """
-        taskAssignments= []
+        task_assignments= []
         
         # If no weights are given, assume each task has uniform weight
-        if taskWeights is None:
-            taskWeights = N.ones(len(taskList))
+        if task_weights is None:
+            task_weights = N.ones(len(tasks))
         else:
-            taskWeights = N.array(taskWeights)
+            task_weights = N.array(task_weights)
         
-        firstUnassignedIndex = 0
+        first_unassigned_index = 0
 
-        for workerNum in range(self._numMPIWorkers):
+        for worker_num in range(self._num_MPI_workers):
             # amount of work to do, float (scaled by weights)
-            workRemaining = sum(taskWeights[firstUnassignedIndex:]) 
+            work_remaining = sum(task_weights[first_unassigned_index:]) 
 
             # Number of MPI workers whose jobs have not yet been assigned
-            numRemainingWorkers = self._numMPIWorkers - workerNum
+            num_remaining_workers = self._num_MPI_workers - worker_num
 
             # Distribute work load evenly across workers
-            workPerWorker = 1. * workRemaining / numRemainingWorkers
+            work_per_worker = (1. * work_remaining) / num_remaining_workers
 
             # If task list is not empty, compute assignments
-            if taskWeights[firstUnassignedIndex:].size != 0:
-                # Index of taskList element which has sum(taskList[:ind]) 
-                # closest to workPerWorker
-                newMaxTaskIndex = N.abs(N.cumsum(taskWeights[firstUnassignedIndex:]) -\
-                    workPerWorker).argmin() + firstUnassignedIndex
+            if task_weights[first_unassigned_index:].size != 0:
+                # Index of tasks element which has sum(tasks[:ind]) 
+                # closest to work_per_worker
+                newMaxTaskIndex = N.abs(N.cumsum(
+                    task_weights[first_unassigned_index:]) -\
+                    work_per_worker).argmin() + first_unassigned_index
                 # Append all tasks up to and including newMaxTaskIndex
-                taskAssignments.append(taskList[firstUnassignedIndex:\
+                task_assignments.append(tasks[first_unassigned_index:\
                     newMaxTaskIndex+1])
-                firstUnassignedIndex = newMaxTaskIndex+1
+                first_unassigned_index = newMaxTaskIndex+1
             else:
-                taskAssignments.append([])
+                task_assignments.append([])
                 
-        return taskAssignments
+        return task_assignments
         
         
 
-    def checkEmptyTasks(self, taskAssignments):
+    def check_empty_tasks(self, task_assignments):
         """Convenience function that checks if empty worker assignments"""
-        emptyTasks = False
-        for r, assignment in enumerate(taskMPITasksAssignments):
-            if len(assignment) == 0 and not emptyTasks:
+        empty_tasks = False
+        for r,assignment in enumerate(task_assignments):
+            if len(assignment) == 0 and not empty_tasks:
                 #if self.isRankZero():
                 #    print ('Warning: %d out of %d processors have no ' +\
                 #        'tasks') % (self._numMPITasks - r, self._numMPITasks)
-                emptyTasks = True
-        return emptyTasks
+                empty_tasks = True
+        return empty_tasks
 
 
     def evaluate_and_bcast(self,outputs, function, arguments=[], keywords={}):
@@ -220,9 +222,9 @@ class Parallel(object):
         
         
     def __eq__(self, other):
-        a = (self._numMPIWorkers == other.getNumMPIWorkers() and \
-        self._rank == other.getRank() and \
-        self.distributed == other.isDistributed())
+        a = (self._num_MPI_workers == other.get_num_MPI_workers() and \
+        self._rank == other.get_rank() and \
+        self.distributed == other.is_distributed())
         #print self._numProcs == other.getNumProcs() ,\
         #self._rank == other.getRank() ,self.parallel == other.isParallel()
         return a
@@ -233,5 +235,7 @@ class Parallel(object):
         return self
         
 # Create an instance of the Parallel class that is used everywhere, "singleton"
-parallelInstance = Parallel()
+parallel_default = Parallel()
+        
+        
         

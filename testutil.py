@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-import numpy as N
 import unittest
 import subprocess as SP
 import os
+import numpy as N
 import util
 
 try: 
@@ -24,17 +24,8 @@ class TestUtil(unittest.TestCase):
     """Tests all of the functions in util.py
     
     To test all parallel features, use "mpiexec -n 2 python testutil.py"
-    Some parallel features are tested even when running in serial.
     """    
     def setUp(self):
-        try:
-            from mpi4py import MPI
-            self.comm=MPI.COMM_WORLD
-            self.numMPITasks = self.comm.Get_size()
-            self.rank = self.comm.Get_rank()
-        except ImportError:
-            self.numProcs=1
-            self.rank=0
         self.testDir = 'files_modaldecomp_test/'
         if rank == 0:
             if not os.path.isdir(self.testDir):
@@ -49,7 +40,7 @@ class TestUtil(unittest.TestCase):
             MPI.COMM_WORLD.barrier()
         
         
-    @unittest.skipIf(distributed,'Only save/load matrices in serial')
+    @unittest.skipIf(distributed, 'Only save/load matrices in serial')
     def test_load_save_mat_text(self):
         """Test that can read/write text matrices"""
         tol = 8
@@ -71,37 +62,37 @@ class TestUtil(unittest.TestCase):
                             # Check row and column vectors, no squeeze (1,1)
                             if squeeze and (numRows > 1 or numCols > 1):
                                 mat = N.squeeze(mat)
-                            util.save_mat_text(mat,matPath,delimiter=delimiter)
-                            matRead = util.load_mat_text(matPath,delimiter=delimiter,
+                            util.save_mat_text(mat, matPath, delimiter=delimiter)
+                            matRead = util.load_mat_text(matPath, delimiter=delimiter,
                                 is_complex=is_complex)
                             if squeeze:
                                 matRead = N.squeeze(matRead)
-                            N.testing.assert_array_almost_equal(matRead,mat,
-                              decimal=tol)
+                            N.testing.assert_array_almost_equal(matRead, mat, 
+                                decimal=tol)
                           
         
     def test_svd(self):
-        numInternalList = [10,50]
-        numRowsList = [3,5,40]
-        numColsList = [1,9,70]
-        for numRows in numRowsList:
-            for numCols in numColsList:
-                for numInternal in numInternalList:
-                    leftMat = N.mat(N.random.random((numRows,numInternal)))
-                    rightMat = N.mat(N.random.random((numInternal,numCols)))
-                    A = leftMat*rightMat
-                    [LSingVecs,singVals,RSingVecs]=util.svd(A)
+        num_internals_list = [10,50]
+        num_rows_list = [3,5,40]
+        num_cols_list = [1,9,70]
+        for num_rows in num_rows_list:
+            for num_cols in num_cols_list:
+                for num_internals in num_internals_list:
+                    left_mat = N.mat(N.random.random((num_rows, num_internals)))
+                    right_mat = N.mat(N.random.random((num_internals, num_cols)))
+                    full_mat = left_mat*right_mat
+                    [L_sing_vecs, sing_vals, R_sing_vecs] = util.svd(full_mat)
                     
-                    U,E,Vstar=N.linalg.svd(A,full_matrices=0)
-                    V = N.mat(Vstar).H
-                    if numInternal < numRows or numInternal <numCols:
-                        U=U[:,:numInternal]
-                        V=V[:,:numInternal]
-                        E=E[:numInternal]
+                    U, E, V_comp_conj = N.linalg.svd(full_mat, full_matrices=0)
+                    V = N.mat(V_comp_conj).H
+                    if num_internals < num_rows or num_internals <num_cols:
+                        U = U[:,:num_internals]
+                        V = V[:,:num_internals]
+                        E = E[:num_internals]
           
-                    N.testing.assert_array_almost_equal(LSingVecs,U)
-                    N.testing.assert_array_almost_equal(singVals,E)
-                    N.testing.assert_array_almost_equal(RSingVecs,V)
+                    N.testing.assert_array_almost_equal(L_sing_vecs, U)
+                    N.testing.assert_array_almost_equal(sing_vals, E)
+                    N.testing.assert_array_almost_equal(R_sing_vecs, V)
     
     
 if __name__=='__main__':
