@@ -22,26 +22,26 @@ class TestBPODROM(unittest.TestCase):
         self.myBPODROM = BPR.BPODROM(save_mat=util.save_mat_text, load_field=\
             util.load_mat_text,inner_product=util.inner_product, save_field=\
             util.save_mat_text)
-        self.testDir = 'files_bpodltirom_test/'
+        self.test_dir = 'files_bpodltirom_test/'
         import os.path
-        if not os.path.exists(self.testDir):
-            SP.call(['mkdir',self.testDir])
-        self.directModePath = self.testDir+'direct_mode_%03d.txt'
-        self.adjointModePath = self.testDir +'adjoint_mode_%03d.txt'
-        self.directDerivModePath =self.testDir + 'direct_deriv_mode_%03d.txt'
-        self.inputPath = self.testDir+'input_%03d.txt'
-        self.outputPath=self.testDir+'output_%03d.txt'
+        if not os.path.exists(self.test_dir):
+            SP.call(['mkdir',self.test_dir])
+        self.direct_mode_path = self.test_dir+'direct_mode_%03d.txt'
+        self.adjoint_mode_path = self.test_dir +'adjoint_mode_%03d.txt'
+        self.direct_deriv_mode_path =self.test_dir + 'direct_deriv_mode_%03d.txt'
+        self.input_path = self.test_dir+'input_%03d.txt'
+        self.output_path=self.test_dir+'output_%03d.txt'
         
-        self.numDirectModes = 10
-        self.numAdjointModes = 8
-        self.numROMModes = 7
-        self.numStates = 10
-        self.numInputs = 2
-        self.numOutputs = 2
+        self.num_direct_modes = 10
+        self.num_adjoint_modes = 8
+        self.num_ROM_modes = 7
+        self.num_states = 10
+        self.num_inputs = 2
+        self.num_outputs = 2
         self.dt = 0
         
-        self.generate_data_set(self.numDirectModes, self.numAdjointModes, \
-            self.numROMModes, self.numStates, self.numInputs, self.numOutputs)
+        self.generate_data_set(self.num_direct_modes, self.num_adjoint_modes, \
+            self.num_ROM_modes, self.num_states, self.num_inputs, self.num_outputs)
 
     def tearDown(self):
         SP.call(['rm -rf files_bpodltirom_test/*'], shell=True)
@@ -50,91 +50,91 @@ class TestBPODROM(unittest.TestCase):
         """ """
         pass
     
-    def generate_data_set(self,numDirectModes,numAdjointModes,numROMModes,
-        numStates,numInputs,numOutputs):
+    def generate_data_set(self,num_direct_modes,num_adjoint_modes,num_ROM_modes,
+        num_states,num_inputs,num_outputs):
         """
         Generates random data, saves to file, and computes corect A,B,C.
         """
-        self.directModePaths=[]
-        self.directDerivModePaths=[]
-        self.adjointModePaths=[]
-        self.inputPaths=[]
-        self.outputPaths=[]
+        self.direct_mode_paths=[]
+        self.direct_deriv_mode_paths=[]
+        self.adjoint_mode_paths=[]
+        self.input_paths=[]
+        self.output_paths=[]
         
-        self.directModeMat = N.mat(
-              N.random.random((numStates,numDirectModes)))
-        self.directDerivModeMat = N.mat(
-              N.random.random((numStates,numDirectModes)))
+        self.direct_mode_mat = N.mat(
+              N.random.random((num_states, num_direct_modes)))
+        self.direct_deriv_mode_mat = N.mat(
+              N.random.random((num_states, num_direct_modes)))
               
-        self.adjointModeMat = N.mat(
-              N.random.random((numStates,numAdjointModes))) 
-        self.inputMat = N.mat(
-              N.random.random((numStates,numInputs))) 
-        self.outputMat = N.mat(
-              N.random.random((numStates,numOutputs))) 
+        self.adjoint_mode_mat = N.mat(
+              N.random.random((num_states, num_adjoint_modes))) 
+        self.input_mat = N.mat(
+              N.random.random((num_states, num_inputs))) 
+        self.output_mat = N.mat(
+              N.random.random((num_states, num_outputs))) 
         
-        for directModeNum in range(numDirectModes):
-            util.save_mat_text(self.directModeMat[:,directModeNum],
-              self.directModePath%directModeNum)
-            util.save_mat_text(self.directDerivModeMat[:,directModeNum],
-              self.directDerivModePath%directModeNum)
-            self.directModePaths.append(self.directModePath%directModeNum)
-            self.directDerivModePaths.append(self.directDerivModePath %\
-                directModeNum)
+        for direct_mode_num in range(num_direct_modes):
+            util.save_mat_text(self.direct_mode_mat[:,direct_mode_num],
+              self.direct_mode_path%direct_mode_num)
+            util.save_mat_text(self.direct_deriv_mode_mat[:,direct_mode_num],
+              self.direct_deriv_mode_path%direct_mode_num)
+            self.direct_mode_paths.append(self.direct_mode_path%direct_mode_num)
+            self.direct_deriv_mode_paths.append(self.direct_deriv_mode_path %\
+                direct_mode_num)
             
-        for adjointModeNum in range(self.numAdjointModes):
-            util.save_mat_text(self.adjointModeMat[:,adjointModeNum],
-              self.adjointModePath%adjointModeNum)
-            self.adjointModePaths.append(self.adjointModePath%adjointModeNum)
+        for adjoint_mode_num in range(self.num_adjoint_modes):
+            util.save_mat_text(self.adjoint_mode_mat[:,adjoint_mode_num],
+              self.adjoint_mode_path%adjoint_mode_num)
+            self.adjoint_mode_paths.append(self.adjoint_mode_path%adjoint_mode_num)
         
-        for inputNum in xrange(numInputs):
-            self.inputPaths.append(self.inputPath%inputNum)
-            util.save_mat_text(self.inputMat[:,inputNum],self.inputPaths[
-                inputNum])
-        for outputNum in xrange(numInputs):
-            self.outputPaths.append(self.outputPath%outputNum)
-            util.save_mat_text(self.outputMat[:,outputNum],self.outputPaths[
-                outputNum])            
+        for input_num in xrange(num_inputs):
+            self.input_paths.append(self.input_path%input_num)
+            util.save_mat_text(self.input_mat[:,input_num],self.input_paths[
+                input_num])
+        for output_num in xrange(num_inputs):
+            self.output_paths.append(self.output_path%output_num)
+            util.save_mat_text(self.output_mat[:,output_num],self.output_paths[
+                output_num])            
         
-        self.ATrue = (self.adjointModeMat.T*self.directDerivModeMat)[
-            :numROMModes,:numROMModes]
-        self.BTrue = (self.adjointModeMat.T*self.inputMat)[:numROMModes,:]
-        self.CTrue = (self.outputMat.T*self.directModeMat)[:,:numROMModes]
+        self.A_true = (self.adjoint_mode_mat.T*self.direct_deriv_mode_mat)[
+            :num_ROM_modes,:num_ROM_modes]
+        self.B_true = (self.adjoint_mode_mat.T*self.input_mat)[:num_ROM_modes,:]
+        self.C_true = (self.output_mat.T*self.direct_mode_mat)[:,:num_ROM_modes]
         
     
     def test_form_A(self):
         """
         Test that, given modes, can find correct A matrix
         """
-        APath =self.testDir +'A.txt'
-        self.myBPODROM.form_A(APath, \
-            self.directDerivModePaths, \
-            self.adjointModePaths, self.dt, \
-            numModes=self.numROMModes)
-        N.testing.assert_array_almost_equal(self.ATrue, \
-            util.load_mat_text(APath))
+        A_Path = self.test_dir +'A.txt'
+        self.myBPODROM.form_A(A_Path, \
+            self.direct_deriv_mode_paths, \
+            self.adjoint_mode_paths, self.dt, \
+            num_modes=self.num_ROM_modes)
+        N.testing.assert_array_almost_equal(self.A_true, \
+            util.load_mat_text(A_Path))
 
     def test_form_B(self):
         """
         Test that, given modes, can find correct B matrix
         """
-        BPath = self.testDir +'B.txt'
-        self.myBPODROM.form_B(BPath,self.inputPaths,\
-            self.adjointModePaths, self.dt, numModes=self.numROMModes)
-        N.testing.assert_array_almost_equal(self.BTrue, \
-            util.load_mat_text(BPath))
+        B_Path = self.test_dir +'B.txt'
+        self.myBPODROM.form_B(B_Path,self.input_paths,\
+            self.adjoint_mode_paths, self.dt, num_modes=self.num_ROM_modes)
+        N.testing.assert_array_almost_equal(self.B_true, \
+            util.load_mat_text(B_Path))
 
     def test_form_C(self):
         """
         Test that, given modes, can find correct C matrix
         """
-        CPath = self.testDir +'C.txt'
-        self.myBPODROM.form_C(CPath,self.outputPaths,
-            self.directModePaths,
-            numModes=self.numROMModes)
+        C_Path = self.test_dir +'C.txt'
+        self.myBPODROM.form_C(C_Path,self.output_paths,
+            self.direct_mode_paths,
+            num_modes=self.num_ROM_modes)
         
-        N.testing.assert_array_almost_equal(self.CTrue, \
-            util.load_mat_text(CPath))
+        N.testing.assert_array_almost_equal(self.C_true, \
+            util.load_mat_text(C_Path))
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
