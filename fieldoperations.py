@@ -263,8 +263,7 @@ class FieldOperations(object):
         if num_row_chunks > 1:
             self.print_msg('Warning: The column fields, of which '
                     'there are %d, will be read %d times each. Increase '
-                    ' number '
-                    'of nodes or max_fields_per_node to reduce redundant '
+                    'number of nodes or max_fields_per_node to reduce redundant '
                     'loads and get a big speedup.' % (num_cols,num_row_chunks))
         
         # Currently using a little trick to finding all of the inner product
