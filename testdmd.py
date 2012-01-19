@@ -10,7 +10,7 @@ import os
 import copy
 import parallel as parallel_mod
 
-parallel = parallel_mod.parallel_default
+parallel = parallel_mod.default_instance
 
 if parallel.is_rank_zero():
     print 'To test fully, remember to do both:'
@@ -73,7 +73,7 @@ class TestDMD(unittest.TestCase):
         self.build_coeff_true = W * (Sigma_mat ** -1) * eig_vecs * scaling
         self.mode_norms_true = N.zeros(self.ritz_vecs_true.shape[1])
         for i in xrange(self.ritz_vecs_true.shape[1]):
-            self.mode_norms_true[i] = self.dmd.field_ops_slave.inner_product(N.\
+            self.mode_norms_true[i] = self.dmd.field_ops.inner_product(N.\
                 array(self.ritz_vecs_true[:,i]), N.array(self.ritz_vecs_true[:, 
                 i])).real
 
@@ -95,9 +95,9 @@ class TestDMD(unittest.TestCase):
         # Set verbose to false, to avoid printing warnings during tests
         
         data_members_default = {'save_mat': util.save_mat_text, 
-            'load_mat': util.load_mat_text, 'POD_slave': None,
-            'parallel': parallel_mod.parallel_default,
-            'verbose': False, 'field_ops_slave': FieldOperations(load_field=None, 
+            'load_mat': util.load_mat_text, 'POD': None,
+            'parallel': parallel_mod.default_instance,
+            'verbose': False, 'field_ops': FieldOperations(load_field=None, 
             save_field=None, inner_product=None, max_fields_per_node=2,
             verbose=False)}
 
@@ -107,7 +107,7 @@ class TestDMD(unittest.TestCase):
         def my_load(fname): pass
         myDMD = DMD(load_field=my_load, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops_slave'].load_field = my_load
+        data_members_modified['field_ops'].load_field = my_load
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)
         
         myDMD = DMD(load_mat=my_load, verbose=False)
@@ -118,7 +118,7 @@ class TestDMD(unittest.TestCase):
         def my_save(data,fname): pass 
         myDMD = DMD(save_field=my_save, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops_slave'].save_field = my_save
+        data_members_modified['field_ops'].save_field = my_save
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)
         
         myDMD = DMD(save_mat=my_save, verbose=False)
@@ -129,15 +129,15 @@ class TestDMD(unittest.TestCase):
         def my_ip(f1, f2): pass
         myDMD = DMD(inner_product=my_ip, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops_slave'].inner_product = my_ip
+        data_members_modified['field_ops'].inner_product = my_ip
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)
 
         max_fields_per_node = 500
         myDMD = DMD(max_fields_per_node=max_fields_per_node, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops_slave'].max_fields_per_node =\
+        data_members_modified['field_ops'].max_fields_per_node =\
             max_fields_per_node
-        data_members_modified['field_ops_slave'].max_fields_per_proc =\
+        data_members_modified['field_ops'].max_fields_per_proc =\
             max_fields_per_node * parallel.get_num_nodes() / parallel.\
             get_num_procs()
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)

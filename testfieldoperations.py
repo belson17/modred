@@ -10,7 +10,7 @@ from fieldoperations import FieldOperations
 import parallel as parallel_mod
 import util
 
-parallel = parallel_mod.parallel_default
+parallel = parallel_mod.default_instance
 
 try: 
     from mpi4py import MPI
@@ -34,7 +34,7 @@ class TestFieldOperations(unittest.TestCase):
         # so messages won't print during tests
         self.default_data_members = {'load_field': None, 'save_field': None, 
             'inner_product': None, 'max_fields_per_node': 2,
-            'max_fields_per_proc': 2, 'parallel':parallel_mod.parallel_default,
+            'max_fields_per_proc': 2, 'parallel':parallel_mod.default_instance,
             'verbose': False, 'print_interval':10, 'prev_print_time':0.}
        
         self.max_fields_per_proc = 10

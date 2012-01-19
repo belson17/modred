@@ -59,7 +59,7 @@ class Parallel(object):
         """Return the number of nodes"""
         return self._num_nodes
     
-    def print_rank_zero(self,msgs):
+    def print_from_rank_zero(self,msgs):
         """
         Prints the elements of the list given from rank=0 only.
         
@@ -69,7 +69,7 @@ class Parallel(object):
         if not isinstance(msgs, list):
             msgs = [msgs]
             
-        if self.isRankZero():
+        if self.is_rank_zero():
             for msg in msgs:
                 print msg
     
@@ -155,7 +155,7 @@ class Parallel(object):
         
         
 
-    def check_empty_tasks(self, task_assignments):
+    def check_for_empty_tasks(self, task_assignments):
         """Convenience function that checks if empty worker assignments"""
         empty_tasks = False
         for r,assignment in enumerate(task_assignments):
@@ -235,7 +235,7 @@ class Parallel(object):
         return self
         
 # Create an instance of the Parallel class that is used everywhere, "singleton"
-parallel_default = Parallel()
+default_instance = Parallel()
         
         
         

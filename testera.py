@@ -49,7 +49,7 @@ class testERA(unittest.TestCase):
         
     def tearDown(self):
         """Deletes all of the matrices created by the tests"""
-        SP.call(['rm -f '+self.test_dir+'*Computed*'], shell=True)
+        SP.call(['rm -f '+self.test_dir+'*computed*'], shell=True)
         SP.call(['rm -f '+self.test_dir+'*delete_me*'], shell=True)
 
     def generate_unequal_dt_data(self, num_inputs, num_outputs, num_snaps, \

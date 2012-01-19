@@ -19,7 +19,7 @@ if rank==0:
     print '  1) python testparallel.py'
     print '  2) mpiexec -n <# procs> python testparallel.py\n\n'
     
-parallel = parallel_mod.parallel_default
+parallel = parallel_mod.default_instance
 
 class TestParallel(unittest.TestCase):
 

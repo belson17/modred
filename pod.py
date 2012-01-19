@@ -28,11 +28,11 @@ class POD(object):
         POD constructor
         
         """
-        self.field_ops_slave = FieldOperations(load_field=load_field, 
+        self.field_ops = FieldOperations(load_field=load_field, 
             save_field=save_field, inner_product=inner_product, 
             max_fields_per_node=max_fields_per_node, 
             verbose=verbose, print_interval=print_interval)
-        self.parallel = parallel.parallel_default
+        self.parallel = parallel.default_instance
 
         self.load_mat = load_mat
         self.save_mat = save_mat
@@ -77,9 +77,9 @@ class POD(object):
         First compute correlation mat X*X, then the SVD of this matrix.
         """
         self.snap_paths = snap_paths
-        #self.correlation_mat = self.field_ops_slave.\
+        #self.correlation_mat = self.field_ops.\
         #    compute_symmetric_inner_product_mat(self.snap_paths)
-        self.correlation_mat = self.field_ops_slave.\
+        self.correlation_mat = self.field_ops.\
             compute_inner_product_mat(self.snap_paths, self.snap_paths)
         self.compute_SVD()
         
@@ -125,7 +125,7 @@ class POD(object):
         build_coeff_mat = N.mat(self.sing_vecs) * \
             N.mat(N.diag(self.sing_vals**-0.5))
 
-        self.field_ops_slave._compute_modes(mode_nums, mode_path,
+        self.field_ops._compute_modes(mode_nums, mode_path,
              self.snap_paths, build_coeff_mat, index_from=index_from)
     
 

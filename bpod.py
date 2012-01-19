@@ -43,10 +43,10 @@ class BPOD(object):
         """
         # Class that contains all of the low-level field operations
         # and parallelizes them.
-        self.field_ops_slave = FieldOperations(load_field=load_field, 
+        self.field_ops = FieldOperations(load_field=load_field, 
             save_field=save_field, inner_product=inner_product, 
             max_fields_per_node=max_fields_per_node, verbose=verbose)
-        self.parallel = parallel.parallel_default
+        self.parallel = parallel.default_instance
 
         self.load_mat = load_mat
         self.save_mat = save_mat
@@ -99,7 +99,7 @@ class BPOD(object):
         self.direct_snap_paths = direct_snap_paths
         self.adjoint_snap_paths = adjoint_snap_paths
         # Do Y.conj()*X
-        self.hankel_mat = self.field_ops_slave.compute_inner_product_mat(
+        self.hankel_mat = self.field_ops.compute_inner_product_mat(
             self.adjoint_snap_paths, self.direct_snap_paths)
         self.compute_SVD()        
         #self.parallel.evaluate_and_bcast([self.L_sing_vecs,self.sing_vals,self.\
@@ -158,7 +158,7 @@ class BPOD(object):
         # Switch to N.dot...
         build_coeff_mat = N.mat(self.R_sing_vecs)*N.mat(N.diag(self.sing_vals**-0.5))
 
-        self.field_ops_slave._compute_modes(mode_nums, mode_path, 
+        self.field_ops._compute_modes(mode_nums, mode_path, 
             self.direct_snap_paths, build_coeff_mat, index_from=index_from)
     
     def compute_adjoint_modes(self, mode_nums, mode_path, index_from=1,
@@ -195,6 +195,6 @@ class BPOD(object):
         build_coeff_mat = N.mat(self.L_sing_vecs) * \
             N.mat(N.diag(self.sing_vals**-0.5))
                  
-        self.field_ops_slave._compute_modes(mode_nums, mode_path,
+        self.field_ops._compute_modes(mode_nums, mode_path,
             self.adjoint_snap_paths, build_coeff_mat, index_from=index_from)
     

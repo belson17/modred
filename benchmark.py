@@ -23,7 +23,7 @@ import fieldoperations as FO
 import util
 import parallel as parallel_mod
 
-parallel = parallel_mod.parallel_default
+parallel = parallel_mod.default_instance
 
 
 def save_pickle(obj, filename):

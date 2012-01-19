@@ -42,7 +42,7 @@ class FieldOperations(object):
         self.verbose = verbose 
         self.print_interval = print_interval
         self.prev_print_time = 0.
-        self.parallel = parallel_mod.parallel_default
+        self.parallel = parallel_mod.default_instance
         
         if max_fields_per_node is None:
             self.max_fields_per_node = 2

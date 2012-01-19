@@ -11,7 +11,7 @@ import util
 import copy
 import parallel as parallel_mod
 
-parallel = parallel_mod.parallel_default
+parallel = parallel_mod.default_instance
 
 if parallel.is_rank_zero():
     print 'To test fully, remember to do both:'
@@ -75,9 +75,9 @@ class TestPOD(unittest.TestCase):
         # Set verbose to false, to avoid printing warnings during tests
         
         data_members_default = {'save_mat': util.save_mat_text, 'load_mat': 
-            util.load_mat_text, 'parallel': parallel_mod.parallel_default,
+            util.load_mat_text, 'parallel': parallel_mod.default_instance,
             'verbose': False,
-            'field_ops_slave': FieldOperations(load_field=None, save_field=None,
+            'field_ops': FieldOperations(load_field=None, save_field=None,
             inner_product=None, max_fields_per_node=2, verbose=False)}
         
         self.assertEqual(util.get_data_members(POD(verbose=False)), 
@@ -86,7 +86,7 @@ class TestPOD(unittest.TestCase):
         def my_load(fname): pass
         my_POD = POD(load_field=my_load, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops_slave'].load_field = my_load
+        data_members_modified['field_ops'].load_field = my_load
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
        
         my_POD = POD(load_mat=my_load, verbose=False)
@@ -97,7 +97,7 @@ class TestPOD(unittest.TestCase):
         def my_save(data, fname): pass 
         my_POD = POD(save_field=my_save, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops_slave'].save_field = my_save
+        data_members_modified['field_ops'].save_field = my_save
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
         
         my_POD = POD(save_mat=my_save, verbose=False)
@@ -108,15 +108,15 @@ class TestPOD(unittest.TestCase):
         def my_ip(f1, f2): pass
         my_POD = POD(inner_product=my_ip, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops_slave'].inner_product = my_ip
+        data_members_modified['field_ops'].inner_product = my_ip
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
 
         max_fields_per_node = 500
         my_POD = POD(max_fields_per_node=max_fields_per_node, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops_slave'].max_fields_per_node =\
+        data_members_modified['field_ops'].max_fields_per_node =\
             max_fields_per_node
-        data_members_modified['field_ops_slave'].max_fields_per_proc =\
+        data_members_modified['field_ops'].max_fields_per_proc =\
             max_fields_per_node * parallel.get_num_nodes() / parallel.\
             get_num_procs()
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
@@ -203,7 +203,7 @@ class TestPOD(unittest.TestCase):
                 mode1 = util.load_mat_text(mode_path % mode_num1)
                 for mode_num2 in self.mode_nums:
                     mode2 = util.load_mat_text(mode_path % mode_num2)
-                    IP = self.pod.field_ops_slave.inner_product(mode1, mode2)
+                    IP = self.pod.field_ops.inner_product(mode1, mode2)
                     if mode_num1 != mode_num2:
                         self.assertAlmostEqual(IP, 0.)
                     else:
