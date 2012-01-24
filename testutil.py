@@ -70,7 +70,8 @@ class TestUtil(unittest.TestCase):
                             N.testing.assert_array_almost_equal(matRead, mat, 
                                 decimal=tol)
                           
-        
+                          
+    @unittest.skipIf(distributed, 'Only load matrices in serial')
     def test_svd(self):
         num_internals_list = [10,50]
         num_rows_list = [3,5,40]
@@ -94,6 +95,99 @@ class TestUtil(unittest.TestCase):
                     N.testing.assert_array_almost_equal(sing_vals, E)
                     N.testing.assert_array_almost_equal(R_sing_vecs, V)
     
+    
+        
+    @unittest.skipIf(distributed, 'Only load data in serial')
+    def test_load_impulse_outputs(self):
+        """
+        Test loading impulse outputs in [t out1 out2 ...] format.
+        
+        Creates outputs, saves them, loads them from ERA instance, tests the loaded outputs
+        are equal to the originals.
+        Returns time_values and outputs at time values in 3D array with indices [time,output,input].
+        That is, outputs[time_index] = Markov parameter at time_values[time_index].
+        """
+        impulse_file_path = self.testDir+'in%03d_to_outs.txt'
+        num_time_steps = 150
+        for num_states in [4,10]:
+            for num_inputs in [1, 4]:
+                for num_outputs in [1, 2, 4, 5]:
+                    outputs_true = N.random.random((num_time_steps, num_outputs, num_inputs))
+                    time_values_true = N.random.random(num_time_steps)
+                    
+                    impulse_file_paths = []
+                    # Save Markov parameters to file
+                    for input_num in range(num_inputs):
+                        impulse_file_paths.append(impulse_file_path%input_num)
+                        data_to_save = N.concatenate( \
+                          (time_values_true.reshape(len(time_values_true),1),
+                          outputs_true[:,:,input_num]), axis=1)
+                        util.save_mat_text(data_to_save, impulse_file_path%input_num)
+                    
+                    time_values, outputs = util.load_impulse_outputs(impulse_file_paths)
+                    N.testing.assert_allclose(outputs, outputs_true)
+                    N.testing.assert_allclose(time_values, time_values_true)
+
+    
+    
+    def test_solve_Lyapunov(self):
+        """Test solution of Lyapunov w/known solution from Maltab's dlyap"""
+        A = N.array([[1., 2.],[3., 4.]])
+        Q = N.array([[4., 3.], [1., 2.]])
+        X_true = N.array([[2.2777777777, -0.5],[-1.166666666666667, -0.166666666666667]])
+        X_computed = util.solve_Lyapunov(A,Q)
+        N.testing.assert_array_almost_equal(X_computed, X_true)
+        X_computed_mats = util.solve_Lyapunov(N.mat(A), N.mat(Q))
+        N.testing.assert_array_almost_equal(X_computed_mats, X_true)    
+    
+    
+    def test_drss(self):
+        """Test drss gives correct mat dimensions and stable dynamics."""
+        for num_states in [1, 5, 14]:
+            for num_inputs in [1, 3, 6]:
+                for num_outputs in [1, 2, 3, 7]:
+                    A, B, C = util.drss(num_states, num_inputs, num_outputs)
+                    self.assertEqual(A.shape, (num_states,num_states))
+                    self.assertEqual(B.shape, (num_states, num_inputs))
+                    self.assertEqual(C.shape, (num_outputs, num_states))
+                    self.assertTrue(N.amax(N.abs(N.linalg.eig(A)[0])) < 1)
+    
+    
+    
+    def test_impulse(self):
+        """Test impulse response of discrete system"""
+        for num_states in [1, 10]:
+            for num_inputs in [1, 3]:
+                for num_outputs in [1, 2, 3, 5]:
+                    for time_step in [1, 2, 4]:
+                        A, B, C = util.drss(num_states, num_inputs, num_outputs)
+                        # Check that can give time_step
+                        time_steps, outputs = util.impulse(A, B, C, time_step=time_step)
+                        num_time_steps = len(time_steps)
+                        time_steps_true = N.arange(0,num_time_steps*time_step,time_step)
+                        N.testing.assert_array_equal(time_steps, time_steps_true)
+                        outputs_true = N.zeros((num_time_steps, num_outputs, num_inputs))
+                        for ti,tv in enumerate(time_steps):
+                            outputs_true[ti] = C*(A**tv)*B
+                        N.testing.assert_array_equal(outputs, outputs_true)
+                        
+                        # Check can give time_steps
+                        time_steps, outputs = util.impulse(A,B,C,time_steps=time_steps)
+                        N.testing.assert_array_equal(time_steps, time_steps_true)
+                        N.testing.assert_array_equal(outputs, outputs_true)
+                        
+                        # Check can give arbitrary time steps (even out of order)
+                        time_steps = N.zeros(num_time_steps,dtype=int)
+                        for i in range(num_time_steps):
+                            time_steps[i] = int((N.random.random()*10000)%100)
+                        time_steps, outputs = util.impulse(A,B,C,time_steps=time_steps)
+                        outputs_true = N.zeros((num_time_steps, num_outputs, num_inputs))
+                        for ti,tv in enumerate(time_steps):
+                            outputs_true[ti] = C*(A**tv)*B
+                        N.testing.assert_array_equal(outputs, outputs_true)
+                        
+        
+        
     
 if __name__=='__main__':
     unittest.main(verbosity=2)

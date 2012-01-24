@@ -97,7 +97,7 @@ def get_file_list(directory, file_extension=None):
             print 'Warning: gave an empty file extension'
         filtered_files = []
         for f in files:
-            if f[-len(fileExtension):] == file_extension:
+            if f[-len(file_extension):] == file_extension:
                 filtered_files.append(f)
         return filtered_files
     else:
@@ -126,5 +126,221 @@ def sum_lists(list1,list2):
     elsewhere too"""
     assert len(list1)==len(list2)
     return [list1[i]+list2[i] for i in xrange(len(list1))]
+
+
+def solve_Lyapunov(A, Q):
+    """Solves equation of form AXA' - X + Q = 0 for X given A and Q
+    
+    See http://en.wikipedia.org/wiki/Lyapunov_equation
+    """
+    A = N.array(A)
+    Q = N.array(Q)
+    if A.shape != Q.shape:
+        raise ValueError('A and Q dont have same shape')
+    A_flat = A.flatten()
+    Q_flat = Q.flatten()
+    kron_AA = N.kron(A, A)
+    X_flat = N.linalg.solve(N.identity(kron_AA.shape[0]) - kron_AA, Q_flat)
+    X = X_flat.reshape((A.shape))
+    return X
+
+
+def drss(num_states, num_inputs, num_outputs):
+    #Generates a discrete random state space system
+    eig_vals = N.linspace(.9, .95, num_states) 
+    eig_vecs = N.random.normal(0, 2., (num_states,num_states))
+    A = N.mat(N.real(N.dot(N.dot(N.linalg.inv(eig_vecs), N.diag(eig_vals)), eig_vecs)))
+    B = N.mat(N.random.normal(0, 1., (num_states, num_inputs)))
+    C = N.mat(N.random.normal(0, 1., (num_outputs, num_states)))
+    return A, B, C
+
+          
+def load_impulse_outputs(output_paths):
+    """Loads impulse outputs with format [t out1 out2 ...]. Used by ERA."""
+    num_inputs = len(output_paths)
+    # Read the first file to get parameters
+    raw_data = load_mat_text(output_paths[0])
+    num_outputs = raw_data.shape[1]-1
+    if num_outputs == 0:
+        raise ValueError('Impulse output data must have at least two columns')
+    time_values = raw_data[:, 0]
+    num_time_values = len(time_values)
+    
+    # Now allocate array and read all of the output data
+    outputs = N.zeros((num_time_values, num_outputs, num_inputs))
+    
+    # Load all of the outputs, make sure time_values match for each input impulse file
+    for input_num,output_path in enumerate(output_paths):
+        raw_data = load_mat_text(output_path)
+        time_values_read = raw_data[:,0]
+        if not N.allclose(time_values_read, time_values):
+            raise ValueError('Time values in %s are inconsistent with other files'%output_path)   
+        outputs[:,:,input_num] = raw_data[:,1:]
+
+    return time_values, outputs
+
+
+#def drss(states, inputs, outputs): return _rss_generate(states, inputs, outputs, 'd')
+    
+def _rss_generate(states, inputs, outputs, type):
+    """Generate a random state space. -stolen from python-control
+    
+    This does the actual random state space generation expected from rss and
+    drss.  type is 'c' for continuous systems and 'd' for discrete systems.
+    
+    """
+    from numpy import all, angle, any, array, concatenate, cos, delete, dot, \
+    empty, exp, eye, matrix, ones, pi, poly, poly1d, roots, shape, sin, zeros
+    from numpy.random import rand, randn
+    from numpy.linalg import inv, det, solve
+    from numpy.linalg.linalg import LinAlgError
+    #from scipy.signal import lti
+    #from slycot import td04ad
+    #from lti import Lti
+    #import xferfcn
+ 
+    # Probability of repeating a previous root.
+    pRepeat = 0.05
+    # Probability of choosing a real root.  Note that when choosing a complex
+    # root, the conjugate gets chosen as well.  So the expected proportion of
+    # real roots is pReal / (pReal + 2 * (1 - pReal)).
+    pReal = 0.6
+    # Probability that an element in B or C will not be masked out.
+    pBCmask = 0.8
+    # Probability that an element in D will not be masked out.
+    pDmask = 0.3
+    # Probability that D = 0.
+    pDzero = 0.5
+
+    # Check for valid input arguments.
+    if states < 1 or states % 1:
+        raise ValueError(("states must be a positive integer.  states = %g." % 
+            states))
+    if inputs < 1 or inputs % 1:
+        raise ValueError(("inputs must be a positive integer.  inputs = %g." %
+            inputs))
+    if outputs < 1 or outputs % 1:
+        raise ValueError(("outputs must be a positive integer.  outputs = %g." %
+            outputs))
+
+    # Make some poles for A.  Preallocate a complex array.
+    poles = zeros(states) + zeros(states) * 0.j
+    i = 0
+
+    while i < states:
+        if rand() < pRepeat and i != 0 and i != states - 1:
+            # Small chance of copying poles, if we're not at the first or last
+            # element.
+            if poles[i-1].imag == 0:
+                # Copy previous real pole.
+                poles[i] = poles[i-1]
+                i += 1
+            else:
+                # Copy previous complex conjugate pair of poles.
+                poles[i:i+2] = poles[i-2:i]
+                i += 2
+        elif rand() < pReal or i == states - 1:
+            # No-oscillation pole.
+            if type == 'c':
+                poles[i] = -exp(randn()) + 0.j
+            elif type == 'd':
+                poles[i] = 2. * rand() - 1.
+            i += 1
+        else:
+            # Complex conjugate pair of oscillating poles.
+            if type == 'c':
+                poles[i] = complex(-exp(randn()), 3. * exp(randn()))
+            elif type == 'd':
+                mag = rand()
+                phase = 2. * pi * rand()
+                poles[i] = complex(mag * cos(phase), 
+                    mag * sin(phase))
+            poles[i+1] = complex(poles[i].real, -poles[i].imag)
+            i += 2
+
+    # Now put the poles in A as real blocks on the diagonal.
+    A = zeros((states, states))
+    i = 0
+    while i < states:
+        if poles[i].imag == 0:
+            A[i, i] = poles[i].real
+            i += 1
+        else:
+            A[i, i] = A[i+1, i+1] = poles[i].real
+            A[i, i+1] = poles[i].imag
+            A[i+1, i] = -poles[i].imag
+            i += 2
+    # Finally, apply a transformation so that A is not block-diagonal.
+    while True:
+        T = randn(states, states)
+        try:
+            A = dot(solve(T, A), T) # A = T \ A * T
+            break
+        except LinAlgError:
+            # In the unlikely event that T is rank-deficient, iterate again.
+            pass
+
+    # Make the remaining matrices.
+    B = randn(states, inputs)
+    C = randn(outputs, states)
+    D = randn(outputs, inputs)
+
+    # Make masks to zero out some of the elements.
+    while True:
+        Bmask = rand(states, inputs) < pBCmask 
+        if any(Bmask): # Retry if we get all zeros.
+            break
+    while True:
+        Cmask = rand(outputs, states) < pBCmask
+        if any(Cmask): # Retry if we get all zeros.
+            break
+    if rand() < pDzero:
+        Dmask = zeros((outputs, inputs))
+    else:
+        Dmask = rand(outputs, inputs) < pDmask
+
+    # Apply masks.
+    B = B * Bmask
+    C = C * Cmask
+    D = D * Dmask
+
+    return N.mat(A), N.mat(B), N.mat(C)
+
+
+    
+def impulse(A, B, C, time_step=None, time_steps=None):
+    """Generates impulse response outputs for a discrete system, A, B, C, D=0.
+    
+    sample_interval is the interval of time steps between samples,
+    Uses format [CB CAB CA**PB CA**(P+1)B ...].
+    By default, will find impulse until outputs are below a tolerance.
+    time_steps specifies time intervals, must be 1D array of integers.
+    """
+    num_states = A.shape[0]
+    num_inputs = B.shape[1]
+    num_outputs = C.shape[0]
+    if time_steps is None:
+        if time_step is None:
+            print 'Warning: setting time_step to 1 by default'
+            time_step = 1
+        tol = 1e-6
+        max_time_steps = 1000
+        Markovs = [C*B]
+        time_steps = [0]
+        while (N.amax(abs(Markovs[-1])) > tol or len(Markovs) < 20) and \
+            len(Markovs) < max_time_steps:
+            time_steps.append(time_steps[-1] + time_step)
+            Markovs.append(C * (A**time_steps[-1]) * B)
+    else:
+        Markovs = []
+        for tv in time_steps:
+            Markovs.append(C*(A**tv)*B)
+
+    outputs = N.zeros((len(Markovs), num_outputs, num_inputs))
+    for time_step,Markov in enumerate(Markovs):
+        outputs[time_step] = Markov
+    time_steps = N.array(time_steps)
+    
+    return time_steps, outputs
 
 

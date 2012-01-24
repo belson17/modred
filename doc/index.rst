@@ -1,25 +1,33 @@
-.. Modaldecomp documentation master file, created by
-   sphinx-quickstart on Thu Jan  6 09:49:36 2011.
+.. modaldecomp documentation master file, created by
+   sphinx-quickstart on Mon Jan 23 21:14:14 2012.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to the Modal Decomposition documentation!
-=================================================
+Welcome to modaldecomp's documentation!
+=======================================
 
 Contents:
 
 .. toctree::
-   
+   :maxdepth: 2
+
    intro
-   fieldoperations_string
-   bpod_string
-   pod_string
-   dmd_string
-   era_string
-   bpodltirom_string
-   util_string
-   parallel_string
-   benchmark_string
+   
+   pod
+   
+   bpod
+   
+   dmd
+   
+   fieldoperations
+   
+   util
+   
+   parallel
+   
+   era
+   
+   bpodltirom
    
 
 Indices and tables

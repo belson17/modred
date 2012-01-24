@@ -21,7 +21,7 @@ Note: Sphinx actually runs and imports python code, so broken code,
     [http://pypi.python.org/pypi/numpydoc] 
     
    
-Choose method 1 or 2. Method 1 is easier!
+Choose method 1 or 2. Method 1 is usually easier.
 
 Method 1:
 - From the modaldecomp directory, run 
@@ -35,10 +35,9 @@ Method 2:
     [SPHINXBUILD   = /Users/yourname/CODES/Sphinx-1.0.6/sphinx-build.py]
 
 -  From within doc/ directory 
-    >> touch *.rst
     >> make html  [or make latex]
 
--  Navigate to doc/_build/html and open index.html to view and browse the documentation
+- Open doc/_build/index.html to view the documentation
 
 
 
