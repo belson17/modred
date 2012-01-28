@@ -2,7 +2,7 @@
 import numpy as N
 import util
 
-def sample_times(num_steps, interval):
+def make_time_steps(num_steps, interval):
     """Returns int array of time steps [0 1 interval interval+1 ...]"""
     if num_steps%2 != 0:
         raise ValueError('num_steps must be even, you gave %d'%num_steps)
@@ -20,8 +20,7 @@ def make_sampled_format(times, outputs):
     Returns time_steps, outputs, and dt.
     
     The times input argument can be time steps (ints) or values (floats).
-    If the input times are already in the sampled format, the returned arrays
-    are equal to the input ones.
+    If the input times are already in the sampled format, an error is given.
     """
     num_time_steps, num_outputs, num_inputs = outputs.shape
     if num_time_steps != times.shape[0]:
@@ -30,30 +29,33 @@ def make_sampled_format(times, outputs):
     dt_system = times[1] - times[0]
     dt_sample = times[2] - times[0]
     time_steps = N.round((times-times[0])/dt_system)
+
+    if N.abs(2*dt_system - dt_sample) > 1e-8:
+        raise ValueError('Data is already in a sampled format, not equally spaced')
     
-    if N.abs(2*dt_system - dt_sample) < 1e-8:
-        # Format [0, 1, 2, 3, ...], requires conversion
-        num_time_steps_corr = (num_time_steps - 1)*2
-        outputs_corr = N.zeros((num_time_steps_corr, num_outputs, num_inputs))
-        time_steps_corr = N.zeros(num_time_steps_corr,dtype=int)
-        outputs_corr[::2] = outputs[:-1]
-        outputs_corr[1::2] = outputs[1:]
-        time_steps_corr[::2] = time_steps[:-1]
-        time_steps_corr[1::2] = time_steps[1:]
-        true_time_steps = sample_times(num_time_steps_corr, 1)
-    else:
-        # Format [0, 1, P, P+1, ...]
-        # Make number of time steps even, using integer division
-        num_time_steps_corr = (num_time_steps/2) * 2
-        time_steps_corr = time_steps[:num_time_steps_corr]
-        outputs_corr = outputs[:num_time_steps_corr]
-        true_time_steps = sample_times(num_time_steps_corr, int(round(dt_sample/dt_system)))
-    
+    # Format [0, 1, 2, 3, ...], requires conversion
+    num_time_steps_corr = (num_time_steps - 1)*2
+    outputs_corr = N.zeros((num_time_steps_corr, num_outputs, num_inputs))
+    time_steps_corr = N.zeros(num_time_steps_corr,dtype=int)
+    outputs_corr[::2] = outputs[:-1]
+    outputs_corr[1::2] = outputs[1:]
+    time_steps_corr[::2] = time_steps[:-1]
+    time_steps_corr[1::2] = time_steps[1:]
+    true_time_steps = make_time_steps(num_time_steps_corr, 1)
+        
     if (time_steps_corr != true_time_steps).any():
         raise ValueError('Time values do not make sense')
     
     return true_time_steps, outputs_corr, dt_system
 
+
+def compute_ROM(outputs, num_states, dt=None):
+    """Returns A, B, and C matrices w/default settings for convenience."""
+    myERA = ERA()
+    myERA.set_outputs(outputs, dt=dt)
+    myERA.compute_ROM(num_states)
+    return myERA.A, myERA.B, myERA.C
+    
 
 
 class ERA(object):
@@ -70,28 +72,21 @@ class ERA(object):
       myERA.compute_ROM(50)
       myERA.save_ROM('A.txt','B.txt','C.txt')
       
-    This would generate a 50-state LTI ROM with A,B,C matrices saved in text
-    format.
+    This would generate a 50-state eigensystem realization algorithm LTI ROM
+    with A, B, C matrices saved in text format.
     
     The above usage uses util.load_impulse_outputs, which assumes a 
     format of text files (see documentation for this function).
-    Alternatively, the impulse response output signals can be set directly
-    with set_impulse_outputs. For details, see documentation for set_impulse_outputs.
+        
+    The output times must be in the format:
+    t0 + dt_system*[0, 1, P, P+1, 2P, 2P+1, ... ]
     
-    The output times must be in one of two formats::
+    The special case where P=2 can be recast into P=1 using make_sampled_format().
+    t0 + dt_system*[0, 1, 2, 3, 4, ... ]
+      
+    Not parallelized for distributed memory.
     
-      t0 + dt_system*[0, 1, P, P+1, 2P, 2P+1, ... ]
-    
-    Or a special case where P=2::
-    
-      t0 + dt_system*[0, 1, 2, 3, 4, ... ]
-    
-    Currently for P>=3 we aren't sure if the models are correct.
-    For now, it's recommended to use only P=2 or P=1.
-    
-    Not intended to be parallelized for distributed memory.
-    
-    See Ma et al. 2011 TCFD for more details.
+    See Ma et al. 2011 TCFD for ERA details.
     """
     
     def __init__(self, save_mat=util.save_mat_text, load_mat=util.load_mat_text, mc=None, 
@@ -111,6 +106,7 @@ class ERA(object):
         # Used for error checking and determing file formats
         self.dt_tol = 1e-6
      
+
     def set_outputs(self, outputs, dt=None):
         """
         Set the signals from each output to each input.
@@ -141,7 +137,7 @@ class ERA(object):
         # Must have an even number of time steps, remove last entry if odd.
         if self.num_time_steps%2 != 0:
             self.num_time_steps -= 1
-            self.outputs = self.outputs[:-2]
+            self.outputs = self.outputs[:-1]
             
     
     
@@ -154,7 +150,7 @@ class ERA(object):
         dt:
           The time step of the discrete system, *not* the sampling period ("P").
         
-        Assembles the Hankel matrices from outputs and takes SVD
+        Assembles the Hankel matrices from self.outputs and takes SVD:
         L_sing_vecs*N.mat(N.diag(sing_vals))*R_sing_vecs.H = Hankel_mat
                 
         For discrete time systems the impulse is applied over a time interval dt and so

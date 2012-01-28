@@ -15,7 +15,6 @@ class testERA(unittest.TestCase):
         
     def tearDown(self):
         """Deletes all of the matrices created by the tests"""
-        pass
         SP.call(['rm -f '+self.test_dir+'*'], shell=True)
     
     
@@ -30,40 +29,28 @@ class testERA(unittest.TestCase):
         for num_inputs in [1,3]:
             for num_outputs in [1, 2,4]:
                 for num_time_steps in [4, 10, 12]:
-                    for sample_interval in [1, 2]:
-                        # With real data, if P=2 then the data is in the second format.
-                        dt_system = N.random.random()
-                        dt_sample = sample_interval*dt_system
-                        time_steps_true = era.sample_times(num_time_steps, int(dt_sample/dt_system))
-                        time_values = dt_system*time_steps_true
-                        outputs = N.random.random((num_time_steps, num_outputs, num_inputs)) 
-    
-                        my_ERA = era.ERA()
-                        time_steps_computed, outputs_computed, dt_system_computed = \
-                            era.make_sampled_format(time_values, outputs)
-                        if sample_interval != 2:
-                            # Format [0 1 P P+1 ...]
-                            num_time_steps_true = (num_time_steps/2) *2
-                            N.testing.assert_allclose(time_steps_computed, time_steps_true)
-                            N.testing.assert_allclose(outputs_computed, 
-                                outputs[:num_time_steps_true])
-                            self.assertEqual(dt_system_computed, dt_system)
-                        else:
-                            # Format [0, 1, 2, 3, ...]
-                            num_time_steps_true = (num_time_steps - 1)*2
-                            time_steps_true = era.sample_times(num_time_steps_true, 1)
-                            time_steps_computed, outputs_computed, dt_system_computed = \
-                                era.make_sampled_format(time_values, outputs)
-                            outputs_true = N.zeros((num_time_steps_true, num_outputs, num_inputs))
-                            outputs_true[::2] = outputs[:-1]
-                            outputs_true[1::2] = outputs[1:]
-                            N.testing.assert_allclose(time_steps_computed, time_steps_true)
-                            N.testing.assert_allclose(outputs_computed, outputs_true)
-                            self.assertEqual(dt_system_computed, dt_system)
-
-                        # Test that if there is a wrong time value, get an error
-                        time_values[num_time_steps/2] = -1
-                        self.assertRaises(ValueError, era.make_sampled_format, time_values, outputs)
+                    sample_interval = 2
+                    # P=2 format [0, 1, 2, 3, ...]
+                    dt_system = N.random.random()
+                    dt_sample = sample_interval*dt_system                
+                    outputs = N.random.random((num_time_steps, num_outputs, num_inputs))
+                    time_steps = era.make_time_steps(num_time_steps, sample_interval)
+                    time_values = time_steps*dt_system
+                    my_ERA = era.ERA()
+                    time_steps_computed, outputs_computed, dt_system_computed = \
+                         era.make_sampled_format(time_values, outputs)
+                    self.assertEqual(dt_system_computed, dt_system)
+                    num_time_steps_true = (num_time_steps - 1)*2
+                    time_steps_true = era.make_time_steps(num_time_steps_true, 1)
+                    outputs_true = N.zeros((num_time_steps_true, num_outputs, num_inputs))
+                    outputs_true[::2] = outputs[:-1]
+                    outputs_true[1::2] = outputs[1:]
+                    N.testing.assert_allclose(time_steps_computed, time_steps_true)
+                    N.testing.assert_allclose(outputs_computed, outputs_true)
+                    
+                    # Test that if there is a wrong time value, get an error
+                    time_values[num_time_steps/2] = -1
+                    self.assertRaises(ValueError, era.make_sampled_format, time_values, outputs)
     
                         
     #@unittest.skip("testing others")
@@ -71,12 +58,11 @@ class testERA(unittest.TestCase):
         """ Tests Hankel mats are symmetric given [CB CAB CA**P CA**(P+1)B ...]."""
         for num_inputs in [1,3]:
             for num_outputs in [1, 2,4]:
-                # sample_interval = 2 is impossible, would be converted to sample_interval=1.
-                for sample_interval in [1,3,4]:
+                for sample_interval in [1,2,4]:
                     num_time_steps = 50
                     num_states = 5
                     A,B,C = util.drss(num_states, num_inputs, num_outputs)
-                    time_steps = era.sample_times(num_time_steps, sample_interval)
+                    time_steps = era.make_time_steps(num_time_steps, sample_interval)
                     time_steps, outputs = util.impulse(A, B, C, time_steps=time_steps)
                     myERA = era.ERA()
                     myERA.set_outputs(outputs)
@@ -120,7 +106,6 @@ class testERA(unittest.TestCase):
         - assembles Hankel matrix
         - computes SVD
         - forms the ROM discrete matrices A, B, and C (D=0)
-        - Tests that ROM grammians diags ~ eigs ~ hankel sing vals (from SVD of H)
         - Tests Markov parameters from ROM are approx. equal to full plant's 
         """
         num_time_steps = 1000
@@ -128,12 +113,13 @@ class testERA(unittest.TestCase):
         num_states_model = num_states_plant/3
         for num_inputs in [3]:
             for num_outputs in [2]:
-                for sample_interval in [1,2]: #3 or higher makes tests fail
+                for sample_interval in [1,2,3]: #3 or higher makes tests fail
                     myERA = era.ERA()
                     A,B,C = util.drss(num_states_plant, num_inputs, num_outputs)
-                    time_steps = era.sample_times(num_time_steps, sample_interval)
+                    time_steps = era.make_time_steps(num_time_steps, sample_interval)
                     time_steps, outputs = util.impulse(A, B, C, time_steps=time_steps)
-                    time_steps, outputs, dt = era.make_sampled_format(time_steps, outputs)
+                    if sample_interval == 2:
+                        time_steps, outputs, dt = era.make_sampled_format(time_steps, outputs)
                     num_time_steps = time_steps.shape[0]
                     time_steps_dense, outputs_dense = util.impulse(
                         A,B,C,time_steps=N.arange(num_time_steps,dtype=int))
@@ -148,23 +134,23 @@ class testERA(unittest.TestCase):
                     A = myERA.A
                     B = myERA.B
                     C = myERA.C
-                    sing_vals = myERA.sing_vals[:num_states_model]
+                    #sing_vals = myERA.sing_vals[:num_states_model]
                     
                     # Flatten snaps into 2D X and Y mats: [B AB A**PB A**(P+1)B ...]
                     #direct_snaps_flat = N.mat(
                     #    direct_snaps.swapaxes(0,1).reshape((num_states_model,-1)))
                     
                     # Exact grammians from Lyapunov eqn solve
-                    gram_cont = util.solve_Lyapunov(A, B*B.H)
-                    gram_obs = util.solve_Lyapunov(A.H, C.H*C)
+                    #gram_cont = util.solve_Lyapunov(A, B*B.H)
+                    #gram_obs = util.solve_Lyapunov(A.H, C.H*C)
                     #print N.sort(N.linalg.eig(gram_cont)[0])[::-1]
                     #print sing_vals
-                    N.testing.assert_allclose(gram_cont.diagonal(), sing_vals, atol=.1, rtol=.1)
-                    N.testing.assert_allclose(gram_obs.diagonal(), sing_vals, atol=.1, rtol=.1)
-                    N.testing.assert_allclose(N.sort(N.linalg.eig(gram_cont)[0])[::-1], sing_vals,
-                        atol=.1, rtol=.1)
-                    N.testing.assert_allclose(N.sort(N.linalg.eig(gram_obs)[0])[::-1], sing_vals,
-                        atol=.1, rtol=.1)
+                    #N.testing.assert_allclose(gram_cont.diagonal(), sing_vals, atol=.1, rtol=.1)
+                    #N.testing.assert_allclose(gram_obs.diagonal(), sing_vals, atol=.1, rtol=.1)
+                    #N.testing.assert_allclose(N.sort(N.linalg.eig(gram_cont)[0])[::-1], sing_vals,
+                    #    atol=.1, rtol=.1)
+                    #N.testing.assert_allclose(N.sort(N.linalg.eig(gram_obs)[0])[::-1], sing_vals,
+                    #    atol=.1, rtol=.1)
                     
                     # Check that the diagonals are largest entry on each row
                     #self.assertTrue((N.max(N.abs(gram_cont),axis=1) == 

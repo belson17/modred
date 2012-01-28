@@ -153,6 +153,19 @@ class TestUtil(unittest.TestCase):
                     self.assertTrue(N.amax(N.abs(N.linalg.eig(A)[0])) < 1)
     
     
+    def test_lsim(self):
+        """Test that lsim has right shapes, does not test result"""
+        for num_states in [1, 4, 9]:
+            for num_inputs in [1, 2, 4]:
+                for num_outputs in [1, 2, 3, 5]:
+                    print 'num_states %d, num_inputs %d, num_outputs %d'%(num_states, num_inputs, num_outputs)
+                    A,B,C = util.drss(num_states, num_inputs, num_outputs)
+                    print 'Shape of C is',C.shape
+                    inputs = N.random.random((3,num_inputs))
+                    outputs = util.lsim(A,B,C,inputs)
+                    self.assertEqual(outputs.shape, (3, num_outputs))
+                    
+                    
     
     def test_impulse(self):
         """Test impulse response of discrete system"""

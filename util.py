@@ -154,7 +154,89 @@ def drss(num_states, num_inputs, num_outputs):
     C = N.mat(N.random.normal(0, 1., (num_outputs, num_states)))
     return A, B, C
 
-          
+def rss(num_states, num_inputs, num_outputs):
+    # Create a stable matrix A with specificed e-vals, continuous time
+    e_vals = -N.random.random(num_states)
+    transformation = N.random.random((num_states, num_states))
+    A = N.dot(N.dot(N.linalg.inv(transformation), N.diag(e_vals)), transformation)
+    B = N.random.random((num_states, num_inputs))
+    C = N.random.random((num_outputs, num_states))
+    return A,B,C
+        
+        
+def lsim(A, B, C, inputs):
+    """
+    Simulates a discrete time system with arbitrary inputs. 
+    
+    inputs: [num_time_steps, num_inputs]
+    Returns the outputs, [num_time_steps, num_outputs].
+    """
+    
+    if inputs.ndim == 1:
+        inputs = inputs.reshape((len(inputs),1))
+    num_steps, num_inputs = inputs.shape
+    num_outputs = C.shape[0]
+    num_states = A.shape[0]
+    #print 'num_states is',num_states,'num inputs',num_inputs,'B shape',B.shape
+    assert(B.shape == (num_states, num_inputs))
+    assert(A.shape == (num_states, num_states))
+    
+    outputs = [] 
+    state = N.mat(N.zeros((num_states,1)))
+    
+    for time,input in enumerate(inputs):
+        #print 'assigning',N.dot(C, state).shape,'into',outputs[time].shape
+        outputs.append((C *state).squeeze())
+        Astate = A*state
+        #print 'shape of B is',B.shape,'and shape of input is',input.reshape((num_inputs,1)).shape
+        Binput = B*input.reshape((num_inputs,1))
+        state = A*state + B*input.reshape((num_inputs,1))
+    
+    outputs_array = N.zeros((num_steps, num_outputs))
+    for t,out in enumerate(outputs):
+        #print 'assigning out.shape',out.shape,'into',outputs_array[t].shape
+        #print 'num_outputs',num_outputs
+        outputs_array[t] = out
+
+    return outputs_array
+
+    
+def impulse(A, B, C, time_step=None, time_steps=None):
+    """Generates impulse response outputs for a discrete system, A, B, C, D=0.
+    
+    sample_interval is the interval of time steps between samples,
+    Uses format [CB CAB CA**PB CA**(P+1)B ...].
+    By default, will find impulse until outputs are below a tolerance.
+    time_steps specifies time intervals, must be 1D array of integers.
+    """
+    num_states = A.shape[0]
+    num_inputs = B.shape[1]
+    num_outputs = C.shape[0]
+    if time_steps is None:
+        if time_step is None:
+            print 'Warning: setting time_step to 1 by default'
+            time_step = 1
+        tol = 1e-6
+        max_time_steps = 1000
+        Markovs = [C*B]
+        time_steps = [0]
+        while (N.amax(abs(Markovs[-1])) > tol or len(Markovs) < 20) and \
+            len(Markovs) < max_time_steps:
+            time_steps.append(time_steps[-1] + time_step)
+            Markovs.append(C * (A**time_steps[-1]) * B)
+    else:
+        Markovs = []
+        for tv in time_steps:
+            Markovs.append(C*(A**tv)*B)
+
+    outputs = N.zeros((len(Markovs), num_outputs, num_inputs))
+    for time_step,Markov in enumerate(Markovs):
+        outputs[time_step] = Markov
+    time_steps = N.array(time_steps)
+    
+    return time_steps, outputs
+
+
 def load_impulse_outputs(output_paths):
     """Loads impulse outputs with format [t out1 out2 ...]. Used by ERA."""
     num_inputs = len(output_paths)
@@ -307,40 +389,6 @@ def _rss_generate(states, inputs, outputs, type):
     return N.mat(A), N.mat(B), N.mat(C)
 
 
-    
-def impulse(A, B, C, time_step=None, time_steps=None):
-    """Generates impulse response outputs for a discrete system, A, B, C, D=0.
-    
-    sample_interval is the interval of time steps between samples,
-    Uses format [CB CAB CA**PB CA**(P+1)B ...].
-    By default, will find impulse until outputs are below a tolerance.
-    time_steps specifies time intervals, must be 1D array of integers.
-    """
-    num_states = A.shape[0]
-    num_inputs = B.shape[1]
-    num_outputs = C.shape[0]
-    if time_steps is None:
-        if time_step is None:
-            print 'Warning: setting time_step to 1 by default'
-            time_step = 1
-        tol = 1e-6
-        max_time_steps = 1000
-        Markovs = [C*B]
-        time_steps = [0]
-        while (N.amax(abs(Markovs[-1])) > tol or len(Markovs) < 20) and \
-            len(Markovs) < max_time_steps:
-            time_steps.append(time_steps[-1] + time_step)
-            Markovs.append(C * (A**time_steps[-1]) * B)
-    else:
-        Markovs = []
-        for tv in time_steps:
-            Markovs.append(C*(A**tv)*B)
 
-    outputs = N.zeros((len(Markovs), num_outputs, num_inputs))
-    for time_step,Markov in enumerate(Markovs):
-        outputs[time_step] = Markov
-    time_steps = N.array(time_steps)
-    
-    return time_steps, outputs
 
 
