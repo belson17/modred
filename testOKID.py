@@ -25,9 +25,9 @@ class TestOKID(unittest.TestCase):
         B = N.mat([[-1.164],[.4948]])
         C = N.mat([-1.216, 1.591])
         
-        for nt in [50]:
+        for nt in [100]:
             for num_states in [5]:
-                for num_inputs in [1]:
+                for num_inputs in [2]:
                     for num_outputs in [1]:
                         num_Markovs = nt
                         A,B,C = util.drss(num_states, num_inputs, num_outputs)
@@ -43,16 +43,16 @@ class TestOKID(unittest.TestCase):
                         #print 'output signal',outputs.shape
                         
                         output_impulse_OKID = OKID(inputs, outputs, num_Markovs)
-                        """
-                        for input_num in range(num_inputs):
-                            PLT.figure()
-                            PLT.hold(True)
-                            PLT.plot(time_steps, output_impulse[:,:,input_num])
-                            PLT.plot(time_steps, output_impulse_OKID[:,:,input_num])
-                            PLT.plot(time_steps, N.abs(output_impulse - output_impulse_OKID)[:,:,input_num])
-                            PLT.legend(['true','OKID','error'])
+                        for output_num in range(num_outputs):
+                            for input_num in range(num_inputs):
+                                PLT.figure()
+                                PLT.hold(True)
+                                PLT.plot(time_steps, output_impulse[:,output_num,input_num])
+                                PLT.plot(time_steps, output_impulse_OKID[:,output_num,input_num])
+                                PLT.plot(time_steps, N.abs(output_impulse - output_impulse_OKID)[:,output_num,input_num])
+                                PLT.legend(['true','OKID','error'])
+                                PLT.title('input %d, output %d'%(input_num,output_num))
                         PLT.show()
-                        """
                         #print 'error is',N.amax(N.abs(output_impulse-output_impulse_OKID))
                         #print output_impulse[1:-1]/output_impulse_OKID[1:-1]
                         #print 'output signal',outputs

@@ -4,7 +4,7 @@ import util
 
 def OKID(inputs, outputs, num_Markovs, cutoff=1e-3):
     """
-    Computes the impulse signal from arbitrary inputs, outputs
+    Returns the Markov paramters (impulse outputs) from arbitrary inputs and outputs
     
     inputs: [num_samples, num_inputs] array
     outputs: [num_samples, num_inputs] array
@@ -12,11 +12,8 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-3):
       Typically 5x the number of ROM states is good.
     cutoff: condition number used for the pseudo-inverse
     
-    Returns Markov parameters (impulse response)
-    
-    Script is a translation of Steve's OKID.num_inputs file.
     Original paper is 1991 NASA TM-104069 by Juang, Phan, Horta and Longman
-    
+    Some notation is used from this paper.
     lowercase u,y indicate sampled data
     double uppercase UU, YY indicate bold-faced quantities in paper
     single uppercase U, Y indicate script quantities in paper
