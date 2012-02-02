@@ -2,6 +2,13 @@
 # MODALDECOMP LIBRARY #
 #######################
 
+Check for unexpected memory usage.  Some trial runs show that
+max_fields_per_node does not prevent crashes as expected.  This occurs when
+there are two or more chunks in the inner product matrix.  A possible cure would
+be to delete the lists of snapshots at the end of each loop iteration, clearing
+this memory completely before generating new data to take its place.
+
+
 Find a better, more natural, way to deal with line continuation/breaks. As it is,
 the code is chopped to bits and is not at all readable. No one would ever write
 code like this, and that's why we always have to go back and redo the formatting.

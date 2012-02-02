@@ -77,10 +77,10 @@ class POD(object):
         First compute correlation mat X*X, then the SVD of this matrix.
         """
         self.snap_paths = snap_paths
-        #self.correlation_mat = self.field_ops.\
-        #    compute_symmetric_inner_product_mat(self.snap_paths)
         self.correlation_mat = self.field_ops.\
-            compute_inner_product_mat(self.snap_paths, self.snap_paths)
+            compute_symmetric_inner_product_mat(self.snap_paths)
+        #self.correlation_mat = self.field_ops.\
+        #    compute_inner_product_mat(self.snap_paths, self.snap_paths)
         self.compute_SVD()
         
         

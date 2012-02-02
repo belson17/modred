@@ -1,7 +1,7 @@
 
 import unittest
 import numpy as N
-from OKID import *
+from okid import *
 # Scipy for simulating LTI
 import scipy.signal as SS
 import odesolve 
