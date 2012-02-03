@@ -349,7 +349,10 @@ class FieldOperations(object):
                                     col_field_index]] = self.inner_product(
                                     row_fields[row_index - proc_row_tasks[0]],
                                     col_field)
+                # Clear the loaded column fields after done this chunk
+                del col_fields
             # Completed a chunk of rows and all columns on all processors.
+            del row_fields
             if ((T.time() - self.prev_print_time > self.print_interval) and 
                 self.verbose and self.parallel.is_rank_zero()):
                 num_completed_IPs = end_row_index * num_cols
@@ -358,7 +361,7 @@ class FieldOperations(object):
                     'products: IPMat[:%d, :%d] of IPMat[%d, %d]') % \
                     (percent_completed_IPs, end_row_index, num_cols, num_rows, num_cols)
                 self.prev_print_time = T.time()
-        
+            
         # Assign these chunks into IP_mat.
         if self.parallel.is_distributed():
             IP_mat = self.parallel.custom_comm.allreduce( 
@@ -600,7 +603,9 @@ class FieldOperations(object):
                 self.print_msg('Completed %.1f%% of inner products' %
                     percent_completed_IPs, output_channel=sys.stderr)
                 self.prev_print_time = T.time()
-                             
+            # Finished row_fields loop, delete memory used
+            del row_fields                     
+        
         # Assign the triangular portion chunks into IP_mat.
         if self.parallel.is_distributed():
             IP_mat = self.parallel.custom_comm.allreduce(IP_mat_chunk)
