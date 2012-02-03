@@ -138,30 +138,3 @@ class DMD(object):
             snap_paths[:-1], self.build_coeffs, index_from=index_from)
 
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        

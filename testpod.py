@@ -130,7 +130,7 @@ class TestPOD(unittest.TestCase):
         matrix, then take the SVD. The computed matrices are saved, then
         loaded and compared to the true matrices. 
         """
-        tol = 8
+        tol = 1e-8
         snap_path = 'files_modaldecomp_test/snap_%03d.txt'
         sing_vecs_path = 'files_modaldecomp_test/sing_vecs.txt'
         sing_vals_path = 'files_modaldecomp_test/sing_vals.txt'
@@ -156,19 +156,19 @@ class TestPOD(unittest.TestCase):
             correlation_mat_loaded = parallel.comm.bcast(correlation_mat_loaded,
                 root=0)
         
-        N.testing.assert_array_almost_equal(self.pod.correlation_mat, 
-            self.correlation_mat_true, decimal=tol)
-        N.testing.assert_array_almost_equal(self.pod.sing_vecs, 
-            self.sing_vecs_true, decimal=tol)
-        N.testing.assert_array_almost_equal(self.pod.sing_vals, 
-            self.sing_vals_true, decimal=tol)
+        N.testing.assert_allclose(self.pod.correlation_mat, 
+            self.correlation_mat_true, rtol=tol)
+        N.testing.assert_allclose(self.pod.sing_vecs, 
+            self.sing_vecs_true, rtol=tol)
+        N.testing.assert_allclose(self.pod.sing_vals, 
+            self.sing_vals_true, rtol=tol)
           
-        N.testing.assert_array_almost_equal(correlation_mat_loaded, 
-            self.correlation_mat_true, decimal=tol)
-        N.testing.assert_array_almost_equal(sing_vecs_loaded, self.sing_vecs_true,
-            decimal=tol)
-        N.testing.assert_array_almost_equal(sing_vals_loaded, self.sing_vals_true,
-            decimal=tol)
+        N.testing.assert_allclose(correlation_mat_loaded, 
+            self.correlation_mat_true, rtol=tol)
+        N.testing.assert_allclose(sing_vecs_loaded, self.sing_vecs_true,
+            rtol=tol)
+        N.testing.assert_allclose(sing_vals_loaded, self.sing_vals_true,
+            rtol=tol)
         
 
     def test_compute_modes(self):
@@ -195,7 +195,7 @@ class TestPOD(unittest.TestCase):
                 mode = None
             if parallel.is_distributed():
                 mode = parallel.comm.bcast(mode, root=0)
-            N.testing.assert_array_almost_equal(mode, 
+            N.testing.assert_allclose(mode, 
                 self.mode_mat[:,mode_num - self.index_from])
         
         if parallel.is_rank_zero():

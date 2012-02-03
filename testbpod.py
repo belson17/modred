@@ -160,7 +160,7 @@ class TestBPOD(unittest.TestCase):
         matrix, then take the SVD. The computed matrices are saved, then
         loaded and compared to the true matrices. 
         """
-        tol = 8
+        tol = 1e-8
         direct_snap_path = 'files_modaldecomp_test/direct_snap_%03d.txt'
         adjoint_snap_path = 'files_modaldecomp_test/adjoint_snap_%03d.txt'
         L_sing_vecs_path = 'files_modaldecomp_test/L_sing_vecs.txt'
@@ -191,23 +191,23 @@ class TestBPOD(unittest.TestCase):
             sing_vals_loaded = parallel.comm.bcast(sing_vals_loaded, root=0)
             hankel_mat_loaded = parallel.comm.bcast(hankel_mat_loaded, root=0)
         
-        N.testing.assert_array_almost_equal(self.bpod.hankel_mat,
-          self.hankel_mat_true, decimal=tol)
-        N.testing.assert_array_almost_equal(self.bpod.L_sing_vecs,
-          self.L_sing_vecs_true, decimal=tol)
-        N.testing.assert_array_almost_equal(self.bpod.R_sing_vecs,
-          self.R_sing_vecs_true, decimal=tol)
-        N.testing.assert_array_almost_equal(self.bpod.sing_vals,
-          self.sing_vals_true, decimal=tol)
+        N.testing.assert_allclose(self.bpod.hankel_mat,
+          self.hankel_mat_true, rtol=tol)
+        N.testing.assert_allclose(self.bpod.L_sing_vecs,
+          self.L_sing_vecs_true, rtol=tol)
+        N.testing.assert_allclose(self.bpod.R_sing_vecs,
+          self.R_sing_vecs_true, rtol=tol)
+        N.testing.assert_allclose(self.bpod.sing_vals,
+          self.sing_vals_true, rtol=tol)
           
-        N.testing.assert_array_almost_equal(hankel_mat_loaded,
-          self.hankel_mat_true, decimal=tol)
-        N.testing.assert_array_almost_equal(L_sing_vecs_loaded,
-          self.L_sing_vecs_true, decimal=tol)
-        N.testing.assert_array_almost_equal(R_sing_vecs_loaded,
-          self.R_sing_vecs_true, decimal=tol)
-        N.testing.assert_array_almost_equal(sing_vals_loaded,
-          self.sing_vals_true, decimal=tol)
+        N.testing.assert_allclose(hankel_mat_loaded,
+          self.hankel_mat_true, rtol=tol)
+        N.testing.assert_allclose(L_sing_vecs_loaded,
+          self.L_sing_vecs_true, rtol=tol)
+        N.testing.assert_allclose(R_sing_vecs_loaded,
+          self.R_sing_vecs_true, rtol=tol)
+        N.testing.assert_allclose(sing_vals_loaded,
+          self.sing_vals_true, rtol=tol)
         
 
     def test_compute_modes(self):
@@ -243,9 +243,9 @@ class TestBPOD(unittest.TestCase):
             if parallel.is_distributed():
                 direct_mode = parallel.comm.bcast(direct_mode, root=0)
                 adjoint_mode = parallel.comm.bcast(adjoint_mode, root=0)
-            N.testing.assert_array_almost_equal(direct_mode, self.direct_mode_mat[:,
+            N.testing.assert_allclose(direct_mode, self.direct_mode_mat[:,
                 mode_num-self.index_from])
-            N.testing.assert_array_almost_equal(adjoint_mode, self.\
+            N.testing.assert_allclose(adjoint_mode, self.\
                 adjoint_mode_mat[:,mode_num-self.index_from])
         
         if parallel.is_rank_zero():

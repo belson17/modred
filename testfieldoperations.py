@@ -274,7 +274,7 @@ class TestFieldOperations(unittest.TestCase):
                             #print 'true mode',true_modes[:,\
                             #    mode_num-index_from]
                             #print 'computed mode',computed_mode
-                            N.testing.assert_array_almost_equal(
+                            N.testing.assert_allclose(
                                 computed_mode, true_modes[:,mode_num-\
                                 index_from])
                                 
@@ -360,13 +360,13 @@ class TestFieldOperations(unittest.TestCase):
             # Test computation as chunk (a serial method, tested on each proc)
             #productComputedAsChunk = self.fieldOperations.\
             #    _compute_inner_product_chunk(paths1, paths2)
-            #N.testing.assert_array_almost_equal(productComputedAsChunk, 
+            #N.testing.assert_allclose(productComputedAsChunk, 
             #    product_true)
 
             # Test paralleized computation.  
             product_computed_as_mat = \
                 self.fieldOperations.compute_inner_product_mat(paths1, paths2)
-            N.testing.assert_array_almost_equal(product_computed_as_mat, 
+            N.testing.assert_allclose(product_computed_as_mat, 
                 product_true)
             
             
@@ -375,7 +375,7 @@ class TestFieldOperations(unittest.TestCase):
                 # First test complete upper triangular computation
                 product_computed_as_symm_mat = self.fieldOperations.\
                     compute_symmetric_inner_product_mat(paths1)
-                N.testing.assert_array_almost_equal(
+                N.testing.assert_allclose(
                     product_computed_as_symm_mat, product_true)
             
         num_row_snaps_list =[1, int(round(self.total_num_fields_in_mem / 2.)), self.\

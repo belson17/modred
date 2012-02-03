@@ -70,7 +70,7 @@ class TestDMD(unittest.TestCase):
         scaling = N.linalg.lstsq(ritz_vecs, self.snap_mat[:,0])[0]
         scaling = N.mat(N.diag(N.array(scaling).squeeze()))
         self.ritz_vecs_true = ritz_vecs * scaling
-        self.build_coeff_true = W * (Sigma_mat ** -1) * eig_vecs * scaling
+        self.build_coeffs_true = W * (Sigma_mat ** -1) * eig_vecs * scaling
         self.mode_norms_true = N.zeros(self.ritz_vecs_true.shape[1])
         for i in xrange(self.ritz_vecs_true.shape[1]):
             self.mode_norms_true[i] = self.dmd.field_ops.inner_product(N.\
@@ -148,59 +148,59 @@ class TestDMD(unittest.TestCase):
         Only tests the part unique to this function.
         """
         # Depending on snapshots generated, test will fail if tol = 8, so use 7
-        tol = 7 
+        tol = 1e-7 
 
         # Run decomposition and save matrices to file
         ritz_vals_path = 'files_modaldecomp_test/dmd_ritz_vals.txt'
-        mode_norms_path = 'files_modaldecomp_test/dmd_modeenergies.txt'
-        build_coeff_path = 'files_modaldecomp_test/dmd_build_coeff.txt'
+        mode_norms_path = 'files_modaldecomp_test/dmd_mode_energies.txt'
+        build_coeffs_path = 'files_modaldecomp_test/dmd_build_coeffs.txt'
 
         self.dmd.compute_decomp(self.snap_paths)
-        self.dmd.save_decomp(ritz_vals_path, mode_norms_path, build_coeff_path)
+        self.dmd.save_decomp(ritz_vals_path, mode_norms_path, build_coeffs_path)
        
         # Test that matrices were correctly computed
-        N.testing.assert_array_almost_equal(self.dmd.ritz_vals, 
-            self.ritz_vals_true, decimal=tol)
-        N.testing.assert_array_almost_equal(self.dmd.build_coeffs, 
-            self.build_coeff_true, decimal=tol)
-        N.testing.assert_array_almost_equal(self.dmd.mode_norms, 
-            self.mode_norms_true, decimal=tol)
+        N.testing.assert_allclose(self.dmd.ritz_vals, 
+            self.ritz_vals_true, rtol=tol)
+        N.testing.assert_allclose(self.dmd.build_coeffs, 
+            self.build_coeffs_true, rtol=tol)
+        N.testing.assert_allclose(self.dmd.mode_norms, 
+            self.mode_norms_true, rtol=tol)
 
         # Test that matrices were correctly stored
         if parallel.is_rank_zero():
             ritz_vals_loaded = N.array(util.load_mat_text(ritz_vals_path,
                 is_complex=True)).squeeze()
-            build_coeff_loaded = util.load_mat_text(build_coeff_path, 
+            build_coeffs_loaded = util.load_mat_text(build_coeffs_path, 
                 is_complex=True)
             mode_norms_loaded = N.array(util.load_mat_text(mode_norms_path).\
                 squeeze())
         else:   
             ritz_vals_loaded = None
-            build_coeff_loaded = None
+            build_coeffs_loaded = None
             mode_norms_loaded = None
 
         if parallel.is_distributed():
             ritz_vals_loaded = parallel.comm.bcast(ritz_vals_loaded, root=0)
-            build_coeff_loaded = parallel.comm.bcast(build_coeff_loaded, root=0)
+            build_coeffs_loaded = parallel.comm.bcast(build_coeffs_loaded, root=0)
             mode_norms_loaded = parallel.comm.bcast(mode_norms_loaded,
                 root=0)
 
-        N.testing.assert_array_almost_equal(ritz_vals_loaded, 
-            self.ritz_vals_true, decimal=tol)
-        N.testing.assert_array_almost_equal(build_coeff_loaded, 
-            self.build_coeff_true, decimal=tol)
-        N.testing.assert_array_almost_equal(mode_norms_loaded, 
-            self.mode_norms_true, decimal=tol)
+        N.testing.assert_allclose(ritz_vals_loaded, 
+            self.ritz_vals_true, rtol=tol)
+        N.testing.assert_allclose(build_coeffs_loaded, 
+            self.build_coeffs_true, rtol=tol)
+        N.testing.assert_allclose(mode_norms_loaded, 
+            self.mode_norms_true, rtol=tol)
 
     def test_compute_modes(self):
         """
         Test building of modes, reconstruction formula.
 
         """
-        tol = 8
+        tol = 1e-8
 
         mode_path ='files_modaldecomp_test/dmd_mode_%03d.txt'
-        self.dmd.build_coeffs = self.build_coeff_true
+        self.dmd.build_coeffs = self.build_coeffs_true
         mode_nums = list(N.array(range(self.num_snaps-1))+self.index_from)
         self.dmd.compute_modes(mode_nums, mode_path, index_from=self.index_from, 
             snap_paths=self.snap_paths)
@@ -216,12 +216,12 @@ class TestDMD(unittest.TestCase):
             mode_mat = None
         if parallel.is_distributed():
             mode_mat = parallel.comm.bcast(mode_mat,root=0)
-        N.testing.assert_array_almost_equal(mode_mat,self.ritz_vecs_true, decimal=\
+        N.testing.assert_allclose(mode_mat,self.ritz_vecs_true, rtol=\
             tol)
 
         vandermonde_mat = N.fliplr(N.vander(self.ritz_vals_true, self.num_snaps-1))
-        N.testing.assert_array_almost_equal(self.snap_mat[:,:-1],
-            self.ritz_vecs_true * vandermonde_mat, decimal=tol)
+        N.testing.assert_allclose(self.snap_mat[:,:-1],
+            self.ritz_vecs_true * vandermonde_mat, rtol=tol)
 
         util.save_mat_text(vandermonde_mat, 'files_modaldecomp_test/' +\
             'dmd_vandermonde.txt')

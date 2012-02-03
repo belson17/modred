@@ -111,7 +111,7 @@ class TestBPODROM(unittest.TestCase):
             self.direct_deriv_mode_paths, \
             self.adjoint_mode_paths, self.dt, \
             num_modes=self.num_ROM_modes)
-        N.testing.assert_array_almost_equal(self.A_true, \
+        N.testing.assert_allclose(self.A_true, \
             util.load_mat_text(A_Path))
 
     def test_form_B(self):
@@ -121,7 +121,7 @@ class TestBPODROM(unittest.TestCase):
         B_Path = self.test_dir +'B.txt'
         self.myBPODROM.form_B(B_Path,self.input_paths,\
             self.adjoint_mode_paths, self.dt, num_modes=self.num_ROM_modes)
-        N.testing.assert_array_almost_equal(self.B_true, \
+        N.testing.assert_allclose(self.B_true, \
             util.load_mat_text(B_Path))
 
     def test_form_C(self):
@@ -133,7 +133,7 @@ class TestBPODROM(unittest.TestCase):
             self.direct_mode_paths,
             num_modes=self.num_ROM_modes)
         
-        N.testing.assert_array_almost_equal(self.C_true, \
+        N.testing.assert_allclose(self.C_true, \
             util.load_mat_text(C_Path))
 
 if __name__ == '__main__':

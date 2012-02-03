@@ -43,7 +43,7 @@ class TestUtil(unittest.TestCase):
     @unittest.skipIf(distributed, 'Only save/load matrices in serial')
     def test_load_save_mat_text(self):
         """Test that can read/write text matrices"""
-        tol = 8
+        tol = 1e-8
         rows = [1, 5, 20]
         cols = [1, 4, 5, 23]
         matPath = self.testDir+'testMatrix.txt'
@@ -67,8 +67,7 @@ class TestUtil(unittest.TestCase):
                                 is_complex=is_complex)
                             if squeeze:
                                 matRead = N.squeeze(matRead)
-                            N.testing.assert_array_almost_equal(matRead, mat, 
-                                decimal=tol)
+                            N.testing.assert_allclose(matRead, mat)#,rtol=tol)
                           
                           
     @unittest.skipIf(distributed, 'Only load matrices in serial')
@@ -91,9 +90,9 @@ class TestUtil(unittest.TestCase):
                         V = V[:,:num_internals]
                         E = E[:num_internals]
           
-                    N.testing.assert_array_almost_equal(L_sing_vecs, U)
-                    N.testing.assert_array_almost_equal(sing_vals, E)
-                    N.testing.assert_array_almost_equal(R_sing_vecs, V)
+                    N.testing.assert_allclose(L_sing_vecs, U)
+                    N.testing.assert_allclose(sing_vals, E)
+                    N.testing.assert_allclose(R_sing_vecs, V)
     
     
         
@@ -134,11 +133,11 @@ class TestUtil(unittest.TestCase):
         """Test solution of Lyapunov w/known solution from Matlab's dlyap"""
         A = N.array([[1., 2.],[3., 4.]])
         Q = N.array([[4., 3.], [1., 2.]])
-        X_true = N.array([[2.2777777777, -0.5],[-1.166666666666667, -0.166666666666667]])
+        X_true = N.array([[2.2777777777, -0.5],[-1.166666666666, -0.166666666666]])
         X_computed = util.solve_Lyapunov(A,Q)
-        N.testing.assert_array_almost_equal(X_computed, X_true)
+        N.testing.assert_allclose(X_computed, X_true)
         X_computed_mats = util.solve_Lyapunov(N.mat(A), N.mat(Q))
-        N.testing.assert_array_almost_equal(X_computed_mats, X_true)    
+        N.testing.assert_allclose(X_computed_mats, X_true)    
     
     
     def test_drss(self):
