@@ -161,7 +161,7 @@ class TestDMD(unittest.TestCase):
         # Test that matrices were correctly computed
         N.testing.assert_array_almost_equal(self.dmd.ritz_vals, 
             self.ritz_vals_true, decimal=tol)
-        N.testing.assert_array_almost_equal(self.dmd.build_coeff, 
+        N.testing.assert_array_almost_equal(self.dmd.build_coeffs, 
             self.build_coeff_true, decimal=tol)
         N.testing.assert_array_almost_equal(self.dmd.mode_norms, 
             self.mode_norms_true, decimal=tol)
@@ -200,7 +200,7 @@ class TestDMD(unittest.TestCase):
         tol = 8
 
         mode_path ='files_modaldecomp_test/dmd_mode_%03d.txt'
-        self.dmd.build_coeff = self.build_coeff_true
+        self.dmd.build_coeffs = self.build_coeff_true
         mode_nums = list(N.array(range(self.num_snaps-1))+self.index_from)
         self.dmd.compute_modes(mode_nums, mode_path, index_from=self.index_from, 
             snap_paths=self.snap_paths)

@@ -80,15 +80,31 @@ class BPOD(object):
             self.save_mat(self.hankel_mat, hankel_mat_path)           
     
     
-    def save_decomp(self, L_sing_vecs_path, sing_vals_path, R_sing_vecs_path):
-        """Save the decomposition matrices to file."""
+    def save_L_sing_vecs(self, path):
         if self.save_mat is None:
             raise util.UndefinedError("save_mat not specified")
         elif self.parallel.is_rank_zero():
-            self.save_mat(self.L_sing_vecs, L_sing_vecs_path)
-            self.save_mat(self.R_sing_vecs, R_sing_vecs_path)
-            self.save_mat(self.sing_vals, sing_vals_path)
-
+            self.save_mat(self.L_sing_vecs, path)
+        
+    def save_R_sing_vecs(self, path):
+        if self.save_mat is None:
+            raise util.UndefinedError("save_mat not specified")
+        elif self.parallel.is_rank_zero():
+            self.save_mat(self.R_sing_vecs, path)
+    
+    def save_sing_vals(self, path):
+        if self.save_mat is None:
+            raise util.UndefinedError("save_mat not specified")
+        elif self.parallel.is_rank_zero():
+            self.save_mat(self.sing_vals, path)
+   
+    
+    def save_decomp(self, L_sing_vecs_path, sing_vals_path, R_sing_vecs_path):
+        """Save the decomposition matrices to file."""
+        self.save_L_sing_vecs(L_sing_vecs_path)
+        self.save_R_sing_vecs(R_sing_vecs_path)
+        self.save_sing_vals(sing_vals_path)
+        
         
     def compute_decomp(self, direct_snap_paths, adjoint_snap_paths):
         """

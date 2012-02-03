@@ -62,12 +62,24 @@ class POD(object):
         
     def save_decomp(self, sing_vecs_path, sing_vals_path):
         """Save the decomposition matrices to file."""
+        self.save_sing_vecs(sing_vecs_path)
+        self.save_sing_vals(sing_vals_path)
+        
+        
+    def save_sing_vecs(self, path):
         if self.save_mat is None and self.parallel.is_rank_zero():
             raise util.UndefinedError("save_mat is undefined, can't save")
             
         if self.parallel.is_rank_zero():
-            self.save_mat(self.sing_vecs, sing_vecs_path)
-            self.save_mat(self.sing_vals, sing_vals_path)
+            self.save_mat(self.sing_vecs, path)
+
+    def save_sing_vals(self, path):
+        if self.save_mat is None and self.parallel.is_rank_zero():
+            raise util.UndefinedError("save_mat is undefined, can't save")
+            
+        if self.parallel.is_rank_zero():
+            self.save_mat(self.sing_vals, path)
+
 
     
     def compute_decomp(self, snap_paths):
