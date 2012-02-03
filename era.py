@@ -201,8 +201,11 @@ class ERA(object):
         self.save_mat(self.sing_vals,sing_valsPath)
         self.save_mat(self.R_sing_vecs,R_sing_vecs_path)
  
-  
  
+   def save_sing_vals(self, sing_vals_path):
+      """Saves just the singular values"""
+      self.save_mat(self.sing_vals, sing_vals_path)
+      
  
     def _assemble_Hankel(self):
         """
