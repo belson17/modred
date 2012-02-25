@@ -19,8 +19,10 @@ function save_mat_text(mat, filename, delimiter)
     file_ID = fopen(filename,'w');
     format = '%.16f';
     for row=1:nrows
-        fprintf(file_ID, [format, delimiter],mat_write(row,1:end-1));
-        fprintf(file_ID, [format, '\n'],mat_write(row,end));
+        for col=1:ncols-1
+            fprintf(file_ID, [format, delimiter], mat_write(row,col));
+        end
+        fprintf(file_ID, [format, '\n'], mat_write(row,ncols));
     end
 end
 
