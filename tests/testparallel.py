@@ -1,9 +1,15 @@
+#!/usr/bin/env python
 
-import os
 import unittest
 import copy
 import numpy as N
+import os
+
+import helper
+helper.add_src_to_path()
+    
 import parallel as parallel_mod
+parallel = parallel_mod.default_instance
 
 try: 
     from mpi4py import MPI
@@ -14,12 +20,6 @@ except ImportError:
     distributed = False
     rank = 0
 
-if rank==0:
-    print 'To fully test, must do both:'
-    print '  1) python testparallel.py'
-    print '  2) mpiexec -n <# procs> python testparallel.py\n\n'
-    
-parallel = parallel_mod.default_instance
 
 class TestParallel(unittest.TestCase):
 
@@ -33,14 +33,18 @@ class TestParallel(unittest.TestCase):
             self.num_MPI_workers = 1
             self.rank = 0
         self.my_parallel = parallel_mod.Parallel()
-        #if not os.path.isdir('testfiles'):
-        #    SP.call(['mkdir','testfiles'])
-    
+        
+        
+    def tearDown(self):
+        MPI.COMM_WORLD.Barrier()
+        
+        
     def test_sync(self):
         """
         Test that can properly synchronize processors when in parallel
         """
-        #not sure how to test this
+        pass
+        # not sure how to test this
         
         
     def test_init(self):
@@ -48,7 +52,8 @@ class TestParallel(unittest.TestCase):
         """
         self.assertEqual(self.my_parallel._num_MPI_workers, self.num_MPI_workers)
         self.assertEqual(self.my_parallel._rank, self.rank)
-                        
+             
+             
     def test_find_assignments(self):
         """Tests that the correct processor assignments are determined
         
@@ -102,6 +107,7 @@ class TestParallel(unittest.TestCase):
             task_weights=task_weights), correct_assignments)
         self.assertEqual(task_weights, copy_task_weights)
 
+
     @unittest.skip('Currently function isnt completed or used')
     def test_evaluate_and_bcast(self):
         """Test that can evaluate a function and broadcast to all procs"""
@@ -118,6 +124,7 @@ class TestParallel(unittest.TestCase):
         print myClass.a,myClass.b
         self.assertEqual((1,2),(myClass.a,myClass.b))
 
+
 if __name__=='__main__':
-    unittest.main(verbosity=2)
+    unittest.main()
 

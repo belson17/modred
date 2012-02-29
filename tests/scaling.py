@@ -5,6 +5,10 @@ scaling times from profiling benchmark.py with cProfile."""
 import numpy as N
 import matplotlib.pyplot as PLT
 
+import helper
+helper.add_src_to_path()
+
+
 class Scaling(object):
     def __init__(self):
         pass

@@ -124,7 +124,8 @@ class BPODROM(object):
                       self.inner_product(adjoint_modes[row_num-start_row_num], advanced_mode)
 
         self.save_mat(self.A, A_Path)
-        print '----- A matrix saved to',A_Path,'------'
+        if self.verbose:
+            print '----- A matrix saved to',A_Path,'------'
 
       
     def form_B(self, B_Path, input_paths, adjoint_mode_paths, dt, num_modes=None):
@@ -180,10 +181,11 @@ class BPODROM(object):
             self.B *= self.dt
             
         self.save_mat(self.B, B_Path)
-        if self.dt!=0:
-            print '----- B matrix, discrete-time, saved to',B_Path,'-----'
-        else:
-            print '----- B matrix, continuous-time, saved to',B_Path,'-----'
+        if self.verbose:
+            if self.dt!=0:
+                print '----- B matrix, discrete-time, saved to',B_Path,'-----'
+            else:
+                print '----- B matrix, continuous-time, saved to',B_Path,'-----'
         
     
     def form_C(self, C_Path, output_paths, direct_mode_paths, num_modes=None):
@@ -230,6 +232,7 @@ class BPODROM(object):
                         self.inner_product(output_field, direct_modes[col_num-start_col_num])      
   
         self.save_mat(self.C, C_Path)
-        print '----- C matrix saved to',C_Path,'-----'
+        if self.verbose:
+            print '----- C matrix saved to',C_Path,'-----'
     
     

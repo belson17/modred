@@ -3,12 +3,14 @@ close all
 clear all
 clc
 
-saveDir = '../../files_okid_test/';
+saveFiles = 0;
+saveDir = '../tests/files_okid/MIMO/';
+
 mkdir(saveDir);
 
 numInputs = 2;
-numOutputs = 1;
-numStates = 3;
+numOutputs = 3;
+numStates = 8;
 sys = drss(numStates, numOutputs, numInputs);
 % A = eye(numStates)*.5;
 % B = ones(numStates,numInputs);
@@ -16,14 +18,14 @@ sys = drss(numStates, numOutputs, numInputs);
 % D = ones(numOutputs, numInputs)*2;
 % sys = ss(A,B,C,D,1);
 
-nt = 100;
+nt = 50;
 t = (0:nt-1)';
-r = 40;
+r = 20;
 
-save_mat_text(sys.a, sprintf('%sA.txt', saveDir), ' ');
-save_mat_text(sys.b, sprintf('%sB.txt', saveDir),' ');
-save_mat_text(sys.c, sprintf('%sC.txt', saveDir),' ');
-save_mat_text(sys.d, sprintf('%sD.txt', saveDir),' ');
+% save_mat_text(sys.a, sprintf('%sA.txt', saveDir), ' ');
+% save_mat_text(sys.b, sprintf('%sB.txt', saveDir),' ');
+% save_mat_text(sys.c, sprintf('%sC.txt', saveDir),' ');
+% save_mat_text(sys.d, sprintf('%sD.txt', saveDir),' ');
 
 % A=load_mat_text(sprintf('%sA.txt', saveDir));
 % B=load_mat_text(sprintf('%sB.txt', saveDir)));
@@ -59,14 +61,16 @@ for iIn = 1:numInputs
     end
 end
 
-save_mat_text(squeeze(u), sprintf('%sinputs.txt', saveDir), ' ')
-save_mat_text(squeeze(y), sprintf('%soutputs.txt', saveDir), ' ');
+if saveFiles == 1
+    save_mat_text(squeeze(u), sprintf('%sinputs.txt', saveDir), ' ')
+    save_mat_text(squeeze(y), sprintf('%soutputs.txt', saveDir), ' ');
     
-for iOut=1:numOutputs
-    save_mat_text(squeeze(Markovs(iOut,:,:)), ...
-        sprintf('%sMarkovs_Matlab_output%d.txt', saveDir, iOut),' ');
-    save_mat_text(squeeze(MarkovsTrue(iOut,:,:)), ...
-        sprintf('%sMarkovs_true_output%d.txt', saveDir, iOut),' ');
+    for iOut=1:numOutputs
+        save_mat_text(squeeze(Markovs(iOut,:,:)), ...
+            sprintf('%sMarkovs_Matlab_output%d.txt', saveDir, iOut),' ');
+        save_mat_text(squeeze(MarkovsTrue(iOut,:,:)), ...
+            sprintf('%sMarkovs_true_output%d.txt', saveDir, iOut),' ');
+    end
 end
 
 fprintf('Max diff between truth and OKID estimate is %g\n',amax(Markovs-MarkovsTrue(:,:,1:length(Markovs))))

@@ -2,12 +2,23 @@
 # MODALDECOMP LIBRARY #
 #######################
 
-Check for unexpected memory usage.  Some trial runs show that
-max_fields_per_node does not prevent crashes as expected.  This occurs when
-there are two or more chunks in the inner product matrix.  A possible cure would
-be to delete the lists of snapshots at the end of each loop iteration, clearing
-this memory completely before generating new data to take its place.
+This is a list of possible improvements that should be completed at some point.
 
+parallel default instance is an instance of a class and should use camelcase
+not underscores, so defaultInstance.
+
+If POD's sing_vals is a 1-element 1d array, then after squeezing it is not an array,
+just a float, which breaks other parts of the code. This should be fixed to make it
+a 1d array always and can be done with numpy 1.7's squeeze function.
+
+Run pychecker or pylint or one of the python naming convention tools on the code.
+
+Make the formatting at line breaks better, do not break at '.'s 
+
+Change load_field and save_field to be something like get_field and put_field, 
+indicating that the functions do more than save/load and actually are more flexible.
+They could get/put from arrays rather than from file. However this use-case is
+harder to implement in parallel for the user.
 
 Find a better, more natural, way to deal with line continuation/breaks. As it is,
 the code is chopped to bits and is not at all readable. No one would ever write
@@ -19,7 +30,8 @@ ill-conditioned, then the resulting computation results can be invalid.  for
 instance the mode norms may come out negative...(when computed using
 coefficients rather than the modes themselves).
 
-snapNum and similar should be called snapIndex. This is because the "number" of a mode
+Make a style guide for future developers. In this, include:
+snap_num and similar should be called snap_index. This is because the "number" of a mode
 is generally different than its index. The most common example of this is the
 first mode is called mode number 1 but has index 0 (indexFrom=1). To be clear, I
 differentiate between a mode number and mode index. To be consistent with all
@@ -29,10 +41,8 @@ name, index is hidden from the user and starts from 0.
   - This has been done for fieldopersations and bpod, and their tests. All future
     code should make the distinction between xxxNum and xxxIndex notation.
 
-
 The tests for DMD should be updated so that we check that the internal POD
 object has the correct arguments passed to it.
-
 
 Write tests directly for lin_combine in fieldoperations, not just
 _compute_modes.
@@ -40,16 +50,12 @@ _compute_modes.
 Rename/move _compute_modes. As it is, it doesn't make sense to be in
 fieldoperations.
 
-
-Profiling with cProfile could expose potentially easy speed increases.  However,
-some of these results could be dependent on the user's use of the library, we
-shouldn't optimize for a particular case at expense of other cases. Use on benchmark.py.
-
 Automatically detect the maxFieldsPerNode. This would require some fancier
 things, like determining the available RAM and the size of a snapshot object. It
 might not be possible since some memory is used by the snap/mode objects when
 doing inner products, etc. We could leave a safety factor though, and maybe
 leave space for 1-2 snaps/modes for scratch space for the user's functions. 
+
 
 
 

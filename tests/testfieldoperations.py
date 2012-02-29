@@ -1,35 +1,34 @@
 #!/usr/bin/env python
 
-import subprocess as SP
 import os
+from os.path import join
+from shutil import rmtree
 import copy
 #import inspect #makes it possible to find information about a function
 import unittest
 import numpy as N
-from fieldoperations import FieldOperations
-import parallel as parallel_mod
-import util
 
+import helper
+helper.add_src_to_path()
+import parallel as parallel_mod
 parallel = parallel_mod.default_instance
 
-try: 
-    from mpi4py import MPI
-    rank = MPI.COMM_WORLD.Get_rank()
-    distributed = MPI.COMM_WORLD.Get_size() > 1
-except ImportError:
-    print 'Warning: without mpi4py module, only serial behavior is tested'
-    distributed = False
-    rank = 0
+from fieldoperations import FieldOperations
+import util
 
-if rank==0:
-    print 'To fully test, must do both:'
-    print '  1) python testfieldoperations.py'
-    print '  2) mpiexec -n <# procs> python testfieldoperations.py\n\n'
 
 class TestFieldOperations(unittest.TestCase):
     """ Tests of the FieldOperations class """
     
     def setUp(self):
+    
+        if not os.access('.', os.W_OK):
+            raise RuntimeError('Cannot write to current directory')
+            
+        self.test_dir = 'DELETE_ME_test_files_fieldoperations'    
+        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
+            os.mkdir(self.test_dir)
+
         # Default data members, verbose set to false even though default is true
         # so messages won't print during tests
         self.default_data_members = {'load_field': None, 'save_field': None, 
@@ -47,12 +46,16 @@ class TestFieldOperations(unittest.TestCase):
             inner_product=util.inner_product, 
             verbose=False)
         self.fieldOperations.max_fields_per_proc = self.max_fields_per_proc
+        
+        parallel.sync()
 
     def tearDown(self):
         parallel.sync()
         if parallel.is_rank_zero():
-            SP.call(['rm -rf files_modaldecomp_test/*'], shell=True)
+            rmtree(self.test_dir, ignore_errors=True)
         parallel.sync()
+ 
+ 
  
     #@unittest.skip('testing other things')
     def test_init(self):
@@ -132,6 +135,7 @@ class TestFieldOperations(unittest.TestCase):
         self.assertRaises(ValueError,my_FO.idiot_check, test_obj=my_idiot_add)
                 
         
+        
     def generate_snaps_modes(self, num_states, num_snaps, num_modes, index_from=1):
         """
         Generates random snapshots and finds the modes. 
@@ -159,6 +163,7 @@ class TestFieldOperations(unittest.TestCase):
         return snap_mat,mode_nums,build_coeff_mat,mode_mat 
         
     
+    
     #@unittest.skip('testing other things')
     def test_compute_modes(self):
         """
@@ -183,11 +188,8 @@ class TestFieldOperations(unittest.TestCase):
             self.total_num_fields_in_mem, self.total_num_fields_in_mem * 2]
         index_from_list = [0, 5]
         #mode_path = 'proc'+str(self.fieldOperations.parallelInstance._rank)+'/mode_%03d.txt'
-        mode_path = 'files_modaldecomp_test/mode_%03d.txt'
-        snap_path = 'files_modaldecomp_test/snap_%03d.txt'
-        if self.fieldOperations.parallel.is_rank_zero():
-            if not os.path.isdir('files_modaldecomp_test'):
-                SP.call(['mkdir','files_modaldecomp_test'])
+        mode_path = join(self.test_dir, 'mode_%03d.txt')
+        snap_path = join(self.test_dir, 'snap_%03d.txt')
         
         for num_snaps in num_snaps_list:
             for num_modes in num_modes_list:
@@ -282,6 +284,8 @@ class TestFieldOperations(unittest.TestCase):
        
         parallel.sync()
 
+
+
     def test_compute_inner_product_mat_types(self):
         def load_field_as_complex(path):
             return (1 + 1j) * util.load_mat_text(path) 
@@ -290,10 +294,8 @@ class TestFieldOperations(unittest.TestCase):
         num_col_snaps = 6
         num_states = 7
 
-        if not os.path.isdir('files_modaldecomp_test'):
-            SP.call(['mkdir', 'files_modaldecomp_test'])
-        row_snap_path = 'files_modaldecomp_test/row_snap_%03d.txt'
-        col_snap_path = 'files_modaldecomp_test/col_snap_%03d.txt'
+        row_snap_path = join(self.test_dir, 'row_snap_%03d.txt')
+        col_snap_path = join(self.test_dir, 'col_snap_%03d.txt')
         
         # generate snapshots and save to file, only do on proc 0
         parallel.sync()
@@ -341,6 +343,8 @@ class TestFieldOperations(unittest.TestCase):
             self.assertEqual(inner_product_mat.dtype, type)
             self.assertEqual(symm_inner_product_mat.dtype, type)
 
+
+
     #@unittest.skip('testing other things')
     def test_compute_inner_product_mats(self):
         """
@@ -383,10 +387,8 @@ class TestFieldOperations(unittest.TestCase):
         num_col_snaps_list = num_row_snaps_list
         num_states = 6
 
-        if not os.path.isdir('files_modaldecomp_test'):
-            SP.call(['mkdir', 'files_modaldecomp_test'])
-        row_snap_path = 'files_modaldecomp_test/row_snap_%03d.txt'
-        col_snap_path = 'files_modaldecomp_test/col_snap_%03d.txt'
+        row_snap_path = join(self.test_dir, 'row_snap_%03d.txt')
+        col_snap_path = join(self.test_dir, 'col_snap_%03d.txt')
         
         for num_row_snaps in num_row_snaps_list:
             for num_col_snaps in num_col_snaps_list:
@@ -438,8 +440,7 @@ class TestFieldOperations(unittest.TestCase):
                     row_snap_paths, row_snap_paths)
                         
 if __name__=='__main__':
-    unittest.main(verbosity=2)    
+    unittest.main()    
 
     
     
-

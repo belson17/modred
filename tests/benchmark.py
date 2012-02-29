@@ -13,17 +13,20 @@ Then in python, do this to view the results:
     pstats.Stats(<path_to_output_file>).strip_dirs().sort_stats('cumulative').\
         print_stats(<number_significant_lines_to_print>)
 """
-
 import os
-import subprocess as SP
+from os.path import join
+from shutil import rmtree
 import cPickle
 import time as T
 import numpy as N
+
+import helper
+helper.add_src_to_path()
+import parallel as parallel_mod
+parallel = parallel_mod.default_instance
+
 import fieldoperations as FO
 import util
-import parallel as parallel_mod
-
-parallel = parallel_mod.default_instance
 
 
 def save_pickle(obj, filename):
@@ -50,15 +53,16 @@ inner_product = util.inner_product
 import argparse
 parser = argparse.ArgumentParser(description='Get directory in which to ' +\
     'save data.')
-parser.add_argument('--outdir', default='./files_benchmark', help='Directory in ' +\
+parser.add_argument('--outdir', default='files_benchmark', help='Directory in ' +\
     'which to save data.')
 parser.add_argument('--function', required=True, choices=['lin_combine',
     'inner_product_mat', 'symmetric_inner_product_mat'], help='Function to ' +\
     'benchmark.')
 args = parser.parse_args()
 data_dir = args.outdir
-if data_dir[-1] != '/':
-    data_dir += '/'
+
+#if data_dir[-1] != '/':
+#    join(data_dir, = '/'
 
 def generate_fields(num_states, num_fields, field_dir, field_name):
     """
@@ -67,8 +71,8 @@ def generate_fields(num_states, num_fields, field_dir, field_name):
     field_dir is the directory
     field_name is the file name and must include a %03d type string.
     """
-    if not os.path.exists(field_dir):
-        SP.call(['mkdir', field_dir])
+    if not os.path.exists(field_dir) and parallel.is_rank_zero():
+        os.mkdir(field_dir)
     
     """
     # Parallelize saving of fields (may slow down sequoia)
@@ -82,7 +86,7 @@ def generate_fields(num_states, num_fields, field_dir, field_name):
     if parallel.is_rank_zero():
         for field_num in xrange(num_fields):
             field = N.random.random(num_states)
-            save_field(field, field_dir + field_name % field_num)
+            save_field(field, join(field_dir, field_name%field_num))
     
     parallel.sync()
 
@@ -94,11 +98,11 @@ def inner_product_mat(num_states, num_rows, num_cols, max_fields_per_node):
     Remember that rows correspond to adjoint modes and cols to direct modes
     """    
     col_field_name = 'col_%04d.txt'
-    col_field_paths = [data_dir + col_field_name%col_num for col_num in range(num_cols)]
+    col_field_paths = [join(data_dir, col_field_name%col_num) for col_num in range(num_cols)]
     generate_fields(num_states, num_cols, data_dir, col_field_name)
     
     row_field_name = 'row_%04d.txt'    
-    row_field_paths = [data_dir + row_field_name%row_num for row_num in range(num_rows)]
+    row_field_paths = [join(data_dir, row_field_name%row_num) for row_num in range(num_rows)]
     generate_fields(num_states, num_rows, data_dir, row_field_name)
     
     my_FO = FO.FieldOperations(max_fields_per_node=max_fields_per_node, save_field=\
@@ -117,7 +121,7 @@ def symmetric_inner_product_mat(num_states, num_fields, max_fields_per_node):
     Computes symmetric inner product matrix from known fields (as in POD).
     """    
     field_name = 'field_%04d.txt'
-    fieldPaths = [data_dir + field_name % field_num for field_num in range(
+    fieldPaths = [join(data_dir, field_name % field_num) for field_num in range(
         num_fields)]
     generate_fields(num_states, num_fields, data_dir, field_name)
     
@@ -145,8 +149,8 @@ def lin_combine(num_states, num_bases, num_products, max_fields_per_node):
     save_field = save_field, load_field=load_field, inner_product=inner_product)
     coeff_mat = N.random.random((num_bases, num_products))
     
-    basis_paths = [data_dir + basis_name%basis_num for basis_num in range(num_bases)]
-    product_paths = [data_dir + product_name%product_num for product_num in range \
+    basis_paths = [join(data_dir,  basis_name%basis_num) for basis_num in range(num_bases)]
+    product_paths = [join(data_dir,  product_name%product_num) for product_num in range \
         (num_products)]
     
     start_time = T.time()
@@ -156,7 +160,8 @@ def lin_combine(num_states, num_bases, num_products, max_fields_per_node):
     
     
 def clean_up():
-    SP.call(['rm -rf ' + data_dir + '*'], shell=True)
+    if parallel.is_rank_zero():
+        rmtree(data_dir)
 
 
 def main():
@@ -187,9 +192,9 @@ def main():
         num_fields = 2000
         time_elapsed = symmetric_inner_product_mat(
                 num_states, num_fields, max_fields_per_node)
-    print 'Time for ' + method_to_test + ' is %f' % time_elapsed
+    print 'Time for %s is %f'%(method_to_test, time_elapsed)
     
-    # Delete files
+    parallel.sync()
     clean_up()
     
 

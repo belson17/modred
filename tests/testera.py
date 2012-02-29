@@ -1,21 +1,33 @@
 #!/usr/bin/env python
 
-import subprocess as SP
+import unittest
+import os
+from os.path import join
+from shutil import rmtree
+import numpy as N
+
+import helper
+helper.add_src_to_path()
+import parallel as parallel_mod
+parallel = parallel_mod.default_instance
+
 import era
 import util
-import numpy as N
-import unittest
-import copy
 
+@unittest.skipIf(parallel.is_distributed(), 'Only test ERA in serial')
 class testERA(unittest.TestCase):
     
     def setUp(self):
-        self.test_dir = 'files_era_test/'
-        self.impulse_file_path = self.test_dir+'delete_impulse_input%03d.txt'
+        if not os.access('.', os.W_OK):
+            raise RuntimeError('Cannot write to current directory')
+        self.test_dir = 'DELETE_ME_test_files_era'
+        if not os.path.exists(self.test_dir):
+            os.mkdir(self.test_dir)
+        self.impulse_file_path = join(self.test_dir, 'impulse_input%03d.txt')
         
     def tearDown(self):
         """Deletes all of the matrices created by the tests"""
-        SP.call(['rm -f '+self.test_dir+'*'], shell=True)
+        rmtree(self.test_dir, ignore_errors=True)
     
     
     #@unittest.skip('Testing others')
@@ -97,7 +109,7 @@ class testERA(unittest.TestCase):
 
     
     
-    #@unittest.skip('testing others')    
+    #@unittest.skip('testing others')
     def test_ROM(self):
         """
         Test the ROM Markov params, eigenvalues of Grammians approx. Hankel sing. vals
@@ -126,9 +138,9 @@ class testERA(unittest.TestCase):
                     
                     myERA.set_outputs(outputs)
                     
-                    A_path_computed = self.test_dir+'A_computed.txt'
-                    B_path_computed = self.test_dir+'B_computed.txt'
-                    C_path_computed = self.test_dir+'C_computed.txt'
+                    A_path_computed = join(self.test_dir, 'A_computed.txt')
+                    B_path_computed = join(self.test_dir, 'B_computed.txt')
+                    C_path_computed = join(self.test_dir, 'C_computed.txt')
                     
                     myERA.compute_ROM(num_states_model)
                     A = myERA.A
@@ -180,5 +192,5 @@ class testERA(unittest.TestCase):
                 
         
 if __name__ =='__main__':
-    unittest.main(verbosity=2)
+    unittest.main()
         

@@ -21,3 +21,6 @@ doc/user_guide/*.pdf
 *.ps
 *.pdfsync
 *.out
+*~
+build
+build/*

@@ -1,57 +1,56 @@
 #!/usr/bin/env python
-import subprocess as SP
-import os
+
 import unittest
 import copy
+import os
+from os.path import join
+from shutil import rmtree
 import numpy as N
-from bpod import BPOD
-from fieldoperations import FieldOperations
-import util
+
+import helper
+helper.add_src_to_path()
 import parallel as parallel_mod
 parallel = parallel_mod.default_instance
 
-try: 
-    from mpi4py import MPI
-    rank = MPI.COMM_WORLD.Get_rank()
-    distributed = MPI.COMM_WORLD.Get_size() > 1
-except ImportError:
-    print 'Warning: without mpi4py module, only serial behavior is tested'
-    distributed = False
-    rank = 0
+from bpod import BPOD
+from fieldoperations import FieldOperations
+import util
 
-if rank==0:
-    print 'To test fully, remember to do both:'
-    print '    1) python testbpod.py'
-    print '    2) mpiexec -n <# procs> python testbpod.py\n'
-    
+
 
 class TestBPOD(unittest.TestCase):
     """ Test all the BPOD class methods """
     def setUp(self):
+        if not os.access('.', os.W_OK):
+            raise RuntimeError('Cannot write to current directory')
+    
+        self.test_dir = 'DELETE_ME_test_files_bpod'
+        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():        
+            os.mkdir(self.test_dir)
+        
         self.maxDiff = 1000
-        if not os.path.isdir('files_modaldecomp_test'):        
-            SP.call(['mkdir','files_modaldecomp_test'])
         self.mode_nums =[2, 4, 3, 6, 9, 8, 10, 11, 30]
         self.num_direct_snaps = 40
         self.num_adjoint_snaps = 45
         self.num_states = 100
         self.index_from = 2
+        
         self.bpod = BPOD(load_field=util.load_mat_text, save_field=util.\
             save_mat_text, save_mat=util.save_mat_text, inner_product=util.\
             inner_product, verbose=False)
         self.generate_data_set()
-   
+        parallel.sync()
 
     def tearDown(self):
         parallel.sync()
         if parallel.is_rank_zero():
-            SP.call(['rm -rf files_modaldecomp_test/*'], shell=True)
+            rmtree(self.test_dir, ignore_errors=True)
         parallel.sync()
     
     def generate_data_set(self):
         # create data set (saved to file)
-        self.direct_snap_path = 'files_modaldecomp_test/direct_snap_%03d.txt'
-        self.adjoint_snap_path = 'files_modaldecomp_test/adjoint_snap_%03d.txt'
+        self.direct_snap_path = join(self.test_dir, 'direct_snap_%03d.txt')
+        self.adjoint_snap_path = join(self.test_dir, 'adjoint_snap_%03d.txt')
 
         self.direct_snap_paths=[]
         self.adjoint_snap_paths=[]
@@ -99,6 +98,8 @@ class TestBPOD(unittest.TestCase):
         #self.bpod.direct_snap_paths=self.direct_snap_paths
         #self.bpod.adjoint_snap_paths=self.adjoint_snap_paths
         
+        
+        
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         # Default data members for constructor test
@@ -136,10 +137,10 @@ class TestBPOD(unittest.TestCase):
         data_members_modified['save_mat'] = my_save
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
         
-        def my_ip(f1, f2): pass
-        my_BPOD = BPOD(inner_product=my_ip, verbose=False)
+        def my_IP(f1, f2): pass
+        my_BPOD = BPOD(inner_product=my_IP, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops'].inner_product = my_ip
+        data_members_modified['field_ops'].inner_product = my_IP
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
                                 
         max_fields_per_node = 500
@@ -151,6 +152,7 @@ class TestBPOD(unittest.TestCase):
             max_fields_per_node * parallel.get_num_nodes()/parallel.get_num_procs()
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
        
+       
         
     def test_compute_decomp(self):
         """
@@ -161,12 +163,12 @@ class TestBPOD(unittest.TestCase):
         loaded and compared to the true matrices. 
         """
         tol = 1e-8
-        direct_snap_path = 'files_modaldecomp_test/direct_snap_%03d.txt'
-        adjoint_snap_path = 'files_modaldecomp_test/adjoint_snap_%03d.txt'
-        L_sing_vecs_path = 'files_modaldecomp_test/L_sing_vecs.txt'
-        R_sing_vecs_path = 'files_modaldecomp_test/R_sing_vecs.txt'
-        sing_vals_path = 'files_modaldecomp_test/sing_vals.txt'
-        hankel_mat_path = 'files_modaldecomp_test/hankel.txt'
+        direct_snap_path = join(self.test_dir, 'direct_snap_%03d.txt')
+        adjoint_snap_path = join(self.test_dir, 'adjoint_snap_%03d.txt')
+        L_sing_vecs_path = join(self.test_dir, 'L_sing_vecs.txt')
+        R_sing_vecs_path = join(self.test_dir, 'R_sing_vecs.txt')
+        sing_vals_path = join(self.test_dir, 'sing_vals.txt')
+        hankel_mat_path = join(self.test_dir, 'hankel.txt')
         
         self.bpod.compute_decomp(direct_snap_paths=self.direct_snap_paths, 
             adjoint_snap_paths=self.adjoint_snap_paths)
@@ -210,6 +212,7 @@ class TestBPOD(unittest.TestCase):
           self.sing_vals_true, rtol=tol)
         
 
+
     def test_compute_modes(self):
         """
         Test computing modes in serial and parallel. 
@@ -219,8 +222,8 @@ class TestBPOD(unittest.TestCase):
         compares them to the known solution.
         """
 
-        direct_mode_path = 'files_modaldecomp_test/direct_mode_%03d.txt'
-        adjoint_mode_path = 'files_modaldecomp_test/adjoint_mode_%03d.txt'
+        direct_mode_path = join(self.test_dir, 'direct_mode_%03d.txt')
+        adjoint_mode_path = join(self.test_dir, 'adjoint_mode_%03d.txt')
         
         # starts with the CORRECT decomposition.
         self.bpod.R_sing_vecs = self.R_sing_vecs_true
@@ -262,10 +265,9 @@ class TestBPOD(unittest.TestCase):
                     else:
                         self.assertAlmostEqual(IP, 1.)
       
+      
+      
 if __name__=='__main__':
-    unittest.main(verbosity=2)
-    
-        
-    
+    unittest.main()
 
 

@@ -1,37 +1,43 @@
 #!/usr/bin/env python
 
-import subprocess as SP
-import bpodltirom as BPR
 import unittest
+import os
+from os.path import join
+from shutil import rmtree
 import numpy as N
+
+import helper
+helper.add_src_to_path()
+import parallel as parallel_mod
+parallel = parallel_mod.default_instance
+
+import bpodltirom as BPR
 import util
 
-try:
-    from mpi4py import MPI
-    comm = MPI.COMM_WORLD
-    if comm.Get_size() > 1:
-        raise RuntimeError('Not implemented in parallel! Use "python testbpodltirom.py" ')
-except ImportError:
-    pass
 
+@unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
 class TestBPODROM(unittest.TestCase):
     """
-    Tests that can find the correct A,B,C matrices from modes
+    Tests that can find the correct A, B, and C matrices from modes
     """   
     def setUp(self):
+        if not os.access('.', os.W_OK):
+            raise RuntimeError('Cannot write to current directory')
+            
+        self.test_dir ='DELETE_ME_test_files_bpodltirom'
+        if not os.path.exists(self.test_dir):
+            os.mkdir(self.test_dir)
+
+        self.direct_mode_path = join(self.test_dir, 'direct_mode_%03d.txt')
+        self.adjoint_mode_path = join(self.test_dir, 'adjoint_mode_%03d.txt')
+        self.direct_deriv_mode_path =join(self.test_dir,  'direct_deriv_mode_%03d.txt')
+        self.input_path = join(self.test_dir, 'input_%03d.txt')
+        self.output_path = join(self.test_dir, 'output_%03d.txt')
+        
         self.myBPODROM = BPR.BPODROM(save_mat=util.save_mat_text, load_field=\
             util.load_mat_text,inner_product=util.inner_product, save_field=\
-            util.save_mat_text)
-        self.test_dir = 'files_bpodltirom_test/'
-        import os.path
-        if not os.path.exists(self.test_dir):
-            SP.call(['mkdir',self.test_dir])
-        self.direct_mode_path = self.test_dir+'direct_mode_%03d.txt'
-        self.adjoint_mode_path = self.test_dir +'adjoint_mode_%03d.txt'
-        self.direct_deriv_mode_path =self.test_dir + 'direct_deriv_mode_%03d.txt'
-        self.input_path = self.test_dir+'input_%03d.txt'
-        self.output_path=self.test_dir+'output_%03d.txt'
-        
+            util.save_mat_text, verbose=False)
+            
         self.num_direct_modes = 10
         self.num_adjoint_modes = 8
         self.num_ROM_modes = 7
@@ -42,13 +48,15 @@ class TestBPODROM(unittest.TestCase):
         
         self.generate_data_set(self.num_direct_modes, self.num_adjoint_modes, \
             self.num_ROM_modes, self.num_states, self.num_inputs, self.num_outputs)
-
+        
     def tearDown(self):
-        SP.call(['rm -rf files_bpodltirom_test/*'], shell=True)
+        rmtree(self.test_dir, ignore_errors=True)
+        
         
     def test_init(self):
         """ """
         pass
+        
     
     def generate_data_set(self,num_direct_modes,num_adjoint_modes,num_ROM_modes,
         num_states,num_inputs,num_outputs):
@@ -101,34 +109,36 @@ class TestBPODROM(unittest.TestCase):
         self.B_true = (self.adjoint_mode_mat.T*self.input_mat)[:num_ROM_modes,:]
         self.C_true = (self.output_mat.T*self.direct_mode_mat)[:,:num_ROM_modes]
         
-    
+        
+        
     def test_form_A(self):
         """
         Test that, given modes, can find correct A matrix
         """
-        A_Path = self.test_dir +'A.txt'
-        self.myBPODROM.form_A(A_Path, \
-            self.direct_deriv_mode_paths, \
-            self.adjoint_mode_paths, self.dt, \
-            num_modes=self.num_ROM_modes)
-        N.testing.assert_allclose(self.A_true, \
-            util.load_mat_text(A_Path))
+        A_Path = join(self.test_dir, 'A.txt')
+        self.myBPODROM.form_A(A_Path, self.direct_deriv_mode_paths,
+            self.adjoint_mode_paths, self.dt, num_modes=self.num_ROM_modes)
+        N.testing.assert_allclose(self.A_true, util.load_mat_text(A_Path))
 
+
+    @unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
     def test_form_B(self):
         """
         Test that, given modes, can find correct B matrix
         """
-        B_Path = self.test_dir +'B.txt'
+        B_Path = join(self.test_dir, 'B.txt')
         self.myBPODROM.form_B(B_Path,self.input_paths,\
             self.adjoint_mode_paths, self.dt, num_modes=self.num_ROM_modes)
         N.testing.assert_allclose(self.B_true, \
             util.load_mat_text(B_Path))
 
+
+    @unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
     def test_form_C(self):
         """
         Test that, given modes, can find correct C matrix
         """
-        C_Path = self.test_dir +'C.txt'
+        C_Path = join(self.test_dir, 'C.txt')
         self.myBPODROM.form_C(C_Path,self.output_paths,
             self.direct_mode_paths,
             num_modes=self.num_ROM_modes)
@@ -136,5 +146,7 @@ class TestBPODROM(unittest.TestCase):
         N.testing.assert_allclose(self.C_true, \
             util.load_mat_text(C_Path))
 
+
 if __name__ == '__main__':
-    unittest.main(verbosity=2)
+    unittest.main()
+    

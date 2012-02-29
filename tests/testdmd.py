@@ -1,21 +1,22 @@
 #!/usr/bin/env python
+
+import copy
+import unittest
+import os
+from os.path import join
+from shutil import rmtree
 import numpy as N
+
+import helper
+helper.add_src_to_path()
+import parallel as parallel_mod
+parallel = parallel_mod.default_instance
+
 from dmd import DMD
 from pod import POD
 from fieldoperations import FieldOperations
-import unittest
 import util
-import subprocess as SP
-import os
-import copy
-import parallel as parallel_mod
 
-parallel = parallel_mod.default_instance
-
-if parallel.is_rank_zero():
-    print 'To test fully, remember to do both:'
-    print '    1) python testdmd.py'
-    print '    2) mpiexec -n <# procs> python testdmd.py\n'
 
 class TestDMD(unittest.TestCase):
     """ Test all the DMD class methods 
@@ -24,20 +25,33 @@ class TestDMD(unittest.TestCase):
     currently, there should be less to test here"""
     
     def setUp(self):
-        if not os.path.isdir('files_modaldecomp_test'):        
-            SP.call(['mkdir','files_modaldecomp_test'])
+        if not os.access('.', os.W_OK):
+            raise RuntimeError('Cannot write to current directory')
+        self.test_dir ='DELETE_ME_test_files_dmd'
+        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
+            os.mkdir(self.test_dir)
+        
         self.num_snaps = 6 # number of snapshots to generate
         self.num_states = 7 # dimension of state vector
         self.index_from = 2
-        self.dmd = DMD(load_field=util.load_mat_text, save_field=util.\
+        self.DMD = DMD(load_field=util.load_mat_text, save_field=util.\
             save_mat_text, save_mat=util.save_mat_text, inner_product=util.\
             inner_product, verbose=False)
         self.generate_data_set()
-   
+        parallel.sync()
+        
+    
+    def tearDown(self):
+        parallel.sync()
+        if parallel.is_rank_zero():
+            rmtree(self.test_dir, ignore_errors=True)
+        parallel.sync()
+        
+        
     def generate_data_set(self):
-        # create data set (saved to file)
-        self.snap_path = 'files_modaldecomp_test/dmd_snap_%03d.txt'
-        self.true_mode_path = 'files_modaldecomp_test/dmd_truemode_%03d.txt'
+        """ Create data set of snapshots and save to file"""
+        self.snap_path = join(self.test_dir, 'dmd_snap_%03d.txt')
+        self.true_mode_path = join(self.test_dir, 'dmd_truemode_%03d.txt')
         self.snap_paths = []
        
         # Generate modes if we are on the first processor
@@ -73,7 +87,7 @@ class TestDMD(unittest.TestCase):
         self.build_coeffs_true = W * (Sigma_mat ** -1) * eig_vecs * scaling
         self.mode_norms_true = N.zeros(self.ritz_vecs_true.shape[1])
         for i in xrange(self.ritz_vecs_true.shape[1]):
-            self.mode_norms_true[i] = self.dmd.field_ops.inner_product(N.\
+            self.mode_norms_true[i] = self.DMD.field_ops.inner_product(N.\
                 array(self.ritz_vecs_true[:,i]), N.array(self.ritz_vecs_true[:, 
                 i])).real
 
@@ -83,11 +97,8 @@ class TestDMD(unittest.TestCase):
                 util.save_mat_text(self.ritz_vecs_true[:,i], self.true_mode_path %\
                     (i+1))
 
-    def tearDown(self):
-        parallel.sync()
-        if parallel.is_rank_zero():
-            SP.call(['rm -rf files_modaldecomp_test/*'],shell=True)
-        parallel.sync()
+
+
 
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
@@ -142,28 +153,29 @@ class TestDMD(unittest.TestCase):
             get_num_procs()
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)
        
+       
 
     def test_compute_decomp(self):
         """ 
-        Only tests the part unique to this function.
+        Only tests the part unique to computing the decomposition.
         """
         # Depending on snapshots generated, test will fail if tol = 8, so use 7
         tol = 1e-7 
 
         # Run decomposition and save matrices to file
-        ritz_vals_path = 'files_modaldecomp_test/dmd_ritz_vals.txt'
-        mode_norms_path = 'files_modaldecomp_test/dmd_mode_energies.txt'
-        build_coeffs_path = 'files_modaldecomp_test/dmd_build_coeffs.txt'
+        ritz_vals_path = join(self.test_dir, 'dmd_ritz_vals.txt')
+        mode_norms_path = join(self.test_dir, 'dmd_mode_energies.txt')
+        build_coeffs_path = join(self.test_dir, 'dmd_build_coeffs.txt')
 
-        self.dmd.compute_decomp(self.snap_paths)
-        self.dmd.save_decomp(ritz_vals_path, mode_norms_path, build_coeffs_path)
+        self.DMD.compute_decomp(self.snap_paths)
+        self.DMD.save_decomp(ritz_vals_path, mode_norms_path, build_coeffs_path)
        
         # Test that matrices were correctly computed
-        N.testing.assert_allclose(self.dmd.ritz_vals, 
+        N.testing.assert_allclose(self.DMD.ritz_vals, 
             self.ritz_vals_true, rtol=tol)
-        N.testing.assert_allclose(self.dmd.build_coeffs, 
+        N.testing.assert_allclose(self.DMD.build_coeffs, 
             self.build_coeffs_true, rtol=tol)
-        N.testing.assert_allclose(self.dmd.mode_norms, 
+        N.testing.assert_allclose(self.DMD.mode_norms, 
             self.mode_norms_true, rtol=tol)
 
         # Test that matrices were correctly stored
@@ -195,14 +207,13 @@ class TestDMD(unittest.TestCase):
     def test_compute_modes(self):
         """
         Test building of modes, reconstruction formula.
-
         """
         tol = 1e-8
 
-        mode_path ='files_modaldecomp_test/dmd_mode_%03d.txt'
-        self.dmd.build_coeffs = self.build_coeffs_true
+        mode_path = join(self.test_dir, 'dmd_mode_%03d.txt')
+        self.DMD.build_coeffs = self.build_coeffs_true
         mode_nums = list(N.array(range(self.num_snaps-1))+self.index_from)
-        self.dmd.compute_modes(mode_nums, mode_path, index_from=self.index_from, 
+        self.DMD.compute_modes(mode_nums, mode_path, index_from=self.index_from, 
             snap_paths=self.snap_paths)
        
         # Load all snapshots into matrix
@@ -223,11 +234,11 @@ class TestDMD(unittest.TestCase):
         N.testing.assert_allclose(self.snap_mat[:,:-1],
             self.ritz_vecs_true * vandermonde_mat, rtol=tol)
 
-        util.save_mat_text(vandermonde_mat, 'files_modaldecomp_test/' +\
-            'dmd_vandermonde.txt')
+        util.save_mat_text(vandermonde_mat, join(self.test_dir,
+            'dmd_vandermonde.txt'))
 
 if __name__=='__main__':
-    unittest.main(verbosity=2)
+    unittest.main()
 
 
 

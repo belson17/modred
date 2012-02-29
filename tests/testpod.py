@@ -1,30 +1,31 @@
 #!/usr/bin/env python
-import subprocess as SP
-import os
-import unittest
 
+import unittest
+import os
 import numpy as N
+from os.path import join
+from shutil import rmtree
+import copy
+
+import helper
+helper.add_src_to_path()
+import parallel as parallel_mod
+parallel = parallel_mod.default_instance
 
 from pod import POD
 from fieldoperations import FieldOperations
 import util
-import copy
-import parallel as parallel_mod
-
-parallel = parallel_mod.default_instance
-
-if parallel.is_rank_zero():
-    print 'To test fully, remember to do both:'
-    print '    1) python testpod.py'
-    print '    2) mpiexec -n <# procs> python testpod.py\n'
 
 
 class TestPOD(unittest.TestCase):
     """ Test all the POD class methods """
     
     def setUp(self):
-        if not os.path.isdir('files_modaldecomp_test'):        
-            SP.call(['mkdir','files_modaldecomp_test'])
+        self.test_dir ='DELETE_ME_test_files_pod'
+        if not os.access('.', os.W_OK):
+            raise RuntimeError('Cannot write to current directory')
+        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():        
+            os.mkdir(self.test_dir)
         self.mode_nums =[2, 4, 3, 6, 9, 8, 10, 11, 30]
         self.num_snaps = 40
         self.num_states = 100
@@ -33,16 +34,17 @@ class TestPOD(unittest.TestCase):
             util.save_mat_text, save_mat=util.save_mat_text, inner_product=
             util.inner_product, verbose=False)
         self.generate_data_set()
+        parallel.sync()
 
     def tearDown(self):
         parallel.sync()
         if parallel.is_rank_zero():
-            SP.call(['rm -rf files_modaldecomp_test/*'], shell=True)
+            rmtree(self.test_dir, ignore_errors=True)
         parallel.sync()
 
     def generate_data_set(self):
         # create data set (saved to file)
-        self.snap_path = 'files_modaldecomp_test/snap_%03d.txt'
+        self.snap_path = join(self.test_dir, 'snap_%03d.txt')
         self.snap_paths = []
         
         if parallel.is_rank_zero():
@@ -73,7 +75,6 @@ class TestPOD(unittest.TestCase):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
-        
         data_members_default = {'save_mat': util.save_mat_text, 'load_mat': 
             util.load_mat_text, 'parallel': parallel_mod.default_instance,
             'verbose': False,
@@ -131,10 +132,10 @@ class TestPOD(unittest.TestCase):
         loaded and compared to the true matrices. 
         """
         tol = 1e-8
-        snap_path = 'files_modaldecomp_test/snap_%03d.txt'
-        sing_vecs_path = 'files_modaldecomp_test/sing_vecs.txt'
-        sing_vals_path = 'files_modaldecomp_test/sing_vals.txt'
-        correlation_mat_path = 'files_modaldecomp_test/correlation.txt'
+        snap_path = join(self.test_dir, 'snap_%03d.txt')
+        sing_vecs_path = join(self.test_dir, 'sing_vecs.txt')
+        sing_vals_path = join(self.test_dir, 'sing_vals.txt')
+        correlation_mat_path = join(self.test_dir, 'correlation.txt')
         
         self.pod.compute_decomp(self.snap_paths)
         self.pod.save_correlation_mat(correlation_mat_path)
@@ -179,7 +180,7 @@ class TestPOD(unittest.TestCase):
         that POD can generate the modes, save them, and load them, then
         compares them to the known solution.
         """
-        mode_path = 'files_modaldecomp_test/mode_%03d.txt'
+        mode_path = join(self.test_dir, 'mode_%03d.txt')
         
         # starts with the CORRECT decomposition.
         self.pod.sing_vecs = self.sing_vecs_true
@@ -211,6 +212,4 @@ class TestPOD(unittest.TestCase):
 
 
 if __name__=='__main__':
-    unittest.main(verbosity=2)
-
-
+    unittest.main()

@@ -164,7 +164,7 @@ def rss(num_states, num_inputs, num_outputs):
     return A,B,C
         
         
-def lsim(A, B, C, inputs):
+def lsim(A, B, C, D, inputs):
     """
     Simulates a discrete time system with arbitrary inputs. 
     
@@ -178,19 +178,28 @@ def lsim(A, B, C, inputs):
     num_outputs = C.shape[0]
     num_states = A.shape[0]
     #print 'num_states is',num_states,'num inputs',num_inputs,'B shape',B.shape
-    assert(B.shape == (num_states, num_inputs))
-    assert(A.shape == (num_states, num_states))
+    if B.shape != (num_states, num_inputs):
+        raise ValueError('B has the wrong shape ', B.shape)
+    if A.shape != (num_states, num_states):
+        raise ValueError('A has the wrong shape ', A.shape)
+    if C.shape != (num_outputs, num_states):
+        raise ValueError('C has the wrong shape ', C.shape)
+    if D == 0:
+        D = N.zeros((num_outputs, num_inputs))
+    if D.shape != (num_outputs, num_inputs):
+        raise ValueError('D has the wrong shape, D=', D)
     
     outputs = [] 
     state = N.mat(N.zeros((num_states,1)))
     
     for time,input in enumerate(inputs):
         #print 'assigning',N.dot(C, state).shape,'into',outputs[time].shape
-        outputs.append((C *state).squeeze())
-        Astate = A*state
+        input_reshape = input.reshape((num_inputs,1))
+        outputs.append((C*state ).squeeze())
+        #print 'shape of D*input',N.dot(D,input_reshape).shape
+        #Astate = A*state
         #print 'shape of B is',B.shape,'and shape of input is',input.reshape((num_inputs,1)).shape
-        Binput = B*input.reshape((num_inputs,1))
-        state = A*state + B*input.reshape((num_inputs,1))
+        state = A*state + B*input_reshape
     
     outputs_array = N.zeros((num_steps, num_outputs))
     for t,out in enumerate(outputs):
@@ -202,12 +211,14 @@ def lsim(A, B, C, inputs):
 
     
 def impulse(A, B, C, time_step=None, time_steps=None):
-    """Generates impulse response outputs for a discrete system, A, B, C, D=0.
+    """Generates impulse response outputs for a discrete system, A, B, C.
     
     sample_interval is the interval of time steps between samples,
     Uses format [CB CAB CA**PB CA**(P+1)B ...].
     By default, will find impulse until outputs are below a tolerance.
     time_steps specifies time intervals, must be 1D array of integers.
+    No D is included, but can simply be prepended to the output if it is
+    non-zero. 
     """
     num_states = A.shape[0]
     num_inputs = B.shape[1]

@@ -1,24 +1,19 @@
 #!/usr/bin/env python
 
 import unittest
-import subprocess as SP
+# For deleting directories and their contents
+from shutil import rmtree 
 import os
+from os.path import join
 import numpy as N
+
+import helper
+helper.add_src_to_path()
+
+import parallel as parallel_mod
+parallel = parallel_mod.default_instance
 import util
 
-try: 
-    from mpi4py import MPI
-    rank = MPI.COMM_WORLD.Get_rank()
-    distributed = MPI.COMM_WORLD.Get_size() > 1
-except ImportError:
-    print 'Warning: without mpi4py module, only serial behavior is tested'
-    distributed = False
-    rank = 0
-
-if rank==0:
-    print 'To fully test, must do both:'
-    print '  1) python testutil.py'
-    print '  2) mpiexec -n <# procs> python testutil.py\n\n'
 
 class TestUtil(unittest.TestCase):
     """Tests all of the functions in util.py
@@ -26,27 +21,27 @@ class TestUtil(unittest.TestCase):
     To test all parallel features, use "mpiexec -n 2 python testutil.py"
     """    
     def setUp(self):
-        self.testDir = 'files_modaldecomp_test/'
-        if rank == 0:
-            if not os.path.isdir(self.testDir):
-                SP.call(['mkdir', self.testDir])
+        self.test_dir = 'DELETE_ME_test_files_util'
+        if not os.access('.', os.W_OK):
+            raise RuntimeError('Cannot write to current directory')
+        if parallel.is_rank_zero():
+            if not os.path.isdir(self.test_dir):
+                os.mkdir(self.test_dir)
     
     def tearDown(self):
-        if distributed:
-            MPI.COMM_WORLD.barrier()
-        if rank == 0:
-            SP.call(['rm -rf %s/*' % self.testDir], shell=True)
-        if distributed:
-            MPI.COMM_WORLD.barrier()
+        parallel.sync()
+        if parallel.is_rank_zero():
+            rmtree(self.test_dir, ignore_errors=True)
+        parallel.sync()
         
         
-    @unittest.skipIf(distributed, 'Only save/load matrices in serial')
+    @unittest.skipIf(parallel.is_distributed(), 'Only save/load matrices in serial')
     def test_load_save_mat_text(self):
         """Test that can read/write text matrices"""
         tol = 1e-8
         rows = [1, 5, 20]
         cols = [1, 4, 5, 23]
-        matPath = self.testDir+'testMatrix.txt'
+        matPath = join(self.test_dir, 'test_matrix.txt')
         delimiters = [',',' ',';']
         for delimiter in delimiters:
             for is_complex in [False, True]:
@@ -70,7 +65,7 @@ class TestUtil(unittest.TestCase):
                             N.testing.assert_allclose(matRead, mat)#,rtol=tol)
                           
                           
-    @unittest.skipIf(distributed, 'Only load matrices in serial')
+    @unittest.skipIf(parallel.is_distributed(), 'Only load matrices in serial')
     def test_svd(self):
         num_internals_list = [10,50]
         num_rows_list = [3,5,40]
@@ -96,7 +91,7 @@ class TestUtil(unittest.TestCase):
     
     
         
-    @unittest.skipIf(distributed, 'Only load data in serial')
+    @unittest.skipIf(parallel.is_distributed(), 'Only load data in serial')
     def test_load_impulse_outputs(self):
         """
         Test loading impulse outputs in [t out1 out2 ...] format.
@@ -106,7 +101,7 @@ class TestUtil(unittest.TestCase):
         Returns time_values and outputs at time values in 3D array with indices [time,output,input].
         That is, outputs[time_index] = Markov parameter at time_values[time_index].
         """
-        impulse_file_path = self.testDir+'in%03d_to_outs.txt'
+        impulse_file_path = join(self.test_dir, 'in%03d_to_outs.txt')
         num_time_steps = 150
         for num_states in [4,10]:
             for num_inputs in [1, 4]:
@@ -133,7 +128,7 @@ class TestUtil(unittest.TestCase):
         """Test solution of Lyapunov w/known solution from Matlab's dlyap"""
         A = N.array([[1., 2.],[3., 4.]])
         Q = N.array([[4., 3.], [1., 2.]])
-        X_true = N.array([[2.2777777777, -0.5],[-1.166666666666, -0.166666666666]])
+        X_true = N.array([[2.2777777777, -0.5],[-1.166666666666, -0.1666666666]])
         X_computed = util.solve_Lyapunov(A,Q)
         N.testing.assert_allclose(X_computed, X_true)
         X_computed_mats = util.solve_Lyapunov(N.mat(A), N.mat(Q))
@@ -160,9 +155,10 @@ class TestUtil(unittest.TestCase):
                     #print 'num_states %d, num_inputs %d, num_outputs %d'%(num_states, num_inputs, num_outputs)
                     A,B,C = util.drss(num_states, num_inputs, num_outputs)
                     #print 'Shape of C is',C.shape
-                    inputs = N.random.random((3,num_inputs))
-                    outputs = util.lsim(A,B,C,inputs)
-                    self.assertEqual(outputs.shape, (3, num_outputs))
+                    nt = 5
+                    inputs = N.random.random((nt, num_inputs))
+                    outputs = util.lsim(A,B,C,0,inputs)
+                    self.assertEqual(outputs.shape, (nt, num_outputs))
                     
                     
     
@@ -202,6 +198,6 @@ class TestUtil(unittest.TestCase):
         
     
 if __name__=='__main__':
-    unittest.main(verbosity=2)
+    unittest.main()
 
 

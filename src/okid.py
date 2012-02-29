@@ -79,7 +79,7 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
     		sum_term = N.zeros((num_outputs,num_inputs))
     		for i in range(Markov_num):
     				sum_term += N.dot(Markov_aug_output[i], Markov_est[:,:,Markov_num-i-1])
-    				print 'k=%d, i=%d'%(Markov_num,i)
+    				#print 'k=%d, i=%d'%(Markov_num,i)
     		Markov_est[:,:,Markov_num] = Markov_aug_input[Markov_num]+\
     		N.dot(Markov_aug_output[Markov_num], D) + sum_term
     
