@@ -34,8 +34,8 @@ class TestBPODROM(unittest.TestCase):
         self.input_path = join(self.test_dir, 'input_%03d.txt')
         self.output_path = join(self.test_dir, 'output_%03d.txt')
         
-        self.myBPODROM = BPR.BPODROM(save_mat=util.save_mat_text, load_field=\
-            util.load_mat_text,inner_product=util.inner_product, save_field=\
+        self.myBPODROM = BPR.BPODROM(save_mat=util.save_mat_text, get_field=\
+            util.load_mat_text,inner_product=util.inner_product, put_field=\
             util.save_mat_text, verbose=False)
             
         self.num_direct_modes = 10

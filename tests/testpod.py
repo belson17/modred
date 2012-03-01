@@ -30,7 +30,7 @@ class TestPOD(unittest.TestCase):
         self.num_snaps = 40
         self.num_states = 100
         self.index_from = 2
-        self.pod = POD(load_field=util.load_mat_text, save_field=
+        self.pod = POD(get_field=util.load_mat_text, put_field=
             util.save_mat_text, save_mat=util.save_mat_text, inner_product=
             util.inner_product, verbose=False)
         self.generate_data_set()
@@ -78,16 +78,16 @@ class TestPOD(unittest.TestCase):
         data_members_default = {'save_mat': util.save_mat_text, 'load_mat': 
             util.load_mat_text, 'parallel': parallel_mod.default_instance,
             'verbose': False,
-            'field_ops': FieldOperations(load_field=None, save_field=None,
+            'field_ops': FieldOperations(get_field=None, put_field=None,
             inner_product=None, max_fields_per_node=2, verbose=False)}
         
         self.assertEqual(util.get_data_members(POD(verbose=False)), 
             data_members_default)
 
         def my_load(fname): pass
-        my_POD = POD(load_field=my_load, verbose=False)
+        my_POD = POD(get_field=my_load, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops'].load_field = my_load
+        data_members_modified['field_ops'].get_field = my_load
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
        
         my_POD = POD(load_mat=my_load, verbose=False)
@@ -96,9 +96,9 @@ class TestPOD(unittest.TestCase):
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
  
         def my_save(data, fname): pass 
-        my_POD = POD(save_field=my_save, verbose=False)
+        my_POD = POD(put_field=my_save, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops'].save_field = my_save
+        data_members_modified['field_ops'].put_field = my_save
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
         
         my_POD = POD(save_mat=my_save, verbose=False)

@@ -37,16 +37,16 @@ class BPODROM(object):
       dt = None,
       inner_product=None,
       save_mat=util.save_mat_text,
-      load_field=None,
-      save_field=None,
+      get_field=None,
+      put_field=None,
       num_modes=None,
       verbose = True,
       max_fields_per_node=2):
           self.dt = dt
           self.inner_product = inner_product
           self.save_mat = save_mat
-          self.load_field = load_field
-          self.save_field = save_field
+          self.get_field = get_field
+          self.put_field = put_field
           self.max_fields_per_node = max_fields_per_node
           self.max_fields_per_proc = self.max_fields_per_node
           self.num_modes = num_modes
@@ -60,18 +60,18 @@ class BPODROM(object):
         subtracts them and divides by dt. This requires both __mul__
         and __add__ to be defined for the mode object.
         """
-        if (self.load_field is None):
-            raise util.UndefinedError('no load_field defined')
-        if (self.save_field is None):
-            raise util.UndefinedError('no save_field defined')
+        if (self.get_field is None):
+            raise util.UndefinedError('no get_field defined')
+        if (self.put_field is None):
+            raise util.UndefinedError('no put_field defined')
         
         num_modes = min(len(mode_paths),len(mode_dt_paths),len(mode_deriv_paths))
         print 'Computing derivatives of',num_modes,'modes'
         
         for mode_index in xrange(len(mode_dt_paths)):
-            mode = self.load_field(mode_paths[mode_index])
-            modeDt = self.load_field(mode_dt_paths[mode_index])
-            self.save_field((modeDt - mode)*(1./dt), mode_deriv_paths[mode_index])
+            mode = self.get_field(mode_paths[mode_index])
+            modeDt = self.get_field(mode_dt_paths[mode_index])
+            self.put_field((modeDt - mode)*(1./dt), mode_deriv_paths[mode_index])
         
     
     def form_A(self, A_Path, direct_mode_advanced_paths, adjoint_mode_paths, dt, num_modes=None):
@@ -113,12 +113,12 @@ class BPODROM(object):
         for start_row_num in range(0,self.num_modes, num_rows_per_chunk):
             end_row_num = min(start_row_num+num_rows_per_chunk, self.num_modes)
             #a list of 'row' adjoint modes (row because Y' has rows of adjoint snaps)
-            adjoint_modes = [self.load_field(adjoint_path) \
+            adjoint_modes = [self.get_field(adjoint_path) \
                 for adjoint_path in adjoint_mode_paths[start_row_num:end_row_num]] 
               
             #now read in each column (direct modes advanced dt or time deriv)
             for col_num,advanced_path in enumerate(direct_mode_advanced_paths[:self.num_modes]):
-                advanced_mode = self.load_field(advanced_path)
+                advanced_mode = self.get_field(advanced_path)
                 for row_num in range(start_row_num,end_row_num):
                   self.A[row_num,col_num] = \
                       self.inner_product(adjoint_modes[row_num-start_row_num], advanced_mode)
@@ -167,12 +167,12 @@ class BPODROM(object):
         for start_row_num in range(0,self.num_modes,num_rows_per_chunk):
             end_row_num = min(start_row_num+num_rows_per_chunk,self.num_modes)
             #a list of 'row' adjoint modes
-            adjoint_modes = [self.load_field(adjoint_path) \
+            adjoint_modes = [self.get_field(adjoint_path) \
                 for adjoint_path in adjoint_mode_paths[start_row_num:end_row_num]] 
                 
             #now read in each column (actuator fields)
             for col_num,input_path in enumerate(input_paths):
-                input_field = self.load_field(input_path)
+                input_field = self.get_field(input_path)
                 for row_num in range(start_row_num, end_row_num):
                     self.B[row_num, col_num] = \
                       self.inner_product(adjoint_modes[row_num-start_row_num], input_field)
@@ -221,12 +221,12 @@ class BPODROM(object):
             end_col_num = min(start_col_num+num_cols_per_chunk, self.num_modes)
             
             #a list of 'row' adjoint modes
-            direct_modes = [self.load_field(direct_path) \
+            direct_modes = [self.get_field(direct_path) \
                 for direct_path in direct_mode_paths[start_col_num:end_col_num]]
             
             #now read in each row (outputs)
             for row_num,output_path in enumerate(output_paths):
-                output_field = self.load_field(output_path)
+                output_field = self.get_field(output_path)
                 for col_num in range(start_col_num, end_col_num):
                     self.C[row_num,col_num] = \
                         self.inner_product(output_field, direct_modes[col_num-start_col_num])      

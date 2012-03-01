@@ -15,7 +15,7 @@ class BPOD(object):
     Usage::
     
       import bpod      
-      myBPOD = bpod.BPOD(load_field = my_load_field, save_field=my_save_field,
+      myBPOD = bpod.BPOD(get_field = my_get_field, put_field=my_put_field,
           inner_product = my_inner_product, max_fields_per_node = 500)
       myBPOD.compute_decomp(direct_snap_paths, adjoint_snap_paths)      
       myBPOD.save_hankel_mat(hankelPath)
@@ -24,15 +24,15 @@ class BPOD(object):
       myBPOD.compute_adjoint_modes(range(1, 50), 'bpod_adjoint_mode_%03d.txt')
     """
     
-    def __init__(self, load_field=None, save_field=None, 
+    def __init__(self, get_field=None, put_field=None, 
         save_mat=util.save_mat_text, load_mat=util.load_mat_text,
         inner_product=None, max_fields_per_node=2, verbose=True):
         """
         BPOD constructor
         
-          load_field 
+          get_field 
             Function to load a snapshot given a filepath.
-          save_field 
+          put_field 
             Function to save a mode given data and an output path.
           save_mat
             Function to save a matrix.
@@ -43,8 +43,8 @@ class BPOD(object):
         """
         # Class that contains all of the low-level field operations
         # and parallelizes them.
-        self.field_ops = FieldOperations(load_field=load_field, 
-            save_field=save_field, inner_product=inner_product, 
+        self.field_ops = FieldOperations(get_field=get_field, 
+            put_field=put_field, inner_product=inner_product, 
             max_fields_per_node=max_fields_per_node, verbose=verbose)
         self.parallel = parallel.default_instance
 

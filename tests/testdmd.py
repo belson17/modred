@@ -34,7 +34,7 @@ class TestDMD(unittest.TestCase):
         self.num_snaps = 6 # number of snapshots to generate
         self.num_states = 7 # dimension of state vector
         self.index_from = 2
-        self.DMD = DMD(load_field=util.load_mat_text, save_field=util.\
+        self.DMD = DMD(get_field=util.load_mat_text, put_field=util.\
             save_mat_text, save_mat=util.save_mat_text, inner_product=util.\
             inner_product, verbose=False)
         self.generate_data_set()
@@ -108,17 +108,17 @@ class TestDMD(unittest.TestCase):
         data_members_default = {'save_mat': util.save_mat_text, 
             'load_mat': util.load_mat_text, 'POD': None,
             'parallel': parallel_mod.default_instance,
-            'verbose': False, 'field_ops': FieldOperations(load_field=None, 
-            save_field=None, inner_product=None, max_fields_per_node=2,
+            'verbose': False, 'field_ops': FieldOperations(get_field=None, 
+            put_field=None, inner_product=None, max_fields_per_node=2,
             verbose=False)}
 
         self.assertEqual(util.get_data_members(DMD(verbose=False)), \
             data_members_default)
 
         def my_load(fname): pass
-        myDMD = DMD(load_field=my_load, verbose=False)
+        myDMD = DMD(get_field=my_load, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops'].load_field = my_load
+        data_members_modified['field_ops'].get_field = my_load
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)
         
         myDMD = DMD(load_mat=my_load, verbose=False)
@@ -127,9 +127,9 @@ class TestDMD(unittest.TestCase):
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)
 
         def my_save(data,fname): pass 
-        myDMD = DMD(save_field=my_save, verbose=False)
+        myDMD = DMD(put_field=my_save, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops'].save_field = my_save
+        data_members_modified['field_ops'].put_field = my_save
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)
         
         myDMD = DMD(save_mat=my_save, verbose=False)

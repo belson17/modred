@@ -20,7 +20,7 @@ class POD(object):
       myPOD.compute_modes(range(1,100), mode_path)
     """
         
-    def __init__(self, load_field=None, save_field=None, 
+    def __init__(self, get_field=None, put_field=None, 
         load_mat=util.load_mat_text, save_mat=util.save_mat_text, 
         inner_product=None, max_fields_per_node=None, verbose=True, 
         print_interval=10):
@@ -28,8 +28,8 @@ class POD(object):
         POD constructor
         
         """
-        self.field_ops = FieldOperations(load_field=load_field, 
-            save_field=save_field, inner_product=inner_product, 
+        self.field_ops = FieldOperations(get_field=get_field, 
+            put_field=put_field, inner_product=inner_product, 
             max_fields_per_node=max_fields_per_node, 
             verbose=verbose, print_interval=print_interval)
         self.parallel = parallel.default_instance

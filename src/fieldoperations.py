@@ -25,7 +25,7 @@ class FieldOperations(object):
     supplied. In some cases, loading in parallel is slower.
     """
     
-    def __init__(self, load_field=None, save_field=None, inner_product=None, 
+    def __init__(self, get_field=None, put_field=None, inner_product=None, 
         max_fields_per_node=None, verbose=True, print_interval=10):
         """
         Sets the default values for data members. 
@@ -36,8 +36,8 @@ class FieldOperations(object):
           verbose: true/false, sets if warnings are printed or not
           print_interval: seconds, maximum of how frequently progress is printed
         """
-        self.load_field = load_field
-        self.save_field = save_field
+        self.get_field = get_field
+        self.put_field = put_field
         self.inner_product = inner_product
         self.verbose = verbose 
         self.print_interval = print_interval
@@ -72,7 +72,7 @@ class FieldOperations(object):
         Checks that the user-supplied objects and functions work properly.
         
         The arguments are for a test object or the path to one (loaded with 
-        load_field).  One of these should be supplied for thorough testing. 
+        get_field).  One of these should be supplied for thorough testing. 
         The add and mult functions are tested for the generic object.  This is 
         not a complete testing, but catches some common mistakes.
         
@@ -82,7 +82,7 @@ class FieldOperations(object):
         """
         tol = 1e-10
         if test_obj_path is not None:
-          test_obj = self.load_field(test_obj_path)
+          test_obj = self.get_field(test_obj_path)
         if test_obj is None:
             raise RuntimeError('Supply field object or path for idiot check!')
         obj_copy = copy.deepcopy(test_obj)
@@ -225,8 +225,8 @@ class FieldOperations(object):
        
         # Compute a single inner product in order to determine matrix datatype
         # (real or complex) and to estimate the amount of time the IPs will take.
-        row_field = self.load_field(row_field_paths[0])
-        col_field = self.load_field(col_field_paths[0])
+        row_field = self.get_field(row_field_paths[0])
+        col_field = self.get_field(col_field_paths[0])
         start_time = T.time()
         IP = self.inner_product(row_field, col_field)
         IP_type = type(IP)
@@ -284,7 +284,7 @@ class FieldOperations(object):
             proc_row_tasks = self.parallel.find_assignments(range(
                    start_row_index, end_row_index))[self.parallel.get_rank()]
             if len(proc_row_tasks) != 0:
-                row_fields = [self.load_field(row_path) for row_path in 
+                row_fields = [self.get_field(row_path) for row_path in 
                     row_field_paths[proc_row_tasks[0]:
                     proc_row_tasks[-1] + 1]]
             else:
@@ -308,7 +308,7 @@ class FieldOperations(object):
                     # once.
                     if num_passes == 0:
                         if len(col_indices) > 0:
-                            col_fields = [self.load_field(col_path) 
+                            col_fields = [self.get_field(col_path) 
                                 for col_path in col_field_paths[col_indices[0]:
                                     col_indices[-1] + 1]]
                         else:
@@ -406,7 +406,7 @@ class FieldOperations(object):
                 'redundant loads and get a big speedup.') % num_row_chunks    
         
         # Compute a single inner product in order to determin matrix datatype
-        test_field = self.load_field(field_paths[0])
+        test_field = self.get_field(field_paths[0])
         IP = self.inner_product(test_field, test_field)
         IP_type = type(IP)
         del test_field
@@ -425,7 +425,7 @@ class FieldOperations(object):
                 proc_row_tasks_all if task != []])
             proc_row_tasks = proc_row_tasks_all[self.parallel.get_rank()]
             if len(proc_row_tasks)!=0:
-                row_fields = [self.load_field(path) for path in field_paths[
+                row_fields = [self.get_field(path) for path in field_paths[
                     proc_row_tasks[0]:proc_row_tasks[-1] + 1]]
             else:
                 row_fields = []
@@ -555,7 +555,7 @@ class FieldOperations(object):
                     # once.
                     if num_passes == 0:
                         if len(col_indices) > 0:
-                            col_fields = [self.load_field(col_path) \
+                            col_fields = [self.get_field(col_path) \
                                 for col_path in field_paths[col_indices[0]:\
                                     col_indices[-1] + 1]]
                         else:
@@ -652,8 +652,8 @@ class FieldOperations(object):
         where the sum_fields are the modes and the basis_fields are the 
         snapshots.
         """        
-        if self.save_field is None:
-            raise UndefinedError('save_field is undefined')
+        if self.put_field is None:
+            raise UndefinedError('put_field is undefined')
                     
         if isinstance(mode_nums, int):
             mode_nums = [mode_nums]
@@ -718,8 +718,8 @@ class FieldOperations(object):
         Where n_s is number of sum fields, n_b is number of basis fields,
         n_p is number of processors, max = max_fields_per_node-1.
         """
-        if self.save_field is None:
-            raise util.UndefinedError('save_field is undefined')
+        if self.put_field is None:
+            raise util.UndefinedError('put_field is undefined')
                    
         if not isinstance(sum_field_paths, list):
             sum_field_paths = [sum_field_paths]
@@ -797,7 +797,7 @@ class FieldOperations(object):
                     # This is all that is called when in serial, loop iterates once.
                     if num_passes == 0:
                         if len(basis_indices) > 0:
-                            basis_fields = [self.load_field(basis_path) \
+                            basis_fields = [self.get_field(basis_path) \
                                 for basis_path in basis_field_paths[
                                     basis_indices[0]:basis_indices[-1]+1]]
                         else: basis_fields = []
@@ -835,7 +835,7 @@ class FieldOperations(object):
                                 sum_layers[sum_index] += sum_layer
             # Completed this set of sum fields, save to file
             for sum_index in xrange(len(proc_sum_tasks)):
-                self.save_field(sum_layers[sum_index],\
+                self.put_field(sum_layers[sum_index],\
                     sum_field_paths[sum_index+proc_sum_tasks[0]])
             if (T.time() - self.prev_print_time) > self.print_interval:    
                 self.print_msg('Completed %.1f%% of sum fields, %d of %d' %
@@ -848,8 +848,8 @@ class FieldOperations(object):
     def __eq__(self, other):
         #print 'comparing fieldOperations classes'
         a = (self.inner_product == other.inner_product and 
-            self.load_field == other.load_field and 
-            self.save_field == other.save_field and 
+            self.get_field == other.get_field and 
+            self.put_field == other.put_field and 
             self.max_fields_per_node == other.max_fields_per_node and 
             self.verbose == other.verbose)
         return a

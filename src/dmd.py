@@ -13,15 +13,15 @@ class DMD(object):
     
     """
 
-    def __init__(self, load_field=None, save_field=None, 
+    def __init__(self, get_field=None, put_field=None, 
         load_mat=util.load_mat_text, save_mat=util.save_mat_text,
         inner_product=None, 
         max_fields_per_node=None, POD=None, verbose=True):
         """
         DMD constructor
         """
-        self.field_ops = FieldOperations(load_field=load_field,\
-            save_field=save_field, inner_product=inner_product,
+        self.field_ops = FieldOperations(get_field=get_field,\
+            put_field=put_field, inner_product=inner_product,
             max_fields_per_node=max_fields_per_node, verbose=\
             verbose)
         self.parallel = parallel.default_instance
@@ -88,7 +88,7 @@ class DMD(object):
 
         # Compute POD from snapshots (excluding last snapshot)
         if self.POD is None:
-            self.POD = POD(load_field=self.field_ops.load_field, 
+            self.POD = POD(get_field=self.field_ops.get_field, 
                 inner_product=self.field_ops.inner_product, 
                 max_fields_per_node=self.field_ops.max_fields_per_node, 
                 verbose=self.verbose)

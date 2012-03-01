@@ -31,7 +31,7 @@ class TestFieldOperations(unittest.TestCase):
 
         # Default data members, verbose set to false even though default is true
         # so messages won't print during tests
-        self.default_data_members = {'load_field': None, 'save_field': None, 
+        self.default_data_members = {'get_field': None, 'put_field': None, 
             'inner_product': None, 'max_fields_per_node': 2,
             'max_fields_per_proc': 2, 'parallel':parallel_mod.default_instance,
             'verbose': False, 'print_interval':10, 'prev_print_time':0.}
@@ -41,8 +41,8 @@ class TestFieldOperations(unittest.TestCase):
 
         # FieldOperations object for running tests
         self.fieldOperations = FieldOperations( 
-            load_field=util.load_mat_text, 
-            save_field=util.save_mat_text, 
+            get_field=util.load_mat_text, 
+            put_field=util.save_mat_text, 
             inner_product=util.inner_product, 
             verbose=False)
         self.fieldOperations.max_fields_per_proc = self.max_fields_per_proc
@@ -66,15 +66,15 @@ class TestFieldOperations(unittest.TestCase):
         self.assertEqual(data_members_original, self.default_data_members)
         
         def my_load(fname): pass
-        my_FO = FieldOperations(load_field=my_load, verbose=False)
+        my_FO = FieldOperations(get_field=my_load, verbose=False)
         data_members = copy.deepcopy(data_members_original)
-        data_members['load_field'] = my_load
+        data_members['get_field'] = my_load
         self.assertEqual(util.get_data_members(my_FO), data_members)
         
         def my_save(data,fname): pass
-        my_FO = FieldOperations(save_field=my_save, verbose=False)
+        my_FO = FieldOperations(put_field=my_save, verbose=False)
         data_members = copy.deepcopy(data_members_original)
-        data_members['save_field'] = my_save
+        data_members['put_field'] = my_save
         self.assertEqual(util.get_data_members(my_FO), data_members)
         
         def my_ip(f1,f2): pass
@@ -287,7 +287,7 @@ class TestFieldOperations(unittest.TestCase):
 
 
     def test_compute_inner_product_mat_types(self):
-        def load_field_as_complex(path):
+        def get_field_as_complex(path):
             return (1 + 1j) * util.load_mat_text(path) 
 
         num_row_snaps = 4
@@ -333,9 +333,9 @@ class TestFieldOperations(unittest.TestCase):
             col_snap_paths = col_snap_paths[0]
     
         # Comptue inner product matrix and check type
-        for load, type in [(load_field_as_complex, complex), (util.\
+        for load, type in [(get_field_as_complex, complex), (util.\
             load_mat_text, float)]:
-            self.fieldOperations.load_field = load
+            self.fieldOperations.get_field = load
             inner_product_mat = self.fieldOperations.compute_inner_product_mat(
                 row_snap_paths, col_snap_paths)
             symm_inner_product_mat = self.fieldOperations.\
