@@ -2,8 +2,8 @@
 Introduction
 ============
 
-Welcome to the Modal Decomposition project.
+Welcome to the modred project!
 
-This is an awesome, fast, parallelized, and easy-to-use library for finding modal
+This is a easy-to-use, multi-purpose, and parallelized library for finding modal
 decompositions and reduced-order models.
 

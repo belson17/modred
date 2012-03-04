@@ -4,19 +4,18 @@ import numpy as N
 
 
 class BPODROM(object):
-    """
-    Computes the ROM matrices from BPOD modes for an LTI plant.
+    """Computes the ROM matrices from BPOD modes for an LTI plant.
     
-    To use it, you must first use the BPOD class to form the BPOD modes.
-    Then, before using this class, you must advance the direct modes
-    forward in time by a time step dt. For a discrete time ROM, this will
-    be the time step of the system. For a continuous time ROM, a first-order
-    approximation of the derivative of the direct modes is made with
-    d(mode)/dt = (mode(t=dt) - mode(t=0)) / dt, see compute_mode_derivs.
+    To use it, you must first form the BPOD modes.
+    Then, you must advance the direct modes forward in time by a time step dt.
+    For a discrete time ROM, this will be the time step of the system. 
+    For a continuous time ROM, a first-order approximation of the derivative of
+    the direct modes is made with
+    d(mode)/dt = (mode(t=dt) - mode(t=0)) / dt, see ``self.compute_mode_derivs``.
     
     Usage::
 
-      myBPODROM = bpodltirom.BPODROM(...)
+      myBPODROM = BPODROM(...)
       # For continuous time systems
       myBPODROM.compute_mode_derivs(mode_paths, mode_dt_paths, mode_deriv_paths,1e-4)
       # For continuous time systems, set dt=0

@@ -9,32 +9,32 @@ import util
 import parallel as parallel_mod
 
 class FieldOperations(object):
-    """
-    Responsible for low level (parallel) operations on fields.
+    """Responsible for low level operations on fields.
 
-    All modaldecomp classes should use the common functionality provided
-    in this class as much as possible.
+    The class is mostly a collection of methods used in the high-level 
+    modred classes like POD, BPOD, and DMD. 
+    It's responsible for all non-trivial parallelization.
+
+    All modred classes use the common functionality provided
+    in this class.
     
-    Only advanced users should use this class; it is mostly a collection
-    of functions used in the high-level modaldecomp classes like POD,
-    BPOD, and DMD.
-    
-    It is generally best to use all available processors for this class,
-    however thisa
-    depends on the computer and the nature of the load and inner_product functions
-    supplied. In some cases, loading in parallel is slower.
+    It is generally best to use all available processors, however this
+    depends on the computer and the nature of the functions
+    supplied. In some cases, loading from file is slower with more processors.
     """
     
     def __init__(self, get_field=None, put_field=None, inner_product=None, 
         max_fields_per_node=None, verbose=True, print_interval=10):
-        """
-        Sets the default values for data members. 
+        """Constructor.
         
-        Arguments:
-          max_fields_per_node: maximum number of fields that can be in memory
-            simultaneously on a node.
-          verbose: true/false, sets if warnings are printed or not
-          print_interval: seconds, maximum of how frequently progress is printed
+        Args:
+            max_fields_per_node: max number of fields that can be in memory
+              simultaneously on a node.
+            verbose: True or False, sets if warnings are printed.
+            print_interval: max of how frequently progress is printed, in seconds.
+        
+        Returns:
+            FieldOperations instance
         """
         self.get_field = get_field
         self.put_field = put_field
@@ -68,8 +68,7 @@ class FieldOperations(object):
             print >> sys.stdout, msg
 
     def idiot_check(self, test_obj=None, test_obj_path=None):
-        """
-        Checks that the user-supplied objects and functions work properly.
+        """Checks that the user-supplied objects and functions work.
         
         The arguments are for a test object or the path to one (loaded with 
         get_field).  One of these should be supplied for thorough testing. 
@@ -77,7 +76,7 @@ class FieldOperations(object):
         not a complete testing, but catches some common mistakes.
         
         Other things which could be tested:
-            reading/writing doesnt effect other snaps/modes (memory problems)
+            reading/writing doesnt effect other fields/modes (memory problems)
             subtraction, division (currently not used for modaldecomp)
         """
         tol = 1e-10
@@ -93,7 +92,7 @@ class FieldOperations(object):
         
         if abs(self.inner_product(objMult, objMult) -
                 obj_copy_mag2 * factor**2) > tol:
-            raise ValueError('Multiplication of snap/mode object failed')
+            raise ValueError('Multiplication of field/mode object failed')
         
         if abs(self.inner_product(test_obj, test_obj) - 
                 obj_copy_mag2) > tol:  
@@ -108,7 +107,7 @@ class FieldOperations(object):
         objAddMult = test_obj * factor + test_obj
         if abs(self.inner_product(objAddMult, objAddMult) - obj_copy_mag2 *
                 (factor + 1) ** 2) > tol:
-            raise ValueError('Multiplication and addition of snap/mode are '+\
+            raise ValueError('Multiplication and addition of field/mode are '+\
                 'inconsistent')
         
         if abs(self.inner_product(test_obj, test_obj) - obj_copy_mag2) > tol:  
@@ -121,14 +120,14 @@ class FieldOperations(object):
 
 
     def compute_inner_product_mat(self, row_field_paths, col_field_paths):
-        """ 
-        Computes a matrix of inner products (for BPOD, Y'*X) and returns it.
+        """Computes a matrix of inner products (for BPOD, Y'*X) and returns it.
         
-          row_field_paths: row snapshot files (BPOD adjoint snaps, ~Y)
+        Args:
+            row_field_paths: row field paths (BPOD adjoint fields, ~Y)
           
-          col_field_paths: column snapshot files (BPOD direct snaps, ~X)
+            col_field_paths: column field files (BPOD direct fields, ~X)
 
-        Within this method, the snapshots are read in memory-efficient ways
+        Within this method, the fields are read in memory-efficient ways
         such that they are not all in memory at once. This results in finding
         'chunks' of the eventual matrix that is returned.  This method only
         supports finding a full rectangular mat. For POD, a different method is
@@ -377,8 +376,7 @@ class FieldOperations(object):
 
         
     def compute_symmetric_inner_product_mat(self, field_paths):
-        """
-        Computes an upper-triangular chunk of a symmetric matrix of inner 
+        """Computes an upper-triangular chunk of a symmetric matrix of inner 
         products.  
         """
         if isinstance(field_paths, str):
@@ -437,7 +435,7 @@ class FieldOperations(object):
                     proc_row_tasks[-1] + 1):
                     raise ValueError('Indices are not consecutive.')
                 
-                # Per-processor triangles (using only loaded snapshots)
+                # Per-processor triangles (using only loaded fields)
                 for row_index in xrange(proc_row_tasks[0], 
                     proc_row_tasks[-1] + 1):
                     # Diagonal term
@@ -625,47 +623,50 @@ class FieldOperations(object):
         return IP_mat
         
         
-    def _compute_modes(self, mode_nums, mode_path, snap_paths, field_coeff_mat,
+    def _compute_modes(self, mode_nums, mode_path, field_paths, field_coeff_mat,
         index_from=1):
-        """
-        A common method to compute and save modes from snapshots.
+        """A common method to compute modes from fields and ``put_field`` them.
         
-        mode_nums - mode numbers to compute on this processor. This 
-          includes the index_from, so if index_from=1, examples are:
-          [1,2,3,4,5] or [3,1,6,8]. The mode numbers need not be sorted,
-          and sorting does not increase efficiency. 
-          Repeated mode numbers is not guaranteed to work. 
-        mode_path - Full path to mode location, e.g /home/user/mode_%03d.txt.
-        index_from - Integer from which to index modes. E.g. from 0, 1, or other.
-        snap_paths - A list paths to files from which snapshots can be loaded.
-        field_coeff_mat - Matrix of coefficients for constructing modes.  The kth
-            column contains the coefficients for computing the kth index mode, 
-            ie index_from+k mode number. ith row contains coefficients to 
-            multiply corresponding to snapshot i.
-
-        This methods primary purpose is to recast computing modes as a simple
-        linear combination of elements. To this end, it calls lin_combine_fields.
-        This function mostly consists of rearranging the coeff matrix so that
-        the first column corresponds to the first mode number in mode_nums.
-        For more details on how the modes are formed, see docstring on
-        lin_combine_fields,
-        where the sum_fields are the modes and the basis_fields are the 
-        snapshots.
+        This method recasts computing modes as a linear combination of elements.
+        To this end, it calls lin_combine_fields.
+        It rearranges the coeff matrix so that the first column corresponds to
+        the first mode number in mode_nums.
+        
+        Args:
+          mode_nums: mode numbers to compute. 
+              Examples are: [1,2,3,4,5] or [3,1,6,8]. 
+              The mode numbers need not be sorted,
+              and sorting does not increase efficiency. 
+              
+          mode_path: Full path to mode location, e.g /home/user/mode_%03d.txt.
+          
+          field_paths - A list paths to files from which fields can be loaded.
+          
+          field_coeff_mat - Matrix of coefficients for constructing modes.  The kth
+              column contains the coefficients for computing the kth index mode, 
+              ie index_from+k mode number. ith row contains coefficients to 
+              multiply corresponding to field i.
+              
+        Kwargs:
+          index_from: Integer from which to index modes. E.g. from 0, 1, or other.
+        
+        Calls lin_combine_fiels with sum_fields as the modes and the
+        basis_fields as the fields.
         """        
         if self.put_field is None:
             raise UndefinedError('put_field is undefined')
                     
         if isinstance(mode_nums, int):
             mode_nums = [mode_nums]
-        if isinstance(snap_paths, type('a_string')):
-            snap_paths = [snap_paths]
+        if isinstance(field_paths, type('a_string')):
+            field_paths = [field_paths]
         
         num_modes = len(mode_nums)
-        num_snaps = len(snap_paths)
+        num_fields = len(field_paths)
         
-        if num_modes > num_snaps:
+        if num_modes > num_fields:
             raise ValueError('Cannot compute more modes than number of ' +\
-                'snapshots')
+                'fields')
                    
         for mode_num in mode_nums:
             if mode_num < index_from:
@@ -681,31 +682,33 @@ class FieldOperations(object):
         field_coeff_matReordered = field_coeff_mat[:,mode_numsFromZero]
         mode_paths = [mode_path%mode_num for mode_num in mode_nums]
         
-        self.lin_combine(mode_paths, snap_paths, field_coeff_matReordered)
+        self.lin_combine(mode_paths, field_paths, field_coeff_matReordered)
         self.parallel.sync() # ensure that all procs leave function at same time
     
     
     def lin_combine(self, sum_field_paths, basis_field_paths, field_coeff_mat):
-        """
-        Linearly combines the basis fields and saves them.
+        """Linearly combines the basis fields and saves them.
         
-          sum_field_paths is a list of the files where the linear combinations
-            will be saved.
-          basis_field_paths is a list of files where the basis fields will
-            be read from.
-          field_coeff_mat is a matrix where each row corresponds to an basis field
-            and each column corresponds to a sum (lin. comb.) field. The rows and columns
-            are assumed to correspond, by index, to the lists basis_field_paths and 
-            sum_field_paths.
-            sums = basis * field_coeff_mat
-        
+        Args:
+            sum_field_paths: list of the files where the linear combinations
+                will be ``self.put_field`` ed.
+                
+            basis_field_paths: list of files where the basis fields will
+                be ``self.get_field`` ed from.
+                
+            field_coeff_mat: matrix with each row corresponding to a basis field
+                and each column to a sum (lin. comb.) field.
+                The rows and columns correspond, by index,
+                to the lists basis_field_paths and sum_field_paths.
+                ``sums = basis * field_coeff_mat``
+          
         Each processor reads a subset of the basis fields to compute as many
         outputs as a processor can have in memory at once. Each processor
         computes the "layers" from the basis it is resonsible for, and for
         as many modes as it can fit in memory. The layers from all procs are
         then
-        summed together to form the full outputs. The output sumFields 
-        are then saved to file.
+        summed together to form the full outputs. The output sum_fields 
+        are then ``self.put_field``ed.
         
         Scaling is:
         
@@ -762,7 +765,7 @@ class FieldOperations(object):
         num_sums_per_chunk = int(N.ceil(num_sums*1./num_sum_chunks))
 
         if num_sum_chunks > 1:
-            self.print_msg('Warning: The basis fields (snapshots), ' 
+            self.print_msg('Warning: The basis fields (fields), ' 
                 'of which there are %d, will be loaded from file %d times each. '
                 'If possible, increase number of nodes or '
                 'max_fields_per_node to reduce redundant loads and get a '

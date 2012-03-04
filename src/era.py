@@ -3,7 +3,15 @@ import numpy as N
 import util
 
 def make_time_steps(num_steps, interval):
-    """Returns int array of time steps [0 1 interval interval+1 ...]"""
+    """Returns int array of time steps [0 1 interval interval+1 ...]
+    
+    Args:
+        num_steps: integer, number of time steps to create.
+        interval: interval between pairs of time steps, as shown above.
+    
+    Returns:
+        time_steps: array of integers, time steps.
+    """
     if num_steps%2 != 0:
         raise ValueError('num_steps must be even, you gave %d'%num_steps)
     interval = int(interval)
@@ -14,13 +22,19 @@ def make_time_steps(num_steps, interval):
 
 
 def make_sampled_format(times, outputs):
-    """
-    Converts equally spaced samples and makes into sampled format [0 1 P P+1 ...].
+    """Converts equally spaced samples into sampled format [0 1 P P+1 ...].
     
-    Returns time_steps, outputs, and dt.
+    Args:
+        times: an array of time values or time steps.
+        
+        outputs: an array of output values at the ``times`` specified.
     
-    The times input argument can be time steps (ints) or values (floats).
-    If the input times are already in the sampled format, an error is given.
+    Returns:
+        time_steps: array with integer time steps
+        
+        outputs: outputs at the time_steps
+        
+        dt: the associated value of time between each time step
     """
     num_time_steps, num_outputs, num_inputs = outputs.shape
     if num_time_steps != times.shape[0]:
@@ -50,7 +64,7 @@ def make_sampled_format(times, outputs):
 
 
 def compute_ROM(outputs, num_states, dt=None):
-    """Returns A, B, and C matrices w/default settings for convenience."""
+    """Returns A, B, and C matrices, default settings for convenience."""
     myERA = ERA()
     myERA.set_outputs(outputs, dt=dt)
     myERA.compute_ROM(num_states)
@@ -61,20 +75,17 @@ def compute_ROM(outputs, num_states, dt=None):
 class ERA(object):
     """Forms ERA ROM for discrete-time system from impulse output data 
 
-    The simplest way to use this class is ::
+    Usage::
     
       output_paths =['/path/in1ToOuts.txt', '/path/in2ToOuts.txt']
       myERA = ERA()
       time_values, outputs = util.load_impulse_outputs(output_paths)
-      # Optional for equally spaced time data, requires fewer outputs
+      # Optional for equally spaced time data
       time_steps, outputs, dt = make_sampled_format(time_values, outputs)
       myERA.set_outputs(outputs, dt)
       myERA.compute_ROM(50)
       myERA.save_ROM('A.txt','B.txt','C.txt')
       
-    This would generate a 50-state eigensystem realization algorithm LTI ROM
-    with A, B, C matrices saved in text format.
-    
     The above usage uses util.load_impulse_outputs, which assumes a 
     format of text files (see documentation for this function).
         
@@ -84,17 +95,18 @@ class ERA(object):
     The special case where P=2 can be recast into P=1 using make_sampled_format().
     t0 + dt_system*[0, 1, 2, 3, 4, ... ]
       
-    Not parallelized for distributed memory.
-    
     See Ma et al. 2011 TCFD for ERA details.
     """
     
     def __init__(self, save_mat=util.save_mat_text, load_mat=util.load_mat_text, mc=None, 
         mo=None, verbose=True):
-        """
-        Construct an ERA class. 
+        """Constructor
         
-        Variables mc and mo are the number of Markov parameters to use for the Hankel matrix.
+        Kwargs:
+            mc: number of Markov parameters for controllable dimension.
+                Default is to make mc and mo equal and maximal for a balanced model.
+            mo: number of Markov parameters for observable dimension.
+                Default is to make mc and mo equal and maximal for a balanced model.        Variables mc and mo are the number of Markov parameters to use for the Hankel matrix.
         The default is to use all the data and set mc = mo.
         """
         self.save_mat = save_mat
@@ -108,15 +120,14 @@ class ERA(object):
      
 
     def set_outputs(self, outputs, dt=None):
-        """
-        Set the signals from each output to each input.
+        """Set the signals from each output to each input.
         
-        outputs: 
-          3D array of Markov parameters with indices [time_interval#, output#, input#],
-          so that outputs[snap_num] is the Markov parameter C A**i B at that time interval number.
-          outputs = [CB, CAB, CA**PB, CA**(P+1)B, ...]
-          
-        Sets self.outputs and self.dt.
+        Args:
+            outputs: array of Markov params w/indices (time_interval#, output#, input#),
+                so that outputs[snap_num] is the Markov parameter C A**i B.
+                outputs = [CB, CAB, CA**PB, CA**(P+1)B, ...]
+        Kwargs:
+            dt: time step of the system, used to scale B in later step.
         """
         if dt is None:
             self.dt = 1.
@@ -142,20 +153,29 @@ class ERA(object):
     
     
     def compute_ROM(self, num_states, dt=None, mc=None, mo=None):
-        """
-        Computes the A,B,C LTI ROM matrices.
+        """Computes the A, B, and C LTI ROM matrices.
+
+        Assembles the Hankel matrices from self.outputs and takes SVD.
         
-        num_states:
-          the number of states to be found for the ROM.
-        dt:
-          The time step of the discrete system, *not* the sampling period ("P").
-        
-        Assembles the Hankel matrices from self.outputs and takes SVD:
-        L_sing_vecs*N.mat(N.diag(sing_vals))*R_sing_vecs.H = Hankel_mat
+        Args:
+            num_states: number of states to be found for the ROM.
+            
+        Kwargs:
+            dt: time step of the discrete system, *not* the sampling period ("P").
+            
+            mc: number of Markov parameters for controllable dimension.
+            		Default is to make mc and mo equal and maximal for a balanced model.
+            
+            mo: number of Markov parameters for observable dimension.
+            		Default is to make mc and mo equal and maximal for a balanced model.
                 
         For discrete time systems the impulse is applied over a time interval dt and so
-        has a time-integral 1*dt rather than 1. This means the B matrix is "off" by a
-        factor of dt. This is accounted for by multiplying B by dt.
+        has a time-integral 1*dt rather than 1. 
+        This means the B matrix is "off" by a factor of dt. 
+        This is accounted for by multiplying B by dt.
+        This is the only reason dt is an argument.
+        
+        SVD is ``L_sing_vecs*N.mat(N.diag(sing_vals))*R_sing_vecs.H = Hankel_mat``
         """
 
         if self.outputs is None:
@@ -186,10 +206,11 @@ class ERA(object):
         self.save_mat(self.A, APath)
         self.save_mat(self.B, BPath)
         self.save_mat(self.C, CPath)
-        print 'Saved ROM matrices to:'
-        print APath
-        print BPath
-        print CPath
+        if self.verbose:
+            print 'Saved ROM matrices to:'
+            print APath
+            print BPath
+            print CPath
      
  
     def save_decomp(self, Hankel_mat_path, Hankel_mat2_path, L_sing_vecs_path, sing_valsPath,
@@ -208,17 +229,15 @@ class ERA(object):
       
  
     def _assemble_Hankel(self):
+        """Assembles and sets self.Hankel_mat and self.Hankel_mat2 (H and H' in Ma 2011).        
         """
-        Assembles and sets self.Hankel_mat and self.Hankel_mat2 (H and H' in Ma 2011).        
-        
-        Chooses mc and mo to be equal and maximal for number of time steps.
-        To understand how it chooses mc and mo, consider (let sample_interval=P=1 w.l.o.g.)
-        sequences
-        [0 1 1 2 2 3] => H = [[0 1][1 2]]   H2 = [[1 2][2 3]], mc=mo=1, nt=6
-        [0 1 1 2 2 3 3 4 4 5] => H=[[0 1 2][1 2 3][2 3 4]] H2=[[1 2 3][2 3 4][3 4 5]], mc=mo=2,nt=10
-        Thus, using all available data means mc=mo=(nt-2)/4.
-        For additional output times, (nt-2)/4 rounds down, so we use this formula.
-        """
+        # To understand the default choice of mc and mo, 
+        # consider (let sample_interval=P=1 w.l.o.g.)
+        # sequences
+        # [0 1 1 2 2 3] => H = [[0 1][1 2]]   H2 = [[1 2][2 3]], mc=mo=1, nt=6
+        # [0 1 1 2 2 3 3 4 4 5] => H=[[0 1 2][1 2 3][2 3 4]] H2=[[1 2 3][2 3 4][3 4 5]], mc=mo=2,nt=10
+        # Thus, using all available data means mc=mo=(nt-2)/4.
+        # For additional output times, (nt-2)/4 rounds down, so we use this formula.
         
         if self.mo is None or self.mc is None:
             # Set mo and mc, time_steps is always in format [0, 1, P, P+1, ...]

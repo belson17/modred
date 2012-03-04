@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
-# modaldecomp documentation build configuration file, created by
-# sphinx-quickstart on Mon Jan 23 21:14:14 2012.
+# modred documentation build configuration file, created by
+# sphinx-quickstart on Sat Mar  3 20:00:31 2012.
 #
 # This file is execfile()d with the current directory set to its containing dir.
 #
@@ -17,6 +17,7 @@ import sys, os
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.join(os.path.join(os.path.abspath('.'), '..'), 'src'))
 
 # -- General configuration -----------------------------------------------------
 
@@ -25,7 +26,7 @@ import sys, os
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo', 'sphinx.ext.coverage', 'sphinx.ext.pngmath']
+extensions = ['sphinx.ext.coverage', 'sphinx.ext.viewcode', 'sphinx.ext.autodoc']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -40,7 +41,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'modaldecomp'
+project = u'modred'
 copyright = u'2012, Brandt Belson and Jonathan Tu'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -164,21 +165,26 @@ html_static_path = ['_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'modaldecompdoc'
+htmlhelp_basename = 'modreddoc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
 
-# The paper size ('letter' or 'a4').
-#latex_paper_size = 'letter'
+latex_elements = {
+# The paper size ('letterpaper' or 'a4paper').
+#'papersize': 'letterpaper',
 
 # The font size ('10pt', '11pt' or '12pt').
-#latex_font_size = '10pt'
+#'pointsize': '10pt',
+
+# Additional stuff for the LaTeX preamble.
+#'preamble': '',
+}
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'modaldecomp.tex', u'modaldecomp Documentation',
+  ('index', 'modred.tex', u'modred Documentation',
    u'Brandt Belson and Jonathan Tu', 'manual'),
 ]
 
@@ -196,9 +202,6 @@ latex_documents = [
 # If true, show URL addresses after external links.
 #latex_show_urls = False
 
-# Additional stuff for the LaTeX preamble.
-#latex_preamble = ''
-
 # Documents to append as an appendix to all manuals.
 #latex_appendices = []
 
@@ -211,46 +214,30 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'modaldecomp', u'modaldecomp Documentation',
+    ('index', 'modred', u'modred Documentation',
      [u'Brandt Belson and Jonathan Tu'], 1)
 ]
 
+# If true, show URL addresses after external links.
+#man_show_urls = False
 
-# -- Options for Epub output ---------------------------------------------------
 
-# Bibliographic Dublin Core info.
-epub_title = u'modaldecomp'
-epub_author = u'Brandt Belson and Jonathan Tu'
-epub_publisher = u'Brandt Belson and Jonathan Tu'
-epub_copyright = u'2012, Brandt Belson and Jonathan Tu'
+# -- Options for Texinfo output ------------------------------------------------
 
-# The language of the text. It defaults to the language option
-# or en if the language is not set.
-#epub_language = ''
+# Grouping the document tree into Texinfo files. List of tuples
+# (source start file, target name, title, author,
+#  dir menu entry, description, category)
+texinfo_documents = [
+  ('index', 'modred', u'modred Documentation',
+   u'Brandt Belson and Jonathan Tu', 'modred', 'One line description of project.',
+   'Miscellaneous'),
+]
 
-# The scheme of the identifier. Typical schemes are ISBN or URL.
-#epub_scheme = ''
+# Documents to append as an appendix to all manuals.
+#texinfo_appendices = []
 
-# The unique identifier of the text. This can be a ISBN number
-# or the project homepage.
-#epub_identifier = ''
+# If false, no module index is generated.
+#texinfo_domain_indices = True
 
-# A unique identification for the text.
-#epub_uid = ''
-
-# HTML files that should be inserted before the pages created by sphinx.
-# The format is a list of tuples containing the path and title.
-#epub_pre_files = []
-
-# HTML files shat should be inserted after the pages created by sphinx.
-# The format is a list of tuples containing the path and title.
-#epub_post_files = []
-
-# A list of files that should not be packed into the epub file.
-#epub_exclude_files = []
-
-# The depth of the table of contents in toc.ncx.
-#epub_tocdepth = 3
-
-# Allow duplicate toc entries.
-#epub_tocdup = True
+# How to display URL addresses: 'footnote', 'no', or 'inline'.
+#texinfo_show_urls = 'footnote'

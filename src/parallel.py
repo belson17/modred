@@ -4,7 +4,8 @@ import copy
 import numpy as N
 
 class ParallelError(Exception):
-    """For Parallel related errors"""
+    """Parallel related errors"""
+    pass
     
 class Parallel(object):
     """For parallelization with mpi4py
@@ -12,8 +13,9 @@ class Parallel(object):
     Is a wrapper for the mpi4py module.
     Also, it contains information about how many processors there are.
     It ensures no failure in case mpi4py is not installed or running serial.
-    In the future, this could be extended to be used with shared memory as well.
-    Almost always one should use the given instance of this class, parallel.parallelInstance!
+    In the future, this could be extended for shared memory as well.
+    Almost always one should use the given instance of this class,
+        parallel.default_instance!
     """
     def __init__(self):
         try:
@@ -49,9 +51,7 @@ class Parallel(object):
             self.distributed = False
     
     def find_node_ID(self):
-        """
-        Finds a unique ID number for each node. Taken from mpi4py emails.
-        """
+        """Finds a unique ID number for each node. Taken from mpi4py emails."""
         hostname = os.uname()[1]
         return hash(hostname)
     
@@ -60,10 +60,12 @@ class Parallel(object):
         return self._num_nodes
     
     def print_from_rank_zero(self,msgs):
-        """
-        Prints the elements of the list given from rank=0 only.
+        """Prints the elements of the list given from rank=0 only.
         
-        Could be improved to better mimic if isRankZero(): print a,b,...
+        TODO: Could be improved to better mimic::
+          
+          if is_rank_zero(): 
+              print a,b,c
         """
         # If not a list, convert to list
         if not isinstance(msgs, list):
@@ -74,25 +76,19 @@ class Parallel(object):
                 print msg
     
     def sync(self):
-        """Forces all processors to synchronize.
-        
-        Method computes simple formula based on ranks of each proc, then
-        asserts that results make sense and each proc reported back. This
-        forces all processors to wait for others to "catch up"
-        It is self-testing and for now does not need a unittest.
-        """
+        """Forces all processors to synchronize. Wrapper for Barrier()."""
         if self.distributed:
             self.comm.Barrier()
     
     def is_rank_zero(self):
-        """Returns True if rank is zero, false if not, useful for prints"""
+        """Returns True if rank is zero, False if not."""
         if self._rank == 0:
             return True
         else:
             return False
             
     def is_distributed(self):
-        """Returns true if in parallel (requires mpi4py and >1 processor)"""
+        """Returns True if >1 processor and mpi4py imported properly."""
         return self.distributed
         
     def get_rank(self):
@@ -109,13 +105,18 @@ class Parallel(object):
 
     
     def find_assignments(self, tasks, task_weights=None):
-        """ Returns a 2D list of tasks, [rank][taskIndex], 
+        """Evenly distributes the tasks by task weights among all MPI workers.
         
-        Evenly distributes the tasks in tasks, allowing for arbitrary task
-        weights. 
-        MPI worker n is responsible for task task_assignments[n][...]
-        where the 2nd dimension of the 2D list contains the tasks (whatever
-        they were in the original tasks).
+        Args:
+            tasks: list of "tasks", which can be any object corresponding to
+                a task that needs to be completed, for example an index.
+        Kwargs:
+            task_weights: list of weights, numbers, that are used to
+                equally distribute the tasks among MPI workers.
+       
+        Returns:
+            task_assignments: 2D list of tasks, [rank][task_index] such that 
+            MPI worker n is responsible for tasks in task_assignments[n]
         """
         task_assignments= []
         
@@ -168,8 +169,7 @@ class Parallel(object):
 
 
     def evaluate_and_bcast(self,outputs, function, arguments=[], keywords={}):
-        """
-        Evaluates function with inputs and broadcasts outputs to procs
+        """Evaluates function with inputs and broadcasts outputs to MPI workers.
         
         CURRENTLY THIS FUNCTION DOESNT WORK
     
@@ -234,7 +234,7 @@ class Parallel(object):
         print 'Adding MPI objects doesnt make sense, returning original'
         return self
         
-# Create an instance of the Parallel class that is used everywhere, "singleton"
+# Default instance to be used everywhere, "singleton"
 default_instance = Parallel()
         
         

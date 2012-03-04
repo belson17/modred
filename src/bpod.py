@@ -5,21 +5,16 @@ import util
 import parallel
 
 class BPOD(object):
-    """
-    Balanced Proper Orthogonal Decomposition
+    """Balanced Proper Orthogonal Decomposition
     
-    Generate direct and adjoint modes from direct and adjoint simulation 
-    snapshots. BPOD uses FieldOperations for low level
-    functions.
+    Computes direct and adjoint modes from direct and adjoint fields.
+    It uses FieldOperations for low level functions.
     
     Usage::
     
-      import bpod      
-      myBPOD = bpod.BPOD(get_field = my_get_field, put_field=my_put_field,
-          inner_product = my_inner_product, max_fields_per_node = 500)
-      myBPOD.compute_decomp(direct_snap_paths, adjoint_snap_paths)      
-      myBPOD.save_hankel_mat(hankelPath)
-      myBPOD.save_decomp(L_sing_vecs_path, sing_vals_path, R_sing_vecs_path)
+      myBPOD = BPOD(get_field=my_get_field, put_field=my_put_field,
+          inner_product=my_inner_product, max_fields_per_node=500)
+      myBPOD.compute_decomp(direct_field_paths, adjoint_field_paths)      
       myBPOD.compute_direct_modes(range(1, 50), 'bpod_direct_mode_%03d.txt')
       myBPOD.compute_adjoint_modes(range(1, 50), 'bpod_adjoint_mode_%03d.txt')
     """
@@ -27,19 +22,18 @@ class BPOD(object):
     def __init__(self, get_field=None, put_field=None, 
         save_mat=util.save_mat_text, load_mat=util.load_mat_text,
         inner_product=None, max_fields_per_node=2, verbose=True):
-        """
-        BPOD constructor
+        """Constructor
         
-          get_field 
-            Function to load a snapshot given a filepath.
-          put_field 
-            Function to save a mode given data and an output path.
-          save_mat
-            Function to save a matrix.
-          inner_product
-            Function to take inner product of two snapshots.
-          verbose 
-            True means print more information about progress and warnings
+        Kwargs:
+            get_field: Function to get a field from elsewhere (memory or a file).
+            
+            put_field: Function to put a field elsewhere (to memory or a file).
+            
+            save_mat: Function to save a matrix.
+            
+            inner_product: Function to take inner product of two fields.
+            
+            verbose: print more information about progress and warnings
         """
         # Class that contains all of the low-level field operations
         # and parallelizes them.
@@ -54,8 +48,7 @@ class BPOD(object):
  
 
     def load_decomp(self, L_sing_vecs_path, sing_vals_path, R_sing_vecs_path):
-        """
-        Loads the decomposition matrices from file. 
+        """Loads the decomposition matrices from file. 
         """
         if self.load_mat is None:
             raise UndefinedError('Must specify a load_mat function')
@@ -106,29 +99,28 @@ class BPOD(object):
         self.save_sing_vals(sing_vals_path)
         
         
-    def compute_decomp(self, direct_snap_paths, adjoint_snap_paths):
-        """
-        Compute BPOD decomposition from given data.
+    def compute_decomp(self, direct_field_paths, adjoint_field_paths):
+        """Compute BPOD from given fields.
         
-        First computes the Hankel mat Y*X, then the SVD of this matrix.
+        Computes the Hankel mat Y*X, then takes the SVD of this matrix.
         """        
-        self.direct_snap_paths = direct_snap_paths
-        self.adjoint_snap_paths = adjoint_snap_paths
+        self.direct_field_paths = direct_field_paths
+        self.adjoint_field_paths = adjoint_field_paths
         # Do Y.conj()*X
         self.hankel_mat = self.field_ops.compute_inner_product_mat(
-            self.adjoint_snap_paths, self.direct_snap_paths)
+            self.adjoint_field_paths, self.direct_field_paths)
         self.compute_SVD()        
         #self.parallel.evaluate_and_bcast([self.L_sing_vecs,self.sing_vals,self.\
         #    R_sing_vecs], util.svd, arguments = [self.hankel_mat])
 
 
     def compute_SVD(self):
-        """Assumes the hankel matrix is in memory, takes the SVD
+        """Takes the SVD of the Hankel matrix.
         
-        This is especially useful if you already have the hankel mat and 
-        only want to compute the SVD. You can skip using compute_decomp,
-        and instead load the hankel mat, set self.hankel_mat, and call this
-        function."""
+        This is useful if you already have the Hankel mat and want to skip 
+        compute_decomp. 
+        Set self.hankel_mat, and call this function.
+        """
         if self.parallel.is_rank_zero():
             self.L_sing_vecs, self.sing_vals, self.R_sing_vecs = \
                 util.svd(self.hankel_mat)
@@ -143,68 +135,72 @@ class BPOD(object):
         
 
     def compute_direct_modes(self, mode_nums, mode_path, index_from=1,
-        direct_snap_paths=None):
-        """
-        Computes the direct modes and saves them to file.
+        direct_field_paths=None):
+        """Computes the direct modes and calls ``self.self.put_field`` on them.
         
-        mode_nums
-          Mode numbers to compute on this processor. This 
-          includes the index_from, so if index_from=1, examples are:
-          [1,2,3,4,5] or [3,1,6,8]. The mode numbers need not be sorted,
-          and sorting does not increase efficiency. 
-          Repeated mode numbers is not guaranteed to work. 
-
-        mode_path
-          Full path to mode location, e.g /home/user/mode_%d.txt.
-
-        index_from
-          Choose to index modes starting from 0, 1, or other.
-        
-        self.R_sing_vecs & self.sing_vals must exist, else an UndefinedError.
+        Args:
+          mode_nums: Mode numbers to compute. 
+              Examples are [1,2,3,4,5] or [3,1,6,8]. 
+              The mode numbers need not be sorted,
+              and sorting does not increase efficiency. 
+          mode_path:
+              Full path to mode location, e.g. /home/user/mode_%d.txt.
+              
+        Kwargs:
+          index_from:
+              Index modes starting from 0, 1, or other.
+          direct_field_paths:
+              Paths to adjoint fields. Optional if already given when calling 
+              ``self.compute_decomp``.
+            
+        self.R_sing_vecs and self.sing_vals must exist, else UndefinedError.
         """
+        
         if self.R_sing_vecs is None:
             raise util.UndefinedError('Must define self.R_sing_vecs')
         if self.sing_vals is None:
             raise util.UndefinedError('Must define self.sing_vals')
             
-        if direct_snap_paths is not None:
-            self.direct_snap_paths = direct_snap_paths
-        if self.direct_snap_paths is None:
-            raise util.UndefinedError('Must specify direct_snap_paths')
+        if direct_field_paths is not None:
+            self.direct_field_paths = direct_field_paths
+        if self.direct_field_paths is None:
+            raise util.UndefinedError('Must specify direct_field_paths')
         # Switch to N.dot...
         build_coeff_mat = N.mat(self.R_sing_vecs)*N.mat(N.diag(self.sing_vals**-0.5))
 
         self.field_ops._compute_modes(mode_nums, mode_path, 
-            self.direct_snap_paths, build_coeff_mat, index_from=index_from)
+            self.direct_field_paths, build_coeff_mat, index_from=index_from)
     
     def compute_adjoint_modes(self, mode_nums, mode_path, index_from=1,
-        adjoint_snap_paths=None):
-        """
-        Computes the adjoint modes and saves them to file.
+        adjoint_field_paths=None):
+        """Computes the adjoint modes and calls ``self.put_field`` on them.
         
-        mode_nums
-          Mode numbers to compute on this processor. This 
-          includes the index_from, so if index_from=1, examples are:
-          [1,2,3,4,5] or [3,1,6,8]. The mode numbers need not be sorted,
-          and sorting does not increase efficiency. 
-          Repeated mode numbers is not guaranteed to work.
-
-        mode_path
-          Full path to mode location, e.g /home/user/mode_%d.txt.
-
-        index_from
-          Choose to index modes starting from 0, 1, or other.
+        Args:
+            mode_nums: Mode numbers to compute. 
+                Examples are [1,2,3,4,5] or [3,1,6,8]. 
+                The mode numbers need not be sorted,
+                and sorting does not increase efficiency. 
+                
+            mode_path:
+                Full path to mode location, e.g. /home/user/mode_%d.txt.
         
-        self.L_sing_vecs, self.sing_vals must exist or an UndefinedError.
+        Kwargs:
+            index_from: Index modes starting from 0, 1, or other.
+                
+            adjoint_field_paths: Paths to adjoint fields. 
+            		Optional if already given when calling ``self.compute_decomp``.
+            
+        self.L_sing_vecs and self.sing_vals must exist, else UndefinedError.
         """
+        
         if self.L_sing_vecs is None:
             raise UndefinedError('Must define self.L_sing_vecs')
         if self.sing_vals is None:
             raise UndefinedError('Must define self.sing_vals')
-        if adjoint_snap_paths is not None:
-            self.adjoint_snap_paths=adjoint_snap_paths
-        if self.adjoint_snap_paths is None:
-            raise util.UndefinedError('Must specify adjoint_snap_paths')
+        if adjoint_field_paths is not None:
+            self.adjoint_field_paths=adjoint_field_paths
+        if self.adjoint_field_paths is None:
+            raise util.UndefinedError('Must specify adjoint_field_paths')
 
         self.sing_vals = N.squeeze(N.array(self.sing_vals))
         # Switch to N.dot...
@@ -212,5 +208,5 @@ class BPOD(object):
             N.mat(N.diag(self.sing_vals**-0.5))
                  
         self.field_ops._compute_modes(mode_nums, mode_path,
-            self.adjoint_snap_paths, build_coeff_mat, index_from=index_from)
+            self.adjoint_field_paths, build_coeff_mat, index_from=index_from)
     
