@@ -11,7 +11,7 @@ import parallel as parallel_mod
 class FieldOperations(object):
     """Responsible for low level operations on fields.
 
-    The class is mostly a collection of methods used in the high-level 
+    The class is a collection of methods used in the high-level 
     modred classes like POD, BPOD, and DMD. 
     It's responsible for all non-trivial parallelization.
 
@@ -29,8 +29,10 @@ class FieldOperations(object):
         
         Args:
             max_fields_per_node: max number of fields that can be in memory
-              simultaneously on a node.
+                simultaneously on a node.
+            
             verbose: True or False, sets if warnings are printed.
+            
             print_interval: max of how frequently progress is printed, in seconds.
         
         Returns:
@@ -71,13 +73,13 @@ class FieldOperations(object):
         """Checks that the user-supplied objects and functions work.
         
         The arguments are for a test object or the source to one (retrieved with 
-        get_field).  One of these should be supplied for thorough testing. 
+        ``get_field``).  One of these should be supplied for thorough testing. 
         The add and mult functions are tested for the generic object.  This is 
         not a complete testing, but catches some common mistakes.
         
         Other things which could be tested:
             reading/writing doesnt effect other fields/modes (memory problems)
-            subtraction, division (currently not used for modaldecomp)
+            subtraction, division (currently not used in modred)
         """
         tol = 1e-10
         if test_obj_source is not None:
@@ -120,21 +122,23 @@ class FieldOperations(object):
 
 
     def compute_inner_product_mat(self, row_field_sources, col_field_sources):
-        """Computes a matrix of inner products (for BPOD, Y'*X) and returns it.
+        """Computes a matrix of inner products and returns it.
         
         Args:
-            row_field_sources: row field sources (BPOD adjoint fields, Y)
+            row_field_sources: list of row field sources (BPOD adjoint fields, "Y")
           
-            col_field_sources: column field files (BPOD direct fields, X)
+            col_field_sources: list of column field sources (BPOD direct fields, "X")
+            
+        **Details**
 
-        Within this method, the fields are read in memory-efficient ways
+        Within this method, the fields are retrieved in memory-efficient ways
         such that they are not all in memory at once. This results in finding
-        'chunks' of the eventual matrix that is returned.  This method only
+        'chunks' of the eventual matrix that is returned. This method only
         supports finding a full rectangular mat. For POD, a different method is
         used to take advantage of the symmetric matrix.
         
         Each processor is responsible for retrieving a subset of the rows and
-        columns. The processor which reads a particular column field then sends
+        columns. The processor which retrieves a particular column field then sends
         it to each successive processor so it can be used to compute all IPs
         for the current row chunk on each processor. This is repeated until all
         processors are done with all of their row chunks. If there are 2
@@ -162,14 +166,15 @@ class FieldOperations(object):
           rank1 | r4c0 r4c1 |
                 | r5c0 r5c1 |
           
-        This is more complicated when the number of cols and rows is
-        not divisible by the number of processors. This is handled
-        internally, by allowing the last processor to have fewer tasks, however
-        it is still part of the passing circle, and rows and cols are handled
-        independently.  This is also generalized to allow the columns to be
-        read in chunks, rather than only 1 at a time.  This could be useful,
+        When the number of cols and rows is
+        not divisible by the number of processors, the processors are assigned
+        unequal numbers of tasks. However, all processors are always
+        part of the passing circle, and rows and cols are handled
+        independently. This is also generalized to allow the columns to be
+        read in chunks, rather than only 1 at a time. This could be useful,
         for example, in a shared memory setting where it is best to work in
-        operation-units (load/gets, IPs, etc) of multiples of procs/node.
+        operation-units (load/gets, IPs, etc) of multiples of the number
+        of procs sharing memory (procs/node).
         
         The scaling is:
         
@@ -263,7 +268,7 @@ class FieldOperations(object):
             self.print_msg('Warning: The column fields, of which '
                     'there are %d, will be read %d times each. Increase '
                     'number of nodes or max_fields_per_node to reduce redundant '
-                    'gets and get a big speedup.' % (num_cols,num_row_chunks))
+                    '"get_fields"s and get a big speedup.' % (num_cols,num_row_chunks))
         
         # Currently using a little trick to finding all of the inner product
         # mat chunks. Each processor has a full IP_mat with size
@@ -377,7 +382,12 @@ class FieldOperations(object):
         
     def compute_symmetric_inner_product_mat(self, field_sources):
         """Computes an upper-triangular chunk of a symmetric matrix of inner 
-        products.  
+        products.
+        
+        See the documentation for compute_inner_product_mat for a general
+        idea how this works.
+        
+        TODO: JON, write detailed documentation similar to ``compute_inner_product_mat``'s.
         """
         if isinstance(field_sources, str):
             field_sources = [field_sources]
@@ -401,7 +411,7 @@ class FieldOperations(object):
         if self.parallel.is_rank_zero() and num_row_chunks > 1 and self.verbose:
             print ('Warning: The column fields will be read ~%d times each. ' +\
                 'Increase number of nodes or max_fields_per_node to reduce ' +\
-                'redundant gets and get a big speedup.') % num_row_chunks    
+                'redundant "get_fields"s and get a big speedup.') % num_row_chunks    
         
         # Compute a single inner product in order to determin matrix datatype
         test_field = self.get_field(field_sources[0])
@@ -623,7 +633,7 @@ class FieldOperations(object):
         return IP_mat
         
         
-    def _compute_modes(self, mode_nums, mode_dest, field_sources, field_coeff_mat,
+    def _compute_modes(self, mode_nums, mode_dests, field_sources, field_coeff_mat,
         index_from=1):
         """A common method to compute modes from fields and ``put_field`` them.
         
@@ -638,17 +648,17 @@ class FieldOperations(object):
               The mode numbers need not be sorted,
               and sorting does not increase efficiency. 
               
-          mode_dest: Full dest to mode location, e.g /home/user/mode_%03d.txt.
+          mode_dests: destination for modes (memory or file)
           
-          field_sources - A list sources to files from which fields can be retrieved.
+          field_sources: list sources from which fields are retrieved.
           
-          field_coeff_mat - Matrix of coefficients for constructing modes.  The kth
+          field_coeff_mat: Matrix of coefficients for constructing modes. The kth
               column contains the coefficients for computing the kth index mode, 
               ie index_from+k mode number. ith row contains coefficients to 
               multiply corresponding to field i.
               
         Kwargs:
-          index_from: Integer from which to index modes. E.g. from 0, 1, or other.
+          index_from: integer from which to index modes. E.g. from 0, 1, or other.
         
         Calls lin_combine_fiels with sum_fields as the modes and the
         basis_fields as the fields.
@@ -658,16 +668,25 @@ class FieldOperations(object):
                     
         if isinstance(mode_nums, int):
             mode_nums = [mode_nums]
-        if isinstance(field_sources, type('a_string')):
+        if not isinstance(field_sources, list):
             field_sources = [field_sources]
+        if not isinstance(mode_dests, list):
+            mode_dests = [mode_dests]
         
         num_modes = len(mode_nums)
         num_fields = len(field_sources)
         
         if num_modes > num_fields:
-            raise ValueError('Cannot compute more modes than number of ' +\
-                'fields')
-                   
+            raise ValueError(('Cannot compute more modes (%d) than number of ' +\
+                'fields(%d)')%(num_modes, num_fields))
+        
+        if num_modes > len(mode_dests):
+            raise ValueError('More mode numbers than mode destinations')
+        elif num_modes < len(mode_dests):
+            print ('Warning: Fewer mode numbers (%d) than mode destinations(%d), some mode '+
+                'destinations will not be used')%(num_modes, len(mode_dests))
+            mode_dests = mode_dests[:num_modes] # deepcopy?
+        
         for mode_num in mode_nums:
             if mode_num < index_from:
                 raise ValueError('Cannot compute if mode number is less than '+\
@@ -678,11 +697,10 @@ class FieldOperations(object):
                     'matrix, %d'%(mode_num-index_from,field_coeff_mat.shape[1]))
         
         # Construct field_coeff_mat and outputPaths for lin_combine_fields
-        mode_numsFromZero = [mode_num-index_from for mode_num in mode_nums]
-        field_coeff_matReordered = field_coeff_mat[:,mode_numsFromZero]
-        mode_dests = [mode_dest%mode_num for mode_num in mode_nums]
+        mode_nums_from_zero = [mode_num-index_from for mode_num in mode_nums]
+        field_coeff_mat_reordered = field_coeff_mat[:,mode_nums_from_zero]
         
-        self.lin_combine(mode_dests, field_sources, field_coeff_matReordered)
+        self.lin_combine(mode_dests, field_sources, field_coeff_mat_reordered)
         self.parallel.sync() # ensure that all procs leave function at same time
     
     
@@ -702,7 +720,7 @@ class FieldOperations(object):
                 to the lists basis_field_sources and sum_field_dests.
                 ``sums = basis * field_coeff_mat``
           
-        Each processor reads a subset of the basis fields to compute as many
+        Each processor retrieves a subset of the basis fields to compute as many
         outputs as a processor can have in memory at once. Each processor
         computes the "layers" from the basis it is resonsible for, and for
         as many modes as it can fit in memory. The layers from all procs are

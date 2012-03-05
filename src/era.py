@@ -7,6 +7,7 @@ def make_time_steps(num_steps, interval):
     
     Args:
         num_steps: integer, number of time steps to create.
+        
         interval: interval between pairs of time steps, as shown above.
     
     Returns:
@@ -201,26 +202,26 @@ class ERA(object):
             print 'Warning: Unstable eigenvalues of ROM matrix A'
 
  
-    def put_ROM(self, APath, BPath, CPath):
-        """Saves the A, B, and C LTI matrices to file"""  
-        self.put_mat(self.A, APath)
-        self.put_mat(self.B, BPath)
-        self.put_mat(self.C, CPath)
+    def put_ROM(self, A_dest, B_dest, C_dest):
+        """Puts the A, B, and C LTI matrices to destination (file or memory)"""  
+        self.put_mat(self.A, A_dest)
+        self.put_mat(self.B, B_dest)
+        self.put_mat(self.C, C_dest)
         if self.verbose:
-            print 'Saved ROM matrices to:'
-            print APath
-            print BPath
-            print CPath
+            print 'Put ROM matrices to:'
+            print A_dest
+            print B_dest
+            print C_dest
      
  
     def put_decomp(self, Hankel_mat_dest, Hankel_mat2_dest, L_sing_vecs_dest, sing_vals_dest,
         R_sing_vecs_dest):
         """Saves the decomposition and Hankel matrices"""
         self.put_mat(self.Hankel_mat, Hankel_mat_dest)
-        self.put_mat(self.Hankel_mat2,Hankel_mat2_dest)
-        self.put_mat(self.L_sing_vecs,L_sing_vecs_dest)
-        self.put_mat(self.sing_vals,sing_vals_dest)
-        self.put_mat(self.R_sing_vecs,R_sing_vecs_dest)
+        self.put_mat(self.Hankel_mat2, Hankel_mat2_dest)
+        self.put_mat(self.L_sing_vecs, L_sing_vecs_dest)
+        self.put_mat(self.sing_vals, sing_vals_dest)
+        self.put_mat(self.R_sing_vecs, R_sing_vecs_dest)
  
  
     def put_sing_vals(self, sing_vals_dest):

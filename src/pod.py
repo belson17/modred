@@ -14,7 +14,7 @@ class POD(object):
       
       myPOD = POD(...)
       myPOD.compute_decomp(field_sources=my_field_sources)
-      myPOD.compute_modes(range(1,100), mode_dest)
+      myPOD.compute_modes(range(1,100), ['mode%d.txt'%i for i in range(1,100)])
     """
         
     def __init__(self, get_field=None, put_field=None, 
@@ -24,16 +24,15 @@ class POD(object):
         """Constructor
         
         Kwargs:
-            get_field 
-                Function to get a field from elsewhere (memory or a file).
-            put_field 
-                Function to put a field elsewhere (to memory or a file).
-            put_mat
-                Function to put a matrix (to memory or file).
-            inner_product
-                Function to take inner product of two fields.
-            verbose 
-                True means print more information about progress and warnings.
+            get_field: function to get a field from elsewhere (memory or a file).
+            
+            put_field: function to put a field elsewhere (to memory or a file).
+            
+            put_mat: function to put a matrix (to memory or file).
+            
+            inner_product: function to take inner product of two fields.
+            
+            verbose: print more information about progress and warnings.
                 
         Returns:
             POD instance
@@ -49,7 +48,7 @@ class POD(object):
         self.verbose = verbose
      
     def get_decomp(self, sing_vecs_source, sing_vals_source):
-        """Loads the decomposition matrices from file. """
+        """Gets the decomposition matrices from sources (memory or file)"""
         if self.get_mat is None:
             raise UndefinedError('Must specify a get_mat function')
         if self.parallel.is_rank_zero():
@@ -64,7 +63,7 @@ class POD(object):
  
     def put_correlation_mat(self, correlation_mat_dest):
         if self.put_mat is None and self.parallel.is_rank_zero():
-            raise util.UndefinedError("put_mat is undefined, can't put")
+            raise util.UndefinedError("put_mat is undefined")
         if self.parallel.is_rank_zero():
             self.put_mat(self.correlation_mat, correlation_mat_dest)
         
@@ -76,14 +75,14 @@ class POD(object):
         
     def put_sing_vecs(self, dest):
         if self.put_mat is None and self.parallel.is_rank_zero():
-            raise util.UndefinedError("put_mat is undefined, can't put")
+            raise util.UndefinedError("put_mat is undefined")
             
         if self.parallel.is_rank_zero():
             self.put_mat(self.sing_vecs, dest)
 
     def put_sing_vals(self, dest):
         if self.put_mat is None and self.parallel.is_rank_zero():
-            raise util.UndefinedError("put_mat is undefined, can't put")
+            raise util.UndefinedError("put_mat is undefined")
             
         if self.parallel.is_rank_zero():
             self.put_mat(self.sing_vals, dest)
@@ -112,7 +111,7 @@ class POD(object):
             self.sing_vals = self.parallel.comm.bcast(self.sing_vals, root=0)
             
             
-    def compute_modes(self, mode_nums, mode_dest, index_from=1, field_sources=None):
+    def compute_modes(self, mode_nums, mode_dests, index_from=1, field_sources=None):
         """Computes the modes and calls ``self.put_field`` on them.
         
         Args:
@@ -121,9 +120,7 @@ class POD(object):
               The mode numbers need not be sorted,
               and sorting does not increase efficiency. 
               
-            mode_dest:
-              Full dest to mode location, e.g. /home/user/mode_%d.txt.
-        
+            mode_dests: list of destinations to put modes (memory or file)
         
         Kwargs:
             index_from: Index modes starting from 0, 1, or other.
@@ -141,10 +138,9 @@ class POD(object):
         if field_sources is not None:
             self.field_sources = field_sources
 
-        build_coeff_mat = N.mat(self.sing_vecs) * \
-            N.mat(N.diag(self.sing_vals**-0.5))
+        build_coeff_mat = N.dot(self.sing_vecs, N.diag(self.sing_vals**-0.5))
 
-        self.field_ops._compute_modes(mode_nums, mode_dest,
+        self.field_ops._compute_modes(mode_nums, mode_dests,
              self.field_sources, build_coeff_mat, index_from=index_from)
     
 

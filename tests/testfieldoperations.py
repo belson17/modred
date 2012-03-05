@@ -203,7 +203,7 @@ class TestFieldOperations(unittest.TestCase):
                     #print 'index_from =',index_from
                     snap_paths = [snap_path % snap_index \
                         for snap_index in xrange(num_snaps)]
-                    
+
                     if parallel.is_rank_zero():
                         snap_mat,mode_nums, build_coeff_mat, true_modes = \
                           self.generate_snaps_modes(num_states, num_snaps,
@@ -215,6 +215,7 @@ class TestFieldOperations(unittest.TestCase):
                         build_coeff_mat = None
                         snap_mat = None
                         true_modes = None
+                        mode_paths = None
                     if parallel.is_distributed():
                         mode_nums = parallel.comm.bcast(
                             mode_nums, root=0)
@@ -224,7 +225,9 @@ class TestFieldOperations(unittest.TestCase):
                             snap_mat, root=0)
                         true_modes = parallel.comm.bcast(
                             true_modes, root=0)
-                        
+                    
+                    mode_paths = [mode_path%mode_num for mode_num in
+                            mode_nums]
                     # if any mode number (minus starting indxex)
                     # is greater than the number of coeff mat columns,
                     # or is less than zero
@@ -236,30 +239,32 @@ class TestFieldOperations(unittest.TestCase):
                             check_assert_raises = True
                     if check_assert_raises:
                         self.assertRaises(ValueError, self.fieldOperations.\
-                            _compute_modes, mode_nums, mode_path, 
+                            _compute_modes, mode_nums, mode_paths, 
                             snap_paths, build_coeff_mat, index_from=\
                             index_from)
                     # If the coeff mat has more rows than there are 
                     # snapshot paths
                     elif num_snaps > build_coeff_mat.shape[0]:
                         self.assertRaises(ValueError, self.fieldOperations.\
-                            _compute_modes, mode_nums, mode_path,
+                            _compute_modes, mode_nums, mode_paths,
                             snap_paths, build_coeff_mat, index_from=\
                             index_from)
                     elif num_modes > num_snaps:
                         self.assertRaises(ValueError,
                           self.fieldOperations._compute_modes, mode_nums,
-                          mode_path, snap_paths, build_coeff_mat,
+                          mode_paths, snap_paths, build_coeff_mat,
                           index_from=index_from)
                     else:
                         # Test the case that only one mode is desired,
                         # in which case user might pass in an int
                         if len(mode_nums) == 1:
                             mode_nums = mode_nums[0]
-
+                            mode_paths = mode_paths[0]
+                            
                         # Saves modes to files
                         self.fieldOperations._compute_modes(mode_nums, 
-                            mode_path, snap_paths, build_coeff_mat, 
+                            mode_paths,
+                            snap_paths, build_coeff_mat, 
                             index_from=index_from)
 
                         # Change back to list so is iterable

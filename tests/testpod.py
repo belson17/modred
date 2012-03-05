@@ -186,7 +186,8 @@ class TestPOD(unittest.TestCase):
         self.pod.sing_vecs = self.sing_vecs_true
         self.pod.sing_vals = self.sing_vals_true
         
-        self.pod.compute_modes(self.mode_nums, mode_path, 
+        self.pod.compute_modes(self.mode_nums, 
+            [mode_path%i for i in self.mode_nums], 
             index_from=self.index_from, field_sources=self.snap_paths)
           
         for mode_num in self.mode_nums:

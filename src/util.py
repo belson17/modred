@@ -1,4 +1,4 @@
-#  A group of useful functions that don't belong to anything in particular
+"""A group of useful functions"""
 
 import os
 import subprocess as SP
@@ -18,8 +18,7 @@ def save_mat_text(mat, filename, delimiter=' '):
       real10 imag10 real11 imag11 ...
       ...
   
-    It can easily be read in Matlab (provided .m files?). Brandt has written
-    these matlab functions.
+    It can easily be read in Matlab with the provided matlab functions. 
     """
     # Must cast mat into an array, makes it memory C-contiguous.
     mat_save = N.array(mat)
@@ -34,7 +33,7 @@ def save_mat_text(mat, filename, delimiter=' '):
     
     
 def load_mat_text(filename, delimiter=' ', is_complex=False):
-    """ Reads a matrix written by write_mat_text, returns an *array*
+    """Reads a matrix written by write_mat_text, returns an *array*.
     
     If the data saved is complex, then is_complex must be set to True.
     If this is not done, the array returned will be real with 2x the 
@@ -114,12 +113,12 @@ def get_data_members(obj):
     return pr
 
 
-def sum_arrays(arr1,arr2):
-    """Used for allreduce command, may not be necessary"""
+def sum_arrays(arr1, arr2):
+    """Used for allreduce command, not necessary"""
     return arr1+arr2
 
     
-def sum_lists(list1,list2):
+def sum_lists(list1, list2):
     """Sum the elements of each list, return a new list.
     
     This function is used in MPI reduce commands, but could be used
@@ -271,135 +270,5 @@ def load_impulse_outputs(output_paths):
         outputs[:,:,input_num] = raw_data[:,1:]
 
     return time_values, outputs
-
-
-#def drss(states, inputs, outputs): return _rss_generate(states, inputs, outputs, 'd')
-    
-def _rss_generate(states, inputs, outputs, type):
-    """Generate a random state space. -stolen from python-control
-    
-    This does the actual random state space generation expected from rss and
-    drss.  type is 'c' for continuous systems and 'd' for discrete systems.
-    
-    """
-    from numpy import all, angle, any, array, concatenate, cos, delete, dot, \
-    empty, exp, eye, matrix, ones, pi, poly, poly1d, roots, shape, sin, zeros
-    from numpy.random import rand, randn
-    from numpy.linalg import inv, det, solve
-    from numpy.linalg.linalg import LinAlgError
-    #from scipy.signal import lti
-    #from slycot import td04ad
-    #from lti import Lti
-    #import xferfcn
- 
-    # Probability of repeating a previous root.
-    pRepeat = 0.05
-    # Probability of choosing a real root.  Note that when choosing a complex
-    # root, the conjugate gets chosen as well.  So the expected proportion of
-    # real roots is pReal / (pReal + 2 * (1 - pReal)).
-    pReal = 0.6
-    # Probability that an element in B or C will not be masked out.
-    pBCmask = 0.8
-    # Probability that an element in D will not be masked out.
-    pDmask = 0.3
-    # Probability that D = 0.
-    pDzero = 0.5
-
-    # Check for valid input arguments.
-    if states < 1 or states % 1:
-        raise ValueError(("states must be a positive integer.  states = %g." % 
-            states))
-    if inputs < 1 or inputs % 1:
-        raise ValueError(("inputs must be a positive integer.  inputs = %g." %
-            inputs))
-    if outputs < 1 or outputs % 1:
-        raise ValueError(("outputs must be a positive integer.  outputs = %g." %
-            outputs))
-
-    # Make some poles for A.  Preallocate a complex array.
-    poles = zeros(states) + zeros(states) * 0.j
-    i = 0
-
-    while i < states:
-        if rand() < pRepeat and i != 0 and i != states - 1:
-            # Small chance of copying poles, if we're not at the first or last
-            # element.
-            if poles[i-1].imag == 0:
-                # Copy previous real pole.
-                poles[i] = poles[i-1]
-                i += 1
-            else:
-                # Copy previous complex conjugate pair of poles.
-                poles[i:i+2] = poles[i-2:i]
-                i += 2
-        elif rand() < pReal or i == states - 1:
-            # No-oscillation pole.
-            if type == 'c':
-                poles[i] = -exp(randn()) + 0.j
-            elif type == 'd':
-                poles[i] = 2. * rand() - 1.
-            i += 1
-        else:
-            # Complex conjugate pair of oscillating poles.
-            if type == 'c':
-                poles[i] = complex(-exp(randn()), 3. * exp(randn()))
-            elif type == 'd':
-                mag = rand()
-                phase = 2. * pi * rand()
-                poles[i] = complex(mag * cos(phase), 
-                    mag * sin(phase))
-            poles[i+1] = complex(poles[i].real, -poles[i].imag)
-            i += 2
-
-    # Now put the poles in A as real blocks on the diagonal.
-    A = zeros((states, states))
-    i = 0
-    while i < states:
-        if poles[i].imag == 0:
-            A[i, i] = poles[i].real
-            i += 1
-        else:
-            A[i, i] = A[i+1, i+1] = poles[i].real
-            A[i, i+1] = poles[i].imag
-            A[i+1, i] = -poles[i].imag
-            i += 2
-    # Finally, apply a transformation so that A is not block-diagonal.
-    while True:
-        T = randn(states, states)
-        try:
-            A = dot(solve(T, A), T) # A = T \ A * T
-            break
-        except LinAlgError:
-            # In the unlikely event that T is rank-deficient, iterate again.
-            pass
-
-    # Make the remaining matrices.
-    B = randn(states, inputs)
-    C = randn(outputs, states)
-    D = randn(outputs, inputs)
-
-    # Make masks to zero out some of the elements.
-    while True:
-        Bmask = rand(states, inputs) < pBCmask 
-        if any(Bmask): # Retry if we get all zeros.
-            break
-    while True:
-        Cmask = rand(outputs, states) < pBCmask
-        if any(Cmask): # Retry if we get all zeros.
-            break
-    if rand() < pDzero:
-        Dmask = zeros((outputs, inputs))
-    else:
-        Dmask = rand(outputs, inputs) < pDmask
-
-    # Apply masks.
-    B = B * Bmask
-    C = C * Cmask
-    D = D * Dmask
-
-    return N.mat(A), N.mat(B), N.mat(C)
-
-
-
 
 

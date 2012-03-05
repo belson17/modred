@@ -25,19 +25,8 @@ class BPODROM(object):
     
     """
 
-    def __init__(self,adjoint_mode_sources=None,
-      direct_mode_sources=None,
-      direct_dt_mode_sources=None,  
-      direct_deriv_mode_sources=None,
-      discrete = None,
-      dt = None,
-      inner_product=None,
-      put_mat=util.save_mat_text,
-      get_field=None,
-      put_field=None,
-      num_modes=None,
-      verbose = True,
-      max_fields_per_node=2):
+    def __init__(self, dt=None, inner_product=None, put_mat=util.save_mat_text,
+      get_field=None, put_field=None, verbose=True, num_modes=None, max_fields_per_node=2):
           self.dt = dt
           self.inner_product = inner_product
           self.put_mat = put_mat
@@ -48,7 +37,7 @@ class BPODROM(object):
           self.num_modes = num_modes
           self.verbose = verbose
       
-    def compute_mode_derivs(self,mode_sources, mode_dt_sources, mode_deriv_dests, dt):
+    def compute_mode_derivs(self, mode_sources, mode_dt_sources, mode_deriv_dests, dt):
         """Computes 1st-order time derivatives of modes. 
         
         Args:
@@ -57,8 +46,6 @@ class BPODROM(object):
         		mode_dt_sources: list of sources of direct modes advanced dt in time
         		
         		mode_deriv_dests: list of destinations for time derivatives of direct modes.
-        		
-        Requires both __mul__ and __add__ to be defined for the mode object.
         """
         if (self.get_field is None):
             raise util.UndefinedError('no get_field defined')
@@ -75,13 +62,12 @@ class BPODROM(object):
             self.put_field((modeDt - mode)*(1./dt), mode_deriv_dests[mode_index])
         
     
-    def form_A(self, A_dest, direct_mode_advanced_sources, adjoint_mode_sources, dt,
+    def form_A(self, A_dest, direct_mode_advanced_sources, adjoint_mode_sources, dt=None,
     		num_modes=None):
-        """
-        Computes the continous or discrete time A matrix
+        """Form the continous or discrete time A matrix.
         
         Args:
-		        A_dest: where the reduced A matrix will be saved
+		        A_dest: where the reduced A matrix will be put
 		        
 		        direct_mode_advanced_sources: list of sources of direct modes advanced. 
 								For a discrete time system, these are the 
@@ -91,14 +77,20 @@ class BPODROM(object):
         
         		adjoint_mode_sources: list of sources to the adjoint modes
         		
-        		dt: The time step of the ROM, for continuous time it is 0.
-        
         Kwargs:
         		num_modes: number of modes/states to keep in the ROM. Can omit if already given.
         		
+        		dt: the time step of the ROM, for continuous time it is 0.
+        		    Can omit if already given.
+        
+        		
         TODO: Parallelize this if it ever becomes a bottleneck.
         """
-        self.dt = dt
+        if dt is not None:
+            self.dt = dt
+        if self.dt is None:
+            raise UndefinedError('Time step dt is undefined')
+            
         if self.verbose:
             if self.dt == 0:
                 print 'Computing the continuous-time A matrix'
@@ -134,7 +126,8 @@ class BPODROM(object):
             print '----- A matrix put to',A_dest,'------'
 
       
-    def form_B(self, B_dest, input_field_sources, adjoint_mode_sources, dt, num_modes=None):
+    def form_B(self, B_dest, input_field_sources, adjoint_mode_sources, 
+        dt=None, num_modes=None):
         """Forms the B matrix, either continuous or discrete time.
         
         Computes inner products of adjoint mode with input fields (B in Ax+Bu).
@@ -147,18 +140,18 @@ class BPODROM(object):
         				
           	adjoint_mode_sources: list of sources to the adjoint modes
         		
-        		dt: discrete time step. Set dt = 0 for continuous time systems.
-        
         Kwargs:
         		num_modes: number of modes/states to keep in the ROM. Can omit if already given.
+        
+            dt: discrete time step. Set dt = 0 for continuous time systems.        
         """
         
-        if self.dt is None:
+        if dt is not None:
+            if self.dt is not None:
+                if self.dt != dt:
+                    print "Warning: dt values are inconsistent, using new value %g"%dt
             self.dt = dt
-        elif self.dt != dt:
-            print "WARNING: dt values are inconsistent, using new value",dt
-            self.dt = dt
-        
+            
         if num_modes is not None:
             self.num_modes = num_modes
         if self.num_modes is None:
@@ -170,11 +163,11 @@ class BPODROM(object):
         num_rows_per_chunk = self.max_fields_per_proc - 1
         for start_row_num in range(0,self.num_modes,num_rows_per_chunk):
             end_row_num = min(start_row_num+num_rows_per_chunk,self.num_modes)
-            #a list of 'row' adjoint modes
+            # list of adjoint modes, which correspond to rows of B
             adjoint_modes = [self.get_field(adjoint_source) \
                 for adjoint_source in adjoint_mode_sources[start_row_num:end_row_num]] 
                 
-            #now read in each column (actuator fields)
+            # now get the input fields, which correspond to columns of B
             for col_num,input_source in enumerate(input_field_sources):
                 input_field = self.get_field(input_source)
                 for row_num in range(start_row_num, end_row_num):
@@ -222,11 +215,11 @@ class BPODROM(object):
         for start_col_num in range(0,self.num_modes, num_cols_per_chunk):
             end_col_num = min(start_col_num+num_cols_per_chunk, self.num_modes)
             
-            #a list of 'column' direct modes
+            # list of direct modes, which correspond to columns of C
             direct_modes = [self.get_field(direct_source) \
                 for direct_source in direct_mode_sources[start_col_num:end_col_num]]
             
-            #now read in each row (outputs)
+            # get the output fields, which correspond to rows of C
             for row_num,output_source in enumerate(output_field_sources):
                 output_field = self.get_field(output_source)
                 for col_num in range(start_col_num, end_col_num):

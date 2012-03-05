@@ -229,11 +229,14 @@ class TestBPOD(unittest.TestCase):
         self.bpod.L_sing_vecs = self.L_sing_vecs_true
         self.bpod.sing_vals = self.sing_vals_true
         
-        self.bpod.compute_direct_modes(self.mode_nums, direct_mode_path,
-          index_from=self.index_from, direct_field_sources=self.direct_field_paths)
+        direct_mode_paths = [direct_mode_path%i for i in self.mode_nums]
+        adjoint_mode_paths = [adjoint_mode_path%i for i in self.mode_nums]
+
+        self.bpod.compute_direct_modes(self.mode_nums, direct_mode_paths,
+            index_from=self.index_from, direct_field_sources=self.direct_field_paths)
           
-        self.bpod.compute_adjoint_modes(self.mode_nums, adjoint_mode_path,
-          index_from=self.index_from, adjoint_field_sources=self.adjoint_field_paths)
+        self.bpod.compute_adjoint_modes(self.mode_nums, adjoint_mode_paths,
+            index_from=self.index_from, adjoint_field_sources=self.adjoint_field_paths)
           
         for mode_num in self.mode_nums:
             if parallel.is_rank_zero():
@@ -268,5 +271,4 @@ class TestBPOD(unittest.TestCase):
       
 if __name__=='__main__':
     unittest.main()
-
 

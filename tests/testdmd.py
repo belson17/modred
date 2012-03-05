@@ -214,9 +214,10 @@ class TestDMD(unittest.TestCase):
         mode_path = join(self.test_dir, 'dmd_mode_%03d.txt')
         self.DMD.build_coeffs = self.build_coeffs_true
         mode_nums = list(N.array(range(self.num_snaps-1))+self.index_from)
-        self.DMD.compute_modes(mode_nums, mode_path, index_from=self.index_from, 
-            field_sources=self.snap_paths)
-       
+        self.DMD.compute_modes(mode_nums, 
+            [mode_path%i for i in mode_nums],
+            index_from=self.index_from, field_sources=self.snap_paths)
+            
         # Load all snapshots into matrix
         if parallel.is_rank_zero():
             mode_mat = N.mat(N.zeros((self.num_states, self.num_snaps-1)), dtype=\

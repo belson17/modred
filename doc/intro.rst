@@ -26,7 +26,7 @@ The classes make use of method names beginning with "get" and "put".
 You, the user, must define ``get_field`` and ``put_field``, and optionally you can define
 ``get_mat`` and ``save_mat`` (for matrices).
 First consider ``get_field``. It takes one argument and must return a ``field`` object, which can be
-*any* object that supports addition and scalar multiplication (via ``__add__`` and ``__mult__``).
+*any* object that supports addition and scalar multiplication (via ``__add__`` and ``__mul__``).
 It can be understood as "``get_field`` grabs a field from the source pointed to by its argument, 
 possibly does some operations to that field, then returns that field for use in modred", like 
 loading, but more general. 

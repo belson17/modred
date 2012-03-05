@@ -14,7 +14,7 @@ class DMD(object):
     
       myDMD = DMD()
       myDMD.compute_decomp(sources)
-      myDMD.compute_modes(range(1, 50), 'mode_%02d.txt')
+      myDMD.compute_modes(range(1, 50), ['mode_%02d.txt'%i for i in range(1,50)])
     """
     def __init__(self, get_field=None, put_field=None, 
         get_mat=util.load_mat_text, put_mat=util.save_mat_text,
@@ -48,7 +48,7 @@ class DMD(object):
         self.verbose = verbose
 
     def get_decomp(self, ritz_vals_source, mode_norms_source, build_coeffs_source):
-        """Loads the decomposition matrices from file. """
+        """Retrieves the decomposition matrices from a source. """
         if self.get_mat is None:
             raise UndefinedError('Must specify a get_mat function')
         if self.parallel.is_rank_zero():
@@ -65,7 +65,7 @@ class DMD(object):
             self.build_coeffs = self.parallel.comm.bcast(self.build_coeffs, root=0)
             
     def put_decomp(self, ritz_vals_dest, mode_norms_dest, build_coeffs_dest):
-        """Save the decomposition matrices to file."""
+        """Puts the decomposition matrices in dest."""
         self.put_ritz_vals(ritz_vals_dest)
         self.put_mode_norms(mode_norms_dest)
         self.put_build_coeffs(build_coeffs_dest)
@@ -140,13 +140,13 @@ class DMD(object):
         self.mode_norms = N.diag(self.build_coeffs.H * self.POD.\
             correlation_mat * self.build_coeffs).real
         
-    def compute_modes(self, mode_nums, mode_dest, index_from=1, field_sources=None):
+    def compute_modes(self, mode_nums, mode_dests, index_from=1, field_sources=None):
         """Computes modes
         
         Args:
             mode_nums: list of mode numbers, e.g. [1, 2, 3] or [3, 2, 5] 
             
-            mode_dest: dest to ``put_field`` the modes, e.g. 'mode%02d.txt'
+            mode_dests: destinations to ``put_field`` the modes (memory or file)
             
         Kwargs:
             index_from: where to start numbering modes from, 0, 1, or other.
@@ -159,5 +159,5 @@ class DMD(object):
         if field_sources is not None:
             self.field_sources = field_sources
         
-        self.field_ops._compute_modes(mode_nums, mode_dest, self.field_sources[:-1],self.build_coeffs, index_from=index_from)
+        self.field_ops._compute_modes(mode_nums, mode_dests, self.field_sources[:-1],self.build_coeffs, index_from=index_from)
         

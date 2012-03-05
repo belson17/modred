@@ -15,7 +15,7 @@ class Parallel(object):
     It ensures no failure in case mpi4py is not installed or running serial.
     In the future, this could be extended for shared memory as well.
     Almost always one should use the given instance of this class,
-        parallel.default_instance!
+    parallel.default_instance!
     """
     def __init__(self):
         try:
@@ -110,6 +110,7 @@ class Parallel(object):
         Args:
             tasks: list of "tasks", which can be any object corresponding to
                 a task that needs to be completed, for example an index.
+    
         Kwargs:
             task_weights: list of weights, numbers, that are used to
                 equally distribute the tasks among MPI workers.
@@ -173,25 +174,21 @@ class Parallel(object):
         
         CURRENTLY THIS FUNCTION DOESNT WORK
     
-        outputs 
-          must be a list
-
-        function
-          must be a callable function given the arguments and keywords
-
-        arguments
-          a list containing required arguments to *function*
-
-        keywords 
-          a dictionary containing optional keywords and values for *function*
+        Args:
+            outputs: must be a list
+    
+            function: must be a callable function given the arguments and keywords
+    
+            arguments: a list containing required arguments to *function*
+    
+            keywords: a dictionary containing optional keywords and values for *function*
 
         function is called with outputs = function(\*arguments,\*\*keywords)
-
-        For more information, see http://docs.python.org/tutorial/controlflow.html section on keyword arguments, 4.7.2
-        
+        For more information, see 
+        http://docs.python.org/tutorial/controlflow.html section on keyword arguments, 4.7.2
         The result is then broadcast to all processors if in parallel.
         """
-        raise RuntimeError('function isnt fully implemented')
+        raise RuntimeError('function isnt completed')
         print 'outputs are ',outputs
         print 'function is',function
         print 'arguments are',arguments

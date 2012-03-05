@@ -12,6 +12,7 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
         
         num_Markovs: integer, number of approx Markov parameters to return.
             Typically 5x the number of ROM states is good.
+            
     Kwargs:
         cutoff: condition number used for the pseudo-inverse
         

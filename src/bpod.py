@@ -116,9 +116,8 @@ class BPOD(object):
     def compute_SVD(self):
         """Takes the SVD of the Hankel matrix.
         
-        This is useful if you already have the Hankel mat and want to skip 
-        compute_decomp. 
-        Set self.hankel_mat, and call this function.
+        Useful if you already have the Hankel mat and want to skip 
+        recomputing it. Intead, set self.hankel_mat, and call this.
         """
         if self.parallel.is_rank_zero():
             self.L_sing_vecs, self.sing_vals, self.R_sing_vecs = \
@@ -133,24 +132,24 @@ class BPOD(object):
             self.R_sing_vecs = self.parallel.comm.bcast(self.R_sing_vecs, root=0)
         
 
-    def compute_direct_modes(self, mode_nums, mode_dest, index_from=1,
+    def compute_direct_modes(self, mode_nums, mode_dests, index_from=1,
         direct_field_sources=None):
-        """Computes the direct modes and calls ``self.self.put_field`` on them.
+        """Computes the direct modes and ``self.put_field``s them.
         
         Args:
           mode_nums: Mode numbers to compute. 
               Examples are [1,2,3,4,5] or [3,1,6,8]. 
               The mode numbers need not be sorted,
               and sorting does not increase efficiency. 
-          mode_dest:
-              Full dest to mode location, e.g. /home/user/mode_%d.txt.
               
+          mode_dest: list of modes' destinations (file or memory)
+          
         Kwargs:
           index_from:
               Index modes starting from 0, 1, or other.
-          direct_field_sources:
-              Paths to adjoint fields. Optional if already given when calling 
-              ``self.compute_decomp``.
+          
+          direct_field_sources: sources to direct fields. 
+              Optional if already given when calling ``self.compute_decomp``.
             
         self.R_sing_vecs and self.sing_vals must exist, else UndefinedError.
         """
@@ -166,13 +165,12 @@ class BPOD(object):
             raise util.UndefinedError('Must specify direct_field_sources')
         # Switch to N.dot...
         build_coeff_mat = N.mat(self.R_sing_vecs)*N.mat(N.diag(self.sing_vals**-0.5))
-
-        self.field_ops._compute_modes(mode_nums, mode_dest, 
+        self.field_ops._compute_modes(mode_nums, mode_dests, 
             self.direct_field_sources, build_coeff_mat, index_from=index_from)
     
-    def compute_adjoint_modes(self, mode_nums, mode_dest, index_from=1,
+    def compute_adjoint_modes(self, mode_nums, mode_dests, index_from=1,
         adjoint_field_sources=None):
-        """Computes the adjoint modes and calls ``self.put_field`` on them.
+        """Computes the adjoint modes ``self.put_field``s them.
         
         Args:
             mode_nums: Mode numbers to compute. 
@@ -180,13 +178,12 @@ class BPOD(object):
                 The mode numbers need not be sorted,
                 and sorting does not increase efficiency. 
                 
-            mode_dest:
-                Full dest to mode location, e.g. /home/user/mode_%d.txt.
+            mode_dest: list of modes' destinations (file or memory).
         
         Kwargs:
             index_from: Index modes starting from 0, 1, or other.
                 
-            adjoint_field_sources: Paths to adjoint fields. 
+            adjoint_field_sources: sources of adjoint fields. 
             		Optional if already given when calling ``self.compute_decomp``.
             
         self.L_sing_vecs and self.sing_vals must exist, else UndefinedError.
@@ -202,10 +199,9 @@ class BPOD(object):
             raise util.UndefinedError('Must specify adjoint_field_sources')
 
         self.sing_vals = N.squeeze(N.array(self.sing_vals))
-        # Switch to N.dot...
-        build_coeff_mat = N.mat(self.L_sing_vecs) * \
-            N.mat(N.diag(self.sing_vals**-0.5))
+        
+        build_coeff_mat = N.dot(self.L_sing_vecs, N.diag(self.sing_vals**-0.5))
                  
-        self.field_ops._compute_modes(mode_nums, mode_dest,
+        self.field_ops._compute_modes(mode_nums, mode_dests,
             self.adjoint_field_sources, build_coeff_mat, index_from=index_from)
     
