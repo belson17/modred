@@ -13,11 +13,11 @@ class DMD(object):
     Usage::
     
       myDMD = DMD()
-      myDMD.compute_decomp(paths)
+      myDMD.compute_decomp(sources)
       myDMD.compute_modes(range(1, 50), 'mode_%02d.txt')
     """
     def __init__(self, get_field=None, put_field=None, 
-        load_mat=util.load_mat_text, save_mat=util.save_mat_text,
+        get_mat=util.load_mat_text, put_mat=util.save_mat_text,
         inner_product=None, 
         max_fields_per_node=None, POD=None, verbose=True):
         """Constructor
@@ -27,7 +27,7 @@ class DMD(object):
             
             put_field: Function to put a field elsewhere (to memory or a file).
             
-            save_mat: Function to save a matrix.
+            put_mat: Function to put a matrix (to memory or file).
             
             inner_product: Function to take inner product of two fields.
             
@@ -42,19 +42,19 @@ class DMD(object):
             verbose)
         self.parallel = parallel.default_instance
 
-        self.load_mat = load_mat
-        self.save_mat = save_mat
+        self.get_mat = get_mat
+        self.put_mat = put_mat
         self.POD = POD
         self.verbose = verbose
 
-    def load_decomp(self, ritz_vals_path, mode_norms_path, build_coeffs_path):
+    def get_decomp(self, ritz_vals_source, mode_norms_source, build_coeffs_source):
         """Loads the decomposition matrices from file. """
-        if self.load_mat is None:
-            raise UndefinedError('Must specify a load_mat function')
+        if self.get_mat is None:
+            raise UndefinedError('Must specify a get_mat function')
         if self.parallel.is_rank_zero():
-            self.ritz_vals = N.squeeze(N.array(self.load_mat(ritz_vals_path)))
-            self.mode_norms = N.squeeze(N.array(self.load_mat(mode_norms_path)))
-            self.build_coeffs = self.load_mat(build_coeffs_path)
+            self.ritz_vals = N.squeeze(N.array(self.get_mat(ritz_vals_source)))
+            self.mode_norms = N.squeeze(N.array(self.get_mat(mode_norms_source)))
+            self.build_coeffs = self.get_mat(build_coeffs_source)
         else:
             self.ritz_vals = None
             self.mode_norms = None
@@ -64,29 +64,29 @@ class DMD(object):
             self.mode_norms = self.parallel.comm.bcast(self.mode_norms, root=0)
             self.build_coeffs = self.parallel.comm.bcast(self.build_coeffs, root=0)
             
-    def save_decomp(self, ritz_vals_path, mode_norms_path, build_coeffs_path):
+    def put_decomp(self, ritz_vals_dest, mode_norms_dest, build_coeffs_dest):
         """Save the decomposition matrices to file."""
-        self.save_ritz_vals(ritz_vals_path)
-        self.save_mode_norms(mode_norms_path)
-        self.save_build_coeffs(build_coeffs_path)
+        self.put_ritz_vals(ritz_vals_dest)
+        self.put_mode_norms(mode_norms_dest)
+        self.put_build_coeffs(build_coeffs_dest)
         
-    def save_ritz_vals(self, path):
-        if self.save_mat is None and self.parallel.is_rank_zero():
-            raise util.UndefinedError("save_mat is undefined, can't save")
+    def put_ritz_vals(self, dest):
+        if self.put_mat is None and self.parallel.is_rank_zero():
+            raise util.UndefinedError("put_mat is undefined, can't put")
         if self.parallel.is_rank_zero():
-            self.save_mat(self.ritz_vals, path)
+            self.put_mat(self.ritz_vals, dest)
 
-    def save_mode_norms(self, path):
-        if self.save_mat is None and self.parallel.is_rank_zero():
-            raise util.UndefinedError("save_mat is undefined, can't save")
+    def put_mode_norms(self, dest):
+        if self.put_mat is None and self.parallel.is_rank_zero():
+            raise util.UndefinedError("put_mat is undefined, can't put")
         if self.parallel.is_rank_zero():
-            self.save_mat(self.mode_norms, path)
+            self.put_mat(self.mode_norms, dest)
 
-    def save_build_coeffs(self, path):
-        if self.save_mat is None and self.parallel.is_rank_zero():
-            raise util.UndefinedError("save_mat is undefined, can't save")
+    def put_build_coeffs(self, dest):
+        if self.put_mat is None and self.parallel.is_rank_zero():
+            raise util.UndefinedError("put_mat is undefined, can't put")
         if self.parallel.is_rank_zero():
-            self.save_mat(self.build_coeffs, path)
+            self.put_mat(self.build_coeffs, dest)
 
 
 
@@ -140,18 +140,18 @@ class DMD(object):
         self.mode_norms = N.diag(self.build_coeffs.H * self.POD.\
             correlation_mat * self.build_coeffs).real
         
-    def compute_modes(self, mode_nums, mode_path, index_from=1, field_sources=None):
+    def compute_modes(self, mode_nums, mode_dest, index_from=1, field_sources=None):
         """Computes modes
         
         Args:
             mode_nums: list of mode numbers, e.g. [1, 2, 3] or [3, 2, 5] 
             
-            mode_path: path to ``put_field`` the modes, e.g. 'mode%02d.txt'
+            mode_dest: dest to ``put_field`` the modes, e.g. 'mode%02d.txt'
             
         Kwargs:
             index_from: where to start numbering modes from, 0, 1, or other.
             
-            field_sources: paths to fields, can omit if given in compute_decomp.
+            field_sources: sources to fields, can omit if given in compute_decomp.
         """
         if self.build_coeffs is None:
             raise util.UndefinedError('Must define self.build_coeffs')
@@ -159,5 +159,5 @@ class DMD(object):
         if field_sources is not None:
             self.field_sources = field_sources
         
-        self.field_ops._compute_modes(mode_nums, mode_path, self.field_sources[:-1],self.build_coeffs, index_from=index_from)
+        self.field_ops._compute_modes(mode_nums, mode_dest, self.field_sources[:-1],self.build_coeffs, index_from=index_from)
         

@@ -31,7 +31,7 @@ class TestPOD(unittest.TestCase):
         self.num_states = 100
         self.index_from = 2
         self.pod = POD(get_field=util.load_mat_text, put_field=
-            util.save_mat_text, save_mat=util.save_mat_text, inner_product=
+            util.save_mat_text, put_mat=util.save_mat_text, inner_product=
             util.inner_product, verbose=False)
         self.generate_data_set()
         parallel.sync()
@@ -75,7 +75,7 @@ class TestPOD(unittest.TestCase):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
-        data_members_default = {'save_mat': util.save_mat_text, 'load_mat': 
+        data_members_default = {'put_mat': util.save_mat_text, 'get_mat': 
             util.load_mat_text, 'parallel': parallel_mod.default_instance,
             'verbose': False,
             'field_ops': FieldOperations(get_field=None, put_field=None,
@@ -90,9 +90,9 @@ class TestPOD(unittest.TestCase):
         data_members_modified['field_ops'].get_field = my_load
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
        
-        my_POD = POD(load_mat=my_load, verbose=False)
+        my_POD = POD(get_mat=my_load, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['load_mat'] = my_load
+        data_members_modified['get_mat'] = my_load
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
  
         def my_save(data, fname): pass 
@@ -101,9 +101,9 @@ class TestPOD(unittest.TestCase):
         data_members_modified['field_ops'].put_field = my_save
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
         
-        my_POD = POD(save_mat=my_save, verbose=False)
+        my_POD = POD(put_mat=my_save, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['save_mat'] = my_save
+        data_members_modified['put_mat'] = my_save
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
         
         def my_ip(f1, f2): pass
@@ -138,8 +138,8 @@ class TestPOD(unittest.TestCase):
         correlation_mat_path = join(self.test_dir, 'correlation.txt')
         
         self.pod.compute_decomp(self.snap_paths)
-        self.pod.save_correlation_mat(correlation_mat_path)
-        self.pod.save_decomp(sing_vecs_path, sing_vals_path)
+        self.pod.put_correlation_mat(correlation_mat_path)
+        self.pod.put_decomp(sing_vecs_path, sing_vals_path)
         
         if parallel.is_rank_zero():
             sing_vecs_loaded = util.load_mat_text(sing_vecs_path)

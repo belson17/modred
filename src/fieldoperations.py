@@ -47,7 +47,7 @@ class FieldOperations(object):
         if max_fields_per_node is None:
             self.max_fields_per_node = 2
             self.print_msg('Warning: max_fields_per_node was not specified. '
-                'Assuming 2 fields can be loaded per node. Increase '
+                'Assuming 2 fields can be in memory per node. Increase '
                 'max_fields_per_node for a speedup.')
         else:
             self.max_fields_per_node = max_fields_per_node
@@ -57,7 +57,7 @@ class FieldOperations(object):
             self.max_fields_per_proc = 2
             self.print_msg('Warning: max_fields_per_node too small for given '
                 'number of nodes and procs.  Assuming 2 fields can be '
-                'loaded per processor. Increase max_fields_per_node for a '
+                'in memory per processor. Increase max_fields_per_node for a '
                 'speedup.')
         else:
             self.max_fields_per_proc = self.max_fields_per_node * \
@@ -67,10 +67,10 @@ class FieldOperations(object):
         if self.verbose and self.parallel.is_rank_zero():
             print >> sys.stdout, msg
 
-    def idiot_check(self, test_obj=None, test_obj_path=None):
+    def idiot_check(self, test_obj=None, test_obj_source=None):
         """Checks that the user-supplied objects and functions work.
         
-        The arguments are for a test object or the path to one (loaded with 
+        The arguments are for a test object or the source to one (retrieved with 
         get_field).  One of these should be supplied for thorough testing. 
         The add and mult functions are tested for the generic object.  This is 
         not a complete testing, but catches some common mistakes.
@@ -80,10 +80,10 @@ class FieldOperations(object):
             subtraction, division (currently not used for modaldecomp)
         """
         tol = 1e-10
-        if test_obj_path is not None:
-          test_obj = self.get_field(test_obj_path)
+        if test_obj_source is not None:
+          test_obj = self.get_field(test_obj_source)
         if test_obj is None:
-            raise RuntimeError('Supply field object or path for idiot check!')
+            raise RuntimeError('Supply field object or source for idiot check!')
         obj_copy = copy.deepcopy(test_obj)
         obj_copy_mag2 = self.inner_product(obj_copy, obj_copy)
         
@@ -123,9 +123,9 @@ class FieldOperations(object):
         """Computes a matrix of inner products (for BPOD, Y'*X) and returns it.
         
         Args:
-            row_field_sources: row field paths (BPOD adjoint fields, ~Y)
+            row_field_sources: row field sources (BPOD adjoint fields, Y)
           
-            col_field_sources: column field files (BPOD direct fields, ~X)
+            col_field_sources: column field files (BPOD direct fields, X)
 
         Within this method, the fields are read in memory-efficient ways
         such that they are not all in memory at once. This results in finding
@@ -133,7 +133,7 @@ class FieldOperations(object):
         supports finding a full rectangular mat. For POD, a different method is
         used to take advantage of the symmetric matrix.
         
-        Each processor is responsible for loading a subset of the rows and
+        Each processor is responsible for retrieving a subset of the rows and
         columns. The processor which reads a particular column field then sends
         it to each successive processor so it can be used to compute all IPs
         for the current row chunk on each processor. This is repeated until all
@@ -169,11 +169,11 @@ class FieldOperations(object):
         independently.  This is also generalized to allow the columns to be
         read in chunks, rather than only 1 at a time.  This could be useful,
         for example, in a shared memory setting where it is best to work in
-        operation-units (loads, IPs, etc) of multiples of procs/node.
+        operation-units (load/gets, IPs, etc) of multiples of procs/node.
         
         The scaling is:
         
-            num loads / processor ~ (n_r/(max*n_p))*n_c/n_p + n_r/n_p
+            num gets / processor ~ (n_r/(max*n_p))*n_c/n_p + n_r/n_p
             
             num MPI sends / processor ~ (n_r/(max*n_p))*(n_p-1)*n_c/n_p
             
@@ -195,11 +195,11 @@ class FieldOperations(object):
         len(col_field_sources) = 12, 2 processors, 1 node, and max_fields_per_node=3.
         n_p=2, max=2, n_r=8, n_c=12 (n_r < n_c).
         
-            num loads / proc = 16
+            num gets / proc = 16
             
         If we flip n_r and n_c, we get
         
-            num loads / proc = 18.
+            num gets / proc = 18.
             
         """
              
@@ -238,11 +238,11 @@ class FieldOperations(object):
                     (60. * self.parallel.get_num_procs())))
         del row_field, col_field
 
-        # num_cols_per_proc_chunk is the number of cols each proc loads at once        
+        # num_cols_per_proc_chunk is the number of cols each proc gets at once        
         num_cols_per_proc_chunk = 1
         num_rows_per_proc_chunk = self.max_fields_per_proc - num_cols_per_proc_chunk         
         
-        # Determine how the loading and inner products will be split up.
+        # Determine how the retrieving and inner products will be split up.
         # These variables are the total number of chunks of data to be read 
         # across all nodes and processors
         num_col_chunks = int(N.ceil(
@@ -263,7 +263,7 @@ class FieldOperations(object):
             self.print_msg('Warning: The column fields, of which '
                     'there are %d, will be read %d times each. Increase '
                     'number of nodes or max_fields_per_node to reduce redundant '
-                    'loads and get a big speedup.' % (num_cols,num_row_chunks))
+                    'gets and get a big speedup.' % (num_cols,num_row_chunks))
         
         # Currently using a little trick to finding all of the inner product
         # mat chunks. Each processor has a full IP_mat with size
@@ -283,7 +283,7 @@ class FieldOperations(object):
             proc_row_tasks = self.parallel.find_assignments(range(
                    start_row_index, end_row_index))[self.parallel.get_rank()]
             if len(proc_row_tasks) != 0:
-                row_fields = [self.get_field(row_path) for row_path in 
+                row_fields = [self.get_field(row_source) for row_source in 
                     row_field_sources[proc_row_tasks[0]:
                     proc_row_tasks[-1] + 1]]
             else:
@@ -302,13 +302,13 @@ class FieldOperations(object):
                     col_indices = []
                     
                 for num_passes in xrange(self.parallel.get_num_procs()):
-                    # If on the first pass, load the col fields, no send/recv
+                    # If on the first pass, get the col fields, no send/recv
                     # This is all that is called when in serial, loop iterates
                     # once.
                     if num_passes == 0:
                         if len(col_indices) > 0:
-                            col_fields = [self.get_field(col_path) 
-                                for col_path in col_field_sources[col_indices[0]:
+                            col_fields = [self.get_field(col_source) 
+                                for col_source in col_field_sources[col_indices[0]:
                                     col_indices[-1] + 1]]
                         else:
                             col_fields = []
@@ -348,7 +348,7 @@ class FieldOperations(object):
                                     col_field_index]] = self.inner_product(
                                     row_fields[row_index - proc_row_tasks[0]],
                                     col_field)
-                # Clear the loaded column fields after done this chunk
+                # Clear the retrieved column fields after done this chunk
                 del col_fields
             # Completed a chunk of rows and all columns on all processors.
             del row_fields
@@ -385,10 +385,10 @@ class FieldOperations(object):
         num_fields = len(field_sources)
         
         
-        # num_cols_per_chunk is the number of cols each proc loads at once.  
-        # Columns are loaded if the matrix must be broken up into sets of 
+        # num_cols_per_chunk is the number of cols each proc gets at once.  
+        # Columns are retrieved if the matrix must be broken up into sets of 
         # chunks.  Then symmetric upper triangular portions will be computed,
-        # followed by a rectangular piece that uses columns not already loaded.
+        # followed by a rectangular piece that uses columns not already in memory.
         num_cols_per_proc_chunk = 1
         num_rows_per_proc_chunk = self.max_fields_per_proc - num_cols_per_proc_chunk
  
@@ -401,7 +401,7 @@ class FieldOperations(object):
         if self.parallel.is_rank_zero() and num_row_chunks > 1 and self.verbose:
             print ('Warning: The column fields will be read ~%d times each. ' +\
                 'Increase number of nodes or max_fields_per_node to reduce ' +\
-                'redundant loads and get a big speedup.') % num_row_chunks    
+                'redundant gets and get a big speedup.') % num_row_chunks    
         
         # Compute a single inner product in order to determin matrix datatype
         test_field = self.get_field(field_sources[0])
@@ -423,7 +423,7 @@ class FieldOperations(object):
                 proc_row_tasks_all if task != []])
             proc_row_tasks = proc_row_tasks_all[self.parallel.get_rank()]
             if len(proc_row_tasks)!=0:
-                row_fields = [self.get_field(path) for path in field_sources[
+                row_fields = [self.get_field(source) for source in field_sources[
                     proc_row_tasks[0]:proc_row_tasks[-1] + 1]]
             else:
                 row_fields = []
@@ -435,7 +435,7 @@ class FieldOperations(object):
                     proc_row_tasks[-1] + 1):
                     raise ValueError('Indices are not consecutive.')
                 
-                # Per-processor triangles (using only loaded fields)
+                # Per-processor triangles (using only fields in memory)
                 for row_index in xrange(proc_row_tasks[0], 
                     proc_row_tasks[-1] + 1):
                     # Diagonal term
@@ -480,7 +480,7 @@ class FieldOperations(object):
                 """
                 if mynum_rows != len(row_fields):
                     raise ValueError('Number of rows assigned does not ' +\
-                        'match number of loaded fields.')
+                        'match number of fields in memory.')
                 if mynum_rows > 0 and mynum_rows < max_num_to_send:
                     my_row_indices += [N.nan] * (max_num_to_send - mynum_rows) 
                     row_fields += [[]] * (max_num_to_send - mynum_rows)
@@ -548,13 +548,13 @@ class FieldOperations(object):
                     col_indices = []
                     
                 for num_passes in xrange(self.parallel.get_num_procs()):
-                    # If on the first pass, load the col fields, no send/recv
+                    # If on the first pass, get the col fields, no send/recv
                     # This is all that is called when in serial, loop iterates
                     # once.
                     if num_passes == 0:
                         if len(col_indices) > 0:
-                            col_fields = [self.get_field(col_path) \
-                                for col_path in field_sources[col_indices[0]:\
+                            col_fields = [self.get_field(col_source) \
+                                for col_source in field_sources[col_indices[0]:\
                                     col_indices[-1] + 1]]
                         else:
                             col_fields = []
@@ -638,9 +638,9 @@ class FieldOperations(object):
               The mode numbers need not be sorted,
               and sorting does not increase efficiency. 
               
-          mode_dest: Full path to mode location, e.g /home/user/mode_%03d.txt.
+          mode_dest: Full dest to mode location, e.g /home/user/mode_%03d.txt.
           
-          field_sources - A list paths to files from which fields can be loaded.
+          field_sources - A list sources to files from which fields can be retrieved.
           
           field_coeff_mat - Matrix of coefficients for constructing modes.  The kth
               column contains the coefficients for computing the kth index mode, 
@@ -687,7 +687,7 @@ class FieldOperations(object):
     
     
     def lin_combine(self, sum_field_dests, basis_field_sources, field_coeff_mat):
-        """Linearly combines the basis fields and saves them.
+        """Linearly combines the basis fields and puts them.
         
         Args:
             sum_field_dests: list of the files where the linear combinations
@@ -712,7 +712,7 @@ class FieldOperations(object):
         
         Scaling is:
         
-          num loads / proc = n_s/(n_p*max) * n_b/n_p
+          num gets / proc = n_s/(n_p*max) * n_b/n_p
           
           passes/proc = n_s/(n_p*max) * (n_b*(n_p-1)/n_p)
           
@@ -731,21 +731,21 @@ class FieldOperations(object):
         num_bases = len(basis_field_sources)
         num_sums = len(sum_field_dests)
         if num_bases > field_coeff_mat.shape[0]:
-            raise ValueError(('Coeff mat has fewer rows %d than num of basis paths %d'\
+            raise ValueError(('Coeff mat has fewer rows %d than num of basis sources %d'\
                 %(field_coeff_mat.shape[0],num_bases)))
                 
         if num_sums > field_coeff_mat.shape[1]:
             raise ValueError(('Coeff matrix has fewer cols %d than num of ' +\
-                'output paths %d')%(field_coeff_mat.shape[1],num_sums))
+                'output sources %d')%(field_coeff_mat.shape[1],num_sums))
                                
         if num_bases < field_coeff_mat.shape[0] and self.parallel.is_rank_zero():
-            print 'Warning: fewer basis paths than cols in the coeff matrix'
+            print 'Warning: fewer bases than cols in the coeff matrix'
             print '  some rows of coeff matrix will not be used'
         if num_sums < field_coeff_mat.shape[1] and self.parallel.is_rank_zero():
-            print 'Warning: fewer output paths than rows in the coeff matrix'
+            print 'Warning: fewer outputs than rows in the coeff matrix'
             print '  some cols of coeff matrix will not be used'
         
-        # num_bases_per_proc_chunk is the number of bases each proc loads at once        
+        # num_bases_per_proc_chunk is the number of bases each proc gets at once        
         num_bases_per_proc_chunk = 1
         num_sums_per_proc_chunk = \
             self.max_fields_per_proc - num_bases_per_proc_chunk         
@@ -753,7 +753,7 @@ class FieldOperations(object):
         # This step can be done by find_assignments as well. Really what
         # this is doing is dividing the work into num*Chunks pieces.
         # find_assignments should take an optional arg of numWorkers or numPieces.
-        # Determine how the loading and scalar multiplies will be split up.
+        # Determine how the "get"ing and scalar multiplies will be split up.
         num_basis_chunks = int(N.ceil(\
             num_bases*1./(num_bases_per_proc_chunk * 
             self.parallel.get_num_procs())))
@@ -766,9 +766,9 @@ class FieldOperations(object):
 
         if num_sum_chunks > 1:
             self.print_msg('Warning: The basis fields (fields), ' 
-                'of which there are %d, will be loaded from file %d times each. '
+                'of which there are %d, will be retrieved %d times each. '
                 'If possible, increase number of nodes or '
-                'max_fields_per_node to reduce redundant loads and get a '
+                'max_fields_per_node to reduce redundant retrieves and get a '
                 'big speedup.'%(num_bases, num_sum_chunks))
                
         for start_sum_index in xrange(0, num_sums, num_sums_per_chunk):
@@ -792,16 +792,16 @@ class FieldOperations(object):
                 if len(proc_basis_tasks) > 0:
                     basis_indices = range(proc_basis_tasks[0], proc_basis_tasks[-1]+1)
                 else:
-                    # this proc isn't responsible for loading any basis fields
+                    # this proc isn't responsible for retrieving any basis fields
                     basis_indices = []
                     
                 for num_passes in xrange(self.parallel.get_num_procs()):
-                    # If on the first pass, load the basis fields, no send/recv
+                    # If on the first pass, retrieve the basis fields, no send/recv
                     # This is all that is called when in serial, loop iterates once.
                     if num_passes == 0:
                         if len(basis_indices) > 0:
-                            basis_fields = [self.get_field(basis_path) \
-                                for basis_path in basis_field_sources[
+                            basis_fields = [self.get_field(basis_source) \
+                                for basis_source in basis_field_sources[
                                     basis_indices[0]:basis_indices[-1]+1]]
                         else: basis_fields = []
                     else:
@@ -836,7 +836,7 @@ class FieldOperations(object):
                                 sum_layers[sum_index] = sum_layer
                             else:
                                 sum_layers[sum_index] += sum_layer
-            # Completed this set of sum fields, save to file
+            # Completed this set of sum fields, puts them to memory or file
             for sum_index in xrange(len(proc_sum_tasks)):
                 self.put_field(sum_layers[sum_index],\
                     sum_field_dests[sum_index+proc_sum_tasks[0]])

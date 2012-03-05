@@ -84,7 +84,7 @@ class ERA(object):
       time_steps, outputs, dt = make_sampled_format(time_values, outputs)
       myERA.set_outputs(outputs, dt)
       myERA.compute_ROM(50)
-      myERA.save_ROM('A.txt','B.txt','C.txt')
+      myERA.put_ROM('A.txt','B.txt','C.txt')
       
     The above usage uses util.load_impulse_outputs, which assumes a 
     format of text files (see documentation for this function).
@@ -98,7 +98,7 @@ class ERA(object):
     See Ma et al. 2011 TCFD for ERA details.
     """
     
-    def __init__(self, save_mat=util.save_mat_text, load_mat=util.load_mat_text, mc=None, 
+    def __init__(self, put_mat=util.save_mat_text, get_mat=util.load_mat_text, mc=None, 
         mo=None, verbose=True):
         """Constructor
         
@@ -109,8 +109,8 @@ class ERA(object):
                 Default is to make mc and mo equal and maximal for a balanced model.        Variables mc and mo are the number of Markov parameters to use for the Hankel matrix.
         The default is to use all the data and set mc = mo.
         """
-        self.save_mat = save_mat
-        self.load_mat = load_mat
+        self.put_mat = put_mat
+        self.get_mat = get_mat
         self.mc = mc
         self.mo = mo
         self.outputs = None
@@ -201,11 +201,11 @@ class ERA(object):
             print 'Warning: Unstable eigenvalues of ROM matrix A'
 
  
-    def save_ROM(self, APath, BPath, CPath):
+    def put_ROM(self, APath, BPath, CPath):
         """Saves the A, B, and C LTI matrices to file"""  
-        self.save_mat(self.A, APath)
-        self.save_mat(self.B, BPath)
-        self.save_mat(self.C, CPath)
+        self.put_mat(self.A, APath)
+        self.put_mat(self.B, BPath)
+        self.put_mat(self.C, CPath)
         if self.verbose:
             print 'Saved ROM matrices to:'
             print APath
@@ -213,19 +213,19 @@ class ERA(object):
             print CPath
      
  
-    def save_decomp(self, Hankel_mat_path, Hankel_mat2_path, L_sing_vecs_path, sing_valsPath,
-        R_sing_vecs_path):
+    def put_decomp(self, Hankel_mat_dest, Hankel_mat2_dest, L_sing_vecs_dest, sing_vals_dest,
+        R_sing_vecs_dest):
         """Saves the decomposition and Hankel matrices"""
-        self.save_mat(self.Hankel_mat, Hankel_mat_path)
-        self.save_mat(self.Hankel_mat2,Hankel_mat2_path)
-        self.save_mat(self.L_sing_vecs,L_sing_vecs_path)
-        self.save_mat(self.sing_vals,sing_valsPath)
-        self.save_mat(self.R_sing_vecs,R_sing_vecs_path)
+        self.put_mat(self.Hankel_mat, Hankel_mat_dest)
+        self.put_mat(self.Hankel_mat2,Hankel_mat2_dest)
+        self.put_mat(self.L_sing_vecs,L_sing_vecs_dest)
+        self.put_mat(self.sing_vals,sing_vals_dest)
+        self.put_mat(self.R_sing_vecs,R_sing_vecs_dest)
  
  
-    def save_sing_vals(self, sing_vals_path):
+    def put_sing_vals(self, sing_vals_dest):
       """Saves just the singular values"""
-      self.save_mat(self.sing_vals, sing_vals_path)
+      self.put_mat(self.sing_vals, sing_vals_dest)
       
  
     def _assemble_Hankel(self):

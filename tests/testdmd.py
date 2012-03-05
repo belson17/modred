@@ -35,7 +35,7 @@ class TestDMD(unittest.TestCase):
         self.num_states = 7 # dimension of state vector
         self.index_from = 2
         self.DMD = DMD(get_field=util.load_mat_text, put_field=util.\
-            save_mat_text, save_mat=util.save_mat_text, inner_product=util.\
+            save_mat_text, put_mat=util.save_mat_text, inner_product=util.\
             inner_product, verbose=False)
         self.generate_data_set()
         parallel.sync()
@@ -106,8 +106,8 @@ class TestDMD(unittest.TestCase):
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
         
-        data_members_default = {'save_mat': util.save_mat_text, 
-            'load_mat': util.load_mat_text, 'POD': None,
+        data_members_default = {'put_mat': util.save_mat_text, 
+            'get_mat': util.load_mat_text, 'POD': None,
             'parallel': parallel_mod.default_instance,
             'verbose': False, 'field_ops': FieldOperations(get_field=None, 
             put_field=None, inner_product=None, max_fields_per_node=2,
@@ -122,9 +122,9 @@ class TestDMD(unittest.TestCase):
         data_members_modified['field_ops'].get_field = my_load
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)
         
-        myDMD = DMD(load_mat=my_load, verbose=False)
+        myDMD = DMD(get_mat=my_load, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['load_mat'] = my_load
+        data_members_modified['get_mat'] = my_load
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)
 
         def my_save(data,fname): pass 
@@ -133,9 +133,9 @@ class TestDMD(unittest.TestCase):
         data_members_modified['field_ops'].put_field = my_save
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)
         
-        myDMD = DMD(save_mat=my_save, verbose=False)
+        myDMD = DMD(put_mat=my_save, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['save_mat'] = my_save
+        data_members_modified['put_mat'] = my_save
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)
         
         def my_ip(f1, f2): pass
@@ -169,7 +169,7 @@ class TestDMD(unittest.TestCase):
         build_coeffs_path = join(self.test_dir, 'dmd_build_coeffs.txt')
 
         self.DMD.compute_decomp(self.snap_paths)
-        self.DMD.save_decomp(ritz_vals_path, mode_norms_path, build_coeffs_path)
+        self.DMD.put_decomp(ritz_vals_path, mode_norms_path, build_coeffs_path)
        
         # Test that matrices were correctly computed
         N.testing.assert_allclose(self.DMD.ritz_vals, 

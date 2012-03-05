@@ -18,7 +18,7 @@ class POD(object):
     """
         
     def __init__(self, get_field=None, put_field=None, 
-        load_mat=util.load_mat_text, save_mat=util.save_mat_text, 
+        get_mat=util.load_mat_text, put_mat=util.save_mat_text, 
         inner_product=None, max_fields_per_node=None, verbose=True, 
         print_interval=10):
         """Constructor
@@ -28,12 +28,13 @@ class POD(object):
                 Function to get a field from elsewhere (memory or a file).
             put_field 
                 Function to put a field elsewhere (to memory or a file).
-            save_mat
-                Function to save a matrix.
+            put_mat
+                Function to put a matrix (to memory or file).
             inner_product
                 Function to take inner product of two fields.
             verbose 
                 True means print more information about progress and warnings.
+                
         Returns:
             POD instance
         """
@@ -43,17 +44,17 @@ class POD(object):
             verbose=verbose, print_interval=print_interval)
         self.parallel = parallel.default_instance
 
-        self.load_mat = load_mat
-        self.save_mat = save_mat
+        self.get_mat = get_mat
+        self.put_mat = put_mat
         self.verbose = verbose
      
-    def load_decomp(self, sing_vecs_path, sing_vals_path):
+    def get_decomp(self, sing_vecs_source, sing_vals_source):
         """Loads the decomposition matrices from file. """
-        if self.load_mat is None:
-            raise UndefinedError('Must specify a load_mat function')
+        if self.get_mat is None:
+            raise UndefinedError('Must specify a get_mat function')
         if self.parallel.is_rank_zero():
-            self.sing_vecs = self.load_mat(sing_vecs_path)
-            self.sing_vals = N.squeeze(N.array(self.load_mat(sing_vals_path)))
+            self.sing_vecs = self.get_mat(sing_vecs_source)
+            self.sing_vals = N.squeeze(N.array(self.get_mat(sing_vals_source)))
         else:
             self.sing_vecs = None
             self.sing_vals = None
@@ -61,31 +62,31 @@ class POD(object):
             self.sing_vecs = self.parallel.comm.bcast(self.sing_vecs, root=0)
             self.sing_vals = self.parallel.comm.bcast(self.sing_vals, root=0)
  
-    def save_correlation_mat(self, correlation_mat_path):
-        if self.save_mat is None and self.parallel.is_rank_zero():
-            raise util.UndefinedError("save_mat is undefined, can't save")
+    def put_correlation_mat(self, correlation_mat_dest):
+        if self.put_mat is None and self.parallel.is_rank_zero():
+            raise util.UndefinedError("put_mat is undefined, can't put")
         if self.parallel.is_rank_zero():
-            self.save_mat(self.correlation_mat, correlation_mat_path)
+            self.put_mat(self.correlation_mat, correlation_mat_dest)
         
-    def save_decomp(self, sing_vecs_path, sing_vals_path):
-        """Save the decomposition matrices to file."""
-        self.save_sing_vecs(sing_vecs_path)
-        self.save_sing_vals(sing_vals_path)
+    def put_decomp(self, sing_vecs_dest, sing_vals_dest):
+        """Put the decomposition matrices to file or memory."""
+        self.put_sing_vecs(sing_vecs_dest)
+        self.put_sing_vals(sing_vals_dest)
         
         
-    def save_sing_vecs(self, path):
-        if self.save_mat is None and self.parallel.is_rank_zero():
-            raise util.UndefinedError("save_mat is undefined, can't save")
+    def put_sing_vecs(self, dest):
+        if self.put_mat is None and self.parallel.is_rank_zero():
+            raise util.UndefinedError("put_mat is undefined, can't put")
             
         if self.parallel.is_rank_zero():
-            self.save_mat(self.sing_vecs, path)
+            self.put_mat(self.sing_vecs, dest)
 
-    def save_sing_vals(self, path):
-        if self.save_mat is None and self.parallel.is_rank_zero():
-            raise util.UndefinedError("save_mat is undefined, can't save")
+    def put_sing_vals(self, dest):
+        if self.put_mat is None and self.parallel.is_rank_zero():
+            raise util.UndefinedError("put_mat is undefined, can't put")
             
         if self.parallel.is_rank_zero():
-            self.save_mat(self.sing_vals, path)
+            self.put_mat(self.sing_vals, dest)
 
 
     
@@ -121,7 +122,7 @@ class POD(object):
               and sorting does not increase efficiency. 
               
             mode_dest:
-              Full path to mode location, e.g. /home/user/mode_%d.txt.
+              Full dest to mode location, e.g. /home/user/mode_%d.txt.
         
         
         Kwargs:

@@ -20,16 +20,16 @@ class BPOD(object):
     """
     
     def __init__(self, get_field=None, put_field=None, 
-        save_mat=util.save_mat_text, load_mat=util.load_mat_text,
+        put_mat=util.save_mat_text, get_mat=util.load_mat_text,
         inner_product=None, max_fields_per_node=2, verbose=True):
         """Constructor
         
         Kwargs:
-            get_field: Function to get a field from elsewhere (memory or a file).
+            get_field: Function to get a field from elsewhere (memory or file).
             
-            put_field: Function to put a field elsewhere (to memory or a file).
+            put_field: Function to put a field elsewhere (memory or file).
             
-            save_mat: Function to save a matrix.
+            put_mat: Function to put a matrix elsewhere (memory or file).
             
             inner_product: Function to take inner product of two fields.
             
@@ -42,20 +42,19 @@ class BPOD(object):
             max_fields_per_node=max_fields_per_node, verbose=verbose)
         self.parallel = parallel.default_instance
 
-        self.load_mat = load_mat
-        self.save_mat = save_mat
+        self.get_mat = get_mat
+        self.put_mat = put_mat
         self.verbose = verbose
  
 
-    def load_decomp(self, L_sing_vecs_path, sing_vals_path, R_sing_vecs_path):
-        """Loads the decomposition matrices from file. 
-        """
-        if self.load_mat is None:
-            raise UndefinedError('Must specify a load_mat function')
+    def get_decomp(self, L_sing_vecs_source, sing_vals_source, R_sing_vecs_source):
+        """Gets the decomposition matrices from elsewhere (memory or file)."""
+        if self.get_mat is None:
+            raise UndefinedError('Must specify a get_mat function')
         if self.parallel.is_rank_zero():
-            self.L_sing_vecs = self.load_mat(L_sing_vecs_path)
-            self.sing_vals = N.squeeze(N.array(self.load_mat(sing_vals_path)))
-            self.R_sing_vecs = self.load_mat(R_sing_vecs_path)
+            self.L_sing_vecs = self.get_mat(L_sing_vecs_source)
+            self.sing_vals = N.squeeze(N.array(self.get_mat(sing_vals_source)))
+            self.R_sing_vecs = self.get_mat(R_sing_vecs_source)
         else:
             self.L_sing_vecs = None
             self.sing_vals = None
@@ -66,37 +65,37 @@ class BPOD(object):
             self.R_sing_vecs = self.parallel.comm.bcast(self.L_sing_vecs, root=0)
     
     
-    def save_hankel_mat(self, hankel_mat_path):
-        if self.save_mat is None:
-            raise util.UndefinedError('save_mat not specified')
+    def put_hankel_mat(self, hankel_mat_dest):
+        if self.put_mat is None:
+            raise util.UndefinedError('put_mat not specified')
         elif self.parallel.is_rank_zero():
-            self.save_mat(self.hankel_mat, hankel_mat_path)           
+            self.put_mat(self.hankel_mat, hankel_mat_dest)           
     
     
-    def save_L_sing_vecs(self, path):
-        if self.save_mat is None:
-            raise util.UndefinedError("save_mat not specified")
+    def put_L_sing_vecs(self, dest):
+        if self.put_mat is None:
+            raise util.UndefinedError("put_mat not specified")
         elif self.parallel.is_rank_zero():
-            self.save_mat(self.L_sing_vecs, path)
+            self.put_mat(self.L_sing_vecs, dest)
         
-    def save_R_sing_vecs(self, path):
-        if self.save_mat is None:
-            raise util.UndefinedError("save_mat not specified")
+    def put_R_sing_vecs(self, dest):
+        if self.put_mat is None:
+            raise util.UndefinedError("put_mat not specified")
         elif self.parallel.is_rank_zero():
-            self.save_mat(self.R_sing_vecs, path)
+            self.put_mat(self.R_sing_vecs, dest)
     
-    def save_sing_vals(self, path):
-        if self.save_mat is None:
-            raise util.UndefinedError("save_mat not specified")
+    def put_sing_vals(self, dest):
+        if self.put_mat is None:
+            raise util.UndefinedError("put_mat not specified")
         elif self.parallel.is_rank_zero():
-            self.save_mat(self.sing_vals, path)
+            self.put_mat(self.sing_vals, dest)
    
     
-    def save_decomp(self, L_sing_vecs_path, sing_vals_path, R_sing_vecs_path):
+    def put_decomp(self, L_sing_vecs_dest, sing_vals_dest, R_sing_vecs_dest):
         """Save the decomposition matrices to file."""
-        self.save_L_sing_vecs(L_sing_vecs_path)
-        self.save_R_sing_vecs(R_sing_vecs_path)
-        self.save_sing_vals(sing_vals_path)
+        self.put_L_sing_vecs(L_sing_vecs_dest)
+        self.put_R_sing_vecs(R_sing_vecs_dest)
+        self.put_sing_vals(sing_vals_dest)
         
         
     def compute_decomp(self, direct_field_sources, adjoint_field_sources):
@@ -144,7 +143,7 @@ class BPOD(object):
               The mode numbers need not be sorted,
               and sorting does not increase efficiency. 
           mode_dest:
-              Full path to mode location, e.g. /home/user/mode_%d.txt.
+              Full dest to mode location, e.g. /home/user/mode_%d.txt.
               
         Kwargs:
           index_from:
@@ -182,7 +181,7 @@ class BPOD(object):
                 and sorting does not increase efficiency. 
                 
             mode_dest:
-                Full path to mode location, e.g. /home/user/mode_%d.txt.
+                Full dest to mode location, e.g. /home/user/mode_%d.txt.
         
         Kwargs:
             index_from: Index modes starting from 0, 1, or other.

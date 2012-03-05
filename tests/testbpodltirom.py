@@ -34,7 +34,7 @@ class TestBPODROM(unittest.TestCase):
         self.input_field_path = join(self.test_dir, 'input_field_%03d.txt')
         self.output_field_path = join(self.test_dir, 'output_field_%03d.txt')
         
-        self.myBPODROM = BPR.BPODROM(save_mat=util.save_mat_text, get_field=\
+        self.myBPODROM = BPR.BPODROM(put_mat=util.save_mat_text, get_field=\
             util.load_mat_text,inner_product=util.inner_product, put_field=\
             util.save_mat_text, verbose=False)
             

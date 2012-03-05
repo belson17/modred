@@ -19,9 +19,9 @@ class BPODROM(object):
       # For continuous time systems
       myBPODROM.compute_mode_derivs(mode_sources, mode_dt_sources, mode_deriv_sources,1e-4)
       # For continuous time systems, set dt=0
-      myBPODROM.form_A(A_path, direct_mode_advanced_sources, adjoint_mode_sources, dt)
-      myBPODROM.form_B(B_path, input_field_sources, adjoint_mode_sources, dt)
-      myBPODROM.form_C(C_path, output_field_sources, direct_mode_sources)
+      myBPODROM.form_A(A_dest, direct_mode_advanced_sources, adjoint_mode_sources, dt)
+      myBPODROM.form_B(B_dest, input_field_sources, adjoint_mode_sources, dt)
+      myBPODROM.form_C(C_dest, output_field_sources, direct_mode_sources)
     
     """
 
@@ -32,7 +32,7 @@ class BPODROM(object):
       discrete = None,
       dt = None,
       inner_product=None,
-      save_mat=util.save_mat_text,
+      put_mat=util.save_mat_text,
       get_field=None,
       put_field=None,
       num_modes=None,
@@ -40,7 +40,7 @@ class BPODROM(object):
       max_fields_per_node=2):
           self.dt = dt
           self.inner_product = inner_product
-          self.save_mat = save_mat
+          self.put_mat = put_mat
           self.get_field = get_field
           self.put_field = put_field
           self.max_fields_per_node = max_fields_per_node
@@ -75,13 +75,13 @@ class BPODROM(object):
             self.put_field((modeDt - mode)*(1./dt), mode_deriv_dests[mode_index])
         
     
-    def form_A(self, A_path, direct_mode_advanced_sources, adjoint_mode_sources, dt,
+    def form_A(self, A_dest, direct_mode_advanced_sources, adjoint_mode_sources, dt,
     		num_modes=None):
         """
         Computes the continous or discrete time A matrix
         
         Args:
-		        A_path: where the reduced A matrix will be saved
+		        A_dest: where the reduced A matrix will be saved
 		        
 		        direct_mode_advanced_sources: list of sources of direct modes advanced. 
 								For a discrete time system, these are the 
@@ -129,18 +129,18 @@ class BPODROM(object):
                   self.A[row_num,col_num] = \
                       self.inner_product(adjoint_modes[row_num-start_row_num], advanced_mode)
 
-        self.save_mat(self.A, A_path)
+        self.put_mat(self.A, A_dest)
         if self.verbose:
-            print '----- A matrix saved to',A_path,'------'
+            print '----- A matrix put to',A_dest,'------'
 
       
-    def form_B(self, B_path, input_field_sources, adjoint_mode_sources, dt, num_modes=None):
+    def form_B(self, B_dest, input_field_sources, adjoint_mode_sources, dt, num_modes=None):
         """Forms the B matrix, either continuous or discrete time.
         
         Computes inner products of adjoint mode with input fields (B in Ax+Bu).
         
         Args:
-		        B_path: where the reduced B matrix will be saved
+		        B_dest: where the reduced B matrix will be put (memory or file)
 		        
         		input_field_sources: list of input fields' sources.
         				These are spatial representations of the B matrix in the full system.
@@ -184,21 +184,21 @@ class BPODROM(object):
         if self.dt != 0:
             self.B *= self.dt
             
-        self.save_mat(self.B, B_path)
+        self.put_mat(self.B, B_dest)
         if self.verbose:
             if self.dt!=0:
-                print '----- B matrix, discrete-time, saved to',B_path,'-----'
+                print '----- B matrix, discrete-time, put to',B_dest,'-----'
             else:
-                print '----- B matrix, continuous-time, saved to',B_path,'-----'
+                print '----- B matrix, continuous-time, put to',B_dest,'-----'
         
     
-    def form_C(self, C_path, output_field_sources, direct_mode_sources, num_modes=None):
+    def form_C(self, C_dest, output_field_sources, direct_mode_sources, num_modes=None):
         """Forms the C matrix, either continuous or discrete.
         
         Computes inner products of adjoint mode with output fields (C in y=Cx).
         
         Args:
-		        C_path: where the reduced C matrix will be saved
+		        C_dest: where the reduced C matrix will be put (memory or file)
 		        
         		output_field_sources: list of output fields' sources.
         				These are spatial representations of the C matrix in the full system.
@@ -233,8 +233,8 @@ class BPODROM(object):
                     self.C[row_num,col_num] = \
                         self.inner_product(output_field, direct_modes[col_num-start_col_num])      
   
-        self.save_mat(self.C, C_path)
+        self.put_mat(self.C, C_dest)
         if self.verbose:
-            print '----- C matrix saved to',C_path,'-----'
+            print '----- C matrix put to',C_dest,'-----'
     
     
