@@ -13,8 +13,8 @@ class POD(object):
     Usage::
       
       myPOD = POD(...)
-      myPOD.compute_decomp(field_paths=my_field_paths)
-      myPOD.compute_modes(range(1,100), mode_path)
+      myPOD.compute_decomp(field_sources=my_field_sources)
+      myPOD.compute_modes(range(1,100), mode_dest)
     """
         
     def __init__(self, get_field=None, put_field=None, 
@@ -89,13 +89,13 @@ class POD(object):
 
 
     
-    def compute_decomp(self, field_paths):
+    def compute_decomp(self, field_sources):
         """Computes correlation mat X*X, then the SVD of this matrix."""
-        self.field_paths = field_paths
+        self.field_sources = field_sources
         self.correlation_mat = self.field_ops.\
-            compute_symmetric_inner_product_mat(self.field_paths)
+            compute_symmetric_inner_product_mat(self.field_sources)
         #self.correlation_mat = self.field_ops.\
-        #    compute_inner_product_mat(self.field_paths, self.field_paths)
+        #    compute_inner_product_mat(self.field_sources, self.field_sources)
         self.compute_SVD()
         
         
@@ -111,7 +111,7 @@ class POD(object):
             self.sing_vals = self.parallel.comm.bcast(self.sing_vals, root=0)
             
             
-    def compute_modes(self, mode_nums, mode_path, index_from=1, field_paths=None):
+    def compute_modes(self, mode_nums, mode_dest, index_from=1, field_sources=None):
         """Computes the modes and calls ``self.put_field`` on them.
         
         Args:
@@ -120,14 +120,14 @@ class POD(object):
               The mode numbers need not be sorted,
               and sorting does not increase efficiency. 
               
-            mode_path:
+            mode_dest:
               Full path to mode location, e.g. /home/user/mode_%d.txt.
         
         
         Kwargs:
             index_from: Index modes starting from 0, 1, or other.
               
-            field_paths: Paths to fields. Optional if already given when calling 
+            field_sources: Paths to fields. Optional if already given when calling 
                 ``self.compute_decomp``.
 
 
@@ -137,14 +137,14 @@ class POD(object):
             raise util.UndefinedError('Must define self.sing_vecs')
         if self.sing_vals is None:
             raise util.UndefinedError('Must define self.sing_vals')
-        if field_paths is not None:
-            self.field_paths = field_paths
+        if field_sources is not None:
+            self.field_sources = field_sources
 
         build_coeff_mat = N.mat(self.sing_vecs) * \
             N.mat(N.diag(self.sing_vals**-0.5))
 
-        self.field_ops._compute_modes(mode_nums, mode_path,
-             self.field_paths, build_coeff_mat, index_from=index_from)
+        self.field_ops._compute_modes(mode_nums, mode_dest,
+             self.field_sources, build_coeff_mat, index_from=index_from)
     
 
 

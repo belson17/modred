@@ -15,6 +15,10 @@ ill-conditioned, then the resulting computation results can be invalid.  for
 instance the mode norms may come out negative...(when computed using
 coefficients rather than the modes themselves).
 
+BPODLTIROM needs some cleaning up. There are too many args for some functions,
+and some are redundant. We are trying to eliminate using many optional args, instead
+using a few required ones closer to where they are used.
+
 
 
 #### Less important ####

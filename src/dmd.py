@@ -23,16 +23,16 @@ class DMD(object):
         """Constructor
         
         Kwargs:
-            get_field 
-                Function to get a field from elsewhere (memory or a file).
-            put_field 
-                Function to put a field elsewhere (to memory or a file).
-            save_mat
-                Function to save a matrix.
-            inner_product
-                Function to take inner product of two fields.
-            verbose 
-                True means print more information about progress and warnings
+            get_field: Function to get a field from elsewhere (memory or a file).
+            
+            put_field: Function to put a field elsewhere (to memory or a file).
+            
+            save_mat: Function to save a matrix.
+            
+            inner_product: Function to take inner product of two fields.
+            
+            verbose: Print more information about progress and warnings
+        
         Returns:
             DMD instance
         """
@@ -90,13 +90,13 @@ class DMD(object):
 
 
 
-    def compute_decomp(self, field_paths):
+    def compute_decomp(self, field_sources):
         """Compute decomposition"""
          
-        if field_paths is not None:
-            self.field_paths = field_paths
-        if self.field_paths is None:
-            raise util.UndefinedError('field_paths is not given')
+        if field_sources is not None:
+            self.field_sources = field_sources
+        if self.field_sources is None:
+            raise util.UndefinedError('field_sources is not given')
 
         # Compute POD from fields (excluding last field)
         if self.POD is None:
@@ -104,20 +104,20 @@ class DMD(object):
                 inner_product=self.field_ops.inner_product, 
                 max_fields_per_node=self.field_ops.max_fields_per_node, 
                 verbose=self.verbose)
-            self.POD.compute_decomp(field_paths=self.field_paths[:-1])
-        elif self.fieldlist[:-1] != self.POD.fieldlist or len(field_paths) !=\
-            len(self.POD.field_paths)+1:
+            self.POD.compute_decomp(field_sources=self.field_sources[:-1])
+        elif self.fieldlist[:-1] != self.POD.fieldlist or len(field_sources) !=\
+            len(self.POD.field_sources)+1:
             raise RuntimeError('field mismatch between POD and DMD '+\
                 'objects.')     
         _pod_sing_vals_sqrt_mat = N.mat(
             N.diag(N.array(self.POD.sing_vals).squeeze() ** -0.5))
 
         # Inner product of fields w/POD modes
-        num_fields = len(self.field_paths)
+        num_fields = len(self.field_sources)
         pod_modes_star_times_fields = N.mat(N.empty((num_fields-1, num_fields-1)))
         pod_modes_star_times_fields[:, :-1] = self.POD.correlation_mat[:,1:]  
         pod_modes_star_times_fields[:, -1] = self.field_ops.\
-            compute_inner_product_mat(self.field_paths[:-1], self.field_paths[
+            compute_inner_product_mat(self.field_sources[:-1], self.field_sources[
             -1])
         pod_modes_star_times_fields = _pod_sing_vals_sqrt_mat * self.POD.\
             sing_vecs.H * pod_modes_star_times_fields
@@ -140,7 +140,7 @@ class DMD(object):
         self.mode_norms = N.diag(self.build_coeffs.H * self.POD.\
             correlation_mat * self.build_coeffs).real
         
-    def compute_modes(self, mode_nums, mode_path, index_from=1, field_paths=None):
+    def compute_modes(self, mode_nums, mode_path, index_from=1, field_sources=None):
         """Computes modes
         
         Args:
@@ -151,13 +151,13 @@ class DMD(object):
         Kwargs:
             index_from: where to start numbering modes from, 0, 1, or other.
             
-            field_paths: paths to fields, can omit if given in compute_decomp.
+            field_sources: paths to fields, can omit if given in compute_decomp.
         """
         if self.build_coeffs is None:
             raise util.UndefinedError('Must define self.build_coeffs')
         # User should specify ALL fields, even though all but last are used
-        if field_paths is not None:
-            self.field_paths = field_paths
+        if field_sources is not None:
+            self.field_sources = field_sources
         
-        #self.field_ops._compute_modes(mode_nums, mode_path, self.field_paths[:-1],self.build_coeffs, index_from=index_from)
+        self.field_ops._compute_modes(mode_nums, mode_path, self.field_sources[:-1],self.build_coeffs, index_from=index_from)
         

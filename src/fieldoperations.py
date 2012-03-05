@@ -119,13 +119,13 @@ class FieldOperations(object):
         self.print_msg('Passed the idiot check')
 
 
-    def compute_inner_product_mat(self, row_field_paths, col_field_paths):
+    def compute_inner_product_mat(self, row_field_sources, col_field_sources):
         """Computes a matrix of inner products (for BPOD, Y'*X) and returns it.
         
         Args:
-            row_field_paths: row field paths (BPOD adjoint fields, ~Y)
+            row_field_sources: row field paths (BPOD adjoint fields, ~Y)
           
-            col_field_paths: column field files (BPOD direct fields, ~X)
+            col_field_sources: column field files (BPOD direct fields, ~X)
 
         Within this method, the fields are read in memory-efficient ways
         such that they are not all in memory at once. This results in finding
@@ -191,8 +191,8 @@ class FieldOperations(object):
         though on the particular system and hardward.
         Sometimes multiple simultaneous loads actually makes each load very slow. 
         
-        As an example, consider doing a case with len(row_field_paths)=8 and
-        len(col_field_paths) = 12, 2 processors, 1 node, and max_fields_per_node=3.
+        As an example, consider doing a case with len(row_field_sources)=8 and
+        len(col_field_sources) = 12, 2 processors, 1 node, and max_fields_per_node=3.
         n_p=2, max=2, n_r=8, n_c=12 (n_r < n_c).
         
             num loads / proc = 16
@@ -203,19 +203,19 @@ class FieldOperations(object):
             
         """
              
-        if not isinstance(row_field_paths,list):
-            row_field_paths = [row_field_paths]
-        if not isinstance(col_field_paths,list):
-            col_field_paths = [col_field_paths]
+        if not isinstance(row_field_sources,list):
+            row_field_sources = [row_field_sources]
+        if not isinstance(col_field_sources,list):
+            col_field_sources = [col_field_sources]
             
-        num_cols = len(col_field_paths)
-        num_rows = len(row_field_paths)
+        num_cols = len(col_field_sources)
+        num_rows = len(row_field_sources)
 
         if num_rows > num_cols:
             transpose = True
-            temp = row_field_paths
-            row_field_paths = col_field_paths
-            col_field_paths = temp
+            temp = row_field_sources
+            row_field_sources = col_field_sources
+            col_field_sources = temp
             temp = num_rows
             num_rows = num_cols
             num_cols = temp
@@ -224,8 +224,8 @@ class FieldOperations(object):
        
         # Compute a single inner product in order to determine matrix datatype
         # (real or complex) and to estimate the amount of time the IPs will take.
-        row_field = self.get_field(row_field_paths[0])
-        col_field = self.get_field(col_field_paths[0])
+        row_field = self.get_field(row_field_sources[0])
+        col_field = self.get_field(col_field_sources[0])
         start_time = T.time()
         IP = self.inner_product(row_field, col_field)
         IP_type = type(IP)
@@ -284,7 +284,7 @@ class FieldOperations(object):
                    start_row_index, end_row_index))[self.parallel.get_rank()]
             if len(proc_row_tasks) != 0:
                 row_fields = [self.get_field(row_path) for row_path in 
-                    row_field_paths[proc_row_tasks[0]:
+                    row_field_sources[proc_row_tasks[0]:
                     proc_row_tasks[-1] + 1]]
             else:
                 row_fields = []
@@ -308,7 +308,7 @@ class FieldOperations(object):
                     if num_passes == 0:
                         if len(col_indices) > 0:
                             col_fields = [self.get_field(col_path) 
-                                for col_path in col_field_paths[col_indices[0]:
+                                for col_path in col_field_sources[col_indices[0]:
                                     col_indices[-1] + 1]]
                         else:
                             col_fields = []
@@ -375,14 +375,14 @@ class FieldOperations(object):
         return IP_mat
 
         
-    def compute_symmetric_inner_product_mat(self, field_paths):
+    def compute_symmetric_inner_product_mat(self, field_sources):
         """Computes an upper-triangular chunk of a symmetric matrix of inner 
         products.  
         """
-        if isinstance(field_paths, str):
-            field_paths = [field_paths]
+        if isinstance(field_sources, str):
+            field_sources = [field_sources]
  
-        num_fields = len(field_paths)
+        num_fields = len(field_sources)
         
         
         # num_cols_per_chunk is the number of cols each proc loads at once.  
@@ -404,7 +404,7 @@ class FieldOperations(object):
                 'redundant loads and get a big speedup.') % num_row_chunks    
         
         # Compute a single inner product in order to determin matrix datatype
-        test_field = self.get_field(field_paths[0])
+        test_field = self.get_field(field_sources[0])
         IP = self.inner_product(test_field, test_field)
         IP_type = type(IP)
         del test_field
@@ -423,7 +423,7 @@ class FieldOperations(object):
                 proc_row_tasks_all if task != []])
             proc_row_tasks = proc_row_tasks_all[self.parallel.get_rank()]
             if len(proc_row_tasks)!=0:
-                row_fields = [self.get_field(path) for path in field_paths[
+                row_fields = [self.get_field(path) for path in field_sources[
                     proc_row_tasks[0]:proc_row_tasks[-1] + 1]]
             else:
                 row_fields = []
@@ -554,7 +554,7 @@ class FieldOperations(object):
                     if num_passes == 0:
                         if len(col_indices) > 0:
                             col_fields = [self.get_field(col_path) \
-                                for col_path in field_paths[col_indices[0]:\
+                                for col_path in field_sources[col_indices[0]:\
                                     col_indices[-1] + 1]]
                         else:
                             col_fields = []
@@ -623,7 +623,7 @@ class FieldOperations(object):
         return IP_mat
         
         
-    def _compute_modes(self, mode_nums, mode_path, field_paths, field_coeff_mat,
+    def _compute_modes(self, mode_nums, mode_dest, field_sources, field_coeff_mat,
         index_from=1):
         """A common method to compute modes from fields and ``put_field`` them.
         
@@ -638,9 +638,9 @@ class FieldOperations(object):
               The mode numbers need not be sorted,
               and sorting does not increase efficiency. 
               
-          mode_path: Full path to mode location, e.g /home/user/mode_%03d.txt.
+          mode_dest: Full path to mode location, e.g /home/user/mode_%03d.txt.
           
-          field_paths - A list paths to files from which fields can be loaded.
+          field_sources - A list paths to files from which fields can be loaded.
           
           field_coeff_mat - Matrix of coefficients for constructing modes.  The kth
               column contains the coefficients for computing the kth index mode, 
@@ -658,11 +658,11 @@ class FieldOperations(object):
                     
         if isinstance(mode_nums, int):
             mode_nums = [mode_nums]
-        if isinstance(field_paths, type('a_string')):
-            field_paths = [field_paths]
+        if isinstance(field_sources, type('a_string')):
+            field_sources = [field_sources]
         
         num_modes = len(mode_nums)
-        num_fields = len(field_paths)
+        num_fields = len(field_sources)
         
         if num_modes > num_fields:
             raise ValueError('Cannot compute more modes than number of ' +\
@@ -680,26 +680,26 @@ class FieldOperations(object):
         # Construct field_coeff_mat and outputPaths for lin_combine_fields
         mode_numsFromZero = [mode_num-index_from for mode_num in mode_nums]
         field_coeff_matReordered = field_coeff_mat[:,mode_numsFromZero]
-        mode_paths = [mode_path%mode_num for mode_num in mode_nums]
+        mode_dests = [mode_dest%mode_num for mode_num in mode_nums]
         
-        self.lin_combine(mode_paths, field_paths, field_coeff_matReordered)
+        self.lin_combine(mode_dests, field_sources, field_coeff_matReordered)
         self.parallel.sync() # ensure that all procs leave function at same time
     
     
-    def lin_combine(self, sum_field_paths, basis_field_paths, field_coeff_mat):
+    def lin_combine(self, sum_field_dests, basis_field_sources, field_coeff_mat):
         """Linearly combines the basis fields and saves them.
         
         Args:
-            sum_field_paths: list of the files where the linear combinations
+            sum_field_dests: list of the files where the linear combinations
                 will be ``self.put_field`` ed.
                 
-            basis_field_paths: list of files where the basis fields will
+            basis_field_sources: list of files where the basis fields will
                 be ``self.get_field`` ed from.
                 
             field_coeff_mat: matrix with each row corresponding to a basis field
                 and each column to a sum (lin. comb.) field.
                 The rows and columns correspond, by index,
-                to the lists basis_field_paths and sum_field_paths.
+                to the lists basis_field_sources and sum_field_dests.
                 ``sums = basis * field_coeff_mat``
           
         Each processor reads a subset of the basis fields to compute as many
@@ -724,12 +724,12 @@ class FieldOperations(object):
         if self.put_field is None:
             raise util.UndefinedError('put_field is undefined')
                    
-        if not isinstance(sum_field_paths, list):
-            sum_field_paths = [sum_field_paths]
-        if not isinstance(basis_field_paths, list):
-            basis_field_paths = [basis_field_paths]
-        num_bases = len(basis_field_paths)
-        num_sums = len(sum_field_paths)
+        if not isinstance(sum_field_dests, list):
+            sum_field_dests = [sum_field_dests]
+        if not isinstance(basis_field_sources, list):
+            basis_field_sources = [basis_field_sources]
+        num_bases = len(basis_field_sources)
+        num_sums = len(sum_field_dests)
         if num_bases > field_coeff_mat.shape[0]:
             raise ValueError(('Coeff mat has fewer rows %d than num of basis paths %d'\
                 %(field_coeff_mat.shape[0],num_bases)))
@@ -801,7 +801,7 @@ class FieldOperations(object):
                     if num_passes == 0:
                         if len(basis_indices) > 0:
                             basis_fields = [self.get_field(basis_path) \
-                                for basis_path in basis_field_paths[
+                                for basis_path in basis_field_sources[
                                     basis_indices[0]:basis_indices[-1]+1]]
                         else: basis_fields = []
                     else:
@@ -839,7 +839,7 @@ class FieldOperations(object):
             # Completed this set of sum fields, save to file
             for sum_index in xrange(len(proc_sum_tasks)):
                 self.put_field(sum_layers[sum_index],\
-                    sum_field_paths[sum_index+proc_sum_tasks[0]])
+                    sum_field_dests[sum_index+proc_sum_tasks[0]])
             if (T.time() - self.prev_print_time) > self.print_interval:    
                 self.print_msg('Completed %.1f%% of sum fields, %d of %d' %
                     (end_sum_index*100./num_sums, end_sum_index, num_sums), 

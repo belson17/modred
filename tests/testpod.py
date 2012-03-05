@@ -187,7 +187,7 @@ class TestPOD(unittest.TestCase):
         self.pod.sing_vals = self.sing_vals_true
         
         self.pod.compute_modes(self.mode_nums, mode_path, 
-            index_from=self.index_from, snap_paths=self.snap_paths)
+            index_from=self.index_from, field_sources=self.snap_paths)
           
         for mode_num in self.mode_nums:
             if parallel.is_rank_zero():

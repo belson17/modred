@@ -30,8 +30,8 @@ class TestBPOD(unittest.TestCase):
         
         self.maxDiff = 1000
         self.mode_nums =[2, 4, 3, 6, 9, 8, 10, 11, 30]
-        self.num_direct_snaps = 40
-        self.num_adjoint_snaps = 45
+        self.num_direct_fields = 40
+        self.num_adjoint_fields = 45
         self.num_states = 100
         self.index_from = 2
         
@@ -49,54 +49,54 @@ class TestBPOD(unittest.TestCase):
     
     def generate_data_set(self):
         # create data set (saved to file)
-        self.direct_snap_path = join(self.test_dir, 'direct_snap_%03d.txt')
-        self.adjoint_snap_path = join(self.test_dir, 'adjoint_snap_%03d.txt')
+        self.direct_field_path = join(self.test_dir, 'direct_field_%03d.txt')
+        self.adjoint_field_path = join(self.test_dir, 'adjoint_field_%03d.txt')
 
-        self.direct_snap_paths=[]
-        self.adjoint_snap_paths=[]
+        self.direct_field_paths=[]
+        self.adjoint_field_paths=[]
         
         if parallel.is_rank_zero():
-            self.direct_snap_mat = N.mat(N.random.random((self.num_states,self.\
-                num_direct_snaps)))
-            self.adjoint_snap_mat = N.mat(N.random.random((self.num_states,self.\
-                num_adjoint_snaps))) 
+            self.direct_field_mat = N.mat(N.random.random((self.num_states,self.\
+                num_direct_fields)))
+            self.adjoint_field_mat = N.mat(N.random.random((self.num_states,self.\
+                num_adjoint_fields))) 
             
-            for direct_snap_index in range(self.num_direct_snaps):
-                util.save_mat_text(self.direct_snap_mat[:,direct_snap_index],self.\
-                    direct_snap_path%direct_snap_index)
-                self.direct_snap_paths.append(self.direct_snap_path%direct_snap_index)
-            for adjoint_snap_index in range(self.num_adjoint_snaps):
-                util.save_mat_text(self.adjoint_snap_mat[:,adjoint_snap_index],
-                  self.adjoint_snap_path%adjoint_snap_index)
-                self.adjoint_snap_paths.append(self.adjoint_snap_path%\
-                    adjoint_snap_index)
+            for direct_field_index in range(self.num_direct_fields):
+                util.save_mat_text(self.direct_field_mat[:,direct_field_index],self.\
+                    direct_field_path%direct_field_index)
+                self.direct_field_paths.append(self.direct_field_path%direct_field_index)
+            for adjoint_field_index in range(self.num_adjoint_fields):
+                util.save_mat_text(self.adjoint_field_mat[:,adjoint_field_index],
+                  self.adjoint_field_path%adjoint_field_index)
+                self.adjoint_field_paths.append(self.adjoint_field_path%\
+                    adjoint_field_index)
         else:
-            self.direct_snap_paths=None
-            self.adjoint_snap_paths=None
-            self.direct_snap_mat = None
-            self.adjoint_snap_mat = None
+            self.direct_field_paths=None
+            self.adjoint_field_paths=None
+            self.direct_field_mat = None
+            self.adjoint_field_mat = None
         if parallel.is_distributed():
-            self.direct_snap_paths = parallel.comm.bcast(self.\
-                direct_snap_paths, root=0)
-            self.adjoint_snap_paths = parallel.comm.bcast(self.\
-                adjoint_snap_paths, root=0)
-            self.direct_snap_mat = parallel.comm.bcast(self.direct_snap_mat, 
+            self.direct_field_paths = parallel.comm.bcast(self.\
+                direct_field_paths, root=0)
+            self.adjoint_field_paths = parallel.comm.bcast(self.\
+                adjoint_field_paths, root=0)
+            self.direct_field_mat = parallel.comm.bcast(self.direct_field_mat, 
                 root=0)
-            self.adjoint_snap_mat = parallel.comm.bcast(self.adjoint_snap_mat,
+            self.adjoint_field_mat = parallel.comm.bcast(self.adjoint_field_mat,
                 root=0)
          
-        self.hankel_mat_true = self.adjoint_snap_mat.T * self.direct_snap_mat
+        self.hankel_mat_true = self.adjoint_field_mat.T * self.direct_field_mat
         
         #Do the SVD on all procs.
         self.L_sing_vecs_true, self.sing_vals_true, self.R_sing_vecs_true = util.svd(
             self.hankel_mat_true)
-        self.direct_mode_mat = self.direct_snap_mat * N.mat(self.R_sing_vecs_true) *\
+        self.direct_mode_mat = self.direct_field_mat * N.mat(self.R_sing_vecs_true) *\
             N.mat(N.diag(self.sing_vals_true ** -0.5))
-        self.adjoint_mode_mat = self.adjoint_snap_mat * N.mat(self.L_sing_vecs_true) *\
+        self.adjoint_mode_mat = self.adjoint_field_mat * N.mat(self.L_sing_vecs_true) *\
             N.mat(N.diag(self.sing_vals_true ** -0.5))
         
-        #self.bpod.direct_snap_paths=self.direct_snap_paths
-        #self.bpod.adjoint_snap_paths=self.adjoint_snap_paths
+        #self.bpod.direct_field_paths=self.direct_field_paths
+        #self.bpod.adjoint_field_paths=self.adjoint_field_paths
         
         
         
@@ -156,22 +156,21 @@ class TestBPOD(unittest.TestCase):
         
     def test_compute_decomp(self):
         """
-        Test that can take snapshots, compute the Hankel and SVD matrices
+        Test that can take fields, compute the Hankel and SVD matrices
         
-        With previously generated random snapshots, compute the Hankel
+        With previously generated random fields, compute the Hankel
         matrix, then take the SVD. The computed matrices are saved, then
         loaded and compared to the true matrices. 
         """
         tol = 1e-8
-        direct_snap_path = join(self.test_dir, 'direct_snap_%03d.txt')
-        adjoint_snap_path = join(self.test_dir, 'adjoint_snap_%03d.txt')
+        direct_field_path = join(self.test_dir, 'direct_field_%03d.txt')
+        adjoint_field_path = join(self.test_dir, 'adjoint_field_%03d.txt')
         L_sing_vecs_path = join(self.test_dir, 'L_sing_vecs.txt')
         R_sing_vecs_path = join(self.test_dir, 'R_sing_vecs.txt')
         sing_vals_path = join(self.test_dir, 'sing_vals.txt')
         hankel_mat_path = join(self.test_dir, 'hankel.txt')
         
-        self.bpod.compute_decomp(direct_snap_paths=self.direct_snap_paths, 
-            adjoint_snap_paths=self.adjoint_snap_paths)
+        self.bpod.compute_decomp(self.direct_field_paths, self.adjoint_field_paths)
         
         self.bpod.save_hankel_mat(hankel_mat_path)
         self.bpod.save_decomp(L_sing_vecs_path, sing_vals_path, R_sing_vecs_path)
@@ -231,10 +230,10 @@ class TestBPOD(unittest.TestCase):
         self.bpod.sing_vals = self.sing_vals_true
         
         self.bpod.compute_direct_modes(self.mode_nums, direct_mode_path,
-          index_from=self.index_from, direct_snap_paths=self.direct_snap_paths)
+          index_from=self.index_from, direct_field_sources=self.direct_field_paths)
           
         self.bpod.compute_adjoint_modes(self.mode_nums, adjoint_mode_path,
-          index_from=self.index_from, adjoint_snap_paths=self.adjoint_snap_paths)
+          index_from=self.index_from, adjoint_field_sources=self.adjoint_field_paths)
           
         for mode_num in self.mode_nums:
             if parallel.is_rank_zero():

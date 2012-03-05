@@ -14,7 +14,7 @@ class BPOD(object):
     
       myBPOD = BPOD(get_field=my_get_field, put_field=my_put_field,
           inner_product=my_inner_product, max_fields_per_node=500)
-      myBPOD.compute_decomp(direct_field_paths, adjoint_field_paths)      
+      myBPOD.compute_decomp(direct_field_sources, adjoint_field_sources)      
       myBPOD.compute_direct_modes(range(1, 50), 'bpod_direct_mode_%03d.txt')
       myBPOD.compute_adjoint_modes(range(1, 50), 'bpod_adjoint_mode_%03d.txt')
     """
@@ -99,16 +99,16 @@ class BPOD(object):
         self.save_sing_vals(sing_vals_path)
         
         
-    def compute_decomp(self, direct_field_paths, adjoint_field_paths):
+    def compute_decomp(self, direct_field_sources, adjoint_field_sources):
         """Compute BPOD from given fields.
         
         Computes the Hankel mat Y*X, then takes the SVD of this matrix.
         """        
-        self.direct_field_paths = direct_field_paths
-        self.adjoint_field_paths = adjoint_field_paths
+        self.direct_field_sources = direct_field_sources
+        self.adjoint_field_sources = adjoint_field_sources
         # Do Y.conj()*X
         self.hankel_mat = self.field_ops.compute_inner_product_mat(
-            self.adjoint_field_paths, self.direct_field_paths)
+            self.adjoint_field_sources, self.direct_field_sources)
         self.compute_SVD()        
         #self.parallel.evaluate_and_bcast([self.L_sing_vecs,self.sing_vals,self.\
         #    R_sing_vecs], util.svd, arguments = [self.hankel_mat])
@@ -134,8 +134,8 @@ class BPOD(object):
             self.R_sing_vecs = self.parallel.comm.bcast(self.R_sing_vecs, root=0)
         
 
-    def compute_direct_modes(self, mode_nums, mode_path, index_from=1,
-        direct_field_paths=None):
+    def compute_direct_modes(self, mode_nums, mode_dest, index_from=1,
+        direct_field_sources=None):
         """Computes the direct modes and calls ``self.self.put_field`` on them.
         
         Args:
@@ -143,13 +143,13 @@ class BPOD(object):
               Examples are [1,2,3,4,5] or [3,1,6,8]. 
               The mode numbers need not be sorted,
               and sorting does not increase efficiency. 
-          mode_path:
+          mode_dest:
               Full path to mode location, e.g. /home/user/mode_%d.txt.
               
         Kwargs:
           index_from:
               Index modes starting from 0, 1, or other.
-          direct_field_paths:
+          direct_field_sources:
               Paths to adjoint fields. Optional if already given when calling 
               ``self.compute_decomp``.
             
@@ -161,18 +161,18 @@ class BPOD(object):
         if self.sing_vals is None:
             raise util.UndefinedError('Must define self.sing_vals')
             
-        if direct_field_paths is not None:
-            self.direct_field_paths = direct_field_paths
-        if self.direct_field_paths is None:
-            raise util.UndefinedError('Must specify direct_field_paths')
+        if direct_field_sources is not None:
+            self.direct_field_sources = direct_field_sources
+        if self.direct_field_sources is None:
+            raise util.UndefinedError('Must specify direct_field_sources')
         # Switch to N.dot...
         build_coeff_mat = N.mat(self.R_sing_vecs)*N.mat(N.diag(self.sing_vals**-0.5))
 
-        self.field_ops._compute_modes(mode_nums, mode_path, 
-            self.direct_field_paths, build_coeff_mat, index_from=index_from)
+        self.field_ops._compute_modes(mode_nums, mode_dest, 
+            self.direct_field_sources, build_coeff_mat, index_from=index_from)
     
-    def compute_adjoint_modes(self, mode_nums, mode_path, index_from=1,
-        adjoint_field_paths=None):
+    def compute_adjoint_modes(self, mode_nums, mode_dest, index_from=1,
+        adjoint_field_sources=None):
         """Computes the adjoint modes and calls ``self.put_field`` on them.
         
         Args:
@@ -181,13 +181,13 @@ class BPOD(object):
                 The mode numbers need not be sorted,
                 and sorting does not increase efficiency. 
                 
-            mode_path:
+            mode_dest:
                 Full path to mode location, e.g. /home/user/mode_%d.txt.
         
         Kwargs:
             index_from: Index modes starting from 0, 1, or other.
                 
-            adjoint_field_paths: Paths to adjoint fields. 
+            adjoint_field_sources: Paths to adjoint fields. 
             		Optional if already given when calling ``self.compute_decomp``.
             
         self.L_sing_vecs and self.sing_vals must exist, else UndefinedError.
@@ -197,16 +197,16 @@ class BPOD(object):
             raise UndefinedError('Must define self.L_sing_vecs')
         if self.sing_vals is None:
             raise UndefinedError('Must define self.sing_vals')
-        if adjoint_field_paths is not None:
-            self.adjoint_field_paths=adjoint_field_paths
-        if self.adjoint_field_paths is None:
-            raise util.UndefinedError('Must specify adjoint_field_paths')
+        if adjoint_field_sources is not None:
+            self.adjoint_field_sources=adjoint_field_sources
+        if self.adjoint_field_sources is None:
+            raise util.UndefinedError('Must specify adjoint_field_sources')
 
         self.sing_vals = N.squeeze(N.array(self.sing_vals))
         # Switch to N.dot...
         build_coeff_mat = N.mat(self.L_sing_vecs) * \
             N.mat(N.diag(self.sing_vals**-0.5))
                  
-        self.field_ops._compute_modes(mode_nums, mode_path,
-            self.adjoint_field_paths, build_coeff_mat, index_from=index_from)
+        self.field_ops._compute_modes(mode_nums, mode_dest,
+            self.adjoint_field_sources, build_coeff_mat, index_from=index_from)
     
