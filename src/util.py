@@ -1,7 +1,6 @@
 """A group of useful functions"""
 
 import os
-import subprocess as SP
 import numpy as N
 import inspect 
 import copy
@@ -20,10 +19,10 @@ def save_mat_text(mat, filename, delimiter=' '):
   
     It can easily be read in Matlab with the provided matlab functions. 
     """
-    # Must cast mat into an array, makes it memory C-contiguous.
+    # Must cast mat into an array. Also makes it memory C-contiguous.
     mat_save = N.array(mat)
     
-    # If one-dimensional arry, then make a vector of many rows, 1 column
+    # If one-dimensional array, then make a vector of many rows, 1 column
     if mat_save.ndim == 1:
         mat_save = mat_save.reshape((-1,1))
     elif mat_save.ndim > 2:
@@ -35,9 +34,8 @@ def save_mat_text(mat, filename, delimiter=' '):
 def load_mat_text(filename, delimiter=' ', is_complex=False):
     """Reads a matrix written by write_mat_text, returns an *array*.
     
-    If the data saved is complex, then is_complex must be set to True.
-    If this is not done, the array returned will be real with 2x the 
-    correct number of columns.
+    Kwargs:
+        ``is_complex``: if the data saved is complex, then set  to ``True``.
     """
     # Check the version of numpy, requires version >= 1.6 for ndmin option
     numpy_version = int(N.version.version[2])

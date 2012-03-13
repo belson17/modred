@@ -8,7 +8,7 @@ from shutil import rmtree
 import numpy as N
 
 import helper
-helper.add_src_to_path()
+helper.add_to_path('src')
 import parallel as parallel_mod
 parallel = parallel_mod.default_instance
 

@@ -16,8 +16,9 @@ setup(name='modred',
       description='Compute modal decompositions and reduced-order models'+\
       		' easily, efficiently, and in parallel.',
       classifiers='',
-      packages=['modred', 'modred.src', 'modred.tests'],
-      package_dir={'modred':'', 'modred.src': 'src', 'modred.test': 'tests'},
+      packages=['modred', 'modred.src', 'modred.examples', 'modred.tests'],
+      package_dir={'modred':'', 'modred.src': 'src', 'modred.examples': 'examples',
+          'modred.test': 'tests'},
       package_data={'modred':['tests/files_okid/SISO/*', 'tests/files_okid/SIMO/*', 
           'tests/files_okid/MISO/*', 'tests/files_okid/MIMO/*']},
       )

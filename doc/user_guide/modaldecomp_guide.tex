@@ -468,19 +468,19 @@ Where $n_p$ is the number of processors, $max$ is the maximum number of fields p
 To show the scaling, we ran the benchmark.py file with a large number of random fields, each containing about 8,000 numbers and computed the inner product matrix with a varying number of processors and nodes. 
 The results are shown in Figures \ref{fig:scaling_ipmat_n1p_rainier}, \ref{fig:scaling_ipmat_np1_della}, ....
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.8\linewidth]{scaling_ipmat_n1p_rainier}
-\caption{Measured scaling on 8-core Mac Pro (rainier).}
-\label{fig:scaling_ipmat_n1p_rainier}
-\end{figure}
+%\begin{figure}[H]
+%\centering
+%\includegraphics[width=0.8\linewidth]{scaling_ipmat_n1p_rainier}
+%\caption{Measured scaling on 8-core Mac Pro (rainier).}
+%\label{fig:scaling_ipmat_n1p_rainier}
+%\end{figure}
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.8\linewidth]{scaling_ipmat_np1_della}
-\caption{Measured scaling on Della compute nodes, using only 1 processor per node.}
-\label{fig:scaling_ipmat_np1_della}
-\end{figure}
+%\begin{figure}[H]
+%\centering
+%\includegraphics[width=0.8\linewidth]{scaling_ipmat_np1_della}
+%\caption{Measured scaling on Della compute nodes, using only 1 processor per node.}
+%\label{fig:scaling_ipmat_np1_della}
+%\end{figure}
 
 
 The second of this group assumes the two sets of fields are the same, as is the case for POD,so  there are theoretically half as many inner products to compute.
@@ -529,12 +529,12 @@ where $n_s$ is the number of sum fields, $n_b$ is the number of basis fields, $n
 
 The scaling for a similar data set as for the inner product mat was tested with benchmark.py and the results are shown in Figures \ref{fig:scaling_lin_n1p_rainier} and \ref{fig:scaling_lin_np1_della}.
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.8\linewidth]{scaling_lin_n1p_rainier}
-\caption{Measured scaling on 8-core Mac Pro (rainier).}
-\label{fig:scaling_lin_n1p_rainier}
-\end{figure}
+%\begin{figure}[H]
+%\centering
+%\includegraphics[width=0.8\linewidth]{scaling_lin_n1p_rainier}
+%\caption{Measured scaling on 8-core Mac Pro (rainier).}
+%\label{fig:scaling_lin_n1p_rainier}
+%\end{figure}
 
 
 \section{Previous parallelizations}

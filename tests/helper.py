@@ -2,12 +2,17 @@
 
 import sys, os
 
-def add_src_to_path():
-    """Add src directory to sys.path for importing modules"""
-    src_dir = os.path.join(os.path.join(os.path.dirname(__file__), '..'),
-        'src')
-    if sys.path[0] != src_dir:
-        sys.path.insert(0, src_dir)
+def add_to_path(directory):
+    """Add directory to sys.path for importing modules
+    
+    directory must be a string relative to the modred top level, such
+    as "src" or "examples".
+    """
+    dir_loc = os.path.join(os.path.join(os.path.dirname(__file__), '..'),
+        directory)
+    if sys.path[0] != dir_loc:
+        sys.path.insert(0, dir_loc)
+
 """
 def get_rank_distributed(): 
      
