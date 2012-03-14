@@ -45,7 +45,9 @@ class BPOD(object):
         self.get_mat = get_mat
         self.put_mat = put_mat
         self.verbose = verbose
- 
+        
+    def idiot_check(self, test_obj=None, test_obj_source=None):
+        return self.field_ops.idiot_check(test_obj, test_obj_source)
 
     def get_decomp(self, L_sing_vecs_source, sing_vals_source, R_sing_vecs_source):
         """Gets the decomposition matrices from elsewhere (memory or file)."""

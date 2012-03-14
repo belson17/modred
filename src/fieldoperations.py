@@ -119,6 +119,7 @@ class FieldOperations(object):
         #N.testing.assert_array_almost_equal(objSub,2.5*test_obj)
         #N.testing.assert_array_almost_equal(test_obj,obj_copy)
         self.print_msg('Passed the idiot check')
+        return True
 
 
     def compute_inner_product_mat(self, row_field_sources, col_field_sources):

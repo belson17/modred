@@ -9,9 +9,11 @@ Welcome to modred's documentation!
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 0
    
    intro
+   
+   tutorial
    
    pod
    

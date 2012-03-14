@@ -47,6 +47,10 @@ class POD(object):
         self.put_mat = put_mat
         self.verbose = verbose
      
+    def idiot_check(self, test_obj=None, test_obj_source=None):
+        return self.field_ops.idiot_check(test_obj, test_obj_source)
+
+     
     def get_decomp(self, sing_vecs_source, sing_vals_source):
         """Gets the decomposition matrices from sources (memory or file)"""
         if self.get_mat is None:

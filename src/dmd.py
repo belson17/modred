@@ -47,6 +47,9 @@ class DMD(object):
         self.POD = POD
         self.verbose = verbose
 
+    def idiot_check(self, test_obj=None, test_obj_source=None):
+        return self.field_ops.idiot_check(test_obj, test_obj_source)
+
     def get_decomp(self, ritz_vals_source, mode_norms_source, build_coeffs_source):
         """Retrieves the decomposition matrices from a source. """
         if self.get_mat is None:
