@@ -24,7 +24,7 @@ import time as T
 import numpy as N
 
 import helper
-helper.add_src_to_path()
+helper.add_to_path('src')
 import parallel as parallel_mod
 parallel = parallel_mod.default_instance
 
@@ -174,7 +174,7 @@ def main():
     
     # Common parameters
     max_fields_per_node = 50
-    num_states = 8000
+    num_states = 10000
     
     # Run test of choice
     if method_to_test == 'lin_combine':
