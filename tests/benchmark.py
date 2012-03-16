@@ -15,6 +15,8 @@ Then in python, do this to view the results::
   import pstats
   pstats.Stats(<path_to_output_file>).strip_dirs().sort_stats('cumulative').\
       print_stats(<number_significant_lines_to_print>)
+      
+bencmark.py is to be used after installing modred.
 """
 import os
 from os.path import join
@@ -23,14 +25,9 @@ import cPickle
 import time as T
 import numpy as N
 
-import helper
-helper.add_to_path('src')
-import parallel as parallel_mod
-parallel = parallel_mod.default_instance
+import modred as M
 
-import fieldoperations as FO
-import util
-
+parallel = M.parallel.default_instance
 
 def save_pickle(obj, filename):
     fid = open(filename,'wb')
@@ -47,9 +44,9 @@ def load_pickle(filename):
 
 save_field = save_pickle 
 load_field = load_pickle
-#save_field = util.save_mat_text
-#load_field = util.load_mat_text
-inner_product = util.inner_product
+#save_field = M.util.save_mat_text
+#load_field = M.util.load_mat_text
+inner_product = M.util.inner_product
 
 
 import argparse
@@ -107,7 +104,7 @@ def inner_product_mat(num_states, num_rows, num_cols, max_fields_per_node):
     row_field_paths = [join(data_dir, row_field_name%row_num) for row_num in range(num_rows)]
     generate_fields(num_states, num_rows, data_dir, row_field_name)
     
-    my_FO = FO.FieldOperations(max_fields_per_node=max_fields_per_node, put_field=\
+    my_FO = M.FieldOperations(max_fields_per_node=max_fields_per_node, put_field=\
         save_field, get_field=load_field, inner_product=inner_product, 
         verbose=True) 
     
@@ -127,7 +124,7 @@ def symmetric_inner_product_mat(num_states, num_fields, max_fields_per_node):
         num_fields)]
     generate_fields(num_states, num_fields, data_dir, field_name)
     
-    my_FO = FO.FieldOperations(max_fields_per_node=max_fields_per_node, put_field=\
+    my_FO = M.FieldOperations(max_fields_per_node=max_fields_per_node, put_field=\
         save_field, get_field=load_field, inner_product=inner_product, 
         verbose=True) 
     
@@ -147,7 +144,7 @@ def lin_combine(num_states, num_bases, num_products, max_fields_per_node):
     basis_name = 'snap_%04d.txt'
     product_name = 'product_%04d.txt'
     generate_fields(num_states, num_bases, data_dir, basis_name)
-    my_FO = FO.FieldOperations(max_fields_per_node=max_fields_per_node,
+    my_FO = M.FieldOperations(max_fields_per_node=max_fields_per_node,
         put_field=save_field, get_field=load_field, inner_product=inner_product)
     coeff_mat = N.random.random((num_bases, num_products))
     
@@ -174,7 +171,7 @@ def main():
     
     # Common parameters
     max_fields_per_node = 50
-    num_states = 10000
+    num_states = 8000
     
     # Run test of choice
     if method_to_test == 'lin_combine':
