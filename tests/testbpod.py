@@ -19,7 +19,7 @@ import util
 
 
 class TestBPOD(unittest.TestCase):
-    """ Test all the BPOD class methods """
+    """ Test the BPOD class methods """
     def setUp(self):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')

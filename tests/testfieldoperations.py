@@ -141,13 +141,12 @@ class TestFieldOperations(unittest.TestCase):
         Generates random fields and finds the modes. 
         
         Returns:
-        field_mat -  matrix in which each column is a field (in order)
-        mode_nums - unordered list of integers representing mode numbers,
-          each entry is unique. Mode numbers are picked randomly between
-          index_from and num_modes+index_from-1. 
-        build_coeff_mat - matrix num_fields x num_modes, random entries
-        mode_mat - matrix of modes, each column is a mode.
-          matrix column # = mode_number - index_from
+            field_mat: matrix in which each column is a field (in order)
+            mode_nums: unordered list of integers representing mode numbers,
+                each entry is unique. Mode numbers are picked randomly between
+            build_coeff_mat: matrix num_fields x num_modes, random entries
+            mode_mat: matrix of modes, each column is a mode.
+                matrix column # = mode_number - index_from
         """
         mode_nums = []
         while len(mode_nums) < num_modes:
@@ -168,14 +167,11 @@ class TestFieldOperations(unittest.TestCase):
     def test_compute_modes(self):
         """
         Test that can compute modes from arguments. 
-        
-        Parallel and serial cases need to be tested independently. 
-        
-        Many cases are tested for numbers of fields, states per field,
+               
+        Cases are tested for numbers of fields, states per field,
         mode numbers, number of fields/modes allowed in memory
-        simultaneously, and what the indexing scheme is 
-        (currently supports any indexing
-        scheme, meaning the first mode can be numbered 0, 1, or any integer).
+        simultaneously, and indexing schemes 
+        (meaning the first mode can be numbered 0, 1, or any integer).
         """
         num_fields_list = [1, 15, 40]
         num_states = 20
@@ -356,37 +352,6 @@ class TestFieldOperations(unittest.TestCase):
         Test computation of matrix of inner products in memory-efficient
         chunks, both in parallel (compute_inner_product_mat).
         """ 
-        def assert_equal_mat_products(mat1, mat2, paths1, paths2):
-            # Path list may actually be a string, in which case covert to list
-            if not isinstance(paths1, list):
-                paths1 = [paths1]
-            if not isinstance(paths2, list):
-                paths2 = [paths2]
-
-            # True inner product matrix
-            product_true = mat1 * mat2
-           
-            # Test computation as chunk (a serial method, tested on each proc)
-            #productComputedAsChunk = self.fieldOperations.\
-            #    _compute_inner_product_chunk(paths1, paths2)
-            #N.testing.assert_allclose(productComputedAsChunk, 
-            #    product_true)
-
-            # Test paralleized computation.  
-            product_computed_as_mat = \
-                self.fieldOperations.compute_inner_product_mat(paths1, paths2)
-            N.testing.assert_allclose(product_computed_as_mat, 
-                product_true)
-            
-            
-            # Test computation of symmetric inner product matrix
-            if paths1 == paths2:  
-                # First test complete upper triangular computation
-                product_computed_as_symm_mat = self.fieldOperations.\
-                    compute_symmetric_inner_product_mat(paths1)
-                N.testing.assert_allclose(
-                    product_computed_as_symm_mat, product_true)
-            
         num_row_fields_list =[1, int(round(self.total_num_fields_in_mem / 2.)), self.\
             total_num_fields_in_mem, self.total_num_fields_in_mem *2,
             parallel.get_num_procs()+1]
@@ -433,17 +398,21 @@ class TestFieldOperations(unittest.TestCase):
                 if len(col_field_paths) == 1:
                     col_field_paths = col_field_paths[0]
 
-                # Test different rows and cols fields
-                assert_equal_mat_products(row_field_mat.T, col_field_mat,
-                    row_field_paths, col_field_paths)
-                
-                # Test with only the row data, to ensure nothing is
-                # goes wrong when the same list is used twice
-                # (potential memory issues, or lists may accidentally
-                # get altered).  Also, test symmetric computation
-                # method.
-                assert_equal_mat_products(row_field_mat.T, row_field_mat,
-                    row_field_paths, row_field_paths)
+                # Path list may actually be a string, in which case covert to list
+                if not isinstance(row_field_paths, list):
+                    row_field_paths = [row_field_paths]
+                if not isinstance(col_field_paths, list):
+                    col_field_paths = [col_field_paths]
+    
+                # True inner product matrix
+                product_true = row_field_mat.T * col_field_mat
+               
+                # Test paralleized computation.  
+                product_computed = \
+                    self.fieldOperations.compute_inner_product_mat(row_field_paths,
+                        col_field_paths)
+                N.testing.assert_allclose(product_computed, 
+                    product_true)
                         
 if __name__=='__main__':
     unittest.main()    

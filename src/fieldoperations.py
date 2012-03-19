@@ -753,7 +753,7 @@ class FieldOperations(object):
         # num_bases_per_proc_chunk is the number of bases each proc gets at once        
         num_bases_per_proc_chunk = 1
         num_sums_per_proc_chunk = self.max_fields_per_proc - \
-            num_bases_per_proc_chunk         
+            num_bases_per_proc_chunk
         
         basis_tasks = self.parallel.find_assignments(range(num_bases))
         sum_tasks = self.parallel.find_assignments(range(num_sums))
