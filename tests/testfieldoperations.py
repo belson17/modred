@@ -136,16 +136,16 @@ class TestFieldOperations(unittest.TestCase):
                 
         
         
-    def generate_snaps_modes(self, num_states, num_snaps, num_modes, index_from=1):
+    def generate_fields_modes(self, num_states, num_fields, num_modes, index_from=1):
         """
-        Generates random snapshots and finds the modes. 
+        Generates random fields and finds the modes. 
         
         Returns:
-        snap_mat -  matrix in which each column is a snapshot (in order)
+        field_mat -  matrix in which each column is a field (in order)
         mode_nums - unordered list of integers representing mode numbers,
           each entry is unique. Mode numbers are picked randomly between
           index_from and num_modes+index_from-1. 
-        build_coeff_mat - matrix num_snaps x num_modes, random entries
+        build_coeff_mat - matrix num_fields x num_modes, random entries
         mode_mat - matrix of modes, each column is a mode.
           matrix column # = mode_number - index_from
         """
@@ -155,12 +155,12 @@ class TestFieldOperations(unittest.TestCase):
             if mode_nums.count(mode_num) == 0:
                 mode_nums.append(mode_num)
 
-        build_coeff_mat = N.mat(N.random.random((num_snaps,num_modes)))
-        snap_mat = N.mat(N.zeros((num_states,num_snaps)))
-        for snap_index in range(num_snaps):
-            snap_mat[:,snap_index] = N.random.random((num_states,1))
-        mode_mat = snap_mat*build_coeff_mat
-        return snap_mat,mode_nums,build_coeff_mat,mode_mat 
+        build_coeff_mat = N.mat(N.random.random((num_fields,num_modes)))
+        field_mat = N.mat(N.zeros((num_states,num_fields)))
+        for field_index in range(num_fields):
+            field_mat[:,field_index] = N.random.random((num_states,1))
+        mode_mat = field_mat*build_coeff_mat
+        return field_mat,mode_nums,build_coeff_mat,mode_mat 
         
     
     
@@ -171,17 +171,17 @@ class TestFieldOperations(unittest.TestCase):
         
         Parallel and serial cases need to be tested independently. 
         
-        Many cases are tested for numbers of snapshots, states per snapshot,
-        mode numbers, number of snapshots/modes allowed in memory
+        Many cases are tested for numbers of fields, states per field,
+        mode numbers, number of fields/modes allowed in memory
         simultaneously, and what the indexing scheme is 
         (currently supports any indexing
         scheme, meaning the first mode can be numbered 0, 1, or any integer).
         """
-        num_snaps_list = [1, 15, 40]
+        num_fields_list = [1, 15, 40]
         num_states = 20
         # Test cases where number of modes:
         #   less, equal, more than num_states
-        #   less, equal, more than num_snaps
+        #   less, equal, more than num_fields
         #   less, equal, more than total_num_fields_in_mem
         num_modes_list = [1, 8, 10, 20, 25, 45, \
             int(N.ceil(self.total_num_fields_in_mem / 2.)),\
@@ -189,31 +189,31 @@ class TestFieldOperations(unittest.TestCase):
         index_from_list = [0, 5]
         #mode_path = 'proc'+str(self.fieldOperations.parallelInstance._rank)+'/mode_%03d.txt'
         mode_path = join(self.test_dir, 'mode_%03d.txt')
-        snap_path = join(self.test_dir, 'snap_%03d.txt')
+        field_path = join(self.test_dir, 'field_%03d.txt')
         
-        for num_snaps in num_snaps_list:
+        for num_fields in num_fields_list:
             for num_modes in num_modes_list:
                 for index_from in index_from_list:
                     #generate data and then broadcast to all procs
                     #print '----- new case ----- '
-                    #print 'num_snaps =',num_snaps
+                    #print 'num_fields =',num_fields
                     #print 'num_states =',num_states
                     #print 'num_modes =',num_modes
                     #print 'max_fields_per_node =',max_fields_per_node                          
                     #print 'index_from =',index_from
-                    snap_paths = [snap_path % snap_index \
-                        for snap_index in xrange(num_snaps)]
+                    field_paths = [field_path % field_index \
+                        for field_index in xrange(num_fields)]
 
                     if parallel.is_rank_zero():
-                        snap_mat,mode_nums, build_coeff_mat, true_modes = \
-                          self.generate_snaps_modes(num_states, num_snaps,
+                        field_mat,mode_nums, build_coeff_mat, true_modes = \
+                          self.generate_fields_modes(num_states, num_fields,
                           num_modes, index_from=index_from)
-                        for snap_index,s in enumerate(snap_paths):
-                            util.save_mat_text(snap_mat[:,snap_index], s)
+                        for field_index,s in enumerate(field_paths):
+                            util.save_mat_text(field_mat[:,field_index], s)
                     else:
                         mode_nums = None
                         build_coeff_mat = None
-                        snap_mat = None
+                        field_mat = None
                         true_modes = None
                         mode_paths = None
                     if parallel.is_distributed():
@@ -221,8 +221,8 @@ class TestFieldOperations(unittest.TestCase):
                             mode_nums, root=0)
                         build_coeff_mat = parallel.comm.bcast(
                             build_coeff_mat, root=0)
-                        snap_mat = parallel.comm.bcast(
-                            snap_mat, root=0)
+                        field_mat = parallel.comm.bcast(
+                            field_mat, root=0)
                         true_modes = parallel.comm.bcast(
                             true_modes, root=0)
                     
@@ -240,19 +240,19 @@ class TestFieldOperations(unittest.TestCase):
                     if check_assert_raises:
                         self.assertRaises(ValueError, self.fieldOperations.\
                             _compute_modes, mode_nums, mode_paths, 
-                            snap_paths, build_coeff_mat, index_from=\
+                            field_paths, build_coeff_mat, index_from=\
                             index_from)
                     # If the coeff mat has more rows than there are 
-                    # snapshot paths
-                    elif num_snaps > build_coeff_mat.shape[0]:
+                    # field paths
+                    elif num_fields > build_coeff_mat.shape[0]:
                         self.assertRaises(ValueError, self.fieldOperations.\
                             _compute_modes, mode_nums, mode_paths,
-                            snap_paths, build_coeff_mat, index_from=\
+                            field_paths, build_coeff_mat, index_from=\
                             index_from)
-                    elif num_modes > num_snaps:
+                    elif num_modes > num_fields:
                         self.assertRaises(ValueError,
                           self.fieldOperations._compute_modes, mode_nums,
-                          mode_paths, snap_paths, build_coeff_mat,
+                          mode_paths, field_paths, build_coeff_mat,
                           index_from=index_from)
                     else:
                         # Test the case that only one mode is desired,
@@ -264,7 +264,7 @@ class TestFieldOperations(unittest.TestCase):
                         # Saves modes to files
                         self.fieldOperations._compute_modes(mode_nums, 
                             mode_paths,
-                            snap_paths, build_coeff_mat, 
+                            field_paths, build_coeff_mat, 
                             index_from=index_from)
 
                         # Change back to list so is iterable
@@ -295,56 +295,56 @@ class TestFieldOperations(unittest.TestCase):
         def get_field_as_complex(path):
             return (1 + 1j) * util.load_mat_text(path) 
 
-        num_row_snaps = 4
-        num_col_snaps = 6
+        num_row_fields = 4
+        num_col_fields = 6
         num_states = 7
 
-        row_snap_path = join(self.test_dir, 'row_snap_%03d.txt')
-        col_snap_path = join(self.test_dir, 'col_snap_%03d.txt')
+        row_field_path = join(self.test_dir, 'row_field_%03d.txt')
+        col_field_path = join(self.test_dir, 'col_field_%03d.txt')
         
-        # generate snapshots and save to file, only do on proc 0
+        # generate fields and save to file, only do on proc 0
         parallel.sync()
         if parallel.is_rank_zero():
-            row_snap_mat = N.mat(N.random.random((num_states,
-                num_row_snaps)))
-            col_snap_mat = N.mat(N.random.random((num_states,
-                num_col_snaps)))
-            row_snap_paths = []
-            col_snap_paths = []
-            for snap_index in xrange(num_row_snaps):
-                path = row_snap_path % snap_index
-                util.save_mat_text(row_snap_mat[:,snap_index],path)
-                row_snap_paths.append(path)
-            for snap_index in xrange(num_col_snaps):
-                path = col_snap_path % snap_index
-                util.save_mat_text(col_snap_mat[:,snap_index],path)
-                col_snap_paths.append(path)
+            row_field_mat = N.mat(N.random.random((num_states,
+                num_row_fields)))
+            col_field_mat = N.mat(N.random.random((num_states,
+                num_col_fields)))
+            row_field_paths = []
+            col_field_paths = []
+            for field_index in xrange(num_row_fields):
+                path = row_field_path % field_index
+                util.save_mat_text(row_field_mat[:,field_index],path)
+                row_field_paths.append(path)
+            for field_index in xrange(num_col_fields):
+                path = col_field_path % field_index
+                util.save_mat_text(col_field_mat[:,field_index],path)
+                col_field_paths.append(path)
         else:
-            row_snap_mat = None
-            col_snap_mat = None
-            row_snap_paths = None
-            col_snap_paths = None
+            row_field_mat = None
+            col_field_mat = None
+            row_field_paths = None
+            col_field_paths = None
         if parallel.is_distributed():
-            row_snap_mat = parallel.comm.bcast(row_snap_mat, root=0)
-            col_snap_mat = parallel.comm.bcast(col_snap_mat, root=0)
-            row_snap_paths = parallel.comm.bcast(row_snap_paths, root=0)
-            col_snap_paths = parallel.comm.bcast(col_snap_paths, root=0)
+            row_field_mat = parallel.comm.bcast(row_field_mat, root=0)
+            col_field_mat = parallel.comm.bcast(col_field_mat, root=0)
+            row_field_paths = parallel.comm.bcast(row_field_paths, root=0)
+            col_field_paths = parallel.comm.bcast(col_field_paths, root=0)
 
         # If number of rows/cols is 1, test case that a string, not
         # a list, is passed in
-        if len(row_snap_paths) == 1:
-            row_snap_paths = row_snap_paths[0]
-        if len(col_snap_paths) == 1:
-            col_snap_paths = col_snap_paths[0]
+        if len(row_field_paths) == 1:
+            row_field_paths = row_field_paths[0]
+        if len(col_field_paths) == 1:
+            col_field_paths = col_field_paths[0]
     
         # Comptue inner product matrix and check type
         for load, type in [(get_field_as_complex, complex), (util.\
             load_mat_text, float)]:
             self.fieldOperations.get_field = load
             inner_product_mat = self.fieldOperations.compute_inner_product_mat(
-                row_snap_paths, col_snap_paths)
+                row_field_paths, col_field_paths)
             symm_inner_product_mat = self.fieldOperations.\
-                compute_symmetric_inner_product_mat(row_snap_paths)
+                compute_symmetric_inner_product_mat(row_field_paths)
             self.assertEqual(inner_product_mat.dtype, type)
             self.assertEqual(symm_inner_product_mat.dtype, type)
 
@@ -358,9 +358,9 @@ class TestFieldOperations(unittest.TestCase):
         """ 
         def assert_equal_mat_products(mat1, mat2, paths1, paths2):
             # Path list may actually be a string, in which case covert to list
-            if isinstance(paths1, str):
+            if not isinstance(paths1, list):
                 paths1 = [paths1]
-            if isinstance(paths2, str):
+            if not isinstance(paths2, list):
                 paths2 = [paths2]
 
             # True inner product matrix
@@ -387,62 +387,63 @@ class TestFieldOperations(unittest.TestCase):
                 N.testing.assert_allclose(
                     product_computed_as_symm_mat, product_true)
             
-        num_row_snaps_list =[1, int(round(self.total_num_fields_in_mem / 2.)), self.\
-            total_num_fields_in_mem, self.total_num_fields_in_mem *2]
-        num_col_snaps_list = num_row_snaps_list
+        num_row_fields_list =[1, int(round(self.total_num_fields_in_mem / 2.)), self.\
+            total_num_fields_in_mem, self.total_num_fields_in_mem *2,
+            parallel.get_num_procs()+1]
+        num_col_fields_list = num_row_fields_list
         num_states = 6
 
-        row_snap_path = join(self.test_dir, 'row_snap_%03d.txt')
-        col_snap_path = join(self.test_dir, 'col_snap_%03d.txt')
+        row_field_path = join(self.test_dir, 'row_field_%03d.txt')
+        col_field_path = join(self.test_dir, 'col_field_%03d.txt')
         
-        for num_row_snaps in num_row_snaps_list:
-            for num_col_snaps in num_col_snaps_list:
-                # generate snapshots and save to file, only do on proc 0
+        for num_row_fields in num_row_fields_list:
+            for num_col_fields in num_col_fields_list:
+                # generate fields and save to file, only do on proc 0
                 parallel.sync()
                 if parallel.is_rank_zero():
-                    row_snap_mat = N.mat(N.random.random((num_states,
-                        num_row_snaps)))
-                    col_snap_mat = N.mat(N.random.random((num_states,
-                        num_col_snaps)))
-                    row_snap_paths = []
-                    col_snap_paths = []
-                    for snap_index in xrange(num_row_snaps):
-                        path = row_snap_path % snap_index
-                        util.save_mat_text(row_snap_mat[:,snap_index],path)
-                        row_snap_paths.append(path)
-                    for snap_index in xrange(num_col_snaps):
-                        path = col_snap_path % snap_index
-                        util.save_mat_text(col_snap_mat[:,snap_index],path)
-                        col_snap_paths.append(path)
+                    row_field_mat = N.mat(N.random.random((num_states,
+                        num_row_fields)))
+                    col_field_mat = N.mat(N.random.random((num_states,
+                        num_col_fields)))
+                    row_field_paths = []
+                    col_field_paths = []
+                    for field_index in xrange(num_row_fields):
+                        path = row_field_path % field_index
+                        util.save_mat_text(row_field_mat[:,field_index],path)
+                        row_field_paths.append(path)
+                    for field_index in xrange(num_col_fields):
+                        path = col_field_path % field_index
+                        util.save_mat_text(col_field_mat[:,field_index],path)
+                        col_field_paths.append(path)
                 else:
-                    row_snap_mat = None
-                    col_snap_mat = None
-                    row_snap_paths = None
-                    col_snap_paths = None
+                    row_field_mat = None
+                    col_field_mat = None
+                    row_field_paths = None
+                    col_field_paths = None
                 if parallel.is_distributed():
-                    row_snap_mat = parallel.comm.bcast(row_snap_mat, root=0)
-                    col_snap_mat = parallel.comm.bcast(col_snap_mat, root=0)
-                    row_snap_paths = parallel.comm.bcast(row_snap_paths, root=0)
-                    col_snap_paths = parallel.comm.bcast(col_snap_paths, root=0)
+                    row_field_mat = parallel.comm.bcast(row_field_mat, root=0)
+                    col_field_mat = parallel.comm.bcast(col_field_mat, root=0)
+                    row_field_paths = parallel.comm.bcast(row_field_paths, root=0)
+                    col_field_paths = parallel.comm.bcast(col_field_paths, root=0)
 
                 # If number of rows/cols is 1, test case that a string, not
                 # a list, is passed in
-                if len(row_snap_paths) == 1:
-                    row_snap_paths = row_snap_paths[0]
-                if len(col_snap_paths) == 1:
-                    col_snap_paths = col_snap_paths[0]
+                if len(row_field_paths) == 1:
+                    row_field_paths = row_field_paths[0]
+                if len(col_field_paths) == 1:
+                    col_field_paths = col_field_paths[0]
 
-                # Test different rows and cols snapshots
-                assert_equal_mat_products(row_snap_mat.T, col_snap_mat,
-                    row_snap_paths, col_snap_paths)
+                # Test different rows and cols fields
+                assert_equal_mat_products(row_field_mat.T, col_field_mat,
+                    row_field_paths, col_field_paths)
                 
                 # Test with only the row data, to ensure nothing is
                 # goes wrong when the same list is used twice
                 # (potential memory issues, or lists may accidentally
                 # get altered).  Also, test symmetric computation
                 # method.
-                assert_equal_mat_products(row_snap_mat.T, row_snap_mat,
-                    row_snap_paths, row_snap_paths)
+                assert_equal_mat_products(row_field_mat.T, row_field_mat,
+                    row_field_paths, row_field_paths)
                         
 if __name__=='__main__':
     unittest.main()    

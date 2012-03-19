@@ -235,33 +235,31 @@ class FieldOperations(object):
                     '%.1f minutes' % (num_rows * num_cols * duration / 
                     (60. * self.parallel.get_num_procs())))
         del row_field, col_field
+        
+        # convenience
+        rank = self.parallel.get_rank()
 
         # num_cols_per_proc_chunk is the number of cols each proc gets at once        
         num_cols_per_proc_chunk = 1
         num_rows_per_proc_chunk = self.max_fields_per_proc - num_cols_per_proc_chunk         
         
         # Determine how the retrieving and inner products will be split up.
-        # These variables are the total number of chunks of data to be read 
-        # across all nodes and processors
-        num_col_chunks = int(N.ceil(
-                (1.*num_cols) / (num_cols_per_proc_chunk *
-                 self.parallel.get_num_procs())))
-        num_row_chunks = int(N.ceil(
-                (1.*num_rows) / (num_rows_per_proc_chunk * 
-                 self.parallel.get_num_procs())))
+        row_tasks = self.parallel.find_assignments(range(num_rows))
+        col_tasks = self.parallel.find_assignments(range(num_cols))
+           
+        # Find max number of col tasks among all processors
+        max_num_row_tasks = max([len(tasks) for tasks in row_tasks])
+        max_num_col_tasks = max([len(tasks) for tasks in col_tasks])
         
-        
-        ### MAYBE DON'T USE THIS, IT EVENLY DISTRIBUTES CHUNKSIZE, WHICH WAS
-        ### ALREADY SET ABOVE TO BE num_colsPERPROCCHUNK * NUMPROCS
-        # These variables are the number of cols and rows in each chunk of data.
-        num_cols_per_chunk = int(N.ceil(num_cols * 1. / num_col_chunks))
-        num_rows_per_chunk = int(N.ceil(num_rows * 1. / num_row_chunks))
-
-        if num_row_chunks > 1:
+        # These variables are the number of iters through loops that retrieve ("get")
+        # row and column fields.
+        num_row_get_loops = int(N.ceil(max_num_row_tasks*1./num_rows_per_proc_chunk))
+        num_col_get_loops = int(N.ceil(max_num_col_tasks*1./num_cols_per_proc_chunk))
+        if num_row_get_loops > 1:
             self.print_msg('Warning: The column fields, of which '
                     'there are %d, will be read %d times each. Increase '
                     'number of nodes or max_fields_per_node to reduce redundant '
-                    '"get_fields"s and get a big speedup.' % (num_cols,num_row_chunks))
+                    '"get_fields"s and get a big speedup.'%(num_cols,num_row_get_loops))
         
         # To find all of the inner product mat chunks, each 
         # processor has a full IP_mat with size
@@ -272,57 +270,50 @@ class FieldOperations(object):
         # than trying to figure out the size of each chunk mat for allgather.
         # The efficiency is not an issue, the size of the mats
         # are small compared to the size of the fields for large data.
-        
         IP_mat_chunk = N.mat(N.zeros((num_rows, num_cols), dtype=IP_type))
-        for start_row_index in xrange(0, num_rows, num_rows_per_chunk):
-            end_row_index = min(num_rows, start_row_index + num_rows_per_chunk)
-            # Convenience variable containing the rows which this rank is
-            # responsible for.
-            proc_row_tasks = self.parallel.find_assignments(range(
-                   start_row_index, end_row_index))[self.parallel.get_rank()]
-            if len(proc_row_tasks) != 0:
-                row_fields = [self.get_field(row_source) for row_source in 
-                    row_field_sources[proc_row_tasks[0]:
-                    proc_row_tasks[-1] + 1]]
+        for row_get_index in xrange(num_row_get_loops):
+            if len(row_tasks[rank]) > 0:
+                start_row_index = min(row_tasks[rank][0] + 
+                    row_get_index*num_rows_per_proc_chunk, row_tasks[rank][-1]+1)
+                end_row_index = min(row_tasks[rank][-1]+1, 
+                    start_row_index + num_rows_per_proc_chunk)
+                row_fields = [self.get_field(row_field_source) for row_field_source in 
+                    row_field_sources[start_row_index:end_row_index]]
             else:
                 row_fields = []
-            for start_col_index in xrange(0, num_cols, num_cols_per_chunk):
-                end_col_index = min(
-                    start_col_index + num_cols_per_chunk, num_cols)
-                proc_col_tasks = self.parallel.find_assignments(range(
-                    start_col_index, end_col_index))[self.parallel.get_rank()]
+
+            for col_get_index in xrange(num_col_get_loops):
+                if len(col_tasks[rank]) > 0:
+                    start_col_index = min(col_tasks[rank][0] + 
+                        col_get_index*num_cols_per_proc_chunk, col_tasks[rank][-1]+1)
+                    end_col_index = min(col_tasks[rank][-1]+1, 
+                        start_col_index + num_cols_per_proc_chunk)
+                else:
+                    start_col_index = 0
+                    end_col_index = 0
                 # Pass the col fields to proc with rank -> mod(rank+1,numProcs) 
                 # Must do this for each processor, until data makes a circle
                 col_fields_recv = (None, None)
-                if len(proc_col_tasks) > 0:
-                    col_indices = range(proc_col_tasks[0], proc_col_tasks[-1]+1)
-                else:
-                    col_indices = []
-                    
-                for num_passes in xrange(self.parallel.get_num_procs()):
+                col_indices = range(start_col_index, end_col_index)
+                for pass_index in xrange(self.parallel.get_num_procs()):
+                    #if rank==0: print 'starting pass index=',pass_index
                     # If on the first pass, get the col fields, no send/recv
                     # This is all that is called when in serial, loop iterates
                     # once.
-                    if num_passes == 0:
-                        if len(col_indices) > 0:
-                            col_fields = [self.get_field(col_source) 
-                                for col_source in col_field_sources[col_indices[0]:
-                                    col_indices[-1] + 1]]
-                        else:
-                            col_fields = []
+                    if pass_index == 0:
+                        col_fields = [self.get_field(col_source) 
+                            for col_source in col_field_sources[start_col_index:
+                            end_col_index]]
                     else:
-                        # Determine whom to communicate with
-                        dest = (self.parallel.get_rank() + 1) % \
-                             self.parallel.get_num_procs()
-                        source = (self.parallel.get_rank() - 1) % \
-                            self.parallel.get_num_procs()    
+                        # Determine with whom to communicate
+                        dest = (rank + 1) % self.parallel.get_num_procs()
+                        source = (rank - 1)%self.parallel.get_num_procs()    
                             
-                        #Create unique tag based on ranks
-                        send_tag = self.parallel.get_rank() * \
+                        # Create unique tag based on send/recv ranks
+                        send_tag = rank * \
                                 (self.parallel.get_num_procs() + 1) + dest
                         recv_tag = source * \
-                            (self.parallel.get_num_procs() + 1) + \
-                            self.parallel.get_rank()
+                            (self.parallel.get_num_procs() + 1) + rank
                         
                         # Collect data and send/receive
                         col_fields_send = (col_fields, col_indices)    
@@ -338,14 +329,14 @@ class FieldOperations(object):
                     # Compute the IPs for this set of data col_indices stores
                     # the indices of the IP_mat_chunk columns to be
                     # filled in.
-                    if len(proc_row_tasks) > 0:
-                        for row_index in xrange(proc_row_tasks[0],
-                            proc_row_tasks[-1]+1):
+                    if len(row_fields) > 0:
+                        for row_index in xrange(start_row_index, end_row_index):
                             for col_field_index,col_field in enumerate(col_fields):
                                 IP_mat_chunk[row_index, col_indices[
                                     col_field_index]] = self.inner_product(
-                                    row_fields[row_index - proc_row_tasks[0]],
+                                    row_fields[row_index - start_row_index],
                                     col_field)
+                    
                 # Clear the retrieved column fields after done this chunk
                 del col_fields
             # Completed a chunk of rows and all columns on all processors.
@@ -723,14 +714,14 @@ class FieldOperations(object):
         
         Scaling is:
         
-          num gets / proc = n_s/(n_p*max) * n_b/n_p
+          num gets / proc = n_s/(n_p*(max-1)) * n_b/n_p
           
-          passes/proc = n_s/(n_p*max) * (n_b*(n_p-1)/n_p)
+          passes/proc = (n_p-1) * n_s/(n_p*(max-1)) * (n_b/n_p)
           
           scalar multiplies/proc = n_s*n_b/n_p
           
         Where n_s is number of sum fields, n_b is number of basis fields,
-        n_p is number of processors, max = max_fields_per_node-1.
+        n_p is number of processors, max = max_fields_per_node.
         """
         if self.put_field is None:
             raise util.UndefinedError('put_field is undefined')
@@ -755,66 +746,70 @@ class FieldOperations(object):
         if num_sums < field_coeff_mat.shape[1] and self.parallel.is_rank_zero():
             print 'Warning: fewer outputs than rows in the coeff matrix'
             print '  some cols of coeff matrix will not be used'
-        
+
+        # convencience
+        rank = self.parallel.get_rank()        
+
         # num_bases_per_proc_chunk is the number of bases each proc gets at once        
         num_bases_per_proc_chunk = 1
-        num_sums_per_proc_chunk = \
-            self.max_fields_per_proc - num_bases_per_proc_chunk         
+        num_sums_per_proc_chunk = self.max_fields_per_proc - \
+            num_bases_per_proc_chunk         
         
-        # This step can be done by find_assignments as well. Really what
-        # this is doing is dividing the work into num*Chunks pieces.
-        # find_assignments should take an optional arg of numWorkers or numPieces.
-        # Determine how the "get"ing and scalar multiplies will be split up.
-        num_basis_chunks = int(N.ceil(\
-            num_bases*1./(num_bases_per_proc_chunk * 
-            self.parallel.get_num_procs())))
-        num_sum_chunks = int(N.ceil(
-            num_sums*1./(num_sums_per_proc_chunk * 
-            self.parallel.get_num_procs())))
-        
-        num_bases_per_chunk = int(N.ceil(num_bases*1./num_basis_chunks))
-        num_sums_per_chunk = int(N.ceil(num_sums*1./num_sum_chunks))
+        basis_tasks = self.parallel.find_assignments(range(num_bases))
+        sum_tasks = self.parallel.find_assignments(range(num_sums))
 
-        if num_sum_chunks > 1:
-            self.print_msg('Warning: The basis fields (fields), ' 
+        # Find max number tasks among all processors
+        max_num_basis_tasks = max([len(tasks) for tasks in basis_tasks])
+        max_num_sum_tasks = max([len(tasks) for tasks in sum_tasks])
+        
+        # These variables are the number of iters through loops that retrieve ("get")
+        # and "put" basis and sum fields.
+        num_basis_get_iters = int(N.ceil(max_num_basis_tasks*1./num_bases_per_proc_chunk))
+        num_sum_put_iters = int(N.ceil(max_num_sum_tasks*1./num_sums_per_proc_chunk))
+        if num_sum_put_iters > 1:
+            self.print_msg('Warning: The basis fields, ' 
                 'of which there are %d, will be retrieved %d times each. '
                 'If possible, increase number of nodes or '
                 'max_fields_per_node to reduce redundant retrieves and get a '
-                'big speedup.'%(num_bases, num_sum_chunks))
-               
-        for start_sum_index in xrange(0, num_sums, num_sums_per_chunk):
-            end_sum_index = min(start_sum_index+num_sums_per_chunk, num_sums)
-            sum_assignments = self.parallel.find_assignments(
-                range(start_sum_index, end_sum_index))
-            proc_sum_tasks = sum_assignments[self.parallel.get_rank()]
-            # Create empty list on each processor
-            sum_layers = [None for i in xrange(
-                len(sum_assignments[self.parallel.get_rank()]))]
-            
-            for start_basis_index in xrange(0, num_bases, num_bases_per_chunk):
-                end_basis_index = min(
-                    start_basis_index + num_bases_per_chunk, num_bases)
-                basis_assignments = self.parallel.find_assignments(
-                    range(start_basis_index, end_basis_index))
-                proc_basis_tasks = basis_assignments[self.parallel.get_rank()]
+                'big speedup.'%(num_bases, num_sum_put_iters))
+        
+        for sum_put_index in xrange(num_sum_put_iters):
+            if len(sum_tasks[rank]) > 0:
+                start_sum_index = min(sum_tasks[rank][0] + 
+                    sum_put_index*num_sums_per_proc_chunk, sum_tasks[rank][-1]+1)
+                end_sum_index = min(start_sum_index+num_sums_per_proc_chunk,
+                    sum_tasks[rank][-1]+1)
+                # Create empty list on each processor
+                sum_layers = [None for i in xrange(start_sum_index, end_sum_index)]
+            else:
+                start_sum_index = 0
+                end_sum_index = 0
+                sum_layers = []
+
+            for basis_get_index in xrange(num_basis_get_iters):
+                if len(basis_tasks[rank]) > 0:    
+                    start_basis_index = min(basis_tasks[rank][0] + 
+                        basis_get_index*num_bases_per_proc_chunk, basis_tasks[rank][-1]+1)
+                    end_basis_index = min(start_basis_index+num_bases_per_proc_chunk,
+                        basis_tasks[rank][-1]+1)
+                    basis_indices = range(start_basis_index, end_basis_index)
+                else:
+                    basis_indices = []
+                
                 # Pass the basis fields to proc with rank -> mod(rank+1,numProcs) 
                 # Must do this for each processor, until data makes a circle
                 basis_fields_recv = (None, None)
-                if len(proc_basis_tasks) > 0:
-                    basis_indices = range(proc_basis_tasks[0], proc_basis_tasks[-1]+1)
-                else:
-                    # this proc isn't responsible for retrieving any basis fields
-                    basis_indices = []
-                    
-                for num_passes in xrange(self.parallel.get_num_procs()):
+
+                for pass_index in xrange(self.parallel.get_num_procs()):
                     # If on the first pass, retrieve the basis fields, no send/recv
                     # This is all that is called when in serial, loop iterates once.
-                    if num_passes == 0:
+                    if pass_index == 0:
                         if len(basis_indices) > 0:
                             basis_fields = [self.get_field(basis_source) \
                                 for basis_source in basis_field_sources[
                                     basis_indices[0]:basis_indices[-1]+1]]
-                        else: basis_fields = []
+                        else:
+                            basis_fields = []
                     else:
                         # Figure out whom to communicate with
                         source = (self.parallel.get_rank()-1) % \
@@ -837,25 +832,27 @@ class FieldOperations(object):
                     
                     # Compute the scalar multiplications for this set of data
                     # basis_indices stores the indices of the field_coeff_mat to use.
-                    
-                    for sum_index in xrange(len(proc_sum_tasks)):
+                    for sum_index in xrange(start_sum_index, end_sum_index):
                         for basis_index,basis_field in enumerate(basis_fields):
                             sum_layer = basis_field*\
                                 field_coeff_mat[basis_indices[basis_index],\
-                                sum_index+proc_sum_tasks[0]]
-                            if sum_layers[sum_index] is None:
-                                sum_layers[sum_index] = sum_layer
+                                sum_index]
+                            if sum_layers[sum_index-start_sum_index] is None:
+                                sum_layers[sum_index-start_sum_index] = sum_layer
                             else:
-                                sum_layers[sum_index] += sum_layer
+                                sum_layers[sum_index-start_sum_index] += sum_layer
+
             # Completed this set of sum fields, puts them to memory or file
-            for sum_index in xrange(len(proc_sum_tasks)):
-                self.put_field(sum_layers[sum_index],\
-                    sum_field_dests[sum_index+proc_sum_tasks[0]])
+            for sum_index in xrange(start_sum_index, end_sum_index):
+                self.put_field(sum_layers[sum_index-start_sum_index],\
+                    sum_field_dests[sum_index])
+            del sum_layers
             if (T.time() - self.prev_print_time) > self.print_interval:    
                 self.print_msg('Completed %.1f%% of sum fields, %d of %d' %
                     (end_sum_index*100./num_sums, end_sum_index, num_sums), 
                     output_channel = sys.stderr)
                 self.prev_print_time = T.time()
+            
 
         self.parallel.sync() # ensure that all procs leave function at same time
 
