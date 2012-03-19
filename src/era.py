@@ -1,4 +1,4 @@
-
+"""Functions and classes for ERA models"""
 import numpy as N
 import util
 

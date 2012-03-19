@@ -1,7 +1,7 @@
 
 """A collection of classes that make it even simpler to use modred.
 
-Everything is done in memory.
+Everything is done in memory, and methods return modes and matrices.
 """
 
 import numpy as N
@@ -33,10 +33,11 @@ class SimpleUsePOD(object):
     
     Usage::
       
-      my_POD = SimpleUsePOD()
-      my_POD.set_fields(fields)
+      # Put your fields into columns of an array, "fields"
+      my_POD = SimpleUsePOD(fields=fields)
       num_modes = 20
       modes = my_POD.compute_modes(num_modes)
+      # To look at singulaar values:
       sing_vals = my_POD.sing_vals
     
     More fine-grain control is available through the other methods.
@@ -45,13 +46,16 @@ class SimpleUsePOD(object):
     ``put_field`` functions that get/put fields from/into columns of numpy arrays.
     By default, the default inner product is ``(fiedl1*field2.conj()).sum()``.
     """
-    def __init__(self, inner_product=util.inner_product, verbose=True):
+    def __init__(self, inner_product=util.inner_product, verbose=True, 
+        fields=None):
         self.inner_product = inner_product
         self.verbose = verbose
         self.POD = pod.POD(inner_product=inner_product, get_field=get_field,
             put_field=put_field, max_fields_per_node=1000, verbose=verbose)
         self._called_compute_decomp = False
-        
+        if fields is not None:
+            self.set_fields(fields)
+            
         
     def set_fields(self, fields):
         """Sets the fields used in POD.
@@ -118,9 +122,9 @@ class SimpleUseBPOD(object):
     This class wraps the BPOD class so that modes and matrices are returned. 
     
     Usage::
-      
-      my_BPOD = SimpleUseBPOD()
-      my_BPOD.set_fields(fields)
+
+      # Put your fields into columns of arrays direct_fields and adjoint_fields
+      my_BPOD = SimpleUseBPOD(direct_fields=direct_fields, adjoint_fields=adjoint_fields)
       num_modes = 20
       direct_modes = my_BPOD.compute_direct_modes(num_modes)
       adjoint_modes = my_BPOD.compute_adjoing_modes(num_modes)
@@ -132,12 +136,17 @@ class SimpleUseBPOD(object):
     ``put_field`` functions that get/put fields from/into columns of numpy arrays.
     By default, the default inner product is ``(fiedl1*field2.conj()).sum()``.
     """    
-    def __init__(self, inner_product=util.inner_product, verbose=True):
+    def __init__(self, inner_product=util.inner_product, verbose=True,
+        direct_fields=None, adjoint_fields=None):
         self.inner_product = inner_product
         self.BPOD = bpod.BPOD(inner_product=inner_product, get_field=get_field,
             put_field=put_field, max_fields_per_node=1000, verbose=verbose)
         self._called_compute_decomp = False
-        
+        if direct_fields is not None:
+            self.set_direct_fields(direct_fields)
+        if adjoint_fields is not None:
+            self.set_adjoint_fields(adjoint_fields)
+            
     def set_direct_fields(self, direct_fields):
         """Sets the direct fields.
         
@@ -237,9 +246,9 @@ class SimpleUseDMD(object):
     This class wraps the DMD class so that modes and matrices are returned. 
     
     Usage::
-      
-      my_DMD = SimpleUsePOD()
-      my_DMD.set_fields(fields)
+
+      # Put your fields into columns of an array, "fields"
+      my_DMD = SimpleUseDMD(fields)
       num_modes = 20
       modes = my_DMD.compute_modes(num_modes)
       ritz_vals = my_DMD.ritz_vals
@@ -250,11 +259,13 @@ class SimpleUseDMD(object):
     ``put_field`` functions that get/put fields from/into columns of numpy arrays.
     By default, the default inner product is ``(fiedl1*field2.conj()).sum()``.
     """    
-    def __init__(self, inner_product=util.inner_product, verbose=True):
+    def __init__(self, inner_product=util.inner_product, verbose=True, fields=None):
         self.inner_product = inner_product
         self.DMD = dmd.DMD(inner_product=inner_product, get_field=get_field,
             put_field=put_field, max_fields_per_node=1000, verbose=verbose)
         self._called_compute_decomp = False
+        if fields is not None:
+            self.set_fields(fields)
         
     def set_fields(self, fields):
         """Sets the fields used in DMD.

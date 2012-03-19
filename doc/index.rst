@@ -9,7 +9,7 @@ Welcome to modred's documentation!
 Contents:
 
 .. toctree::
-   :maxdepth: 0
+   :maxdepth: 1
    
    intro
    
@@ -19,16 +19,18 @@ Contents:
    
    bpod
    
-   dmd
+   bpodltirom
    
-   fieldoperations
+   dmd
+
+   simpleuse
 
    era
      
    okid
    
-   bpodltirom
-   
+   fieldoperations
+
    parallel
    
    util

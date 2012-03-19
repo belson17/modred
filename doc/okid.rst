@@ -1,6 +1,6 @@
-OKID Class
-********** 
+OKID 
+***** 
 
 .. automodule:: okid
-   	:members:
+   :members:
 

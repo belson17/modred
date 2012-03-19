@@ -1,4 +1,3 @@
-
 import numpy as N
 import util
 
@@ -25,13 +24,13 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
       - Use a long tail for your input/output data.
       - In the tail, have input=0.
       - If necessary, artificially append your data with zero input and exponentially decaying
-          output.
-      - Estimate fewer Markov parameters if oscillations are seen, typically less than 
-          half of the number of samples.
-      - Data with more than one input is the most sensitive and hardest to work with. The
-          number of outputs tends not to require one to be as careful picking parameters.
+        output.
+      - Estimate fewer Markov parameters if oscillations are seen, typically 1/3--1/2 
+        of the number of samples.
+      - Data with more than one input is the most sensitive and hardest to work with. 
+        More than one input tends not to complicate matters.
           
-    The original paper is 1991 NASA TM-104069 by Juang, Phan, Horta and Longman
+    The original paper is 1991 NASA TM-104069 by Juang, Phan, Horta and Longman.
     Some comments and variables refer to notation from this paper.
     """    
     # Force arrays to be 2 dimensional

@@ -145,13 +145,13 @@ class FieldOperations(object):
         processors are done with all of their row chunks. If there are 2
         processors::
            
-                | x o  |
-          rank0 | x o  |
-                | x o  |
+                | x o |
+          rank0 | x o |
+                | x o |
             -
-                | o  x |
-          rank1 | o  x |
-                | o  x |
+                | o x |
+          rank1 | o x |
+                | o x |
         
         Rank 0 reads column 0 and fills out IPs for all rows in a row
         chunk. Here there is only one row chunk for each processor for

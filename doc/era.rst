@@ -1,5 +1,5 @@
-ERA Class
-********** 
+ERA 
+**** 
 
 .. automodule:: era
    :members:
