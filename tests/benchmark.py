@@ -16,7 +16,7 @@ Then in python, do this to view the results::
   pstats.Stats(<path_to_output_file>).strip_dirs().sort_stats('cumulative').\
       print_stats(<number_significant_lines_to_print>)
       
-bencmark.py is to be used after installing modred.
+benchmark.py is to be used after installing modred.
 """
 import os
 from os.path import join

@@ -1,240 +1,390 @@
 
-"""Script which makes plots of scaling. To use this, must copy in the
+"""Scrcasest which makes plots of scaling. To use this, must copy in the
 scaling times from profiling benchmark.py with cProfile."""
 
 import numpy as N
 import matplotlib.pyplot as PLT
 
-import helper
-helper.add_src_to_path()
-
-
 class Scaling(object):
     def __init__(self):
         pass
 
-def lin_n1p_rainier():
-    """Scaling of lin_combine on rainier, one node"""
-    lin = [Scaling() for i in range(8)]
-    lin[0].total = 359.863
-    lin[0].loads = 247.751
-    lin[0].addmult = 0.
-    lin[0].sendrecvs = 0.
+def lin():
+    """Scaling of lin_combine on della, max procs/node (12)"""
+    cases = []
     
-    lin[1].total = 192.978
-    lin[1].loads = 127.519
-    lin[1].addmult = 0.
-    lin[1].sendrecvs = 4.464 + 4.164
+    s = Scaling()
+    s.total = 2711.155
+    s.loads = 2616.031
+    s.addmult = 0.
+    s.sends = 0
+    s.recvs = 0.
+    s.barriers=0
+    s.workers = 1
+    cases.append(s)
+       
+    s = Scaling()
+    s.total = 492.035
+    s.loads = 249.827
+    s.addmult = 0
+    s.sends = 14.359
+    s.recvs = 134.804
+    s.barriers = 57.284
+    s.workers = 6
+    cases.append(s)
     
-    lin[2].total = 148.069
-    lin[2].loads = 93.570
-    lin[2].addmult = 0
-    lin[2].sendrecvs = 7.566 + 5.773
+    s = Scaling()
+    s.total = 183.618
+    s.loads = 119.532
+    s.addmult = 0
+    s.sends = 12.215
+    s.recvs = 16.438
+    s.barriers = 12.973
+    s.workers = 12
+    cases.append(s)
     
-    lin[3].total = 117.497
-    lin[3].loads = 71.321
-    lin[3].addmult = 0
-    lin[3].sendrecvs = 8.933 +6.279
+    s = Scaling()
+    s.total = 57.529
+    s.loads = 24.666
+    s.addmult = 0
+    s.sends = 5.794
+    s.recvs = 5.284
+    s.barriers = 7.334
+    s.workers = 24
+    cases.append(s)
     
-    lin[4].total = 98.331
-    lin[4].loads = 57.303
-    lin[4].addmult = 15.239
-    lin[4].sendrecvs = 8.420 +6.194
+    s = Scaling()
+    s.total = 30.213
+    s.loads = 9.525
+    s.addmult = 0
+    s.sends = 3.859
+    s.recvs = 5.831
+    s.barriers = 4.921
+    s.workers = 36
+    cases.append(s)
     
-    lin[5].total = 95.954
-    lin[5].loads = 51.473
-    lin[5].addmult = 0
-    lin[5].sendrecvs = 13.398 + 7.144
+    s = Scaling()
+    s.total = 18.126
+    s.loads = 3.888
+    s.addmult = 0
+    s.sends = 2.201
+    s.recvs =3.875
+    s.barriers = 3.928
+    s.workers = 48
+    cases.append(s)
     
-    lin[6].total = 87.699
-    lin[6].loads = 45.063
-    lin[6].addmult = 0
-    lin[6].sendrecvs = 11.610 +8.006
+    """
+    s = Scaling()
+    s.total = 18.126
+    s.loads = 3.888
+    s.addmult = 0
+    s.sends = 2.201
+    s.recvs =3.875
+    s.barriers = 3.928
+    s.workers = 60
+    cases.append(s)
     
-    lin[7].total = 89.385
-    lin[7].loads = 42.535
-    lin[7].addmult = 0
-    lin[7].sendrecvs =16.788 + 8.418
+    s = Scaling()
+    s.total = 18.126
+    s.loads = 3.888
+    s.addmult = 0
+    s.sends = 2.201
+    s.recvs =3.875
+    s.barriers = 3.928
+    s.workers = 72
+    cases.append(s)
     
+    s = Scaling()
+    s.total = 18.126
+    s.loads = 3.888
+    s.addmult = 0
+    s.sends = 2.201
+    s.recvs =3.875
+    s.barriers = 3.928
+    s.workers = 84
+    cases.append(s)
+    
+    s = Scaling()
+    s.total = 18.126
+    s.loads = 3.888
+    s.addmult = 0
+    s.sends = 2.201
+    s.recvs =3.875
+    s.barriers = 3.928
+    s.workers = 96
+    cases.append(s)
+    """
+    
+    
+    
+    workers = N.array([c.workers for c in cases])
+    
+    # Speedup plot
     PLT.figure()
     width = .4
-    numProcs = 8
-    PLT.plot(N.arange(1,numProcs+1), lin[0].total/N.arange(1,numProcs+1),'k--')
-    PLT.plot(1+N.arange(numProcs),[lin[i].total for i in range(numProcs)],'r--')
-    for i in range(numProcs):
-        bottom = 0
-        PLT.bar(i+1, lin[i].sendrecvs,width=width,bottom=bottom,color='r')
-        bottom += lin[i].sendrecvs
-        #PLT.bar(i+1, lin[i].addmult,width=width,bottom=bottom,color='b')
-        #bottom+=lin[i].addmult
-        PLT.bar(i+1, lin[i].loads,width=width,bottom=bottom,color='g')
-        bottom+=lin[i].loads
-        PLT.bar(i+1, lin[i].total - bottom,width=width,bottom=bottom,color='k')
-    PLT.legend(['linear','measured','send/recvs','loads','other'])
-    PLT.xlabel('number of processors/node')
-    PLT.ylabel('seconds per processor')
-    PLT.savefig('scaling_lin_n1p_rainier.eps')
-    PLT.show()    
+    PLT.hold(True)
+    PLT.plot(workers, workers,'k-')
+    PLT.plot(workers, [cases[0].total/c.total for c in cases],'ro-')
+    PLT.xlabel('Workers')
+    PLT.ylabel('Speedup')
+    PLT.legend(['Linear','Measured'])
+    PLT.savefig('lin_combine_speedup_n1.eps')
     
-
-
-def ip_n1p_rainier():
-    """Scaling of ip_mat on rainier, one node"""
-    ip = [Scaling() for i in range(8)]
-    ip[0].total = 284.086
-    ip[0].loads = 199.399
-    ip[0].ips = 75.034
-    ip[0].sendrecvs = 0.
-    
-    ip[1].total = 158.920
-    ip[1].loads = 108.425
-    ip[1].ips = 37.661
-    ip[1].sendrecvs = 3.264 + 3.121
-    
-    ip[2].total = 119.216
-    ip[2].loads = 75.131
-    ip[2].ips = 27.425
-    ip[2].sendrecvs = 8.646 + 6.346
-    
-    ip[3].total = 95.416
-    ip[3].loads = 58.081
-    ip[3].ips = 19.615
-    ip[3].sendrecvs = 7.398 +5.031
-    
-    ip[4].total = 78.554
-    ip[4].loads = 46.082
-    ip[4].ips = 15.239
-    ip[4].sendrecvs = 7.278 +5.143
-    
-    ip[5].total = 78.310
-    ip[5].loads = 46.695
-    ip[5].ips = 13.159
-    ip[5].sendrecvs = 7.286 + 4.484
-    
-    ip[6].total = 69.798
-    ip[6].loads = 37.203
-    ip[6].ips = 12.181
-    ip[6].sendrecvs = 8.518 + 6.627
-    
-    ip[7].total = 67.698
-    ip[7].loads = 34.888
-    ip[7].ips = 10.658
-    ip[7].sendrecvs =10.069 + 6.906
-    
+    # Time spent breakdown
+    """
     PLT.figure()
-    width = .4
-    numProcs = 8
-    PLT.plot(N.arange(1,numProcs+1), ip[0].total/N.arange(1,numProcs+1),'k--')
-    PLT.plot(1+N.arange(numProcs),[ip[i].total for i in range(numProcs)],'r--')
-    for i in range(numProcs):
+    PLT.hold(True)
+    PLT.plot(workers, cases[0].total/workers,'k-')
+    PLT.plot(workers, [c.total for c in cases],'bx-')
+    for c in cases:
         bottom = 0
-        PLT.bar(i+1, ip[i].sendrecvs,width=width,bottom=bottom,color='r')
-        bottom += ip[i].sendrecvs
-        PLT.bar(i+1, ip[i].ips,width=width,bottom=bottom,color='b')
-        bottom+=ip[i].ips
-        PLT.bar(i+1, ip[i].loads,width=width,bottom=bottom,color='g')
-        bottom+=ip[i].loads
-        PLT.bar(i+1, ip[i].total - bottom,width=width,bottom=bottom,color='k')
-    PLT.legend(['linear','measured','send/recvs','IPs','loads','other'])
-    PLT.xlabel('number of processors/node')
-    PLT.ylabel('seconds per processor')
-    PLT.savefig('scaling_ipmat_n1p_rainier.eps')
+        top = c.sends + c.recvs + c.barriers
+        PLT.bar(c.workers-width/2, top-bottom, width=width,bottom=bottom,color='r')
+        
+        bottom = top
+        top += c.loads
+        PLT.bar(c.workers-width/2, top-bottom, width=width,bottom=bottom,color='g')
+        
+        bottom = top
+        top = c.total
+        PLT.bar(c.workers-width/2, top-bottom, width=width,bottom=bottom,color='k')
+    PLT.legend(['Linear','Measured','Send/Recvs','Loads','Other'])
+    PLT.xlabel('Workers')
+    PLT.ylabel('Time [s]')
+    PLT.savefig('lin_combine_time_n1.eps')
+    """
     PLT.show()
     
 
-def ip_np1_della():
-    """
-    profiling data for one processor per node, varying # nodes, ip_mat
-    """
-    numNodes = 12
-    ip = [Scaling() for i in xrange(numNodes)]
-    ip[0].total = 240.206
-    ip[0].loads = 164.500
-    ip[0].ips = 65.605
-    ip[0].sendrecvs = 0.
+
+def ips_n1p_rainier():
+    """Scaling of cases_mat on rainier, one node"""
+    cases = []
     
-    ip[1].total = 96.103
-    ip[1].loads = 46.685
-    ip[1].ips = 34.112
-    ip[1].sendrecvs = 2.033+7.991
+    s = Scaling()
+    s.total = 284.086
+    s.loads = 199.399
+    s.ips = 75.034
+    s.sendrecvs = 0.
+    s.workers=1
+    cases.append(s)
     
-    ip[2].total = 61.961
-    ip[2].loads = 24.197
-    ip[2].ips = 25.325
-    ip[2].sendrecvs = 6.712+1.996
+    s = Scaling()
+    s.total = 158.920
+    s.loads = 108.425
+    s.ips = 37.661
+    s.sendrecvs = 3.264 + 3.121
+    s.workers=2
+    cases.append(s)
     
-    ip[3].total = 44.644
-    ip[3].loads = 13.834
-    ip[3].ips = 17.896
-    ip[3].sendrecvs = 8.471 + 1.647
+    s = Scaling()
+    s.total = 119.216
+    s.loads = 75.131
+    s.ips = 27.425
+    s.sendrecvs = 8.646 + 6.346
+    s.workers=3
+    cases.append(s)
     
-    ip[4].total = 0
-    ip[4].loads = 0
-    ip[4].ips = 0
-    ip[4].sendrecvs = 0.
+    s = Scaling()
+    s.total = 95.416
+    s.loads = 58.081
+    s.ips = 19.615
+    s.sendrecvs = 7.398 +5.031
+    s.workers=4
+    cases.append(s)
     
-    ip[5].total = 29.408
-    ip[5].loads = 6.941
-    ip[5].ips = 12.147
-    ip[5].sendrecvs = 1.142 + 7.260
+    s = Scaling()
+    s.total = 78.554
+    s.loads = 46.082
+    s.ips = 15.239
+    s.sendrecvs = 7.278 +5.143
+    s.workers=5
+    cases.append(s)
     
-    ip[6].total = 0
-    ip[6].loads = 0
-    ip[6].ips = 0
-    ip[6].sendrecvs = 0.
+    s = Scaling()
+    s.total = 78.310
+    s.loads = 46.695
+    s.ips = 13.159
+    s.sendrecvs = 7.286 + 4.484
+    s.workers=6
+    cases.append(s)
     
-    ip[7].total = 24.200
-    ip[7].loads = 5.062
-    ip[7].ips = 8.619
-    ip[7].sendrecvs = 8.026+0.934
+    s = Scaling()
+    s.total = 69.798
+    s.loads = 37.203
+    s.ips = 12.181
+    s.sendrecvs = 8.518 + 6.627
+    s.workers=7
+    cases.append(s)
     
-    ip[8].total = 0
-    ip[8].loads = 0
-    ip[8].ips = 0
-    ip[8].sendrecvs = 0.
+    s = Scaling()
+    s.total = 67.698
+    s.loads = 34.888
+    s.ips = 10.658
+    s.sendrecvs =10.069 + 6.906
+    s.workers=8
+    cases.append(s)
     
-    ip[9].total = 20.427
-    ip[9].loads = 3.983
-    ip[9].ips = 6.931
-    ip[9].sendrecvs =7.376+0.769
+    workers = N.array([c.workers for c in cases])
     
-    ip[10].total = 0
-    ip[10].loads = 0
-    ip[10].ips = 0
-    ip[10].sendrecvs = 0.
-    
-    ip[11].total = 18.326
-    ip[11].loads = 3.180
-    ip[11].ips = 6.019
-    ip[11].sendrecvs = 7.242+0.668
-    
+    # Speedup plot
     PLT.figure()
     width = .4
-    PLT.plot(N.arange(1,numNodes+1), ip[0].total/N.arange(1,numNodes+1),'k--')
-    PLT.plot([1,2,3,4,6,8,10,12],[ip[0].total,ip[1].total,ip[2].total,ip[3].total,\
-        ip[5].total,ip[7].total,ip[9].total,ip[11].total],'r--')
-
-    for i in range(numNodes):
+    PLT.hold(True)
+    PLT.plot(workers, workers, 'k-')
+    PLT.plot(workers, cases[0].total/workers, 'ro-')
+    PLT.xlabel('Workers')
+    PLT.ylabel('Speedup')
+    PLT.legend(['Linear', 'Measured'])
+    PLT.savefig('IP_speedup_n1.eps')
+    
+    # Time spent breakdown
+    PLT.figure()
+    PLT.hold(True)
+    PLT.plot(workers, cases[0].total/workers, 'k-')
+    PLT.plot(workers, [c.total for c in cases], 'ro-')
+    
+    for c in cases:
         bottom = 0
-        PLT.bar(i+1, ip[i].sendrecvs,width=width,bottom=bottom,color='r')
-        bottom += ip[i].sendrecvs
-        PLT.bar(i+1, ip[i].ips,width=width,bottom=bottom,color='b')
-        bottom+=ip[i].ips
-        PLT.bar(i+1, ip[i].loads,width=width,bottom=bottom,color='g')
-        bottom+=ip[i].loads
-        PLT.bar(i+1, ip[i].total - bottom,width=width,bottom=bottom,color='k')
-    PLT.legend(['linear','measured','send/recvs','IPs','loads','other'])
-    PLT.xlabel('number of nodes (1 processor/node)')
-    PLT.ylabel('seconds per node (1 node = 1 processor)')
-    PLT.axis([1,13,0,250])
-    PLT.savefig('scaling_ipmat_np1_della.eps')
+        top = c.sendrecvs
+        PLT.bar(c.workers - width/2, top - bottom, width=width,bottom=bottom,color='r')
+        
+        bottom = top
+        top += c.loads
+        PLT.bar(c.workers - width/2, top - bottom,width=width,bottom=bottom,color='g')
+        
+        bottom = top
+        top += c.ips
+        PLT.bar(c.workers - width/2, top - bottom,width=width,bottom=bottom,color='k')
+        
+        bottom = top
+        top = c.total
+        PLT.bar(c.workers - width/2, top - bottom,width=width,bottom=bottom,color='k')
+
+    PLT.legend(['Linear','Measured','Send/Recvs','Loads','IPs','Other'])
+    PLT.xlabel('Workers')
+    PLT.ylabel('Time [s]')
+    PLT.savefig('IP_time_n1.eps')
+    PLT.show()
+    
+
+def ips_np1_della():
+    """
+    profiling data for one processor per node, varying # nodes, cases_mat
+    """
+    cases = []
+    
+    s = Scaling()
+    s.total = 240.206
+    s.loads = 164.500
+    s.ips = 65.605
+    s.sendrecvs = 0.
+    s.workers = 1
+    cases.append(s)
+    
+    s = Scaling()
+    s.total = 96.103
+    s.loads = 46.685
+    s.ips = 34.112
+    s.sendrecvs = 2.033+7.991
+    s.workers = 2
+    cases.append(s)
+        
+    s = Scaling()
+    s.total = 61.961
+    s.loads = 24.197
+    s.ips = 25.325
+    s.sendrecvs = 6.712+1.996
+    s.workers = 3
+    cases.append(s)
+    
+    s = Scaling()
+    s.total = 44.644
+    s.loads = 13.834
+    s.ips = 17.896
+    s.sendrecvs = 8.471 + 1.647
+    s.workers = 4
+    cases.append(s)
+    
+    s = Scaling()
+    s.total = 29.408
+    s.loads = 6.941
+    s.ips = 12.147
+    s.sendrecvs = 1.142 + 7.260
+    s.workers = 6
+    cases.append(s)
+    
+    s = Scaling()
+    s.total = 24.200
+    s.loads = 5.062
+    s.ips = 8.619
+    s.sendrecvs = 8.026+0.934
+    s.workers = 8
+    cases.append(s)
+    
+    s = Scaling()
+    s.total = 20.427
+    s.loads = 3.983
+    s.ips = 6.931
+    s.sendrecvs =7.376+0.769
+    s.workers = 10
+    cases.append(s)
+    
+    s = Scaling()
+    s.total = 18.326
+    s.loads = 3.180
+    s.ips = 6.019
+    s.sendrecvs = 7.242+0.668
+    s.workers = 12
+    cases.append(s)
+    
+    # Speedup plot
+    PLT.figure()
+    width = .4
+    workers = N.array([c.workers for c in cases])
+    PLT.hold(True)
+    PLT.plot(workers, workers,'k-')
+    PLT.plot(workers, [cases[0].total/c.total for c in cases],'ro-')
+    PLT.xlabel('Workers')
+    PLT.ylabel('Speedup')
+    PLT.legend(['Linear','Measured'])
+    PLT.savefig('IP_speedup_p1.eps')
+    
+    # Time spent breakdown
+    PLT.figure()
+    PLT.hold(True)
+    PLT.grid(True)
+    PLT.plot(workers, cases[0].total/workers,'k-')
+    PLT.plot(workers, [c.total for c in cases],'ro-')
+    
+    for c in cases:
+        bottom = 0
+        top = c.sendrecvs
+        PLT.bar(c.workers-width/2, top - bottom ,width=width,bottom=bottom,color='r')
+        
+        bottom = top
+        top += c.loads       
+        PLT.bar(c.workers-width/2, top-bottom,width=width,bottom=bottom,color='g')
+        
+        bottom = top
+        top += c.ips
+        PLT.bar(c.workers-width/2, top-bottom,width=width,bottom=bottom,color='k')
+        
+        bottom = top
+        top = c.total
+        PLT.bar(c.workers-width/2, top-bottom,width=width,bottom=bottom,color='k')
+
+    PLT.legend(['Linear','Measured','Send/Recvs','Loads','IPs','Other'])
+    PLT.xlabel('Workers')
+    PLT.ylabel('Time [s]')
+    PLT.savefig('IP_time_p1.eps')
     PLT.show()
     
     
     
     
 if __name__=='__main__':
-    ip_n1p_rainier()
-    #ip_n1p_della()
-    ip_np1_della()
-    lin_n1p_rainier()
+    #ips_n1p_rainier()
+    #ips_np1_della()
+    lin()
+    

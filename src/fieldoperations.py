@@ -134,9 +134,9 @@ class FieldOperations(object):
 
         Within this method, the fields are retrieved in memory-efficient ways
         such that they are not all in memory at once. This results in finding
-        'chunks' of the eventual matrix that is returned. This method only
-        supports finding a full rectangular mat. For POD, a different method is
-        used to take advantage of the symmetric matrix.
+        'chunks' of the eventual matrix that is returned.
+        The row fields and col fields are assumed to be different.        
+        When they are the same (POD), a different method is used.
         
         Each processor is responsible for retrieving a subset of the rows and
         columns. The processor which retrieves a particular column field then sends
@@ -145,68 +145,60 @@ class FieldOperations(object):
         processors are done with all of their row chunks. If there are 2
         processors::
            
-                | r0c0 o  |
-          rank0 | r1c0 o  |
-                | r2c0 o  |
+                | x o  |
+          rank0 | x o  |
+                | x o  |
             -
-                | o  r3c1 |
-          rank1 | o  r4c1 |
-                | o  r5c1 |
+                | o  x |
+          rank1 | o  x |
+                | o  x |
         
-        Rank 0 reads column 0 (c0) and fills out IPs for all rows in a row
-        chunk (r*c*) Here there is only one row chunk for each processor for
-        simplicity.  Rank 1 reads column 1 (c1) and fills out IPs for all rows
-        in a row chunk.  In the next step, rank 0 sends c0 to rank 1 and rank 1
-        sends c1 to rank 1.  The remaining IPs are filled in::
+        Rank 0 reads column 0 and fills out IPs for all rows in a row
+        chunk. Here there is only one row chunk for each processor for
+        simplicity. Rank 1 reads column 1 (c1) and fills out IPs for all rows
+        in a row chunk. In the next step, rank 0 sends c0 to rank 1 and rank 1
+        sends c1 to rank 1. The remaining IPs are filled in::
         
-                | r0c0 r0c1 |
-          rank0 | r1c0 r1c1 |
-                | r2c0 r2c1 |
+                | x x |
+          rank0 | x x |
+                | x x |
             -
-                | r3c0 r3c1 |
-          rank1 | r4c0 r4c1 |
-                | r5c0 r5c1 |
+                | x x |
+          rank1 | x x |
+                | x x |
           
         When the number of cols and rows is
         not divisible by the number of processors, the processors are assigned
         unequal numbers of tasks. However, all processors are always
-        part of the passing circle, and rows and cols are handled
-        independently. This is also generalized to allow the columns to be
+        part of the passing circle.
+        
+        This is also generalized to allow the columns to be
         read in chunks, rather than only 1 at a time. This could be useful,
-        for example, in a shared memory setting where it is best to work in
+        for example, if we change the implementation to use hybrid
+        distributed-shared memory where it is best to work in
         operation-units (load/gets, IPs, etc) of multiples of the number
-        of procs sharing memory (procs/node).
+        of processors sharing memory (procs/node).
         
-        The scaling is:
+        The scaling is::
         
-            num gets / processor ~ (n_r/(max*n_p))*n_c/n_p + n_r/n_p
+            num gets / processor ~ (n_r*n_c/((max-1)*n_p*n_p)) + n_r/n_p
             
-            num MPI sends / processor ~ (n_r/(max*n_p))*(n_p-1)*n_c/n_p
+            num MPI sends / processor ~ (n_p-1)*(n_r/((max-1)*n_p))*n_c/n_p
             
             num inner products / processor ~ n_r*n_c/n_p
             
         where n_r is number of rows, n_c number of columns, max is
-        max_fields_per_proc-1 = max_fields_per_node/numNodesPerProc - 1, and n_p is
+        max_fields_per_proc = max_fields_per_node/num_procs_per_node, and n_p is
         number of processors.
         
         It is enforced that there are more columns than rows by doing an
-        internal transpose and un-transpose. This improves efficiency.
+        internal transpose and un-transpose. This improves efficiency by placing
+        the larger of n_c and n_r on the quadratically scaled portion.
         
         From these scaling laws, it can be seen that it is generally good to
-        use all available processors, even though it lowers max.  This depends
-        though on the particular system and hardward.
-        Sometimes multiple simultaneous loads actually makes each load very slow. 
-        
-        As an example, consider doing a case with len(row_field_sources)=8 and
-        len(col_field_sources) = 12, 2 processors, 1 node, and max_fields_per_node=3.
-        n_p=2, max=2, n_r=8, n_c=12 (n_r < n_c).
-        
-            num gets / proc = 16
-            
-        If we flip n_r and n_c, we get
-        
-            num gets / proc = 18.
-            
+        use all available processors, even if it lowers max. However, this can
+        depend the particular system and hardware.
+        Sometimes simultaneous loads actually makes each load slow.     
         """
              
         if not isinstance(row_field_sources,list):
@@ -259,7 +251,7 @@ class FieldOperations(object):
                  self.parallel.get_num_procs())))
         
         
-        ### MAYBE DON'T USE THIS, IT EVENLY DISTRIBUTES CHUNKSIZE, WHICH WA
+        ### MAYBE DON'T USE THIS, IT EVENLY DISTRIBUTES CHUNKSIZE, WHICH WAS
         ### ALREADY SET ABOVE TO BE num_colsPERPROCCHUNK * NUMPROCS
         # These variables are the number of cols and rows in each chunk of data.
         num_cols_per_chunk = int(N.ceil(num_cols * 1. / num_col_chunks))
@@ -271,16 +263,16 @@ class FieldOperations(object):
                     'number of nodes or max_fields_per_node to reduce redundant '
                     '"get_fields"s and get a big speedup.' % (num_cols,num_row_chunks))
         
-        # Currently using a little trick to finding all of the inner product
-        # mat chunks. Each processor has a full IP_mat with size
+        # To find all of the inner product mat chunks, each 
+        # processor has a full IP_mat with size
         # num_rows x num_cols even though each processor is not responsible for
         # filling in all of these entries. After each proc fills in what it is
         # responsible for, the other entries are 0's still. Then, an allreduce
-        # is done and all the chunk mats are simply summed.  This is simpler
+        # is done and all the chunk mats are summed. This is simpler
         # than trying to figure out the size of each chunk mat for allgather.
-        # The efficiency is not expected to be an issue, the size of the mats
-        # are small compared to the size of the fields (at least in cases where
-        # the data is big and memory is a constraint).
+        # The efficiency is not an issue, the size of the mats
+        # are small compared to the size of the fields for large data.
+        
         IP_mat_chunk = N.mat(N.zeros((num_rows, num_cols), dtype=IP_type))
         for start_row_index in xrange(0, num_rows, num_rows_per_chunk):
             end_row_index = min(num_rows, start_row_index + num_rows_per_chunk)
