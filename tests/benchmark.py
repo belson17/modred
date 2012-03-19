@@ -72,6 +72,7 @@ def generate_vecs(num_states, num_vecs, vec_dir, vec_name):
     """
     if not os.path.exists(vec_dir) and parallel.is_rank_zero():
         os.mkdir(vec_dir)
+    parallel.sync()
     
     """
     # Parallelize saving of vecs (may slow down sequoia)
@@ -144,6 +145,7 @@ def lin_combine(num_states, num_bases, num_products, max_vecs_per_node):
     basis_name = 'vec_%04d.txt'
     product_name = 'product_%04d.txt'
     generate_vecs(num_states, num_bases, data_dir, basis_name)
+    parallel.sync()
     my_FO = M.VecOperations(max_vecs_per_node=max_vecs_per_node,
         put_vec=save_vec, get_vec=load_vec, inner_product=inner_product)
     coeff_mat = N.random.random((num_bases, num_products))
@@ -170,13 +172,13 @@ def main():
     method_to_test = args.function
     
     # Common parameters
-    max_vecs_per_node = 50
-    num_states = 8000
+    max_vecs_per_node = 5
+    num_states = 3500
     
     # Run test of choice
     if method_to_test == 'lin_combine':
         # lin_combine test
-        num_bases = 2500
+        num_bases = 2000
         num_products = 1000
         time_elapsed = lin_combine(
                 num_states, num_bases, num_products, max_vecs_per_node)

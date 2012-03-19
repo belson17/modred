@@ -848,8 +848,8 @@ class VecOperations(object):
                     sum_vec_dests[sum_index])
             del sum_layers
             if (T.time() - self.prev_print_time) > self.print_interval:    
-                self.print_msg('Completed %.1f%% of sum vecs, %d of %d' %
-                    (end_sum_index*100./num_sums, end_sum_index, num_sums), 
+                self.print_msg('Completed %.1f%% of sum vecs' %
+                    (end_sum_index*100./max_num_sum_tasks), 
                     output_channel = sys.stderr)
                 self.prev_print_time = T.time()
             
