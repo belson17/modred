@@ -42,10 +42,10 @@ def load_pickle(filename):
     return obj
 
 
-save_field = save_pickle 
-load_field = load_pickle
-#save_field = M.util.save_mat_text
-#load_field = M.util.load_mat_text
+save_vec = save_pickle 
+load_vec = load_pickle
+#save_vec = M.util.save_mat_text
+#load_vec = M.util.load_mat_text
 inner_product = M.util.inner_product
 
 
@@ -63,89 +63,89 @@ data_dir = args.outdir
 #if data_dir[-1] != '/':
 #    join(data_dir, = '/'
 
-def generate_fields(num_states, num_fields, field_dir, field_name):
+def generate_vecs(num_states, num_vecs, vec_dir, vec_name):
     """
-    Creates a data set of fields, saves to file.
+    Creates a data set of vecs, saves to file.
     
-    field_dir is the directory
-    field_name is the file name and must include a %03d type string.
+    vec_dir is the directory
+    vec_name is the file name and must include a %03d type string.
     """
-    if not os.path.exists(field_dir) and parallel.is_rank_zero():
-        os.mkdir(field_dir)
+    if not os.path.exists(vec_dir) and parallel.is_rank_zero():
+        os.mkdir(vec_dir)
     
     """
-    # Parallelize saving of fields (may slow down sequoia)
-    proc_field_num_asignments = \
-        parallel.find_assignments(range(num_fields))[parallel.getRank()]
-    for field_num in proc_field_num_asignments:
-        field = N.random.random(num_states)
-        save_field(field, field_dir + field_name%field_num)
+    # Parallelize saving of vecs (may slow down sequoia)
+    proc_vec_num_asignments = \
+        parallel.find_assignments(range(num_vecs))[parallel.getRank()]
+    for vec_num in proc_vec_num_asignments:
+        vec = N.random.random(num_states)
+        save_vec(vec, vec_dir + vec_name%vec_num)
     """
     
     if parallel.is_rank_zero():
-        for field_num in xrange(num_fields):
-            field = N.random.random(num_states)
-            save_field(field, join(field_dir, field_name%field_num))
+        for vec_num in xrange(num_vecs):
+            vec = N.random.random(num_states)
+            save_vec(vec, join(vec_dir, vec_name%vec_num))
     
     parallel.sync()
 
 
-def inner_product_mat(num_states, num_rows, num_cols, max_fields_per_node):
+def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node):
     """
-    Computes inner products from known fields.
+    Computes inner products from known vecs.
     
     Remember that rows correspond to adjoint modes and cols to direct modes
     """    
-    col_field_name = 'col_%04d.txt'
-    col_field_paths = [join(data_dir, col_field_name%col_num) for col_num in range(num_cols)]
-    generate_fields(num_states, num_cols, data_dir, col_field_name)
+    col_vec_name = 'col_%04d.txt'
+    col_vec_paths = [join(data_dir, col_vec_name%col_num) for col_num in range(num_cols)]
+    generate_vecs(num_states, num_cols, data_dir, col_vec_name)
     
-    row_field_name = 'row_%04d.txt'    
-    row_field_paths = [join(data_dir, row_field_name%row_num) for row_num in range(num_rows)]
-    generate_fields(num_states, num_rows, data_dir, row_field_name)
+    row_vec_name = 'row_%04d.txt'    
+    row_vec_paths = [join(data_dir, row_vec_name%row_num) for row_num in range(num_rows)]
+    generate_vecs(num_states, num_rows, data_dir, row_vec_name)
     
-    my_FO = M.FieldOperations(max_fields_per_node=max_fields_per_node, put_field=\
-        save_field, get_field=load_field, inner_product=inner_product, 
+    my_FO = M.VecOperations(max_vecs_per_node=max_vecs_per_node, put_vec=\
+        save_vec, get_vec=load_vec, inner_product=inner_product, 
         verbose=True) 
     
     start_time = T.time()
-    inner_product_mat = my_FO.compute_inner_product_mat(col_field_paths, 
-        row_field_paths)
+    inner_product_mat = my_FO.compute_inner_product_mat(col_vec_paths, 
+        row_vec_paths)
     total_time = T.time() - start_time
     return total_time
     
     
-def symmetric_inner_product_mat(num_states, num_fields, max_fields_per_node):
+def symmetric_inner_product_mat(num_states, num_vecs, max_vecs_per_node):
     """
-    Computes symmetric inner product matrix from known fields (as in POD).
+    Computes symmetric inner product matrix from known vecs (as in POD).
     """    
-    field_name = 'field_%04d.txt'
-    fieldPaths = [join(data_dir, field_name % field_num) for field_num in range(
-        num_fields)]
-    generate_fields(num_states, num_fields, data_dir, field_name)
+    vec_name = 'vec_%04d.txt'
+    vecPaths = [join(data_dir, vec_name % vec_num) for vec_num in range(
+        num_vecs)]
+    generate_vecs(num_states, num_vecs, data_dir, vec_name)
     
-    my_FO = M.FieldOperations(max_fields_per_node=max_fields_per_node, put_field=\
-        save_field, get_field=load_field, inner_product=inner_product, 
+    my_FO = M.VecOperations(max_vecs_per_node=max_vecs_per_node, put_vec=\
+        save_vec, get_vec=load_vec, inner_product=inner_product, 
         verbose=True) 
     
     start_time = T.time()
-    inner_product_mat = my_FO.compute_symmetric_inner_product_mat(fieldPaths)
+    inner_product_mat = my_FO.compute_symmetric_inner_product_mat(vecPaths)
     total_time = T.time() - start_time
     return total_time
 
 
-def lin_combine(num_states, num_bases, num_products, max_fields_per_node):
+def lin_combine(num_states, num_bases, num_products, max_vecs_per_node):
     """
-    Computes linear combination of fields from saved fields and random coeffs
+    Computes linear combination of vecs from saved vecs and random coeffs
     
-    num_bases is number of fields to be linearly combined
-    num_products is the resulting number of fields
+    num_bases is number of vecs to be linearly combined
+    num_products is the resulting number of vecs
     """
-    basis_name = 'snap_%04d.txt'
+    basis_name = 'vec_%04d.txt'
     product_name = 'product_%04d.txt'
-    generate_fields(num_states, num_bases, data_dir, basis_name)
-    my_FO = M.FieldOperations(max_fields_per_node=max_fields_per_node,
-        put_field=save_field, get_field=load_field, inner_product=inner_product)
+    generate_vecs(num_states, num_bases, data_dir, basis_name)
+    my_FO = M.VecOperations(max_vecs_per_node=max_vecs_per_node,
+        put_vec=save_vec, get_vec=load_vec, inner_product=inner_product)
     coeff_mat = N.random.random((num_bases, num_products))
     
     basis_paths = [join(data_dir,  basis_name%basis_num) for basis_num in range(num_bases)]
@@ -170,7 +170,7 @@ def main():
     method_to_test = args.function
     
     # Common parameters
-    max_fields_per_node = 50
+    max_vecs_per_node = 50
     num_states = 8000
     
     # Run test of choice
@@ -179,18 +179,18 @@ def main():
         num_bases = 2500
         num_products = 1000
         time_elapsed = lin_combine(
-                num_states, num_bases, num_products, max_fields_per_node)
+                num_states, num_bases, num_products, max_vecs_per_node)
     elif method_to_test == 'inner_product_mat':
         # inner_product_mat test
         num_rows = 2000
         num_cols = 2000
         time_elapsed = inner_product_mat(
-                num_states, num_rows, num_cols, max_fields_per_node)
+                num_states, num_rows, num_cols, max_vecs_per_node)
     elif method_to_test == 'symmetric_inner_product_mat':
         # symmetric_inner_product_mat test
-        num_fields = 2000
+        num_vecs = 2000
         time_elapsed = symmetric_inner_product_mat(
-                num_states, num_fields, max_fields_per_node)
+                num_states, num_vecs, max_vecs_per_node)
     print 'Time for %s is %f'%(method_to_test, time_elapsed)
     
     parallel.sync()

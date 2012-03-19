@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 
-"""Example script using BPOD on 2D fields.
+"""Example script using BPOD on 2D vecs.
 
 This example has most of the complexities we anticipated BPOD to handle, 
 and demonstrates a typical usage.
 
-The fields are larger (2D), so loading them 
+The vecs are larger (2D), so loading them 
 all into memory simultaneously may be inefficient or impossible.
 Instead, they are loaded from disk as needed. 
 
 Further, the inner product is more complicated.
-The fields are on a non-uniform grid, and so the inner product uses
+The vecs are on a non-uniform grid, and so the inner product uses
 trapezoidal rule as an approximation.
 
-The loading of fields is also non-trivial.
-In this case, a base field is subtracted from the 2D fields.
-In practice this base field might be the equilibrium about which the
-governing equations are linearized, and so the saved fields could be
+The loading of vecs is also non-trivial.
+In this case, a base vec is subtracted from the 2D vecs.
+In practice this base vec might be the equilibrium about which the
+governing equations are linearized, and so the saved vecs could be
 from some simulation software.
-The modes, which are saved to disk, do not include the base field.
+The modes, which are saved to disk, do not include the base vec.
 
-Another benefit of having the fields saved to disk is BPOD can then be
+Another benefit of having the vecs saved to disk is BPOD can then be
 used in a distributed memory parallel setting.
 In fact, this script can be run in parallel with, e.g.::
 
@@ -37,9 +37,11 @@ from shutil import rmtree
 import numpy as N
 import modred
 import modred.util as util
+from parallel import default_instance
+parallel = default_instance
 
-class Field(object):
-    """The field objects used will be instances of this class"""
+class Vec(object):
+    """The vec objects used will be instances of this class"""
     def __init__(self, path=None):
         if path is not None:
             self.load(path)
@@ -47,26 +49,26 @@ class Field(object):
             self.data = None
     
     def save(self, path):
-        """Save field to text format"""
+        """Save vec to text format"""
         util.save_mat_text(self.data, path)
     
     def load(self, path):
-        """Load field from text format, still with base field"""
+        """Load vec from text format, still with base vec"""
         self.data = util.load_mat_text(path)
     
     def __mul__(self, a):
-        field_return = copy.deepcopy(self)
-        field_return.data *= a
-        return field_return
+        vec_return = copy.deepcopy(self)
+        vec_return.data *= a
+        return vec_return
     def __rmul__(self, a):
         return self.__mul__(a)
     def __lmul__(self, a):
         return self.__mul__(a)
         
     def __add__(self, other):
-        field_return = copy.deepcopy(self)
-        field_return.data += other.data
-        return field_return
+        vec_return = copy.deepcopy(self)
+        vec_return.data += other.data
+        return vec_return
     def __sub__(self, other):
         return self + (-1.*other)
         
@@ -77,51 +79,54 @@ def main(verbose=True, make_plots=True):
     ny = 30
     x_grid = 1 + N.sin(N.linspace(-N.pi, N.pi, nx))
     y_grid = 1 + N.sin(N.linspace(-N.pi, N.pi, ny))
-    num_direct_fields = 30
-    num_adjoint_fields = 25
+    num_direct_vecs = 30
+    num_adjoint_vecs = 25
     save_dir = join(os.path.dirname(__file__), 'DELETE_ME_bpod_example_files')
     
-    if not os.path.exists(save_dir):
+    # Create the directory for example files only on processor 0.
+    if not os.path.exists(save_dir) and parallel.is_rank_zero():
         os.mkdir(save_dir)
+    # Wait for processor 0 to finish making the directory.
+    parallel.sync()
     
-    base_field = Field()
-    base_field.data = N.random.random((nx,ny))
+    base_vec = Vec()
+    base_vec.data = N.random.random((nx,ny))
     
     # Now create the wrappers for use in the BPOD class.
-    def get_field(path):
-        """Load the field and remove the base field"""
-        field = Field(path)
-        return field - base_field
+    def get_vec(path):
+        """Load the vec and remove the base vec"""
+        vec = Vec(path)
+        return vec - base_vec
     
-    def put_field(field, path):
-        """Save the field"""
-        field.save(path)
+    def put_vec(vec, path):
+        """Save the vec"""
+        vec.save(path)
     
-    def inner_product(field1, field2):
-        return N.trapz(N.trapz(field1.data * field2.data, x=y_grid), 
+    def inner_product(vec1, vec2):
+        return N.trapz(N.trapz(vec1.data * vec2.data, x=y_grid), 
             x=x_grid) 
     
     # Create random data and save to disk
-    direct_field_paths = [join(save_dir, 'direct_field_%02d.txt'%i)
-        for i in xrange(num_direct_fields)]
-    adjoint_field_paths = [join(save_dir, 'adjoint_field_%02d.txt'%i)
-        for i in xrange(num_adjoint_fields)]
-    for path in direct_field_paths:
+    direct_vec_paths = [join(save_dir, 'direct_vec_%02d.txt'%i)
+        for i in xrange(num_direct_vecs)]
+    adjoint_vec_paths = [join(save_dir, 'adjoint_vec_%02d.txt'%i)
+        for i in xrange(num_adjoint_vecs)]
+    for path in direct_vec_paths:
         util.save_mat_text(N.random.random((nx,ny)), path)
-    for path in adjoint_field_paths:
+    for path in adjoint_vec_paths:
         util.save_mat_text(N.random.random((nx,ny)), path)
     
     # Create an instance of BPOD.
-    my_BPOD = modred.BPOD(put_field=put_field, get_field=get_field,
-        inner_product=inner_product, max_fields_per_node=20, verbose=verbose)
+    my_BPOD = modred.BPOD(put_vec=put_vec, get_vec=get_vec,
+        inner_product=inner_product, max_vecs_per_node=20, verbose=verbose)
     
     # Quick check that functions are ok.
-    # You should always write tests for your get/put_field and inner product
+    # You should always write tests for your get/put_vec and inner product
     # functions.
-    my_BPOD.idiot_check(test_obj_source=direct_field_paths[0])
+    my_BPOD.idiot_check(test_obj_source=direct_vec_paths[0])
     
     # Find the Hankel matrix and take its SVD
-    my_BPOD.compute_decomp(direct_field_paths, adjoint_field_paths)
+    my_BPOD.compute_decomp(direct_vec_paths, adjoint_vec_paths)
     
     # Want to capture 90%, so:
     sing_vals_norm = my_BPOD.sing_vals/N.sum(my_BPOD.sing_vals)
@@ -157,8 +162,10 @@ def main(verbose=True, make_plots=True):
         except:
             pass
     
-    # Delete the save_dir with all field and mode files
-    rmtree(save_dir)
+    # Delete the save_dir with all vec and mode files
+    parallel.sync()
+    if parallel.is_rank_zero():
+        rmtree(save_dir)
 
 if __name__ == '__main__':
     main()

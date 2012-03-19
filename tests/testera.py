@@ -148,9 +148,9 @@ class testERA(unittest.TestCase):
                     C = myERA.C
                     #sing_vals = myERA.sing_vals[:num_states_model]
                     
-                    # Flatten snaps into 2D X and Y mats: [B AB A**PB A**(P+1)B ...]
-                    #direct_snaps_flat = N.mat(
-                    #    direct_snaps.swapaxes(0,1).reshape((num_states_model,-1)))
+                    # Flatten vecs into 2D X and Y mats: [B AB A**PB A**(P+1)B ...]
+                    #direct_vecs_flat = N.mat(
+                    #    direct_vecs.swapaxes(0,1).reshape((num_states_model,-1)))
                     
                     # Exact grammians from Lyapunov eqn solve
                     #gram_cont = util.solve_Lyapunov(A, B*B.H)

@@ -13,7 +13,7 @@ import parallel as parallel_mod
 parallel = parallel_mod.default_instance
 
 from bpod import BPOD
-from fieldoperations import FieldOperations
+from vecoperations import VecOperations
 import util
 
 
@@ -30,12 +30,12 @@ class TestBPOD(unittest.TestCase):
         
         self.maxDiff = 1000
         self.mode_nums =[2, 4, 3, 6, 9, 8, 10, 11, 30]
-        self.num_direct_fields = 40
-        self.num_adjoint_fields = 45
+        self.num_direct_vecs = 40
+        self.num_adjoint_vecs = 45
         self.num_states = 100
         self.index_from = 2
         
-        self.bpod = BPOD(get_field=util.load_mat_text, put_field=util.\
+        self.bpod = BPOD(get_vec=util.load_mat_text, put_vec=util.\
             save_mat_text, put_mat=util.save_mat_text, inner_product=util.\
             inner_product, verbose=False)
         self.generate_data_set()
@@ -49,54 +49,54 @@ class TestBPOD(unittest.TestCase):
     
     def generate_data_set(self):
         # create data set (saved to file)
-        self.direct_field_path = join(self.test_dir, 'direct_field_%03d.txt')
-        self.adjoint_field_path = join(self.test_dir, 'adjoint_field_%03d.txt')
+        self.direct_vec_path = join(self.test_dir, 'direct_vec_%03d.txt')
+        self.adjoint_vec_path = join(self.test_dir, 'adjoint_vec_%03d.txt')
 
-        self.direct_field_paths=[]
-        self.adjoint_field_paths=[]
+        self.direct_vec_paths=[]
+        self.adjoint_vec_paths=[]
         
         if parallel.is_rank_zero():
-            self.direct_field_mat = N.mat(N.random.random((self.num_states,self.\
-                num_direct_fields)))
-            self.adjoint_field_mat = N.mat(N.random.random((self.num_states,self.\
-                num_adjoint_fields))) 
+            self.direct_vec_mat = N.mat(N.random.random((self.num_states,self.\
+                num_direct_vecs)))
+            self.adjoint_vec_mat = N.mat(N.random.random((self.num_states,self.\
+                num_adjoint_vecs))) 
             
-            for direct_field_index in range(self.num_direct_fields):
-                util.save_mat_text(self.direct_field_mat[:,direct_field_index],self.\
-                    direct_field_path%direct_field_index)
-                self.direct_field_paths.append(self.direct_field_path%direct_field_index)
-            for adjoint_field_index in range(self.num_adjoint_fields):
-                util.save_mat_text(self.adjoint_field_mat[:,adjoint_field_index],
-                  self.adjoint_field_path%adjoint_field_index)
-                self.adjoint_field_paths.append(self.adjoint_field_path%\
-                    adjoint_field_index)
+            for direct_vec_index in range(self.num_direct_vecs):
+                util.save_mat_text(self.direct_vec_mat[:,direct_vec_index],self.\
+                    direct_vec_path%direct_vec_index)
+                self.direct_vec_paths.append(self.direct_vec_path%direct_vec_index)
+            for adjoint_vec_index in range(self.num_adjoint_vecs):
+                util.save_mat_text(self.adjoint_vec_mat[:,adjoint_vec_index],
+                  self.adjoint_vec_path%adjoint_vec_index)
+                self.adjoint_vec_paths.append(self.adjoint_vec_path%\
+                    adjoint_vec_index)
         else:
-            self.direct_field_paths=None
-            self.adjoint_field_paths=None
-            self.direct_field_mat = None
-            self.adjoint_field_mat = None
+            self.direct_vec_paths=None
+            self.adjoint_vec_paths=None
+            self.direct_vec_mat = None
+            self.adjoint_vec_mat = None
         if parallel.is_distributed():
-            self.direct_field_paths = parallel.comm.bcast(self.\
-                direct_field_paths, root=0)
-            self.adjoint_field_paths = parallel.comm.bcast(self.\
-                adjoint_field_paths, root=0)
-            self.direct_field_mat = parallel.comm.bcast(self.direct_field_mat, 
+            self.direct_vec_paths = parallel.comm.bcast(self.\
+                direct_vec_paths, root=0)
+            self.adjoint_vec_paths = parallel.comm.bcast(self.\
+                adjoint_vec_paths, root=0)
+            self.direct_vec_mat = parallel.comm.bcast(self.direct_vec_mat, 
                 root=0)
-            self.adjoint_field_mat = parallel.comm.bcast(self.adjoint_field_mat,
+            self.adjoint_vec_mat = parallel.comm.bcast(self.adjoint_vec_mat,
                 root=0)
          
-        self.hankel_mat_true = self.adjoint_field_mat.T * self.direct_field_mat
+        self.hankel_mat_true = self.adjoint_vec_mat.T * self.direct_vec_mat
         
         #Do the SVD on all procs.
         self.L_sing_vecs_true, self.sing_vals_true, self.R_sing_vecs_true = util.svd(
             self.hankel_mat_true)
-        self.direct_mode_mat = self.direct_field_mat * N.mat(self.R_sing_vecs_true) *\
+        self.direct_mode_mat = self.direct_vec_mat * N.mat(self.R_sing_vecs_true) *\
             N.mat(N.diag(self.sing_vals_true ** -0.5))
-        self.adjoint_mode_mat = self.adjoint_field_mat * N.mat(self.L_sing_vecs_true) *\
+        self.adjoint_mode_mat = self.adjoint_vec_mat * N.mat(self.L_sing_vecs_true) *\
             N.mat(N.diag(self.sing_vals_true ** -0.5))
         
-        #self.bpod.direct_field_paths=self.direct_field_paths
-        #self.bpod.adjoint_field_paths=self.adjoint_field_paths
+        #self.bpod.direct_vec_paths=self.direct_vec_paths
+        #self.bpod.adjoint_vec_paths=self.adjoint_vec_paths
         
         
         
@@ -107,8 +107,8 @@ class TestBPOD(unittest.TestCase):
         data_members_default = {'put_mat': util.save_mat_text, 'get_mat':
              util.load_mat_text, 'parallel': parallel_mod.default_instance,
             'verbose': False,
-            'field_ops': FieldOperations(get_field=None, put_field=None,
-            inner_product=None, max_fields_per_node=2, verbose=False)}
+            'vec_ops': VecOperations(get_vec=None, put_vec=None,
+            inner_product=None, max_vecs_per_node=2, verbose=False)}
         
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
@@ -116,9 +116,9 @@ class TestBPOD(unittest.TestCase):
             data_members_default)
         
         def my_load(fname): pass
-        my_BPOD = BPOD(get_field=my_load, verbose=False)
+        my_BPOD = BPOD(get_vec=my_load, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops'].get_field = my_load
+        data_members_modified['vec_ops'].get_vec = my_load
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
 
         my_BPOD = BPOD(get_mat=my_load, verbose=False)
@@ -127,9 +127,9 @@ class TestBPOD(unittest.TestCase):
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
  
         def my_save(data, fname): pass 
-        my_BPOD = BPOD(put_field=my_save, verbose=False)
+        my_BPOD = BPOD(put_vec=my_save, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops'].put_field = my_save
+        data_members_modified['vec_ops'].put_vec = my_save
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
         
         my_BPOD = BPOD(put_mat=my_save, verbose=False)
@@ -140,37 +140,37 @@ class TestBPOD(unittest.TestCase):
         def my_IP(f1, f2): pass
         my_BPOD = BPOD(inner_product=my_IP, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops'].inner_product = my_IP
+        data_members_modified['vec_ops'].inner_product = my_IP
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
                                 
-        max_fields_per_node = 500
-        my_BPOD = BPOD(max_fields_per_node=max_fields_per_node, verbose=False)
+        max_vecs_per_node = 500
+        my_BPOD = BPOD(max_vecs_per_node=max_vecs_per_node, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops'].max_fields_per_node =\
-            max_fields_per_node
-        data_members_modified['field_ops'].max_fields_per_proc = \
-            max_fields_per_node * parallel.get_num_nodes()/parallel.get_num_procs()
+        data_members_modified['vec_ops'].max_vecs_per_node =\
+            max_vecs_per_node
+        data_members_modified['vec_ops'].max_vecs_per_proc = \
+            max_vecs_per_node * parallel.get_num_nodes()/parallel.get_num_procs()
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
        
        
         
     def test_compute_decomp(self):
         """
-        Test that can take fields, compute the Hankel and SVD matrices
+        Test that can take vecs, compute the Hankel and SVD matrices
         
-        With previously generated random fields, compute the Hankel
+        With previously generated random vecs, compute the Hankel
         matrix, then take the SVD. The computed matrices are saved, then
         loaded and compared to the true matrices. 
         """
         tol = 1e-8
-        direct_field_path = join(self.test_dir, 'direct_field_%03d.txt')
-        adjoint_field_path = join(self.test_dir, 'adjoint_field_%03d.txt')
+        direct_vec_path = join(self.test_dir, 'direct_vec_%03d.txt')
+        adjoint_vec_path = join(self.test_dir, 'adjoint_vec_%03d.txt')
         L_sing_vecs_path = join(self.test_dir, 'L_sing_vecs.txt')
         R_sing_vecs_path = join(self.test_dir, 'R_sing_vecs.txt')
         sing_vals_path = join(self.test_dir, 'sing_vals.txt')
         hankel_mat_path = join(self.test_dir, 'hankel.txt')
         
-        self.bpod.compute_decomp(self.direct_field_paths, self.adjoint_field_paths)
+        self.bpod.compute_decomp(self.direct_vec_paths, self.adjoint_vec_paths)
         
         self.bpod.put_hankel_mat(hankel_mat_path)
         self.bpod.put_decomp(L_sing_vecs_path, sing_vals_path, R_sing_vecs_path)
@@ -233,10 +233,10 @@ class TestBPOD(unittest.TestCase):
         adjoint_mode_paths = [adjoint_mode_path%i for i in self.mode_nums]
 
         self.bpod.compute_direct_modes(self.mode_nums, direct_mode_paths,
-            index_from=self.index_from, direct_field_sources=self.direct_field_paths)
+            index_from=self.index_from, direct_vec_sources=self.direct_vec_paths)
           
         self.bpod.compute_adjoint_modes(self.mode_nums, adjoint_mode_paths,
-            index_from=self.index_from, adjoint_field_sources=self.adjoint_field_paths)
+            index_from=self.index_from, adjoint_vec_sources=self.adjoint_vec_paths)
           
         for mode_num in self.mode_nums:
             if parallel.is_rank_zero():
@@ -260,7 +260,7 @@ class TestBPOD(unittest.TestCase):
                 for mode_num2 in self.mode_nums:
                     adjoint_mode = util.load_mat_text(
                       adjoint_mode_path%mode_num2)
-                    IP = self.bpod.field_ops.inner_product(
+                    IP = self.bpod.vec_ops.inner_product(
                       direct_mode,adjoint_mode)
                     if mode_num1 != mode_num2:
                         self.assertAlmostEqual(IP, 0.)

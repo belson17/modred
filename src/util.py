@@ -56,9 +56,9 @@ def load_mat_text(filename, delimiter=' ', is_complex=False):
     return N.array(mat.view(dtype))
 
 
-def inner_product(field1, field2):
+def inner_product(vec1, vec2):
     """ A default inner product for n-dimensional numpy arrays """
-    return (field1*field2.conj()).sum()
+    return (vec1*vec2.conj()).sum()
 
     
 def svd(mat, tol = 1e-13):

@@ -1,45 +1,45 @@
 
 import numpy as N
 
-from fieldoperations import FieldOperations
+from vecoperations import VecOperations
 import util
 import parallel
 
 class POD(object):
     """Proper Orthogonal Decomposition
     
-    Computes orthonormal modes from fields.  
+    Computes orthonormal modes from vecs.  
     
     Usage::
       
       myPOD = POD(...)
-      myPOD.compute_decomp(field_sources=my_field_sources)
+      myPOD.compute_decomp(vec_sources=my_vec_sources)
       myPOD.compute_modes(range(1,100), ['mode%d.txt'%i for i in range(1,100)])
     """
         
-    def __init__(self, get_field=None, put_field=None, 
+    def __init__(self, get_vec=None, put_vec=None, 
         get_mat=util.load_mat_text, put_mat=util.save_mat_text, 
-        inner_product=None, max_fields_per_node=None, verbose=True, 
+        inner_product=None, max_vecs_per_node=None, verbose=True, 
         print_interval=10):
         """Constructor
         
         Kwargs:
-            get_field: function to get a field from elsewhere (memory or a file).
+            get_vec: function to get a vec from elsewhere (memory or a file).
             
-            put_field: function to put a field elsewhere (to memory or a file).
+            put_vec: function to put a vec elsewhere (to memory or a file).
             
             put_mat: function to put a matrix (to memory or file).
             
-            inner_product: function to take inner product of two fields.
+            inner_product: function to take inner product of two vecs.
             
             verbose: print more information about progress and warnings.
                 
         Returns:
             POD instance
         """
-        self.field_ops = FieldOperations(get_field=get_field, 
-            put_field=put_field, inner_product=inner_product, 
-            max_fields_per_node=max_fields_per_node, 
+        self.vec_ops = VecOperations(get_vec=get_vec, 
+            put_vec=put_vec, inner_product=inner_product, 
+            max_vecs_per_node=max_vecs_per_node, 
             verbose=verbose, print_interval=print_interval)
         self.parallel = parallel.default_instance
 
@@ -48,7 +48,7 @@ class POD(object):
         self.verbose = verbose
      
     def idiot_check(self, test_obj=None, test_obj_source=None):
-        return self.field_ops.idiot_check(test_obj, test_obj_source)
+        return self.vec_ops.idiot_check(test_obj, test_obj_source)
 
      
     def get_decomp(self, sing_vecs_source, sing_vals_source):
@@ -93,13 +93,13 @@ class POD(object):
 
 
     
-    def compute_decomp(self, field_sources):
+    def compute_decomp(self, vec_sources):
         """Computes correlation mat X*X, then the SVD of this matrix."""
-        self.field_sources = field_sources
-        self.correlation_mat = self.field_ops.\
-            compute_symmetric_inner_product_mat(self.field_sources)
-        #self.correlation_mat = self.field_ops.\
-        #    compute_inner_product_mat(self.field_sources, self.field_sources)
+        self.vec_sources = vec_sources
+        self.correlation_mat = self.vec_ops.\
+            compute_symmetric_inner_product_mat(self.vec_sources)
+        #self.correlation_mat = self.vec_ops.\
+        #    compute_inner_product_mat(self.vec_sources, self.vec_sources)
         self.compute_SVD()
         
         
@@ -115,8 +115,8 @@ class POD(object):
             self.sing_vals = self.parallel.comm.bcast(self.sing_vals, root=0)
             
             
-    def compute_modes(self, mode_nums, mode_dests, index_from=1, field_sources=None):
-        """Computes the modes and calls ``self.put_field`` on them.
+    def compute_modes(self, mode_nums, mode_dests, index_from=1, vec_sources=None):
+        """Computes the modes and calls ``self.put_vec`` on them.
         
         Args:
             mode_nums: Mode numbers to compute. 
@@ -129,7 +129,7 @@ class POD(object):
         Kwargs:
             index_from: Index modes starting from 0, 1, or other.
               
-            field_sources: Paths to fields. Optional if already given when calling 
+            vec_sources: Paths to vecs. Optional if already given when calling 
                 ``self.compute_decomp``.
 
 
@@ -139,13 +139,13 @@ class POD(object):
             raise util.UndefinedError('Must define self.sing_vecs')
         if self.sing_vals is None:
             raise util.UndefinedError('Must define self.sing_vals')
-        if field_sources is not None:
-            self.field_sources = field_sources
+        if vec_sources is not None:
+            self.vec_sources = vec_sources
 
         build_coeff_mat = N.dot(self.sing_vecs, N.diag(self.sing_vals**-0.5))
 
-        self.field_ops._compute_modes(mode_nums, mode_dests,
-             self.field_sources, build_coeff_mat, index_from=index_from)
+        self.vec_ops._compute_modes(mode_nums, mode_dests,
+             self.vec_sources, build_coeff_mat, index_from=index_from)
     
 
 

@@ -13,39 +13,39 @@ helper.add_to_path('src')
 import parallel as parallel_mod
 parallel = parallel_mod.default_instance
 
-from fieldoperations import FieldOperations
+from vecoperations import VecOperations
 import util
 
 
-class TestFieldOperations(unittest.TestCase):
-    """ Tests of the FieldOperations class """
+class TestVecOperations(unittest.TestCase):
+    """ Tests of the VecOperations class """
     
     def setUp(self):
     
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
             
-        self.test_dir = 'DELETE_ME_test_files_fieldoperations'    
+        self.test_dir = 'DELETE_ME_test_files_vecoperations'    
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
             os.mkdir(self.test_dir)
 
         # Default data members, verbose set to false even though default is true
         # so messages won't print during tests
-        self.default_data_members = {'get_field': None, 'put_field': None, 
-            'inner_product': None, 'max_fields_per_node': 2,
-            'max_fields_per_proc': 2, 'parallel':parallel_mod.default_instance,
+        self.default_data_members = {'get_vec': None, 'put_vec': None, 
+            'inner_product': None, 'max_vecs_per_node': 2,
+            'max_vecs_per_proc': 2, 'parallel':parallel_mod.default_instance,
             'verbose': False, 'print_interval':10, 'prev_print_time':0.}
        
-        self.max_fields_per_proc = 10
-        self.total_num_fields_in_mem = parallel.get_num_procs() * self.max_fields_per_proc
+        self.max_vecs_per_proc = 10
+        self.total_num_vecs_in_mem = parallel.get_num_procs() * self.max_vecs_per_proc
 
-        # FieldOperations object for running tests
-        self.fieldOperations = FieldOperations( 
-            get_field=util.load_mat_text, 
-            put_field=util.save_mat_text, 
+        # VecOperations object for running tests
+        self.vecOperations = VecOperations( 
+            get_vec=util.load_mat_text, 
+            put_vec=util.save_mat_text, 
             inner_product=util.inner_product, 
             verbose=False)
-        self.fieldOperations.max_fields_per_proc = self.max_fields_per_proc
+        self.vecOperations.max_vecs_per_proc = self.max_vecs_per_proc
         
         parallel.sync()
 
@@ -62,32 +62,32 @@ class TestFieldOperations(unittest.TestCase):
         """
         Test arguments passed to the constructor are assigned properly.
         """
-        data_members_original = util.get_data_members(FieldOperations(verbose=False))
+        data_members_original = util.get_data_members(VecOperations(verbose=False))
         self.assertEqual(data_members_original, self.default_data_members)
         
         def my_load(fname): pass
-        my_FO = FieldOperations(get_field=my_load, verbose=False)
+        my_FO = VecOperations(get_vec=my_load, verbose=False)
         data_members = copy.deepcopy(data_members_original)
-        data_members['get_field'] = my_load
+        data_members['get_vec'] = my_load
         self.assertEqual(util.get_data_members(my_FO), data_members)
         
         def my_save(data,fname): pass
-        my_FO = FieldOperations(put_field=my_save, verbose=False)
+        my_FO = VecOperations(put_vec=my_save, verbose=False)
         data_members = copy.deepcopy(data_members_original)
-        data_members['put_field'] = my_save
+        data_members['put_vec'] = my_save
         self.assertEqual(util.get_data_members(my_FO), data_members)
         
         def my_ip(f1,f2): pass
-        my_FO = FieldOperations(inner_product=my_ip, verbose=False)
+        my_FO = VecOperations(inner_product=my_ip, verbose=False)
         data_members = copy.deepcopy(data_members_original)
         data_members['inner_product'] = my_ip
         self.assertEqual(util.get_data_members(my_FO), data_members)
         
-        max_fields_per_node = 500
-        my_FO = FieldOperations(max_fields_per_node=max_fields_per_node, verbose=False)
+        max_vecs_per_node = 500
+        my_FO = VecOperations(max_vecs_per_node=max_vecs_per_node, verbose=False)
         data_members = copy.deepcopy(data_members_original)
-        data_members['max_fields_per_node'] = max_fields_per_node
-        data_members['max_fields_per_proc'] = max_fields_per_node * my_FO.parallel.get_num_nodes()/ \
+        data_members['max_vecs_per_node'] = max_vecs_per_node
+        data_members['max_vecs_per_proc'] = max_vecs_per_node * my_FO.parallel.get_num_nodes()/ \
             my_FO.parallel.get_num_procs()
         self.assertEqual(util.get_data_members(my_FO), data_members)
 
@@ -103,7 +103,7 @@ class TestFieldOperations(unittest.TestCase):
         test_array = N.random.random((nx,ny))
         def inner_product(a,b):
             return N.sum(a.arr*b.arr)
-        my_FO = FieldOperations(inner_product=util.inner_product, verbose=False)
+        my_FO = VecOperations(inner_product=util.inner_product, verbose=False)
         my_FO.idiot_check(test_obj=test_array)
         
         # An idiot's class that redefines multiplication to modify its data
@@ -136,15 +136,15 @@ class TestFieldOperations(unittest.TestCase):
                 
         
         
-    def generate_fields_modes(self, num_states, num_fields, num_modes, index_from=1):
+    def generate_vecs_modes(self, num_states, num_vecs, num_modes, index_from=1):
         """
-        Generates random fields and finds the modes. 
+        Generates random vecs and finds the modes. 
         
         Returns:
-            field_mat: matrix in which each column is a field (in order)
+            vec_mat: matrix in which each column is a vec (in order)
             mode_nums: unordered list of integers representing mode numbers,
                 each entry is unique. Mode numbers are picked randomly between
-            build_coeff_mat: matrix num_fields x num_modes, random entries
+            build_coeff_mat: matrix num_vecs x num_modes, random entries
             mode_mat: matrix of modes, each column is a mode.
                 matrix column # = mode_number - index_from
         """
@@ -154,12 +154,12 @@ class TestFieldOperations(unittest.TestCase):
             if mode_nums.count(mode_num) == 0:
                 mode_nums.append(mode_num)
 
-        build_coeff_mat = N.mat(N.random.random((num_fields,num_modes)))
-        field_mat = N.mat(N.zeros((num_states,num_fields)))
-        for field_index in range(num_fields):
-            field_mat[:,field_index] = N.random.random((num_states,1))
-        mode_mat = field_mat*build_coeff_mat
-        return field_mat,mode_nums,build_coeff_mat,mode_mat 
+        build_coeff_mat = N.mat(N.random.random((num_vecs,num_modes)))
+        vec_mat = N.mat(N.zeros((num_states,num_vecs)))
+        for vec_index in range(num_vecs):
+            vec_mat[:,vec_index] = N.random.random((num_states,1))
+        mode_mat = vec_mat*build_coeff_mat
+        return vec_mat,mode_nums,build_coeff_mat,mode_mat 
         
     
     
@@ -168,48 +168,48 @@ class TestFieldOperations(unittest.TestCase):
         """
         Test that can compute modes from arguments. 
                
-        Cases are tested for numbers of fields, states per field,
-        mode numbers, number of fields/modes allowed in memory
+        Cases are tested for numbers of vecs, states per vec,
+        mode numbers, number of vecs/modes allowed in memory
         simultaneously, and indexing schemes 
         (meaning the first mode can be numbered 0, 1, or any integer).
         """
-        num_fields_list = [1, 15, 40]
+        num_vecs_list = [1, 15, 40]
         num_states = 20
         # Test cases where number of modes:
         #   less, equal, more than num_states
-        #   less, equal, more than num_fields
-        #   less, equal, more than total_num_fields_in_mem
+        #   less, equal, more than num_vecs
+        #   less, equal, more than total_num_vecs_in_mem
         num_modes_list = [1, 8, 10, 20, 25, 45, \
-            int(N.ceil(self.total_num_fields_in_mem / 2.)),\
-            self.total_num_fields_in_mem, self.total_num_fields_in_mem * 2]
+            int(N.ceil(self.total_num_vecs_in_mem / 2.)),\
+            self.total_num_vecs_in_mem, self.total_num_vecs_in_mem * 2]
         index_from_list = [0, 5]
-        #mode_path = 'proc'+str(self.fieldOperations.parallelInstance._rank)+'/mode_%03d.txt'
+        #mode_path = 'proc'+str(self.vecOperations.parallelInstance._rank)+'/mode_%03d.txt'
         mode_path = join(self.test_dir, 'mode_%03d.txt')
-        field_path = join(self.test_dir, 'field_%03d.txt')
+        vec_path = join(self.test_dir, 'vec_%03d.txt')
         
-        for num_fields in num_fields_list:
+        for num_vecs in num_vecs_list:
             for num_modes in num_modes_list:
                 for index_from in index_from_list:
                     #generate data and then broadcast to all procs
                     #print '----- new case ----- '
-                    #print 'num_fields =',num_fields
+                    #print 'num_vecs =',num_vecs
                     #print 'num_states =',num_states
                     #print 'num_modes =',num_modes
-                    #print 'max_fields_per_node =',max_fields_per_node                          
+                    #print 'max_vecs_per_node =',max_vecs_per_node                          
                     #print 'index_from =',index_from
-                    field_paths = [field_path % field_index \
-                        for field_index in xrange(num_fields)]
+                    vec_paths = [vec_path % vec_index \
+                        for vec_index in xrange(num_vecs)]
 
                     if parallel.is_rank_zero():
-                        field_mat,mode_nums, build_coeff_mat, true_modes = \
-                          self.generate_fields_modes(num_states, num_fields,
+                        vec_mat,mode_nums, build_coeff_mat, true_modes = \
+                          self.generate_vecs_modes(num_states, num_vecs,
                           num_modes, index_from=index_from)
-                        for field_index,s in enumerate(field_paths):
-                            util.save_mat_text(field_mat[:,field_index], s)
+                        for vec_index,s in enumerate(vec_paths):
+                            util.save_mat_text(vec_mat[:,vec_index], s)
                     else:
                         mode_nums = None
                         build_coeff_mat = None
-                        field_mat = None
+                        vec_mat = None
                         true_modes = None
                         mode_paths = None
                     if parallel.is_distributed():
@@ -217,8 +217,8 @@ class TestFieldOperations(unittest.TestCase):
                             mode_nums, root=0)
                         build_coeff_mat = parallel.comm.bcast(
                             build_coeff_mat, root=0)
-                        field_mat = parallel.comm.bcast(
-                            field_mat, root=0)
+                        vec_mat = parallel.comm.bcast(
+                            vec_mat, root=0)
                         true_modes = parallel.comm.bcast(
                             true_modes, root=0)
                     
@@ -234,21 +234,21 @@ class TestFieldOperations(unittest.TestCase):
                             build_coeff_mat.shape[1]:
                             check_assert_raises = True
                     if check_assert_raises:
-                        self.assertRaises(ValueError, self.fieldOperations.\
+                        self.assertRaises(ValueError, self.vecOperations.\
                             _compute_modes, mode_nums, mode_paths, 
-                            field_paths, build_coeff_mat, index_from=\
+                            vec_paths, build_coeff_mat, index_from=\
                             index_from)
                     # If the coeff mat has more rows than there are 
-                    # field paths
-                    elif num_fields > build_coeff_mat.shape[0]:
-                        self.assertRaises(ValueError, self.fieldOperations.\
+                    # vec paths
+                    elif num_vecs > build_coeff_mat.shape[0]:
+                        self.assertRaises(ValueError, self.vecOperations.\
                             _compute_modes, mode_nums, mode_paths,
-                            field_paths, build_coeff_mat, index_from=\
+                            vec_paths, build_coeff_mat, index_from=\
                             index_from)
-                    elif num_modes > num_fields:
+                    elif num_modes > num_vecs:
                         self.assertRaises(ValueError,
-                          self.fieldOperations._compute_modes, mode_nums,
-                          mode_paths, field_paths, build_coeff_mat,
+                          self.vecOperations._compute_modes, mode_nums,
+                          mode_paths, vec_paths, build_coeff_mat,
                           index_from=index_from)
                     else:
                         # Test the case that only one mode is desired,
@@ -258,9 +258,9 @@ class TestFieldOperations(unittest.TestCase):
                             mode_paths = mode_paths[0]
                             
                         # Saves modes to files
-                        self.fieldOperations._compute_modes(mode_nums, 
+                        self.vecOperations._compute_modes(mode_nums, 
                             mode_paths,
-                            field_paths, build_coeff_mat, 
+                            vec_paths, build_coeff_mat, 
                             index_from=index_from)
 
                         # Change back to list so is iterable
@@ -288,59 +288,59 @@ class TestFieldOperations(unittest.TestCase):
 
 
     def test_compute_inner_product_mat_types(self):
-        def get_field_as_complex(path):
+        def get_vec_as_complex(path):
             return (1 + 1j) * util.load_mat_text(path) 
 
-        num_row_fields = 4
-        num_col_fields = 6
+        num_row_vecs = 4
+        num_col_vecs = 6
         num_states = 7
 
-        row_field_path = join(self.test_dir, 'row_field_%03d.txt')
-        col_field_path = join(self.test_dir, 'col_field_%03d.txt')
+        row_vec_path = join(self.test_dir, 'row_vec_%03d.txt')
+        col_vec_path = join(self.test_dir, 'col_vec_%03d.txt')
         
-        # generate fields and save to file, only do on proc 0
+        # generate vecs and save to file, only do on proc 0
         parallel.sync()
         if parallel.is_rank_zero():
-            row_field_mat = N.mat(N.random.random((num_states,
-                num_row_fields)))
-            col_field_mat = N.mat(N.random.random((num_states,
-                num_col_fields)))
-            row_field_paths = []
-            col_field_paths = []
-            for field_index in xrange(num_row_fields):
-                path = row_field_path % field_index
-                util.save_mat_text(row_field_mat[:,field_index],path)
-                row_field_paths.append(path)
-            for field_index in xrange(num_col_fields):
-                path = col_field_path % field_index
-                util.save_mat_text(col_field_mat[:,field_index],path)
-                col_field_paths.append(path)
+            row_vec_mat = N.mat(N.random.random((num_states,
+                num_row_vecs)))
+            col_vec_mat = N.mat(N.random.random((num_states,
+                num_col_vecs)))
+            row_vec_paths = []
+            col_vec_paths = []
+            for vec_index in xrange(num_row_vecs):
+                path = row_vec_path % vec_index
+                util.save_mat_text(row_vec_mat[:,vec_index],path)
+                row_vec_paths.append(path)
+            for vec_index in xrange(num_col_vecs):
+                path = col_vec_path % vec_index
+                util.save_mat_text(col_vec_mat[:,vec_index],path)
+                col_vec_paths.append(path)
         else:
-            row_field_mat = None
-            col_field_mat = None
-            row_field_paths = None
-            col_field_paths = None
+            row_vec_mat = None
+            col_vec_mat = None
+            row_vec_paths = None
+            col_vec_paths = None
         if parallel.is_distributed():
-            row_field_mat = parallel.comm.bcast(row_field_mat, root=0)
-            col_field_mat = parallel.comm.bcast(col_field_mat, root=0)
-            row_field_paths = parallel.comm.bcast(row_field_paths, root=0)
-            col_field_paths = parallel.comm.bcast(col_field_paths, root=0)
+            row_vec_mat = parallel.comm.bcast(row_vec_mat, root=0)
+            col_vec_mat = parallel.comm.bcast(col_vec_mat, root=0)
+            row_vec_paths = parallel.comm.bcast(row_vec_paths, root=0)
+            col_vec_paths = parallel.comm.bcast(col_vec_paths, root=0)
 
         # If number of rows/cols is 1, test case that a string, not
         # a list, is passed in
-        if len(row_field_paths) == 1:
-            row_field_paths = row_field_paths[0]
-        if len(col_field_paths) == 1:
-            col_field_paths = col_field_paths[0]
+        if len(row_vec_paths) == 1:
+            row_vec_paths = row_vec_paths[0]
+        if len(col_vec_paths) == 1:
+            col_vec_paths = col_vec_paths[0]
     
         # Comptue inner product matrix and check type
-        for load, type in [(get_field_as_complex, complex), (util.\
+        for load, type in [(get_vec_as_complex, complex), (util.\
             load_mat_text, float)]:
-            self.fieldOperations.get_field = load
-            inner_product_mat = self.fieldOperations.compute_inner_product_mat(
-                row_field_paths, col_field_paths)
-            symm_inner_product_mat = self.fieldOperations.\
-                compute_symmetric_inner_product_mat(row_field_paths)
+            self.vecOperations.get_vec = load
+            inner_product_mat = self.vecOperations.compute_inner_product_mat(
+                row_vec_paths, col_vec_paths)
+            symm_inner_product_mat = self.vecOperations.\
+                compute_symmetric_inner_product_mat(row_vec_paths)
             self.assertEqual(inner_product_mat.dtype, type)
             self.assertEqual(symm_inner_product_mat.dtype, type)
 
@@ -352,65 +352,65 @@ class TestFieldOperations(unittest.TestCase):
         Test computation of matrix of inner products in memory-efficient
         chunks, both in parallel (compute_inner_product_mat).
         """ 
-        num_row_fields_list =[1, int(round(self.total_num_fields_in_mem / 2.)), self.\
-            total_num_fields_in_mem, self.total_num_fields_in_mem *2,
+        num_row_vecs_list =[1, int(round(self.total_num_vecs_in_mem / 2.)), self.\
+            total_num_vecs_in_mem, self.total_num_vecs_in_mem *2,
             parallel.get_num_procs()+1]
-        num_col_fields_list = num_row_fields_list
+        num_col_vecs_list = num_row_vecs_list
         num_states = 6
 
-        row_field_path = join(self.test_dir, 'row_field_%03d.txt')
-        col_field_path = join(self.test_dir, 'col_field_%03d.txt')
+        row_vec_path = join(self.test_dir, 'row_vec_%03d.txt')
+        col_vec_path = join(self.test_dir, 'col_vec_%03d.txt')
         
-        for num_row_fields in num_row_fields_list:
-            for num_col_fields in num_col_fields_list:
-                # generate fields and save to file, only do on proc 0
+        for num_row_vecs in num_row_vecs_list:
+            for num_col_vecs in num_col_vecs_list:
+                # generate vecs and save to file, only do on proc 0
                 parallel.sync()
                 if parallel.is_rank_zero():
-                    row_field_mat = N.mat(N.random.random((num_states,
-                        num_row_fields)))
-                    col_field_mat = N.mat(N.random.random((num_states,
-                        num_col_fields)))
-                    row_field_paths = []
-                    col_field_paths = []
-                    for field_index in xrange(num_row_fields):
-                        path = row_field_path % field_index
-                        util.save_mat_text(row_field_mat[:,field_index],path)
-                        row_field_paths.append(path)
-                    for field_index in xrange(num_col_fields):
-                        path = col_field_path % field_index
-                        util.save_mat_text(col_field_mat[:,field_index],path)
-                        col_field_paths.append(path)
+                    row_vec_mat = N.mat(N.random.random((num_states,
+                        num_row_vecs)))
+                    col_vec_mat = N.mat(N.random.random((num_states,
+                        num_col_vecs)))
+                    row_vec_paths = []
+                    col_vec_paths = []
+                    for vec_index in xrange(num_row_vecs):
+                        path = row_vec_path % vec_index
+                        util.save_mat_text(row_vec_mat[:,vec_index],path)
+                        row_vec_paths.append(path)
+                    for vec_index in xrange(num_col_vecs):
+                        path = col_vec_path % vec_index
+                        util.save_mat_text(col_vec_mat[:,vec_index],path)
+                        col_vec_paths.append(path)
                 else:
-                    row_field_mat = None
-                    col_field_mat = None
-                    row_field_paths = None
-                    col_field_paths = None
+                    row_vec_mat = None
+                    col_vec_mat = None
+                    row_vec_paths = None
+                    col_vec_paths = None
                 if parallel.is_distributed():
-                    row_field_mat = parallel.comm.bcast(row_field_mat, root=0)
-                    col_field_mat = parallel.comm.bcast(col_field_mat, root=0)
-                    row_field_paths = parallel.comm.bcast(row_field_paths, root=0)
-                    col_field_paths = parallel.comm.bcast(col_field_paths, root=0)
+                    row_vec_mat = parallel.comm.bcast(row_vec_mat, root=0)
+                    col_vec_mat = parallel.comm.bcast(col_vec_mat, root=0)
+                    row_vec_paths = parallel.comm.bcast(row_vec_paths, root=0)
+                    col_vec_paths = parallel.comm.bcast(col_vec_paths, root=0)
 
                 # If number of rows/cols is 1, test case that a string, not
                 # a list, is passed in
-                if len(row_field_paths) == 1:
-                    row_field_paths = row_field_paths[0]
-                if len(col_field_paths) == 1:
-                    col_field_paths = col_field_paths[0]
+                if len(row_vec_paths) == 1:
+                    row_vec_paths = row_vec_paths[0]
+                if len(col_vec_paths) == 1:
+                    col_vec_paths = col_vec_paths[0]
 
                 # Path list may actually be a string, in which case covert to list
-                if not isinstance(row_field_paths, list):
-                    row_field_paths = [row_field_paths]
-                if not isinstance(col_field_paths, list):
-                    col_field_paths = [col_field_paths]
+                if not isinstance(row_vec_paths, list):
+                    row_vec_paths = [row_vec_paths]
+                if not isinstance(col_vec_paths, list):
+                    col_vec_paths = [col_vec_paths]
     
                 # True inner product matrix
-                product_true = row_field_mat.T * col_field_mat
+                product_true = row_vec_mat.T * col_vec_mat
                
                 # Test paralleized computation.  
                 product_computed = \
-                    self.fieldOperations.compute_inner_product_mat(row_field_paths,
-                        col_field_paths)
+                    self.vecOperations.compute_inner_product_mat(row_vec_paths,
+                        col_vec_paths)
                 N.testing.assert_allclose(product_computed, 
                     product_true)
                         

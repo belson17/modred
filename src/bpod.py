@@ -1,45 +1,45 @@
 
 import numpy as N
-from fieldoperations import FieldOperations
+from vecoperations import VecOperations
 import util
 import parallel
 
 class BPOD(object):
     """Balanced Proper Orthogonal Decomposition
     
-    Computes direct and adjoint modes from direct and adjoint fields.
-    It uses FieldOperations for low level functions.
+    Computes direct and adjoint modes from direct and adjoint vecs.
+    It uses VecOperations for low level functions.
     
     Usage::
     
-      myBPOD = BPOD(get_field=my_get_field, put_field=my_put_field,
-          inner_product=my_inner_product, max_fields_per_node=500)
-      myBPOD.compute_decomp(direct_field_sources, adjoint_field_sources)      
+      myBPOD = BPOD(get_vec=my_get_vec, put_vec=my_put_vec,
+          inner_product=my_inner_product, max_vecs_per_node=500)
+      myBPOD.compute_decomp(direct_vec_sources, adjoint_vec_sources)      
       myBPOD.compute_direct_modes(range(1, 50), 'bpod_direct_mode_%03d.txt')
       myBPOD.compute_adjoint_modes(range(1, 50), 'bpod_adjoint_mode_%03d.txt')
     """
     
-    def __init__(self, get_field=None, put_field=None, 
+    def __init__(self, get_vec=None, put_vec=None, 
         put_mat=util.save_mat_text, get_mat=util.load_mat_text,
-        inner_product=None, max_fields_per_node=2, verbose=True):
+        inner_product=None, max_vecs_per_node=2, verbose=True):
         """Constructor
         
         Kwargs:
-            get_field: Function to get a field from elsewhere (memory or file).
+            get_vec: Function to get a vec from elsewhere (memory or file).
             
-            put_field: Function to put a field elsewhere (memory or file).
+            put_vec: Function to put a vec elsewhere (memory or file).
             
             put_mat: Function to put a matrix elsewhere (memory or file).
             
-            inner_product: Function to take inner product of two fields.
+            inner_product: Function to take inner product of two vecs.
             
             verbose: print more information about progress and warnings
         """
-        # Class that contains all of the low-level field operations
+        # Class that contains all of the low-level vec operations
         # and parallelizes them.
-        self.field_ops = FieldOperations(get_field=get_field, 
-            put_field=put_field, inner_product=inner_product, 
-            max_fields_per_node=max_fields_per_node, verbose=verbose)
+        self.vec_ops = VecOperations(get_vec=get_vec, 
+            put_vec=put_vec, inner_product=inner_product, 
+            max_vecs_per_node=max_vecs_per_node, verbose=verbose)
         self.parallel = parallel.default_instance
 
         self.get_mat = get_mat
@@ -47,7 +47,7 @@ class BPOD(object):
         self.verbose = verbose
         
     def idiot_check(self, test_obj=None, test_obj_source=None):
-        return self.field_ops.idiot_check(test_obj, test_obj_source)
+        return self.vec_ops.idiot_check(test_obj, test_obj_source)
 
     def get_decomp(self, L_sing_vecs_source, sing_vals_source, R_sing_vecs_source):
         """Gets the decomposition matrices from elsewhere (memory or file)."""
@@ -100,16 +100,16 @@ class BPOD(object):
         self.put_sing_vals(sing_vals_dest)
         
         
-    def compute_decomp(self, direct_field_sources, adjoint_field_sources):
-        """Compute BPOD from given fields.
+    def compute_decomp(self, direct_vec_sources, adjoint_vec_sources):
+        """Compute BPOD from given vecs.
         
         Computes the Hankel mat Y*X, then takes the SVD of this matrix.
         """        
-        self.direct_field_sources = direct_field_sources
-        self.adjoint_field_sources = adjoint_field_sources
+        self.direct_vec_sources = direct_vec_sources
+        self.adjoint_vec_sources = adjoint_vec_sources
         # Do Y.conj()*X
-        self.hankel_mat = self.field_ops.compute_inner_product_mat(
-            self.adjoint_field_sources, self.direct_field_sources)
+        self.hankel_mat = self.vec_ops.compute_inner_product_mat(
+            self.adjoint_vec_sources, self.direct_vec_sources)
         self.compute_SVD()        
         #self.parallel.evaluate_and_bcast([self.L_sing_vecs,self.sing_vals,self.\
         #    R_sing_vecs], util.svd, arguments = [self.hankel_mat])
@@ -135,8 +135,8 @@ class BPOD(object):
         
 
     def compute_direct_modes(self, mode_nums, mode_dests, index_from=1,
-        direct_field_sources=None):
-        """Computes the direct modes and ``self.put_field``s them.
+        direct_vec_sources=None):
+        """Computes the direct modes and ``self.put_vec``s them.
         
         Args:
           mode_nums: Mode numbers to compute. 
@@ -150,7 +150,7 @@ class BPOD(object):
           index_from:
               Index modes starting from 0, 1, or other.
           
-          direct_field_sources: sources to direct fields. 
+          direct_vec_sources: sources to direct vecs. 
               Optional if already given when calling ``self.compute_decomp``.
             
         self.R_sing_vecs and self.sing_vals must exist, else UndefinedError.
@@ -161,18 +161,18 @@ class BPOD(object):
         if self.sing_vals is None:
             raise util.UndefinedError('Must define self.sing_vals')
             
-        if direct_field_sources is not None:
-            self.direct_field_sources = direct_field_sources
-        if self.direct_field_sources is None:
-            raise util.UndefinedError('Must specify direct_field_sources')
+        if direct_vec_sources is not None:
+            self.direct_vec_sources = direct_vec_sources
+        if self.direct_vec_sources is None:
+            raise util.UndefinedError('Must specify direct_vec_sources')
         # Switch to N.dot...
         build_coeff_mat = N.mat(self.R_sing_vecs)*N.mat(N.diag(self.sing_vals**-0.5))
-        self.field_ops._compute_modes(mode_nums, mode_dests, 
-            self.direct_field_sources, build_coeff_mat, index_from=index_from)
+        self.vec_ops._compute_modes(mode_nums, mode_dests, 
+            self.direct_vec_sources, build_coeff_mat, index_from=index_from)
     
     def compute_adjoint_modes(self, mode_nums, mode_dests, index_from=1,
-        adjoint_field_sources=None):
-        """Computes the adjoint modes ``self.put_field``s them.
+        adjoint_vec_sources=None):
+        """Computes the adjoint modes ``self.put_vec``s them.
         
         Args:
             mode_nums: Mode numbers to compute. 
@@ -185,7 +185,7 @@ class BPOD(object):
         Kwargs:
             index_from: Index modes starting from 0, 1, or other.
                 
-            adjoint_field_sources: sources of adjoint fields. 
+            adjoint_vec_sources: sources of adjoint vecs. 
             		Optional if already given when calling ``self.compute_decomp``.
             
         self.L_sing_vecs and self.sing_vals must exist, else UndefinedError.
@@ -195,15 +195,15 @@ class BPOD(object):
             raise UndefinedError('Must define self.L_sing_vecs')
         if self.sing_vals is None:
             raise UndefinedError('Must define self.sing_vals')
-        if adjoint_field_sources is not None:
-            self.adjoint_field_sources=adjoint_field_sources
-        if self.adjoint_field_sources is None:
-            raise util.UndefinedError('Must specify adjoint_field_sources')
+        if adjoint_vec_sources is not None:
+            self.adjoint_vec_sources=adjoint_vec_sources
+        if self.adjoint_vec_sources is None:
+            raise util.UndefinedError('Must specify adjoint_vec_sources')
 
         self.sing_vals = N.squeeze(N.array(self.sing_vals))
         
         build_coeff_mat = N.dot(self.L_sing_vecs, N.diag(self.sing_vals**-0.5))
                  
-        self.field_ops._compute_modes(mode_nums, mode_dests,
-            self.adjoint_field_sources, build_coeff_mat, index_from=index_from)
+        self.vec_ops._compute_modes(mode_nums, mode_dests,
+            self.adjoint_vec_sources, build_coeff_mat, index_from=index_from)
     

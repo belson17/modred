@@ -14,7 +14,7 @@ parallel = parallel_mod.default_instance
 
 from dmd import DMD
 from pod import POD
-from fieldoperations import FieldOperations
+from vecoperations import VecOperations
 import util
 
 
@@ -31,10 +31,10 @@ class TestDMD(unittest.TestCase):
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
             os.mkdir(self.test_dir)
         
-        self.num_snaps = 6 # number of snapshots to generate
+        self.num_vecs = 6 # number of vecs to generate
         self.num_states = 7 # dimension of state vector
         self.index_from = 2
-        self.DMD = DMD(get_field=util.load_mat_text, put_field=util.\
+        self.DMD = DMD(get_vec=util.load_mat_text, put_vec=util.\
             save_mat_text, put_mat=util.save_mat_text, inner_product=util.\
             inner_product, verbose=False)
         self.generate_data_set()
@@ -50,45 +50,45 @@ class TestDMD(unittest.TestCase):
         
         
     def generate_data_set(self):
-        """ Create data set of snapshots and save to file"""
-        self.snap_path = join(self.test_dir, 'dmd_snap_%03d.txt')
+        """ Create data set of vecs and save to file"""
+        self.vec_path = join(self.test_dir, 'dmd_vec_%03d.txt')
         self.true_mode_path = join(self.test_dir, 'dmd_truemode_%03d.txt')
-        self.snap_paths = []
+        self.vec_paths = []
        
         # Generate modes if we are on the first processor
         if parallel.is_rank_zero():
-            # A random matrix of data (#cols = #snapshots)
-            self.snap_mat = N.mat(N.random.random((self.num_states, self.\
-                num_snaps)))
+            # A random matrix of data (#cols = #vecs)
+            self.vec_mat = N.mat(N.random.random((self.num_states, self.\
+                num_vecs)))
             
-            for snap_num in range(self.num_snaps):
-                util.save_mat_text(self.snap_mat[:,snap_num], self.snap_path %\
-                    snap_num)
-                self.snap_paths.append(self.snap_path % snap_num) 
+            for vec_num in range(self.num_vecs):
+                util.save_mat_text(self.vec_mat[:,vec_num], self.vec_path %\
+                    vec_num)
+                self.vec_paths.append(self.vec_path % vec_num) 
         else:
-            self.snap_paths=None
-            self.snap_mat = None
+            self.vec_paths=None
+            self.vec_mat = None
         if parallel.is_distributed():
-            self.snap_paths = parallel.comm.bcast(self.snap_paths, 
+            self.vec_paths = parallel.comm.bcast(self.vec_paths, 
                 root=0)
-            self.snap_mat = parallel.comm.bcast(self.snap_mat, root=0)
+            self.vec_mat = parallel.comm.bcast(self.vec_mat, root=0)
 
         # Do direct DMD decomposition on all processors
         # This goes against our convention, try to give U, Sigma, and W names!
         # In BPOD, L_sing_vec, sing_vals, R_sing_vecs.
-        U, Sigma, W = util.svd(self.snap_mat[:,:-1])
+        U, Sigma, W = util.svd(self.vec_mat[:,:-1])
         Sigma_mat = N.mat(N.diag(Sigma))
-        self.ritz_vals_true, eig_vecs = N.linalg.eig(U.H * self.snap_mat[:,1:] * \
+        self.ritz_vals_true, eig_vecs = N.linalg.eig(U.H * self.vec_mat[:,1:] * \
             W * (Sigma_mat ** -1))
         eig_vecs = N.mat(eig_vecs)
         ritz_vecs = U * eig_vecs
-        scaling = N.linalg.lstsq(ritz_vecs, self.snap_mat[:,0])[0]
+        scaling = N.linalg.lstsq(ritz_vecs, self.vec_mat[:,0])[0]
         scaling = N.mat(N.diag(N.array(scaling).squeeze()))
         self.ritz_vecs_true = ritz_vecs * scaling
         self.build_coeffs_true = W * (Sigma_mat ** -1) * eig_vecs * scaling
         self.mode_norms_true = N.zeros(self.ritz_vecs_true.shape[1])
         for i in xrange(self.ritz_vecs_true.shape[1]):
-            self.mode_norms_true[i] = self.DMD.field_ops.inner_product(N.\
+            self.mode_norms_true[i] = self.DMD.vec_ops.inner_product(N.\
                 array(self.ritz_vecs_true[:,i]), N.array(self.ritz_vecs_true[:, 
                 i])).real
 
@@ -109,17 +109,17 @@ class TestDMD(unittest.TestCase):
         data_members_default = {'put_mat': util.save_mat_text, 
             'get_mat': util.load_mat_text, 'POD': None,
             'parallel': parallel_mod.default_instance,
-            'verbose': False, 'field_ops': FieldOperations(get_field=None, 
-            put_field=None, inner_product=None, max_fields_per_node=2,
+            'verbose': False, 'vec_ops': VecOperations(get_vec=None, 
+            put_vec=None, inner_product=None, max_vecs_per_node=2,
             verbose=False)}
 
         self.assertEqual(util.get_data_members(DMD(verbose=False)), \
             data_members_default)
 
         def my_load(fname): pass
-        myDMD = DMD(get_field=my_load, verbose=False)
+        myDMD = DMD(get_vec=my_load, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops'].get_field = my_load
+        data_members_modified['vec_ops'].get_vec = my_load
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)
         
         myDMD = DMD(get_mat=my_load, verbose=False)
@@ -128,9 +128,9 @@ class TestDMD(unittest.TestCase):
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)
 
         def my_save(data,fname): pass 
-        myDMD = DMD(put_field=my_save, verbose=False)
+        myDMD = DMD(put_vec=my_save, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops'].put_field = my_save
+        data_members_modified['vec_ops'].put_vec = my_save
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)
         
         myDMD = DMD(put_mat=my_save, verbose=False)
@@ -141,16 +141,16 @@ class TestDMD(unittest.TestCase):
         def my_ip(f1, f2): pass
         myDMD = DMD(inner_product=my_ip, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops'].inner_product = my_ip
+        data_members_modified['vec_ops'].inner_product = my_ip
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)
 
-        max_fields_per_node = 500
-        myDMD = DMD(max_fields_per_node=max_fields_per_node, verbose=False)
+        max_vecs_per_node = 500
+        myDMD = DMD(max_vecs_per_node=max_vecs_per_node, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['field_ops'].max_fields_per_node =\
-            max_fields_per_node
-        data_members_modified['field_ops'].max_fields_per_proc =\
-            max_fields_per_node * parallel.get_num_nodes() / parallel.\
+        data_members_modified['vec_ops'].max_vecs_per_node =\
+            max_vecs_per_node
+        data_members_modified['vec_ops'].max_vecs_per_proc =\
+            max_vecs_per_node * parallel.get_num_nodes() / parallel.\
             get_num_procs()
         self.assertEqual(util.get_data_members(myDMD), data_members_modified)
        
@@ -160,7 +160,7 @@ class TestDMD(unittest.TestCase):
         """ 
         Only tests the part unique to computing the decomposition.
         """
-        # Depending on snapshots generated, test will fail if tol = 8, so use 7
+        # Depending on vecs generated, test will fail if tol = 8, so use 7
         tol = 1e-7 
 
         # Run decomposition and save matrices to file
@@ -168,7 +168,7 @@ class TestDMD(unittest.TestCase):
         mode_norms_path = join(self.test_dir, 'dmd_mode_energies.txt')
         build_coeffs_path = join(self.test_dir, 'dmd_build_coeffs.txt')
 
-        self.DMD.compute_decomp(self.snap_paths)
+        self.DMD.compute_decomp(self.vec_paths)
         self.DMD.put_decomp(ritz_vals_path, mode_norms_path, build_coeffs_path)
        
         # Test that matrices were correctly computed
@@ -213,16 +213,16 @@ class TestDMD(unittest.TestCase):
 
         mode_path = join(self.test_dir, 'dmd_mode_%03d.txt')
         self.DMD.build_coeffs = self.build_coeffs_true
-        mode_nums = list(N.array(range(self.num_snaps-1))+self.index_from)
+        mode_nums = list(N.array(range(self.num_vecs-1))+self.index_from)
         self.DMD.compute_modes(mode_nums, 
             [mode_path%i for i in mode_nums],
-            index_from=self.index_from, field_sources=self.snap_paths)
+            index_from=self.index_from, vec_sources=self.vec_paths)
             
-        # Load all snapshots into matrix
+        # Load all vecs into matrix
         if parallel.is_rank_zero():
-            mode_mat = N.mat(N.zeros((self.num_states, self.num_snaps-1)), dtype=\
+            mode_mat = N.mat(N.zeros((self.num_states, self.num_vecs-1)), dtype=\
                 complex)
-            for i in range(self.num_snaps-1):
+            for i in range(self.num_vecs-1):
                 mode_mat[:,i] = util.load_mat_text(mode_path % (i+self.index_from),
                     is_complex=True)
         else:
@@ -232,8 +232,8 @@ class TestDMD(unittest.TestCase):
         N.testing.assert_allclose(mode_mat,self.ritz_vecs_true, rtol=\
             tol)
 
-        vandermonde_mat = N.fliplr(N.vander(self.ritz_vals_true, self.num_snaps-1))
-        N.testing.assert_allclose(self.snap_mat[:,:-1],
+        vandermonde_mat = N.fliplr(N.vander(self.ritz_vals_true, self.num_vecs-1))
+        N.testing.assert_allclose(self.vec_mat[:,:-1],
             self.ritz_vecs_true * vandermonde_mat, rtol=tol)
 
         util.save_mat_text(vandermonde_mat, join(self.test_dir,

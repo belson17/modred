@@ -125,7 +125,7 @@ class ERA(object):
         
         Args:
             outputs: array of Markov params w/indices (time_interval#, output#, input#),
-                so that outputs[snap_num] is the Markov parameter C A**i B.
+                so that outputs[vec_num] is the Markov parameter C A**i B.
                 outputs = [CB, CAB, CA**PB, CA**(P+1)B, ...]
         Kwargs:
             dt: time step of the system, used to scale B in later step.

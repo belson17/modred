@@ -29,7 +29,7 @@ Contents:
      
    okid
    
-   fieldoperations
+   vecoperations
 
    parallel
    

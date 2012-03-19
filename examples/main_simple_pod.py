@@ -1,12 +1,12 @@
 
 """Example script using SimpleUsePOD.
 
-The fields and modes are always in memory and are returned
+The vecs and modes are always in memory and are returned
 by the instance of SimpleUsePOD.
 
 This demonstrates a typical usage when the inner product is 
 a simple function (or even the default one), and the 
-fields are easily stacked as columns of an array.
+vecs are easily stacked as columns of an array.
 
 However, this is somewhat against the philosophy of modred of not
 using single large arrays and only works for limited simple cases.
@@ -21,20 +21,20 @@ import modred
 import numpy as N
 
 def main(verbose=True, make_plots=True):
-    # Collect the fields and place in columns of ``fields`` array.
+    # Collect the vecs and place in columns of ``vecs`` array.
     # Here we just use random data.
     num_states = 100
-    num_fields = 30
+    num_vecs = 30
     
-    fields = N.random.random((num_states, num_fields))
+    vecs = N.random.random((num_states, num_vecs))
     
     # Create an instance of SimpleUsePOD.
     # The default inner_product is used, but we could specify our own
     # with an optional argument to the constructor.
     my_simple_POD = modred.SimpleUsePOD(verbose=verbose)
     
-    # Set the fields to find the modes of.
-    my_simple_POD.set_fields(fields)
+    # Set the vecs to find the modes of.
+    my_simple_POD.set_vecs(vecs)
     
     # An optional step, returns the SVD matrices so we can determine
     # how many modes to keep.
@@ -66,3 +66,4 @@ def main(verbose=True, make_plots=True):
     
 if __name__ == '__main__':
     main()
+    
