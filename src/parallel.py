@@ -1,6 +1,5 @@
-
+"""Parallel class and functions for distributed memory"""
 import os
-import copy
 import numpy as N
 
 class ParallelError(Exception):
@@ -18,6 +17,7 @@ class Parallel(object):
     parallel.default_instance!
     """
     def __init__(self):
+        """Constructor, tries to import mpi4py."""
         try:
             from mpi4py import MPI
             self.comm = MPI.COMM_WORLD
@@ -51,7 +51,7 @@ class Parallel(object):
             self.distributed = False
     
     def find_node_ID(self):
-        """Finds a unique ID number for each node. Taken from mpi4py emails."""
+        """Finds a unique ID number for each node."""
         hostname = os.uname()[1]
         return hash(hostname)
     
@@ -60,13 +60,7 @@ class Parallel(object):
         return self._num_nodes
     
     def print_from_rank_zero(self,msgs):
-        """Prints the elements of the list given from rank=0 only.
-        
-        TODO: Could be improved to better mimic::
-          
-          if is_rank_zero(): 
-              print a,b,c
-        """
+        """Prints the elements of the list given from rank=0 only."""
         # If not a list, convert to list
         if not isinstance(msgs, list):
             msgs = [msgs]
@@ -143,13 +137,13 @@ class Parallel(object):
             if task_weights[first_unassigned_index:].size != 0:
                 # Index of tasks element which has sum(tasks[:ind]) 
                 # closest to work_per_worker
-                newMaxTaskIndex = N.abs(N.cumsum(
+                new_max_task_index = N.abs(N.cumsum(
                     task_weights[first_unassigned_index:]) -\
                     work_per_worker).argmin() + first_unassigned_index
-                # Append all tasks up to and including newMaxTaskIndex
+                # Append all tasks up to and including new_max_task_index
                 task_assignments.append(tasks[first_unassigned_index:\
-                    newMaxTaskIndex+1])
-                first_unassigned_index = newMaxTaskIndex+1
+                    new_max_task_index+1])
+                first_unassigned_index = new_max_task_index+1
             else:
                 task_assignments.append([])
                 
@@ -160,74 +154,74 @@ class Parallel(object):
     def check_for_empty_tasks(self, task_assignments):
         """Convenience function that checks if empty worker assignments"""
         empty_tasks = False
-        for r,assignment in enumerate(task_assignments):
+        for assignment in task_assignments:
             if len(assignment) == 0 and not empty_tasks:
-                #if self.isRankZero():
-                #    print ('Warning: %d out of %d processors have no ' +\
-                #        'tasks') % (self._numMPITasks - r, self._numMPITasks)
                 empty_tasks = True
         return empty_tasks
 
 
-    def evaluate_and_bcast(self,outputs, function, arguments=[], keywords={}):
-        """Evaluates function with inputs and broadcasts outputs to MPI workers.
+    def evaluate_and_bcast(self, outputs, function, arguments=[], 
+        keywords={}):
+        """Evaluates function with inputs and broadcasts outputs to workers.
         
         CURRENTLY THIS FUNCTION DOESNT WORK
     
         Args:
             outputs: must be a list
     
-            function: must be a callable function given the arguments and keywords
+            function: must be a callable function given the arguments and
+                keywords
     
             arguments: a list containing required arguments to *function*
     
-            keywords: a dictionary containing optional keywords and values for *function*
+            keywords: a dictionary containing optional keywords and values
+                for *function*
 
         function is called with outputs = function(\*arguments,\*\*keywords)
         For more information, see 
-        http://docs.python.org/tutorial/controlflow.html section on keyword arguments, 4.7.2
+        http://docs.python.org/tutorial/controlflow.html
         The result is then broadcast to all processors if in parallel.
         """
         raise RuntimeError('function isnt completed')
-        print 'outputs are ',outputs
-        print 'function is',function
-        print 'arguments are',arguments
-        print 'keywords are',keywords
-        if self.isRankZero():
-            print function(*arguments,**keywords)
-            outputList = function(*arguments,**keywords)
-            if not isinstance(outputList,tuple):
-                outputList = (outputList)
-            if len(outputList) != len(outputs):
-                raise ValueError('Length of outputs differ')
-                
-            for i in range(len(outputs)):
-                temp = outputs[i]
-                temp = outputList[i]
+        
+        print 'outputs are ', outputs
+        print 'function is', function
+        print 'arguments are', arguments
+        print 'keywords are', keywords
+        #if self.isRankZero():
+        #    print function(*arguments, **keywords)
+        #    output_list = function(*arguments, **keywords)
+        #    if not isinstance(output_list, tuple):
+        #        output_list = (output_list)
+        #    if len(output_list) != len(outputs):
+        #        raise ValueError('Length of outputs differ')
+        #        
+        #    for i in range(len(outputs)):
+        #        temp = outputs[i]
+        #        temp = output_list[i]
 
-            print 'outputList is',outputList
-            print 'outputs is',outputs
-        """    
-        else:
-            for outputNum in range(len(outputs)):
-                outputs[outputNum] = None
-        if self.isParallel():
-            for outputNum in range(len(outputs)):
-                outputs[outputNum] = self.comm.bcast(outputs[outputNum], root=0)
-        """
+        #    print 'output_list is', output_list
+        #    print 'outputs is', outputs
+        #else:
+        #    for outputNum in range(len(outputs)):
+        #        outputs[outputNum] = None
+        #if self.isParallel():
+        #    for outputNum in range(len(outputs)):
+        #        outputs[outputNum] = self.comm.bcast(outputs[outputNum],
+        #            root=0)
         print 'Done broadcasting'
         
         
     def __eq__(self, other):
-        a = (self._num_MPI_workers == other.get_num_MPI_workers() and \
+        equal = (self._num_MPI_workers == other.get_num_MPI_workers() and \
         self._rank == other.get_rank() and \
         self.distributed == other.is_distributed())
         #print self._numProcs == other.getNumProcs() ,\
         #self._rank == other.getRank() ,self.parallel == other.isParallel()
-        return a
-    def __ne__(self,other):
+        return equal
+    def __ne__(self, other):
         return not (self.__eq__(other))
-    def __add__(self,other):
+    def __add__(self, other):
         print 'Adding MPI objects doesnt make sense, returning original'
         return self
         

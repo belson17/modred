@@ -1,7 +1,8 @@
+"""DMD class"""
 
 import numpy as N
 from vecoperations import VecOperations
-from pod import POD
+import pod
 import util
 import parallel
 
@@ -32,28 +33,35 @@ class DMD(object):
             inner_product: Function to take inner product of two vecs.
             
             verbose: Print more information about progress and warnings
+            
+            max_vecs_per_node: max number of vectors in memory per node.
         
         Returns:
             DMD instance
         """
-        self.vec_ops = VecOperations(get_vec=get_vec,\
-            put_vec=put_vec, inner_product=inner_product,
-            max_vecs_per_node=max_vecs_per_node, verbose=\
-            verbose)
+        self.vec_ops = VecOperations(get_vec=get_vec, \
+            put_vec=put_vec, inner_product=inner_product, 
+            max_vecs_per_node=max_vecs_per_node, verbose=verbose)
         self.parallel = parallel.default_instance
 
         self.get_mat = get_mat
         self.put_mat = put_mat
         self.POD = POD
         self.verbose = verbose
+        self.ritz_vals = None
+        self.build_coeffs = None
+        self.mode_norms = None
+        self.vec_sources = None
 
     def idiot_check(self, test_obj=None, test_obj_source=None):
+        """See VecOperations documentation"""
         return self.vec_ops.idiot_check(test_obj, test_obj_source)
 
-    def get_decomp(self, ritz_vals_source, mode_norms_source, build_coeffs_source):
+    def get_decomp(self, ritz_vals_source, mode_norms_source, 
+        build_coeffs_source):
         """Retrieves the decomposition matrices from a source. """
         if self.get_mat is None:
-            raise UndefinedError('Must specify a get_mat function')
+            raise util.UndefinedError('Must specify a get_mat function')
         if self.parallel.is_rank_zero():
             self.ritz_vals = N.squeeze(N.array(self.get_mat(ritz_vals_source)))
             self.mode_norms = N.squeeze(N.array(self.get_mat(mode_norms_source)))
@@ -74,18 +82,21 @@ class DMD(object):
         self.put_build_coeffs(build_coeffs_dest)
         
     def put_ritz_vals(self, dest):
+        """Puts the Ritz values"""
         if self.put_mat is None and self.parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined, can't put")
         if self.parallel.is_rank_zero():
             self.put_mat(self.ritz_vals, dest)
 
     def put_mode_norms(self, dest):
+        """Puts the mode norms"""
         if self.put_mat is None and self.parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined, can't put")
         if self.parallel.is_rank_zero():
             self.put_mat(self.mode_norms, dest)
 
     def put_build_coeffs(self, dest):
+        """Puts the build coeffs"""
         if self.put_mat is None and self.parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined, can't put")
         if self.parallel.is_rank_zero():
@@ -103,13 +114,13 @@ class DMD(object):
 
         # Compute POD from vecs (excluding last vec)
         if self.POD is None:
-            self.POD = POD(get_vec=self.vec_ops.get_vec, 
+            self.POD = pod.POD(get_vec=self.vec_ops.get_vec, 
                 inner_product=self.vec_ops.inner_product, 
                 max_vecs_per_node=self.vec_ops.max_vecs_per_node, 
                 verbose=self.verbose)
             self.POD.compute_decomp(vec_sources=self.vec_sources[:-1])
-        elif self.veclist[:-1] != self.POD.veclist or len(vec_sources) !=\
-            len(self.POD.vec_sources)+1:
+        elif self.vec_sources[:-1] != self.POD.vec_sources or \
+            len(vec_sources) != len(self.POD.vec_sources)+1:
             raise RuntimeError('vec mismatch between POD and DMD '+\
                 'objects.')     
         _pod_sing_vals_sqrt_mat = N.mat(
@@ -118,10 +129,10 @@ class DMD(object):
         # Inner product of vecs w/POD modes
         num_vecs = len(self.vec_sources)
         pod_modes_star_times_vecs = N.mat(N.empty((num_vecs-1, num_vecs-1)))
-        pod_modes_star_times_vecs[:, :-1] = self.POD.correlation_mat[:,1:]  
-        pod_modes_star_times_vecs[:, -1] = self.vec_ops.\
-            compute_inner_product_mat(self.vec_sources[:-1], self.vec_sources[
-            -1])
+        pod_modes_star_times_vecs[:,:-1] = self.POD.correlation_mat[:,1:]  
+        pod_modes_star_times_vecs[:,-1] = self.vec_ops.\
+            compute_inner_product_mat(self.vec_sources[:-1], 
+                self.vec_sources[-1])
         pod_modes_star_times_vecs = _pod_sing_vals_sqrt_mat * self.POD.\
             sing_vecs.H * pod_modes_star_times_vecs
             
@@ -162,5 +173,6 @@ class DMD(object):
         if vec_sources is not None:
             self.vec_sources = vec_sources
         
-        self.vec_ops._compute_modes(mode_nums, mode_dests, self.vec_sources[:-1],self.build_coeffs, index_from=index_from)
+        self.vec_ops.compute_modes(mode_nums, mode_dests, 
+            self.vec_sources[:-1], self.build_coeffs, index_from=index_from)
         

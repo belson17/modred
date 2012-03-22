@@ -66,8 +66,9 @@ class VecOperations(object):
                 self.parallel.get_num_nodes()/self.parallel.get_num_procs()
     
     def print_msg(self, msg, output_channel=sys.stdout):
+        """Print a message from rank 0 if verbose"""
         if self.verbose and self.parallel.is_rank_zero():
-            print >> sys.stdout, msg
+            print >> output_channel, msg
 
     def idiot_check(self, test_obj=None, test_obj_source=None):
         """Checks that the user-supplied objects and functions work.
@@ -90,24 +91,24 @@ class VecOperations(object):
         obj_copy_mag2 = self.inner_product(obj_copy, obj_copy)
         
         factor = 2.
-        objMult = test_obj * factor
+        obj_mult = test_obj * factor
         
-        if abs(self.inner_product(objMult, objMult) -
+        if abs(self.inner_product(obj_mult, obj_mult) -
                 obj_copy_mag2 * factor**2) > tol:
             raise ValueError('Multiplication of vec/mode object failed')
         
         if abs(self.inner_product(test_obj, test_obj) - 
                 obj_copy_mag2) > tol:  
             raise ValueError('Original object modified by multiplication!') 
-        objAdd = test_obj + test_obj
-        if abs(self.inner_product(objAdd, objAdd) - obj_copy_mag2 * 4) > tol:
+        obj_add = test_obj + test_obj
+        if abs(self.inner_product(obj_add, obj_add) - obj_copy_mag2 * 4) > tol:
             raise ValueError('Addition does not give correct result')
         
         if abs(self.inner_product(test_obj, test_obj) - obj_copy_mag2) > tol:  
             raise ValueError('Original object modified by addition!')       
         
-        objAddMult = test_obj * factor + test_obj
-        if abs(self.inner_product(objAddMult, objAddMult) - obj_copy_mag2 *
+        obj_add_mult = test_obj * factor + test_obj
+        if abs(self.inner_product(obj_add_mult, obj_add_mult) - obj_copy_mag2 *
                 (factor + 1) ** 2) > tol:
             raise ValueError('Multiplication and addition of vec/mode are '+\
                 'inconsistent')
@@ -129,12 +130,9 @@ class VecOperations(object):
             row_vec_sources: list of row vec sources (BPOD adjoint vecs, "Y")
           
             col_vec_sources: list of column vec sources (BPOD direct vecs, "X")
-            
-        **Details**
 
-        Within this method, the vecs are retrieved in memory-efficient ways
-        such that they are not all in memory at once. This results in finding
-        'chunks' of the eventual matrix that is returned.
+        Within this method, the vecs are retrieved in a memory-efficient
+        chunks so that they are not all in memory at once.
         The row vecs and col vecs are assumed to be different.        
         When they are the same (POD), a different method is used.
         
@@ -153,11 +151,8 @@ class VecOperations(object):
           rank1 | o x |
                 | o x |
         
-        Rank 0 reads column 0 and fills out IPs for all rows in a row
-        chunk. Here there is only one row chunk for each processor for
-        simplicity. Rank 1 reads column 1 (c1) and fills out IPs for all rows
-        in a row chunk. In the next step, rank 0 sends c0 to rank 1 and rank 1
-        sends c1 to rank 1. The remaining IPs are filled in::
+        In the next step, rank 0 sends column 0 to rank 1 and rank 1
+        sends column 1 to rank 0. The remaining IPs are filled in::
         
                 | x x |
           rank0 | x x |
@@ -172,20 +167,18 @@ class VecOperations(object):
         unequal numbers of tasks. However, all processors are always
         part of the passing circle.
         
-        This is also generalized to allow the columns to be
-        read in chunks, rather than only 1 at a time. This could be useful,
-        for example, if we change the implementation to use hybrid
-        distributed-shared memory where it is best to work in
+        This is also generalized to allow the columns to be read in chunks, 
+        rather than only 1 at a time.
+        If we change the implementation to use hybrid distributed-shared 
+        memory where it is best to work in
         operation-units (load/gets, IPs, etc) of multiples of the number
         of processors sharing memory (procs/node).
         
-        The scaling is::
+        The scaling is:
         
-            num gets / processor ~ (n_r*n_c/((max-1)*n_p*n_p)) + n_r/n_p
-            
-            num MPI sends / processor ~ (n_p-1)*(n_r/((max-1)*n_p))*n_c/n_p
-            
-            num inner products / processor ~ n_r*n_c/n_p
+        - num gets / processor ~ (n_r*n_c/((max-1)*n_p*n_p)) + n_r/n_p
+        - num MPI sends / processor ~ (n_p-1)*(n_r/((max-1)*n_p))*n_c/n_p
+        - num inner products / processor ~ n_r*n_c/n_p
             
         where n_r is number of rows, n_c number of columns, max is
         max_vecs_per_proc = max_vecs_per_node/num_procs_per_node, and n_p is
@@ -195,15 +188,13 @@ class VecOperations(object):
         internal transpose and un-transpose. This improves efficiency by placing
         the larger of n_c and n_r on the quadratically scaled portion.
         
-        From these scaling laws, it can be seen that it is generally good to
-        use all available processors, even if it lowers max. However, this can
-        depend the particular system and hardware.
-        Sometimes simultaneous loads actually makes each load slow.     
+        It is good to use all available processors, even if it lowers max.
+        However, sometimes simultaneous loads actually makes each load slow.     
         """
              
-        if not isinstance(row_vec_sources,list):
+        if not isinstance(row_vec_sources, list):
             row_vec_sources = [row_vec_sources]
-        if not isinstance(col_vec_sources,list):
+        if not isinstance(col_vec_sources, list):
             col_vec_sources = [col_vec_sources]
             
         num_cols = len(col_vec_sources)
@@ -259,7 +250,8 @@ class VecOperations(object):
             self.print_msg('Warning: The column vecs, of which '
                     'there are %d, will be read %d times each. Increase '
                     'number of nodes or max_vecs_per_node to reduce redundant '
-                    '"get_vecs"s and get a big speedup.'%(num_cols,num_row_get_loops))
+                    '"get_vecs"s and get a big speedup.'%(
+                        num_cols,num_row_get_loops))
         
         # To find all of the inner product mat chunks, each 
         # processor has a full IP_mat with size
@@ -285,7 +277,8 @@ class VecOperations(object):
             for col_get_index in xrange(num_col_get_loops):
                 if len(col_tasks[rank]) > 0:
                     start_col_index = min(col_tasks[rank][0] + 
-                        col_get_index*num_cols_per_proc_chunk, col_tasks[rank][-1]+1)
+                        col_get_index*num_cols_per_proc_chunk, 
+                            col_tasks[rank][-1]+1)
                     end_col_index = min(col_tasks[rank][-1]+1, 
                         start_col_index + num_cols_per_proc_chunk)
                 else:
@@ -331,7 +324,7 @@ class VecOperations(object):
                     # filled in.
                     if len(row_vecs) > 0:
                         for row_index in xrange(start_row_index, end_row_index):
-                            for col_vec_index,col_vec in enumerate(col_vecs):
+                            for col_vec_index, col_vec in enumerate(col_vecs):
                                 IP_mat_chunk[row_index, col_indices[
                                     col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - start_row_index],
@@ -347,7 +340,8 @@ class VecOperations(object):
                 percent_completed_IPs = 100. * num_completed_IPs/(num_cols*num_rows)           
                 print >> sys.stderr, ('Completed %.1f%% of inner ' +\
                     'products: IPMat[:%d, :%d] of IPMat[%d, %d]') % \
-                    (percent_completed_IPs, end_row_index, num_cols, num_rows, num_cols)
+                    (percent_completed_IPs, end_row_index, num_cols, 
+                        num_rows, num_cols)
                 self.prev_print_time = T.time()
             
         # Assign these chunks into IP_mat.
@@ -371,7 +365,8 @@ class VecOperations(object):
         See the documentation for compute_inner_product_mat for a general
         idea how this works.
         
-        TODO: JON, write detailed documentation similar to ``compute_inner_product_mat``'s.
+        TODO: JON, write detailed documentation similar to 
+        ``compute_inner_product_mat``'s.
         """
         if isinstance(vec_sources, str):
             vec_sources = [vec_sources]
@@ -456,7 +451,8 @@ class VecOperations(object):
                                        
                 # The proc to send to is "destination"                         
                 dest_rank = (my_rank + set_index + 1) % num_active_procs
-                dest_row_indices = proc_row_tasks_all[dest_rank]
+                # This is unused?
+                #dest_row_indices = proc_row_tasks_all[dest_rank]
                 
                 # The proc that data is received from is the "source"
                 source_rank = (my_rank - set_index - 1) % num_active_procs
@@ -582,7 +578,7 @@ class VecOperations(object):
                     if len(proc_row_tasks) > 0:
                         for row_index in xrange(proc_row_tasks[0],
                             proc_row_tasks[-1]+1):
-                            for col_vec_index,col_vec in enumerate(col_vecs):
+                            for col_vec_index, col_vec in enumerate(col_vecs):
                                 IP_mat_chunk[row_index, col_indices[
                                     col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - proc_row_tasks[0]],
@@ -617,7 +613,7 @@ class VecOperations(object):
         return IP_mat
         
         
-    def _compute_modes(self, mode_nums, mode_dests, vec_sources, vec_coeff_mat,
+    def compute_modes(self, mode_nums, mode_dests, vec_sources, vec_coeff_mat,
         index_from=1):
         """A common method to compute modes from vecs and ``put_vec`` them.
         
@@ -667,8 +663,9 @@ class VecOperations(object):
         if num_modes > len(mode_dests):
             raise ValueError('More mode numbers than mode destinations')
         elif num_modes < len(mode_dests):
-            print ('Warning: Fewer mode numbers (%d) than mode destinations(%d), some mode '+
-                'destinations will not be used')%(num_modes, len(mode_dests))
+            print ('Warning: Fewer mode numbers (%d) than mode destinations(%d),'+
+                ' some mode destinations will not be used')%(
+                    num_modes, len(mode_dests))
             mode_dests = mode_dests[:num_modes] # deepcopy?
         
         for mode_num in mode_nums:
@@ -780,7 +777,7 @@ class VecOperations(object):
                 end_sum_index = min(start_sum_index+num_sums_per_proc_chunk,
                     sum_tasks[rank][-1]+1)
                 # Create empty list on each processor
-                sum_layers = [None for i in xrange(start_sum_index, end_sum_index)]
+                sum_layers = [None]*(end_sum_index - start_sum_index)
             else:
                 start_sum_index = 0
                 end_sum_index = 0
@@ -818,13 +815,17 @@ class VecOperations(object):
                             self.parallel.get_num_procs()
                         
                         #Create unique tags based on ranks
-                        send_tag = self.parallel.get_rank()*(self.parallel.get_num_procs()+1) + dest
-                        recv_tag = source*(self.parallel.get_num_procs()+1) + self.parallel.get_rank()
+                        send_tag = self.parallel.get_rank() * \
+                            (self.parallel.get_num_procs()+1) + dest
+                        recv_tag = source*(self.parallel.get_num_procs()+1) + \
+                            self.parallel.get_rank()
                         
                         # Send/receive data
                         basis_vecs_send = (basis_vecs, basis_indices)
-                        request = self.parallel.comm.isend(basis_vecs_send, dest=dest, tag=send_tag)                       
-                        basis_vecs_recv = self.parallel.comm.recv(source=source, tag=recv_tag)
+                        request = self.parallel.comm.isend(basis_vecs_send,  
+                            dest=dest, tag=send_tag)                       
+                        basis_vecs_recv = self.parallel.comm.recv(
+                            source=source, tag=recv_tag)
                         request.Wait()
                         self.parallel.sync()
                         basis_indices = basis_vecs_recv[1]
@@ -833,7 +834,7 @@ class VecOperations(object):
                     # Compute the scalar multiplications for this set of data
                     # basis_indices stores the indices of the vec_coeff_mat to use.
                     for sum_index in xrange(start_sum_index, end_sum_index):
-                        for basis_index,basis_vec in enumerate(basis_vecs):
+                        for basis_index, basis_vec in enumerate(basis_vecs):
                             sum_layer = basis_vec*\
                                 vec_coeff_mat[basis_indices[basis_index],\
                                 sum_index]
@@ -844,7 +845,7 @@ class VecOperations(object):
 
             # Completed this set of sum vecs, puts them to memory or file
             for sum_index in xrange(start_sum_index, end_sum_index):
-                self.put_vec(sum_layers[sum_index-start_sum_index],\
+                self.put_vec(sum_layers[sum_index-start_sum_index], \
                     sum_vec_dests[sum_index])
             del sum_layers
             if (T.time() - self.prev_print_time) > self.print_interval:    
@@ -857,15 +858,16 @@ class VecOperations(object):
         self.parallel.sync() # ensure that all procs leave function at same time
 
     def __eq__(self, other):
+        """Equal or not"""
         #print 'comparing vecOperations classes'
-        a = (self.inner_product == other.inner_product and 
+        equal = (self.inner_product == other.inner_product and 
             self.get_vec == other.get_vec and 
             self.put_vec == other.put_vec and 
             self.max_vecs_per_node == other.max_vecs_per_node and 
             self.verbose == other.verbose)
-        return a
+        return equal
 
-    def __ne__(self,other):
+    def __ne__(self, other):
         return not (self.__eq__(other))
 
 

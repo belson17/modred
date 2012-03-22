@@ -2,10 +2,11 @@
 
 import os
 import numpy as N
-import inspect 
-import copy
+import inspect
 
-class UndefinedError(Exception): pass
+class UndefinedError(Exception): 
+    """Error when something has not been defined"""
+    pass
     
 def save_mat_text(mat, filename, delimiter=' '):
     """Writes a 1D or 2D array or matrix to a text file
@@ -24,7 +25,7 @@ def save_mat_text(mat, filename, delimiter=' '):
     
     # If one-dimensional array, then make a vector of many rows, 1 column
     if mat_save.ndim == 1:
-        mat_save = mat_save.reshape((-1,1))
+        mat_save = mat_save.reshape((-1, 1))
     elif mat_save.ndim > 2:
         raise RuntimeError('Cannot save a matrix with >2 dimensions')
 
@@ -40,15 +41,15 @@ def load_mat_text(filename, delimiter=' ', is_complex=False):
     # Check the version of numpy, requires version >= 1.6 for ndmin option
     numpy_version = int(N.version.version[2])
     if numpy_version < 6:
-        print 'Warning: load_mat_text requires numpy version >= 1.6 '+\
-            'but you are running version %d'%numpy_version
+        print ('Warning: load_mat_text requires numpy version >= 1.6 '
+            'but you are running version %d'%numpy_version)
     
     if is_complex:
         dtype = complex
     else:
         dtype = float
     mat = N.loadtxt(filename, delimiter=delimiter, ndmin=2)
-    if is_complex and mat.shape[1]%2 != 0:
+    if is_complex and mat.shape[1] % 2 != 0:
         raise ValueError(('Cannot load complex data, file %s '%filename)+\
             'has an odd number of columns. Maybe it has real data.')
             
@@ -58,7 +59,7 @@ def load_mat_text(filename, delimiter=' ', is_complex=False):
 
 def inner_product(vec1, vec2):
     """ A default inner product for n-dimensional numpy arrays """
-    return (vec1*vec2.conj()).sum()
+    return (vec1 * vec2.conj()).sum()
 
     
 def svd(mat, tol = 1e-13):
@@ -68,22 +69,18 @@ def svd(mat, tol = 1e-13):
     there are no ~0 singular values. U and V are numpy.matrix's, E is
     a 1D numpy.array.
     """
-    
-    import copy
-    mat_copied = N.mat(copy.deepcopy(mat))
-    
-    U, E, V_comp_conj = N.linalg.svd(mat_copied, full_matrices=0)
+    U, E, V_comp_conj = N.linalg.svd(N.mat(mat), full_matrices=0)
     V = N.mat(V_comp_conj).H
     U = N.mat(U)
     
     # Only return sing vals above the tolerance
     num_nonzeros = (abs(E) > tol).sum()
     if num_nonzeros > 0:
-        U=U[:,:num_nonzeros]
-        V=V[:,:num_nonzeros]
-        E=E[:num_nonzeros]
+        U = U[:,:num_nonzeros]
+        V = V[:,:num_nonzeros]
+        E = E[:num_nonzeros]
     
-    return U,E,V
+    return U, E, V
 
 
 def get_file_list(directory, file_extension=None):
@@ -113,7 +110,7 @@ def get_data_members(obj):
 
 def sum_arrays(arr1, arr2):
     """Used for allreduce command, not necessary"""
-    return arr1+arr2
+    return arr1 + arr2
 
     
 def sum_lists(list1, list2):
@@ -121,8 +118,8 @@ def sum_lists(list1, list2):
     
     This function is used in MPI reduce commands, but could be used
     elsewhere too"""
-    assert len(list1)==len(list2)
-    return [list1[i]+list2[i] for i in xrange(len(list1))]
+    assert len(list1) == len(list2)
+    return [list1[i] + list2[i] for i in xrange(len(list1))]
 
 
 def solve_Lyapunov(A, Q):
@@ -134,7 +131,7 @@ def solve_Lyapunov(A, Q):
     Q = N.array(Q)
     if A.shape != Q.shape:
         raise ValueError('A and Q dont have same shape')
-    A_flat = A.flatten()
+    #A_flat = A.flatten()
     Q_flat = Q.flatten()
     kron_AA = N.kron(A, A)
     X_flat = N.linalg.solve(N.identity(kron_AA.shape[0]) - kron_AA, Q_flat)
@@ -143,22 +140,30 @@ def solve_Lyapunov(A, Q):
 
 
 def drss(num_states, num_inputs, num_outputs):
-    #Generates a discrete random state space system
+    """Generates a discrete random state space system
+    
+    All e-vals are real.
+    """
     eig_vals = N.linspace(.9, .95, num_states) 
-    eig_vecs = N.random.normal(0, 2., (num_states,num_states))
-    A = N.mat(N.real(N.dot(N.dot(N.linalg.inv(eig_vecs), N.diag(eig_vals)), eig_vecs)))
+    eig_vecs = N.random.normal(0, 2., (num_states, num_states))
+    A = N.mat(N.real(N.dot(N.dot(N.linalg.inv(eig_vecs), 
+        N.diag(eig_vals)), eig_vecs)))
     B = N.mat(N.random.normal(0, 1., (num_states, num_inputs)))
     C = N.mat(N.random.normal(0, 1., (num_outputs, num_states)))
     return A, B, C
 
 def rss(num_states, num_inputs, num_outputs):
-    # Create a stable matrix A with specificed e-vals, continuous time
+    """ Generates a continuous random state space systme.
+    
+    All e-vals are real.
+    """
     e_vals = -N.random.random(num_states)
     transformation = N.random.random((num_states, num_states))
-    A = N.dot(N.dot(N.linalg.inv(transformation), N.diag(e_vals)), transformation)
+    A = N.dot(N.dot(N.linalg.inv(transformation), N.diag(e_vals)),
+        transformation)
     B = N.random.random((num_states, num_inputs))
     C = N.random.random((num_outputs, num_states))
-    return A,B,C
+    return A, B, C
         
         
 def lsim(A, B, C, D, inputs):
@@ -170,7 +175,7 @@ def lsim(A, B, C, D, inputs):
     """
     
     if inputs.ndim == 1:
-        inputs = inputs.reshape((len(inputs),1))
+        inputs = inputs.reshape((len(inputs), 1))
     num_steps, num_inputs = inputs.shape
     num_outputs = C.shape[0]
     num_states = A.shape[0]
@@ -187,19 +192,20 @@ def lsim(A, B, C, D, inputs):
         raise ValueError('D has the wrong shape, D=', D)
     
     outputs = [] 
-    state = N.mat(N.zeros((num_states,1)))
+    state = N.mat(N.zeros((num_states, 1)))
     
-    for time,input in enumerate(inputs):
+    for input in inputs:
         #print 'assigning',N.dot(C, state).shape,'into',outputs[time].shape
-        input_reshape = input.reshape((num_inputs,1))
-        outputs.append((C*state ).squeeze())
+        input_reshape = input.reshape((num_inputs, 1))
+        outputs.append((C*state).squeeze())
         #print 'shape of D*input',N.dot(D,input_reshape).shape
         #Astate = A*state
-        #print 'shape of B is',B.shape,'and shape of input is',input.reshape((num_inputs,1)).shape
+        #print 'shape of B is',B.shape,
+        #print 'and shape of input is',input.reshape((num_inputs,1)).shape
         state = A*state + B*input_reshape
     
     outputs_array = N.zeros((num_steps, num_outputs))
-    for t,out in enumerate(outputs):
+    for t, out in enumerate(outputs):
         #print 'assigning out.shape',out.shape,'into',outputs_array[t].shape
         #print 'num_outputs',num_outputs
         outputs_array[t] = out
@@ -217,7 +223,7 @@ def impulse(A, B, C, time_step=None, time_steps=None):
     No D is included, but can simply be prepended to the output if it is
     non-zero. 
     """
-    num_states = A.shape[0]
+    #num_states = A.shape[0]
     num_inputs = B.shape[1]
     num_outputs = C.shape[0]
     if time_steps is None:
@@ -238,7 +244,7 @@ def impulse(A, B, C, time_step=None, time_steps=None):
             Markovs.append(C*(A**tv)*B)
 
     outputs = N.zeros((len(Markovs), num_outputs, num_inputs))
-    for time_step,Markov in enumerate(Markovs):
+    for time_step, Markov in enumerate(Markovs):
         outputs[time_step] = Markov
     time_steps = N.array(time_steps)
     
@@ -250,7 +256,7 @@ def load_impulse_outputs(output_paths):
     num_inputs = len(output_paths)
     # Read the first file to get parameters
     raw_data = load_mat_text(output_paths[0])
-    num_outputs = raw_data.shape[1]-1
+    num_outputs = raw_data.shape[1] - 1
     if num_outputs == 0:
         raise ValueError('Impulse output data must have at least two columns')
     time_values = raw_data[:, 0]
@@ -259,12 +265,14 @@ def load_impulse_outputs(output_paths):
     # Now allocate array and read all of the output data
     outputs = N.zeros((num_time_values, num_outputs, num_inputs))
     
-    # Load all of the outputs, make sure time_values match for each input impulse file
-    for input_num,output_path in enumerate(output_paths):
+    # Load all of the outputs, make sure time_values match for each input
+    # impulse file
+    for input_num, output_path in enumerate(output_paths):
         raw_data = load_mat_text(output_path)
         time_values_read = raw_data[:,0]
         if not N.allclose(time_values_read, time_values):
-            raise ValueError('Time values in %s are inconsistent with other files'%output_path)   
+            raise ValueError('Time values in %s are inconsistent with '
+                'other files'%output_path)   
         outputs[:,:,input_num] = raw_data[:,1:]
 
     return time_values, outputs

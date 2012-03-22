@@ -13,7 +13,7 @@ def make_time_steps(num_steps, interval):
     Returns:
         time_steps: array of integers, time steps.
     """
-    if num_steps%2 != 0:
+    if num_steps % 2 != 0:
         raise ValueError('num_steps must be even, you gave %d'%num_steps)
     interval = int(interval)
     time_steps = N.zeros(num_steps, dtype=int)
@@ -46,12 +46,13 @@ def make_sampled_format(times, outputs):
     time_steps = N.round((times-times[0])/dt_system)
 
     if N.abs(2*dt_system - dt_sample) > 1e-8:
-        raise ValueError('Data is already in a sampled format, not equally spaced')
+        raise ValueError('Data is already in a sampled format, '
+            'not equally spaced')
     
     # Format [0, 1, 2, 3, ...], requires conversion
     num_time_steps_corr = (num_time_steps - 1)*2
     outputs_corr = N.zeros((num_time_steps_corr, num_outputs, num_inputs))
-    time_steps_corr = N.zeros(num_time_steps_corr,dtype=int)
+    time_steps_corr = N.zeros(num_time_steps_corr, dtype=int)
     outputs_corr[::2] = outputs[:-1]
     outputs_corr[1::2] = outputs[1:]
     time_steps_corr[::2] = time_steps[:-1]
@@ -66,10 +67,10 @@ def make_sampled_format(times, outputs):
 
 def compute_ROM(outputs, num_states, dt=None):
     """Returns A, B, and C matrices, default settings for convenience."""
-    myERA = ERA()
-    myERA.set_outputs(outputs, dt=dt)
-    myERA.compute_ROM(num_states)
-    return myERA.A, myERA.B, myERA.C
+    my_ERA = ERA()
+    my_ERA.set_outputs(outputs, dt=dt)
+    my_ERA.compute_ROM(num_states)
+    return my_ERA.A, my_ERA.B, my_ERA.C
     
 
 
@@ -99,15 +100,18 @@ class ERA(object):
     See Ma et al. 2011 TCFD for ERA details.
     """
     
-    def __init__(self, put_mat=util.save_mat_text, get_mat=util.load_mat_text, mc=None, 
-        mo=None, verbose=True):
+    def __init__(self, put_mat=util.save_mat_text, get_mat=util.load_mat_text,
+        mc=None, mo=None, verbose=True):
         """Constructor
         
         Kwargs:
             mc: number of Markov parameters for controllable dimension.
-                Default is to make mc and mo equal and maximal for a balanced model.
+                Default is mc and mo equal and maximal for a balanced model.
             mo: number of Markov parameters for observable dimension.
-                Default is to make mc and mo equal and maximal for a balanced model.        Variables mc and mo are the number of Markov parameters to use for the Hankel matrix.
+                Default is mc and mo equal and maximal for a balanced model.
+                
+        Variables mc and mo are the number of Markov parameters to use for
+        the Hankel matrix.
         The default is to use all the data and set mc = mo.
         """
         self.put_mat = put_mat
@@ -118,13 +122,26 @@ class ERA(object):
         self.verbose = verbose
         # Used for error checking and determing file formats
         self.dt_tol = 1e-6
+        self.A = None
+        self.B = None
+        self.C = None
+        self.sing_vals = None
+        self.L_sing_vecs = None
+        self.R_sing_vecs = None
+        self.num_outputs = None
+        self.num_inputs = None
+        self.num_time_steps = None
+        self.dt = None
+        self.Hankel_mat = None
+        self.Hankel_mat2 = None
      
 
     def set_outputs(self, outputs, dt=None):
         """Set the signals from each output to each input.
         
         Args:
-            outputs: array of Markov params w/indices (time_interval#, output#, input#),
+            outputs: array of Markov params w/indices 
+                (time_interval#, output#, input#),
                 so that outputs[vec_num] is the Markov parameter C A**i B.
                 outputs = [CB, CAB, CA**PB, CA**(P+1)B, ...]
         Kwargs:
@@ -138,16 +155,19 @@ class ERA(object):
         self.outputs = outputs
         ndims = self.outputs.ndim
         if ndims == 1:
-            self.outputs = self.outputs.reshape((self.outputs.shape[0],1,1))
+            self.outputs = self.outputs.reshape((self.outputs.shape[0], 1, 1))
         elif ndims == 2:
-            self.outputs = self.outputs.reshape((self.outputs.shape[0],self.outputs.shape[1],1))
+            self.outputs = self.outputs.reshape((self.outputs.shape[0], 
+                self.outputs.shape[1], 1))
         elif ndims > 3: 
-            raise RuntimeError('outputs can have 1, 2, or 3 dims, yours had %d'%ndims)
+            raise RuntimeError('outputs can have 1, 2, or 3 dims, '
+                'yours had %d'%ndims)
         
-        self.num_time_steps, self.num_outputs, self.num_inputs = self.outputs.shape
+        self.num_time_steps, self.num_outputs, self.num_inputs = \
+            self.outputs.shape
         
         # Must have an even number of time steps, remove last entry if odd.
-        if self.num_time_steps%2 != 0:
+        if self.num_time_steps % 2 != 0:
             self.num_time_steps -= 1
             self.outputs = self.outputs[:-1]
             
@@ -165,13 +185,13 @@ class ERA(object):
             dt: time step of the discrete system, *not* the sampling period ("P").
             
             mc: number of Markov parameters for controllable dimension.
-            		Default is to make mc and mo equal and maximal for a balanced model.
+            		Default is mc and mo equal and maximal for a balanced model.
             
             mo: number of Markov parameters for observable dimension.
-            		Default is to make mc and mo equal and maximal for a balanced model.
+            		Default is mc and mo equal and maximal for a balanced model.
                 
-        For discrete time systems the impulse is applied over a time interval dt and so
-        has a time-integral 1*dt rather than 1. 
+        For discrete time systems the impulse is applied over a time interval
+        dt and so has a time-integral 1*dt rather than 1. 
         This means the B matrix is "off" by a factor of dt. 
         This is accounted for by multiplying B by dt.
         This is the only reason dt is an argument.
@@ -180,20 +200,22 @@ class ERA(object):
         """
 
         if self.outputs is None:
-            raise util.UndefinedError('No output impulse data exists in instance')
+            raise util.UndefinedError('No output impulse data in instance')
         
         self.mc = mc
         self.mo = mo
 
         self._assemble_Hankel()
-        self.L_sing_vecs, self.sing_vals, self.R_sing_vecs = util.svd(self.Hankel_mat) 
+        self.L_sing_vecs, self.sing_vals, self.R_sing_vecs = \
+            util.svd(self.Hankel_mat) 
 
         # Truncate matrices
         Ur = N.mat(self.L_sing_vecs[:,:num_states])
         Er = N.squeeze(self.sing_vals[:num_states])
         Vr = N.mat(self.R_sing_vecs[:,:num_states])
         
-        self.A = N.mat(N.diag(Er**-.5)) * Ur.H * self.Hankel_mat2 * Vr * N.mat(N.diag(Er**-.5))
+        self.A = N.mat(N.diag(Er**-.5)) * Ur.H * self.Hankel_mat2 * Vr * \
+            N.mat(N.diag(Er**-.5))
         self.B = (N.mat(N.diag(Er**.5)) * (Vr.H)[:,:self.num_inputs]) * self.dt 
         # !! NEED * dt above!!
         self.C = Ur[:self.num_outputs,:] * N.mat(N.diag(Er**.5))
@@ -203,7 +225,7 @@ class ERA(object):
 
  
     def put_ROM(self, A_dest, B_dest, C_dest):
-        """Puts the A, B, and C LTI matrices to destination (file or memory)"""  
+        """Puts the A, B, and C LTI matrices to destination"""  
         self.put_mat(self.A, A_dest)
         self.put_mat(self.B, B_dest)
         self.put_mat(self.C, C_dest)
@@ -214,31 +236,35 @@ class ERA(object):
             print C_dest
      
  
-    def put_decomp(self, Hankel_mat_dest, Hankel_mat2_dest, L_sing_vecs_dest, sing_vals_dest,
-        R_sing_vecs_dest):
+    def put_decomp(self, Hankel_mat_dest, Hankel_mat2_dest, L_sing_vecs_dest, 
+        sing_vals_dest, R_sing_vecs_dest):
         """Saves the decomposition and Hankel matrices"""
         self.put_mat(self.Hankel_mat, Hankel_mat_dest)
         self.put_mat(self.Hankel_mat2, Hankel_mat2_dest)
         self.put_mat(self.L_sing_vecs, L_sing_vecs_dest)
         self.put_mat(self.sing_vals, sing_vals_dest)
         self.put_mat(self.R_sing_vecs, R_sing_vecs_dest)
- 
- 
+    
+    
     def put_sing_vals(self, sing_vals_dest):
-      """Saves just the singular values"""
-      self.put_mat(self.sing_vals, sing_vals_dest)
+        """Saves just the singular values"""
+        self.put_mat(self.sing_vals, sing_vals_dest)
       
  
     def _assemble_Hankel(self):
-        """Assembles and sets self.Hankel_mat and self.Hankel_mat2 (H and H' in Ma 2011).        
+        """Assembles and sets self.Hankel_mat and self.Hankel_mat2 
+        
+        (H and H' in Ma 2011).        
         """
         # To understand the default choice of mc and mo, 
         # consider (let sample_interval=P=1 w.l.o.g.)
         # sequences
         # [0 1 1 2 2 3] => H = [[0 1][1 2]]   H2 = [[1 2][2 3]], mc=mo=1, nt=6
-        # [0 1 1 2 2 3 3 4 4 5] => H=[[0 1 2][1 2 3][2 3 4]] H2=[[1 2 3][2 3 4][3 4 5]], mc=mo=2,nt=10
+        # [0 1 1 2 2 3 3 4 4 5] => H=[[0 1 2][1 2 3][2 3 4]] 
+        # and H2=[[1 2 3][2 3 4][3 4 5]], mc=mo=2,nt=10
         # Thus, using all available data means mc=mo=(nt-2)/4.
-        # For additional output times, (nt-2)/4 rounds down, so we use this formula.
+        # For additional output times, (nt-2)/4 rounds down, so
+        # we use this formula.
         
         if self.mo is None or self.mc is None:
             # Set mo and mc, time_steps is always in format [0, 1, P, P+1, ...]
@@ -246,19 +272,23 @@ class ERA(object):
             self.mc = self.mo
                 
         if (self.mo + self.mc) +2 > self.num_time_steps:
-            raise ValueError('mo+mc+2=%d and must be <= than the number of samples %d'%(
-                self.mo+self.mc+2, num_time_steps))
+            raise ValueError('mo+mc+2=%d and must be <= than the number of '
+                'samples %d'%(self.mo+self.mc+2, self.num_time_steps))
         
-        self.Hankel_mat = N.zeros((self.num_outputs*self.mo, self.num_inputs*self.mc))
+        self.Hankel_mat = N.zeros((self.num_outputs*self.mo, 
+            self.num_inputs*self.mc))
         self.Hankel_mat2 = N.zeros(self.Hankel_mat.shape)
-        #outputs_flattened = self.outputs.swapaxes(0,1).reshape((num_outputs, -1))
+        #outputs_flattened = \
+        #    self.outputs.swapaxes(0,1).reshape((num_outputs, -1))
         for row in range(self.mo):
             row_start = row*self.num_outputs
             row_end = row_start + self.num_outputs
             for col in range(self.mc):
                 col_start = col*self.num_inputs
                 col_end = col_start + self.num_inputs
-                self.Hankel_mat[row_start:row_end, col_start:col_end] = self.outputs[2*(row+col)]
-                self.Hankel_mat2[row_start:row_end, col_start:col_end] = self.outputs[2*(row+col)+1]
+                self.Hankel_mat[row_start:row_end, col_start:col_end] = \
+                    self.outputs[2*(row+col)]
+                self.Hankel_mat2[row_start:row_end, col_start:col_end] = \
+                    self.outputs[2*(row+col)+1]
                 
                 

@@ -109,7 +109,9 @@ class TestDMD(unittest.TestCase):
         data_members_default = {'put_mat': util.save_mat_text, 
             'get_mat': util.load_mat_text, 'POD': None,
             'parallel': parallel_mod.default_instance,
-            'verbose': False, 'vec_ops': VecOperations(get_vec=None, 
+            'verbose': False, 'ritz_vals': None, 'build_coeffs': None,
+            'mode_norms': None, 'vec_sources': None,
+            'vec_ops': VecOperations(get_vec=None, 
             put_vec=None, inner_product=None, max_vecs_per_node=2,
             verbose=False)}
 

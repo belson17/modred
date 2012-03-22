@@ -1,4 +1,4 @@
-# This file makes the modred directory a python package.
+"""This file makes the modred directory a python package."""
 
 # Modules to load when using "from modred import *"
 #__all__ = ['bpod', 'bpodltirom', 'dmd', 'era', 'vecoperations',

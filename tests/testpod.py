@@ -77,7 +77,8 @@ class TestPOD(unittest.TestCase):
         # Set verbose to false, to avoid printing warnings during tests
         data_members_default = {'put_mat': util.save_mat_text, 'get_mat': 
             util.load_mat_text, 'parallel': parallel_mod.default_instance,
-            'verbose': False,
+            'verbose': False, 'sing_vecs': None, 'sing_vals': None,
+            'correlation_mat': None, 'vec_sources': None,
             'vec_ops': VecOperations(get_vec=None, put_vec=None,
             inner_product=None, max_vecs_per_node=2, verbose=False)}
         

@@ -247,7 +247,7 @@ class TestVecOperations(unittest.TestCase):
                             index_from)
                     elif num_modes > num_vecs:
                         self.assertRaises(ValueError,
-                          self.vecOperations._compute_modes, mode_nums,
+                          self.vecOperations.compute_modes, mode_nums,
                           mode_paths, vec_paths, build_coeff_mat,
                           index_from=index_from)
                     else:
@@ -258,7 +258,7 @@ class TestVecOperations(unittest.TestCase):
                             mode_paths = mode_paths[0]
                             
                         # Saves modes to files
-                        self.vecOperations._compute_modes(mode_nums, 
+                        self.vecOperations.compute_modes(mode_nums, 
                             mode_paths,
                             vec_paths, build_coeff_mat, 
                             index_from=index_from)

@@ -1,4 +1,4 @@
-
+"""POD class"""
 import numpy as N
 
 from vecoperations import VecOperations
@@ -33,7 +33,9 @@ class POD(object):
             inner_product: function to take inner product of two vecs.
             
             verbose: print more information about progress and warnings.
-                
+            
+            max_vecs_per_node: max number of vectors in memory per node.
+            
         Returns:
             POD instance
         """
@@ -46,15 +48,20 @@ class POD(object):
         self.get_mat = get_mat
         self.put_mat = put_mat
         self.verbose = verbose
+        self.sing_vecs = None
+        self.sing_vals = None
+        self.correlation_mat = None
+        self.vec_sources = None
      
     def idiot_check(self, test_obj=None, test_obj_source=None):
+        """See VecOperations documentation"""
         return self.vec_ops.idiot_check(test_obj, test_obj_source)
 
      
     def get_decomp(self, sing_vecs_source, sing_vals_source):
         """Gets the decomposition matrices from sources (memory or file)"""
         if self.get_mat is None:
-            raise UndefinedError('Must specify a get_mat function')
+            raise util.UndefinedError('Must specify a get_mat function')
         if self.parallel.is_rank_zero():
             self.sing_vecs = self.get_mat(sing_vecs_source)
             self.sing_vals = N.squeeze(N.array(self.get_mat(sing_vals_source)))
@@ -66,6 +73,7 @@ class POD(object):
             self.sing_vals = self.parallel.comm.bcast(self.sing_vals, root=0)
  
     def put_correlation_mat(self, correlation_mat_dest):
+        """Put correlation matrix"""
         if self.put_mat is None and self.parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined")
         if self.parallel.is_rank_zero():
@@ -78,6 +86,7 @@ class POD(object):
         
         
     def put_sing_vecs(self, dest):
+        """Put singular vectors, U (==V)"""
         if self.put_mat is None and self.parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined")
             
@@ -85,6 +94,7 @@ class POD(object):
             self.put_mat(self.sing_vecs, dest)
 
     def put_sing_vals(self, dest):
+        """Put singular values, E"""
         if self.put_mat is None and self.parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined")
             
@@ -104,6 +114,7 @@ class POD(object):
         
         
     def compute_SVD(self):
+        """Compute SVD, UEV*=correlation_mat"""
         if self.parallel.is_rank_zero():
             self.sing_vecs, self.sing_vals, dummy = \
                 util.svd(self.correlation_mat)
@@ -115,7 +126,8 @@ class POD(object):
             self.sing_vals = self.parallel.comm.bcast(self.sing_vals, root=0)
             
             
-    def compute_modes(self, mode_nums, mode_dests, index_from=1, vec_sources=None):
+    def compute_modes(self, mode_nums, mode_dests, index_from=1,
+        vec_sources=None):
         """Computes the modes and calls ``self.put_vec`` on them.
         
         Args:
@@ -144,7 +156,7 @@ class POD(object):
 
         build_coeff_mat = N.dot(self.sing_vecs, N.diag(self.sing_vals**-0.5))
 
-        self.vec_ops._compute_modes(mode_nums, mode_dests,
+        self.vec_ops.compute_modes(mode_nums, mode_dests,
              self.vec_sources, build_coeff_mat, index_from=index_from)
     
 

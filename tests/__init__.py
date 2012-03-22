@@ -1,4 +1,5 @@
-# Modules to load when using "from modred.tests import *"
+""" Modules to load when using "from modred.tests import " """
+
 __all__ = ['testbpod', 'testbpodltirom', 'testdmd', 'testera', \
     'testvecoperations', 'testparallel', 'testpod', 'testutil', \
     'alltests']

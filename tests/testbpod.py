@@ -106,7 +106,9 @@ class TestBPOD(unittest.TestCase):
 
         data_members_default = {'put_mat': util.save_mat_text, 'get_mat':
              util.load_mat_text, 'parallel': parallel_mod.default_instance,
-            'verbose': False,
+            'verbose': False, 'L_sing_vecs': None, 'R_sing_vecs': None,
+            'sing_vals': None, 'direct_vec_sources': None,
+            'adjoint_vec_sources': None, 'hankel_mat': None,
             'vec_ops': VecOperations(get_vec=None, put_vec=None,
             inner_product=None, max_vecs_per_node=2, verbose=False)}
         
