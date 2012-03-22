@@ -79,8 +79,8 @@ class BPODROM(object):
 		        A_dest: where the reduced A matrix will be put
 		        
 		        direct_mode_advanced_sources: list of sources of direct modes
-		        advanced. 
-								For a discrete time system, these are the 
+		        advanced.
+		            For a discrete time system, these are the 
 								sources of the direct modes that have been advanced a time dt.
 								For continuous time systems, these are the sources of the time
 								derivatives of the direct modes.
@@ -161,8 +161,8 @@ class BPODROM(object):
         Kwargs:
         		num_modes: number of modes/states to keep in the ROM. 
         		    Can omit if already given.
-        
-            dt: discrete time step. Set dt = 0 for continuous time systems.        
+        		
+        		dt: discrete time step. Set dt = 0 for continuous time systems.        
         """
         
         if dt is not None:
@@ -214,7 +214,7 @@ class BPODROM(object):
         
         Computes inner products of adjoint mode with output vecs (C in y=Cx).
         
-        Args:
+        Args: 
 		        C_dest: where the reduced C matrix will be put (memory or file)
 		        
         		output_vec_sources: list of output vecs' sources.
@@ -227,7 +227,7 @@ class BPODROM(object):
             num_modes: number of modes/states to keep in the ROM. 
                 Can omit if already given.
         
-        (Time step dt is irrelevant for the C matrix.)
+        (Time step ``dt`` is irrelevant for the C matrix.)
         """
         if num_modes is not None:
             self.num_modes = num_modes

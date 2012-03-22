@@ -14,10 +14,7 @@ class VecOperations(object):
     The class is a collection of methods used in the high-level 
     modred classes like POD, BPOD, and DMD. 
     It's responsible for all non-trivial parallelization.
-
-    All modred classes use the common functionality provided
-    in this class.
-    
+   
     It is generally best to use all available processors, however this
     depends on the computer and the nature of the functions
     supplied. In some cases, loading from file is slower with more processors.
@@ -707,7 +704,7 @@ class VecOperations(object):
         as many modes as it can fit in memory. The layers from all procs are
         then
         summed together to form the full outputs. The output sum_vecs 
-        are then ``self.put_vec``ed.
+        are then ``self.put_vec`` ed.
         
         Scaling is:
         
