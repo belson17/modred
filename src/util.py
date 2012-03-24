@@ -251,30 +251,63 @@ def impulse(A, B, C, time_step=None, time_steps=None):
     return time_steps, outputs
 
 
-def load_impulse_outputs(output_paths):
-    """Loads impulse outputs with format [t out1 out2 ...]. Used by ERA."""
-    num_inputs = len(output_paths)
-    # Read the first file to get parameters
-    raw_data = load_mat_text(output_paths[0])
-    num_outputs = raw_data.shape[1] - 1
-    if num_outputs == 0:
-        raise ValueError('Impulse output data must have at least two columns')
+
+def load_signals(signal_path):
+    """Loads signals with columns [t signal1 signal2 ...].
+    
+    Convenience function. Example file has format::
+    
+      0 .1 .2
+      .5 .2 .4
+      1 .4 .6
+      1.5 .8 .8
+    
+    """
+    raw_data = load_mat_text(signal_path)
+    num_signals = raw_data.shape[1] - 1
+    if num_signals == 0:
+        raise ValueError('Data must have at least two columns')
     time_values = raw_data[:, 0]
+    signals = raw_data[:,1:]
+    # Guarantee that signals is 2D
+    if signals.ndim == 1:
+        signals = signals.reshape((signals.shape[0], 1))
+    return time_values, signals
+
+
+
+def load_multiple_signals(signal_paths):
+    """Loads multiple signal files w/columns [t channel1 channel2 ...].
+    
+    Convenience function. Example file has format::
+    
+      0 .1 .2
+      .5 .2 .4
+      1 .4 .6
+      1.5 .8 .8
+    
+    """
+    num_signal_paths = len(signal_paths)
+    # Read the first file to get parameters
+    time_values, signals = load_signals(signal_paths[0])
     num_time_values = len(time_values)
+
     
-    # Now allocate array and read all of the output data
-    outputs = N.zeros((num_time_values, num_outputs, num_inputs))
+    num_signals = signals.shape[1]
     
-    # Load all of the outputs, make sure time_values match for each input
-    # impulse file
-    for input_num, output_path in enumerate(output_paths):
-        raw_data = load_mat_text(output_path)
-        time_values_read = raw_data[:,0]
+    # Now allocate array and read all of the signals
+    all_signals = N.zeros((num_signal_paths, num_time_values, num_signals))    
+    
+    # Set the signals we already loaded
+    all_signals[0] = signals
+    
+    # Load all remaining files
+    for path_num, signal_path in enumerate(signal_paths):
+        time_values_read, signals = load_signals(signal_path)
         if not N.allclose(time_values_read, time_values):
             raise ValueError('Time values in %s are inconsistent with '
-                'other files'%output_path)   
-        outputs[:,:,input_num] = raw_data[:,1:]
+                'other files')
+        all_signals[path_num] = signals 
 
-    return time_values, outputs
-
+    return time_values, all_signals
 

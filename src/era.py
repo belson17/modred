@@ -3,10 +3,10 @@ import numpy as N
 import util
 
 def make_time_steps(num_steps, interval):
-    """Returns int array of time steps [0 1 interval interval+1 ...]
+    """Returns array of integer time steps [0 1 interval interval+1 ...]
     
     Args:
-        num_steps: integer, number of time steps to create.
+        num_steps: integer number of time steps to create.
         
         interval: interval between pairs of time steps, as shown above.
     
@@ -22,7 +22,7 @@ def make_time_steps(num_steps, interval):
     return time_steps
 
 
-def make_sampled_format(times, outputs):
+def make_sampled_format(times, outputs, dt_tol=1e-6):
     """Converts equally spaced samples into sampled format [0 1 P P+1 ...].
     
     Args:
@@ -30,12 +30,15 @@ def make_sampled_format(times, outputs):
         
         outputs: an array of output values at the ``times`` specified.
     
+    Kwargs:
+        dt_tol: allowable deviation from uniform time steps.
+    
     Returns:
         time_steps: array with integer time steps
         
         outputs: outputs at the time_steps
         
-        dt: the associated value of time between each time step
+        dt: the time interval between each time step
     """
     num_time_steps, num_outputs, num_inputs = outputs.shape
     if num_time_steps != times.shape[0]:
@@ -45,9 +48,8 @@ def make_sampled_format(times, outputs):
     dt_sample = times[2] - times[0]
     time_steps = N.round((times-times[0])/dt_system)
 
-    if N.abs(2*dt_system - dt_sample) > 1e-8:
-        raise ValueError('Data is already in a sampled format, '
-            'not equally spaced')
+    if N.abs(2*dt_system - dt_sample) > dt_tol:
+        raise ValueError('Data is not equally spaced in time')
     
     # Format [0, 1, 2, 3, ...], requires conversion
     num_time_steps_corr = (num_time_steps - 1)*2
@@ -65,11 +67,22 @@ def make_sampled_format(times, outputs):
     return true_time_steps, outputs_corr, dt_system
 
 
-def compute_ROM(outputs, num_states, dt=None):
-    """Returns A, B, and C matrices, default settings for convenience."""
+def compute_ROM(Markovs, num_states):
+    """Returns A, B, and C matrices, default settings for convenience.
+    
+    Args:
+        Markovs: array of Markov params w/indices 
+            (time_interval#, output#, input#),
+            so that Markovs[i] is the Markov parameter C A**i B.
+            Markov params = [CB, CAB, CA**PB, CA**(P+1)B, ...]
+            
+        num_states: number of states of model
+    
+    Returns:
+        A, B, and C reduced matrices.
+    """
     my_ERA = ERA()
-    my_ERA.set_outputs(outputs, dt=dt)
-    my_ERA.compute_ROM(num_states)
+    my_ERA.compute_ROM(Markovs, num_states)
     return my_ERA.A, my_ERA.B, my_ERA.C
     
 
@@ -79,43 +92,41 @@ class ERA(object):
 
     Usage::
     
-      output_paths =['/path/in1ToOuts.txt', '/path/in2ToOuts.txt']
-      myERA = ERA()
-      time_values, outputs = util.load_impulse_outputs(output_paths)
-      # Optional for equally spaced time data
-      time_steps, outputs, dt = make_sampled_format(time_values, outputs)
-      myERA.set_outputs(outputs, dt)
-      myERA.compute_ROM(50)
-      myERA.put_ROM('A.txt','B.txt','C.txt')
+      # Obtain Markov parameters
+      # If loading from text files, see ``util.load_multiple_signals``.
       
-    The above usage uses util.load_impulse_outputs, which assumes a 
-    format of text files (see documentation for this function).
-        
-    The output times must be in the format:
-    t0 + dt_system*[0, 1, P, P+1, 2P, 2P+1, ... ]
+      # Optional for equally spaced time data
+      time_steps, Markovs, dt = make_sampled_format(time_values, Markovs)
+      
+      myERA = ERA()
+      myERA.compute_ROM(Markovs, 50)
+      myERA.put_ROM('A.txt','B.txt','C.txt')
     
-    The special case where P=2 can be recast into P=1 using make_sampled_format().
-    t0 + dt_system*[0, 1, 2, 3, 4, ... ]
+    The Markov parameters should be sampled at times in the format:
+    dt_system*[0, 1, P, P+1, 2P, 2P+1, ... ]
+    
+    The special case where P=2 results in, 
+    dt_system*[0, 1, 2, 3, 4, ... ], 
+    and can be recast into P=1 using ``make_sampled_format``.
       
     See Ma et al. 2011 TCFD for ERA details.
     """
     
-    def __init__(self, put_mat=util.save_mat_text, get_mat=util.load_mat_text,
-        mc=None, mo=None, verbose=True):
+    def __init__(self, put_mat=util.save_mat_text, mc=None, mo=None,
+        verbose=True):
         """Constructor
         
         Kwargs:
+            put_mat: put matrix function. Default is save to text file.
+        
             mc: number of Markov parameters for controllable dimension.
                 Default is mc and mo equal and maximal for a balanced model.
             mo: number of Markov parameters for observable dimension.
                 Default is mc and mo equal and maximal for a balanced model.
-                
-        Variables mc and mo are the number of Markov parameters to use for
-        the Hankel matrix.
-        The default is to use all the data and set mc = mo.
+            verbose: print non-essential warnings and statuses
+            
         """
         self.put_mat = put_mat
-        self.get_mat = get_mat
         self.mc = mc
         self.mo = mo
         self.outputs = None
@@ -131,76 +142,67 @@ class ERA(object):
         self.num_outputs = None
         self.num_inputs = None
         self.num_time_steps = None
-        self.dt = None
         self.Hankel_mat = None
         self.Hankel_mat2 = None
      
 
-    def set_outputs(self, outputs, dt=None):
+    def _set_Markovs(self, Markovs):
         """Set the signals from each output to each input.
         
         Args:
-            outputs: array of Markov params w/indices 
+            Markovs: array of Markov params w/indices 
                 (time_interval#, output#, input#),
-                so that outputs[vec_num] is the Markov parameter C A**i B.
-                outputs = [CB, CAB, CA**PB, CA**(P+1)B, ...]
-        Kwargs:
-            dt: time step of the system, used to scale B in later step.
+                so that Markovs[i] is the Markov parameter C A**i B.
+                Markov params = [CB, CAB, CA**PB, CA**(P+1)B, ...]
         """
-        if dt is None:
-            self.dt = 1.
-        else:
-            self.dt = dt
-            
-        self.outputs = outputs
-        ndims = self.outputs.ndim
+        self.Markovs = Markovs
+        ndims = self.Markovs.ndim
         if ndims == 1:
-            self.outputs = self.outputs.reshape((self.outputs.shape[0], 1, 1))
+            self.Markovs = self.Markovs.reshape((self.Markovs.shape[0], 1, 1))
         elif ndims == 2:
-            self.outputs = self.outputs.reshape((self.outputs.shape[0], 
-                self.outputs.shape[1], 1))
+            self.Markovs = self.Markovs.reshape((self.Markovs.shape[0], 
+                self.Markovs.shape[1], 1))
         elif ndims > 3: 
-            raise RuntimeError('outputs can have 1, 2, or 3 dims, '
+            raise RuntimeError('Markovs can have 1, 2, or 3 dims, '
                 'yours had %d'%ndims)
         
-        self.num_time_steps, self.num_outputs, self.num_inputs = \
-            self.outputs.shape
+        self.num_time_steps, self.num_Markovs, self.num_inputs = \
+            self.Markovs.shape
         
         # Must have an even number of time steps, remove last entry if odd.
         if self.num_time_steps % 2 != 0:
             self.num_time_steps -= 1
-            self.outputs = self.outputs[:-1]
+            self.Markovs = self.Markovs[:-1]
             
     
     
-    def compute_ROM(self, num_states, dt=None, mc=None, mo=None):
+    def compute_ROM(self, Markovs, num_states, mc=None, mo=None):
         """Computes the A, B, and C LTI ROM matrices.
 
-        Assembles the Hankel matrices from self.outputs and takes SVD.
+        Assembles the Hankel matrices from self.Markovs and takes SVD.
         
         Args:
-            num_states: number of states to be found for the ROM.
+            Markovs: array of Markov params.
+            Indices are [time_interval#, output#, input#), so that 
+            ``Markovs[i]`` is the Markov parameter C A**i B.
+            
+            num_states: number of states to be found for the model.
             
         Kwargs:
-            dt: time step of the discrete system, *not* the sampling period ("P").
-            
             mc: number of Markov parameters for controllable dimension.
             		Default is mc and mo equal and maximal for a balanced model.
             
             mo: number of Markov parameters for observable dimension.
             		Default is mc and mo equal and maximal for a balanced model.
-                
-        For discrete time systems the impulse is applied over a time interval
-        dt and so has a time-integral 1*dt rather than 1. 
-        This means the B matrix is "off" by a factor of dt. 
-        This is accounted for by multiplying B by dt.
-        This is the only reason dt is an argument.
         
-        SVD is ``L_sing_vecs*N.mat(N.diag(sing_vals))*R_sing_vecs.H = Hankel_mat``
+        Tip: For discrete time systems the impulse is applied over a time
+        interval dt and so has a time-integral 1*dt rather than 1. 
+        This means the reduced B matrix is "off" by a factor of dt. 
+        You can account for this by multiplying B by dt.
         """
-
-        if self.outputs is None:
-            raise util.UndefinedError('No output impulse data in instance')
+        #SVD is ``L_sing_vecs*N.mat(N.diag(sing_vals))*R_sing_vecs.H = Hankel_mat``
+        
+        self._set_Markovs(Markovs)
         
         self.mc = mc
         self.mo = mo
@@ -216,9 +218,10 @@ class ERA(object):
         
         self.A = N.mat(N.diag(Er**-.5)) * Ur.H * self.Hankel_mat2 * Vr * \
             N.mat(N.diag(Er**-.5))
-        self.B = (N.mat(N.diag(Er**.5)) * (Vr.H)[:,:self.num_inputs]) * self.dt 
-        # !! NEED * dt above!!
-        self.C = Ur[:self.num_outputs,:] * N.mat(N.diag(Er**.5))
+        self.B = (N.mat(N.diag(Er**.5)) * (Vr.H)[:,:self.num_inputs]) #* self.dt 
+        # !! dt above is removed, user must do this themself. In docs.
+        
+        self.C = Ur[:self.num_Markovs,:] * N.mat(N.diag(Er**.5))
         
         if (N.linalg.eig(self.A)[0] >= 1.).any() and self.verbose:
             print 'Warning: Unstable eigenvalues of ROM matrix A'
@@ -275,20 +278,20 @@ class ERA(object):
             raise ValueError('mo+mc+2=%d and must be <= than the number of '
                 'samples %d'%(self.mo+self.mc+2, self.num_time_steps))
         
-        self.Hankel_mat = N.zeros((self.num_outputs*self.mo, 
+        self.Hankel_mat = N.zeros((self.num_Markovs*self.mo, 
             self.num_inputs*self.mc))
         self.Hankel_mat2 = N.zeros(self.Hankel_mat.shape)
-        #outputs_flattened = \
-        #    self.outputs.swapaxes(0,1).reshape((num_outputs, -1))
+        #Markovs_flattened = \
+        #    self.Markovs.swapaxes(0,1).reshape((num_Markovs, -1))
         for row in range(self.mo):
-            row_start = row*self.num_outputs
-            row_end = row_start + self.num_outputs
+            row_start = row*self.num_Markovs
+            row_end = row_start + self.num_Markovs
             for col in range(self.mc):
                 col_start = col*self.num_inputs
                 col_end = col_start + self.num_inputs
                 self.Hankel_mat[row_start:row_end, col_start:col_end] = \
-                    self.outputs[2*(row+col)]
+                    self.Markovs[2*(row+col)]
                 self.Hankel_mat2[row_start:row_end, col_start:col_end] = \
-                    self.outputs[2*(row+col)+1]
+                    self.Markovs[2*(row+col)+1]
                 
                 

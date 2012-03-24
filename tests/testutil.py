@@ -94,34 +94,34 @@ class TestUtil(unittest.TestCase):
     @unittest.skipIf(parallel.is_distributed(), 'Only load data in serial')
     def test_load_impulse_outputs(self):
         """
-        Test loading impulse outputs in [t out1 out2 ...] format.
+        Test loading multiple signal files in [t sig1 sig2 ...] format.
         
-        Creates outputs, saves them, loads them from ERA instance, tests the loaded outputs
-        are equal to the originals.
-        Returns time_values and outputs at time values in 3D array with indices [time,output,input].
-        That is, outputs[time_index] = Markov parameter at time_values[time_index].
+        Creates signals, saves them, loads them, tests are equal to the
+        originals.
         """
-        impulse_file_path = join(self.test_dir, 'in%03d_to_outs.txt')
-        num_time_steps = 150
-        for num_states in [4,10]:
-            for num_inputs in [1, 4]:
-                for num_outputs in [1, 2, 4, 5]:
-                    outputs_true = N.random.random((num_time_steps, num_outputs, num_inputs))
+        signal_path = join(self.test_dir, 'file%03d.txt')
+        for num_paths in [1, 4]:
+            for num_signals in [1, 2, 4, 5]:
+                for num_time_steps in [1, 10, 100]:
+                    all_signals_true = N.random.random((num_paths,
+                        num_time_steps, num_signals))
+                    # Time steps need not be sequential
                     time_values_true = N.random.random(num_time_steps)
                     
-                    impulse_file_paths = []
-                    # Save Markov parameters to file
-                    for input_num in range(num_inputs):
-                        impulse_file_paths.append(impulse_file_path%input_num)
+                    signal_paths = []
+                    # Save signals to file
+                    for path_num in range(num_paths):
+                        signal_paths.append(signal_path%path_num)
                         data_to_save = N.concatenate( \
                           (time_values_true.reshape(len(time_values_true),1),
-                          outputs_true[:,:,input_num]), axis=1)
-                        util.save_mat_text(data_to_save, impulse_file_path%input_num)
+                          all_signals_true[path_num]), axis=1)
+                        util.save_mat_text(data_to_save, signal_path%path_num)
                     
-                    time_values, outputs = util.load_impulse_outputs(impulse_file_paths)
-                    N.testing.assert_allclose(outputs, outputs_true)
+                    time_values, all_signals = util.load_multiple_signals(
+                        signal_paths)
+                    N.testing.assert_allclose(all_signals, all_signals_true)
                     N.testing.assert_allclose(time_values, time_values_true)
-
+    
     
     
     def test_solve_Lyapunov(self):

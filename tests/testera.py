@@ -75,9 +75,9 @@ class testERA(unittest.TestCase):
                     num_states = 5
                     A,B,C = util.drss(num_states, num_inputs, num_outputs)
                     time_steps = era.make_time_steps(num_time_steps, sample_interval)
-                    time_steps, outputs = util.impulse(A, B, C, time_steps=time_steps)
+                    time_steps, Markovs = util.impulse(A, B, C, time_steps=time_steps)
                     myERA = era.ERA()
-                    myERA.set_outputs(outputs)
+                    myERA._set_Markovs(Markovs)
                     myERA._assemble_Hankel()
                     H = myERA.Hankel_mat
                     Hp = myERA.Hankel_mat2
@@ -112,7 +112,7 @@ class testERA(unittest.TestCase):
     #@unittest.skip('testing others')
     def test_ROM(self):
         """
-        Test the ROM Markov params, eigenvalues of Grammians approx. Hankel sing. vals
+        Test ROM Markov params, e-vals of Grammians approx. Hankel sing. vals
         
         - generates data
         - assembles Hankel matrix
@@ -125,24 +125,23 @@ class testERA(unittest.TestCase):
         num_states_model = num_states_plant/3
         for num_inputs in [3]:
             for num_outputs in [2]:
-                for sample_interval in [1,2,3]: #3 or higher makes tests fail
+                for sample_interval in [1,2,5]: 
                     myERA = era.ERA()
                     A,B,C = util.drss(num_states_plant, num_inputs, num_outputs)
                     time_steps = era.make_time_steps(num_time_steps, sample_interval)
-                    time_steps, outputs = util.impulse(A, B, C, time_steps=time_steps)
+                    time_steps, Markovs = util.impulse(A, B, C, time_steps=time_steps)
                     if sample_interval == 2:
-                        time_steps, outputs, dt = era.make_sampled_format(time_steps, outputs)
+                        time_steps, Markovs, dt = \
+                            era.make_sampled_format(time_steps, Markovs)
                     num_time_steps = time_steps.shape[0]
                     time_steps_dense, outputs_dense = util.impulse(
-                        A,B,C,time_steps=N.arange(num_time_steps,dtype=int))
-                    
-                    myERA.set_outputs(outputs)
+                        A,B,C,time_steps=N.arange(num_time_steps, dtype=int))
                     
                     A_path_computed = join(self.test_dir, 'A_computed.txt')
                     B_path_computed = join(self.test_dir, 'B_computed.txt')
                     C_path_computed = join(self.test_dir, 'C_computed.txt')
                     
-                    myERA.compute_ROM(num_states_model)
+                    myERA.compute_ROM(Markovs, num_states_model)
                     A = myERA.A
                     B = myERA.B
                     C = myERA.C
@@ -171,9 +170,9 @@ class testERA(unittest.TestCase):
                     #    N.abs(gram_obs.diagonal())).all())
                     
                     # Check the ROM Markov params match the full plant's
-                    outputs_model = N.zeros(outputs.shape)
+                    Markovs_model = N.zeros(Markovs.shape)
                     for ti,tv in enumerate(time_steps):
-                        outputs_model[ti] = C*(A**tv)*B
+                        Markovs_model[ti] = C*(A**tv)*B
                         #print 'computing ROM Markov param at time step %d'%tv
                     """
                     import matplotlib.pyplot as PLT
@@ -188,7 +187,7 @@ class testERA(unittest.TestCase):
                             PLT.legend(['ROM','Plant','Dense plant'])
                         PLT.show()
                     """
-                    N.testing.assert_allclose(outputs_model, outputs, rtol=.1, atol=.05)
+                    N.testing.assert_allclose(Markovs_model, Markovs, rtol=.1, atol=.05)
                 
         
 if __name__ =='__main__':

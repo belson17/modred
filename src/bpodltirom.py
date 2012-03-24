@@ -1,117 +1,107 @@
-"""Class for computing BPOD LTI ROMs from modes"""
+"""Class for finding BPOD models for LTI plants.
+
+Currently not parallelized."""
+
 import util
 import numpy as N
-
 
 class BPODROM(object):
     """Computes the ROM matrices from BPOD modes for an LTI plant.
     
-    To use it, you must first have BPOD modes.
-    Then, you must advance the direct modes forward in time by a time step dt.
-    For a discrete time ROM, this will be the time step of the system. 
-    For a continuous time ROM, a first-order approximation of the 
-    derivative of the direct modes is made with
-    d(mode)/dt = (mode(t=dt) - mode(t=0)) / dt, see 
-    ``self.compute_mode_derivs``.
-    
+    First compute the BPOD modes with the BPOD class.
+    Then, you can create either discrete or continuous time models.
     Usage::
 
       myBPODROM = BPODROM(...)
-      # For continuous time systems
-      myBPODROM.compute_mode_derivs(mode_sources, mode_dt_sources, 
-          mode_deriv_sources,1e-4)
-      # For continuous time systems, set dt=0
-      myBPODROM.form_A(A_dest, direct_mode_advanced_sources, 
-          adjoint_mode_sources, dt)
-      myBPODROM.form_B(B_dest, input_vec_sources, adjoint_mode_sources, dt)
+      myBPODROM.form_A(A_dest, deriv_direct_mode_sources, adjoint_mode_sources)
+      myBPODROM.form_B(B_dest, input_vec_sources, adjoint_mode_sources)
       myBPODROM.form_C(C_dest, output_vec_sources, direct_mode_sources)
 
+    To find a discrete time model, advance the direct modes forward in 
+    time by a time step dt and replace ``deriv_direct_mode_sources`` with
+    the sources to the advanced direct modes.
+    
+    For a continuous time ROM, you have a few options.
+    First, you can compute d(mode)/dt yourself.
+    Or, you can advance the direct modes one time step and 
+    approximate a first-order time derivative with ``compute_derivs``.
     """
 
-    def __init__(self, dt=None, inner_product=None, put_mat=util.save_mat_text,
-        get_vec=None, put_vec=None, verbose=True, num_modes=None, 
-        max_vecs_per_node=2):
+    def __init__(self, inner_product=None, put_mat=util.save_mat_text,
+        get_vec=None, put_vec=None, verbose=True, max_vecs_per_node=2):
         """Constructor"""
-        self.dt = dt
         self.inner_product = inner_product
         self.put_mat = put_mat
         self.get_vec = get_vec
         self.put_vec = put_vec
         self.max_vecs_per_node = max_vecs_per_node
         self.max_vecs_per_proc = self.max_vecs_per_node
-        self.num_modes = num_modes
+        self.num_modes = None
         self.verbose = verbose
+        self.dt = None
+        self.A = None
+        self.B = None
+        self.C = None
+
       
-    def compute_mode_derivs(self, mode_sources, mode_dt_sources, 
-        mode_deriv_dests, dt):
-        """Computes 1st-order time derivatives of modes. 
+    def compute_derivs(self, vec_sources, vec_adv_sources, 
+        vec_deriv_dests, dt):
+        """Computes 1st-order time derivatives of vectors. 
         
         Args:
-        		mode_sources: list of sources of direct modes.
+        		vec_sources: list of sources of vecs.
         		
-        		mode_dt_sources: list of sources of direct modes advanced dt
+        		vec_dt_sources: list of sources of vecs advanced dt
         		in time
         		
-        		mode_deriv_dests: list of destinations for time derivatives of
-        		direct modes.
+        		vec_deriv_dests: list of destinations for time derivatives of
+        		vecs.
+        
+        Computes d(mode)/dt = (mode(t=dt) - mode(t=0)) / dt.
         """
         if (self.get_vec is None):
             raise util.UndefinedError('no get_vec defined')
         if (self.put_vec is None):
             raise util.UndefinedError('no put_vec defined')
         
-        num_modes = min(len(mode_sources), len(mode_dt_sources), 
-            len(mode_deriv_dests))
-        if self.verbose:
-            print 'Computing derivatives of %d modes'%num_modes
-        
-        for mode_index in xrange(len(mode_dt_sources)):
-            mode = self.get_vec(mode_sources[mode_index])
-            mode_dt = self.get_vec(mode_dt_sources[mode_index])
-            self.put_vec((mode_dt - mode)*(1./dt), mode_deriv_dests[mode_index])
-        
+        num_vecs = min(len(vec_sources), len(vec_adv_sources), 
+            len(vec_deriv_dests))
+       
+        for vec_index in xrange(len(vec_adv_sources)):
+            vec = self.get_vec(vec_sources[vec_index])
+            vec_dt = self.get_vec(vec_adv_sources[vec_index])
+            self.put_vec((vec_dt - vec)*(1./dt), vec_deriv_dests[vec_index])
+            
     
-    def form_A(self, A_dest, direct_mode_advanced_sources, 
-        adjoint_mode_sources, dt=None, num_modes=None):
+    def compute_A(self, A_dest, A_full_direct_mode_sources, 
+        adjoint_mode_sources, num_modes=None):
         """Form the continous or discrete time A matrix.
         
         Args:
 		        A_dest: where the reduced A matrix will be put
 		        
-		        direct_mode_advanced_sources: list of sources of direct modes
-		        advanced.
+		        A_full_direct_mode_sources: list of sources to direct modes
+		        that have been operated on by the full A matrix. 
 		            For a discrete time system, these are the 
-								sources of the direct modes that have been advanced a time dt.
-								For continuous time systems, these are the sources of the time
-								derivatives of the direct modes.
+								sources of the direct modes that have been advanced one
+								time step.
+								For continuous time systems, these are the sources of the
+								time derivatives of the direct modes (see also 
+								``compute_derivs``).
         
         		adjoint_mode_sources: list of sources to the adjoint modes
         		
         Kwargs:
-        		num_modes: number of modes/states to keep in the ROM. Can omit if already given.
+        		num_modes: number of modes/states to keep in the ROM. 
+        		    Can omit if already given. Default is maximum possible.
         		
-        		dt: the time step of the ROM, for continuous time it is 0.
-        		    Can omit if already given.
-        
         		
         TODO: Parallelize this if it ever becomes a bottleneck.
-        """
-        if dt is not None:
-            self.dt = dt
-        if self.dt is None:
-            raise util.UndefinedError('Time step dt is undefined')
-            
-        if self.verbose:
-            if self.dt == 0:
-                print 'Computing the continuous-time A matrix'
-            else:
-                print ('Computing the discrete-time A matrix with time '
-                    'step %g')%self.dt
-        
+        """            
         if num_modes is not None:
             self.num_modes = num_modes
         if self.num_modes is None:
-            self.num_modes = min(len(direct_mode_advanced_sources),
+            self.num_modes = min(len(A_full_direct_mode_sources),
                 len(adjoint_mode_sources))
         
         self.A = N.zeros((self.num_modes, self.num_modes))
@@ -130,7 +120,7 @@ class BPODROM(object):
               
             #now read in each column (direct modes advanced dt or time deriv)
             for col_num, advanced_source in enumerate(
-                direct_mode_advanced_sources[:self.num_modes]):
+                A_full_direct_mode_sources[:self.num_modes]):
                 advanced_mode = self.get_vec(advanced_source)
                 for row_num in range(start_row_num, end_row_num):
                     self.A[row_num,col_num] = \
@@ -143,16 +133,16 @@ class BPODROM(object):
             print 'A matrix put to %s'%A_dest
 
       
-    def form_B(self, B_dest, input_vec_sources, adjoint_mode_sources, 
-        dt=None, num_modes=None):
-        """Forms the B matrix, either continuous or discrete time.
+    def compute_B(self, B_dest, input_vec_sources, adjoint_mode_sources, 
+        num_modes=None):
+        """Forms the B matrix.
         
-        Computes inner products of adjoint mode with input vecs (B in Ax+Bu).
+        Computes inner products of adjoint modes with input vecs (B in Ax+Bu).
         
         Args:
-		        B_dest: where the reduced B matrix will be put (memory or file)
+		        B_dest: where the reduced B matrix will be put
 		        
-        		input_vec_sources: list of input vecs' sources.
+        		input_vec_sources: list of sources to input vecs.
         				These are spatial representations of the B matrix in the 
         				full system.
         				
@@ -161,17 +151,26 @@ class BPODROM(object):
         Kwargs:
         		num_modes: number of modes/states to keep in the ROM. 
         		    Can omit if already given.
-        		
-        		dt: discrete time step. Set dt = 0 for continuous time systems.        
+        		    
+        Tip: If you found the modes via IC responses to B and C*,
+        then your impulse responses may be missing a factor of 1/dt
+        (where dt is the first simulation time step).
+        This can be remedied by multiplying the reduced B by dt.
         """
+        # TODO: Check this description, then move to docstring
+        #To see this dt effect, consider:
+        #
+        #dx/dt = Ax+Bu, approximate as (x^(k+1)-x^k)/dt = Ax^k + Bu^k.
+        #Rearranging terms, x^(k+1) = (dt*I+A)x^k + dt*Bu^k.
+        #The impulse response is: x^0=0, u^0=1, and u^k=0 for k>=1.
+        #Thus x^1 = dt*B, x^2 = dt*(I+dt*A)*B, ...
+        #and y^1 = dt*C*B, y^2 = dt*C*(I+dt*A)*B, ...
+        #However, the impulse response to the true discrete-time system is
+        #x^1 = B, x^2 = A_d*B, ...
+        #and y^1 = CB, y^2 = CA_d*B, ...
+        #(where I+dt*A ~ A_d)
+        #The important thing to see is the factor of dt difference.
         
-        if dt is not None:
-            if self.dt is not None:
-                if self.dt != dt:
-                    print ('Warning: dt values are inconsistent, using '
-                        'new value %g')%dt
-            self.dt = dt
-            
         if num_modes is not None:
             self.num_modes = num_modes
         if self.num_modes is None:
@@ -197,27 +196,24 @@ class BPODROM(object):
                       self.inner_product(adjoint_modes[row_num-start_row_num],
                           input_vec)
         
-        if self.dt != 0:
-            self.B *= self.dt
+        #if self.dt != 0:
+        #    self.B *= self.dt
             
         self.put_mat(self.B, B_dest)
         if self.verbose:
-            if self.dt != 0:
-                print 'B matrix, discrete-time, put to', B_dest
-            else:
-                print 'B matrix, continuous-time, put to', B_dest
+            print 'B matrix put to', B_dest
         
     
-    def form_C(self, C_dest, output_vec_sources, direct_mode_sources,
+    def compute_C(self, C_dest, output_vec_sources, direct_mode_sources,
         num_modes=None):
         """Forms the C matrix, either continuous or discrete.
         
         Computes inner products of adjoint mode with output vecs (C in y=Cx).
         
         Args: 
-		        C_dest: where the reduced C matrix will be put (memory or file)
+		        C_dest: where the reduced C matrix will be put.
 		        
-        		output_vec_sources: list of output vecs' sources.
+        		output_vec_sources: list of sources to output vecs.
         				These are spatial representations of the C matrix in the full 
         				system.
         				
@@ -226,8 +222,6 @@ class BPODROM(object):
         Kwargs:
             num_modes: number of modes/states to keep in the ROM. 
                 Can omit if already given.
-        
-        (Time step ``dt`` is irrelevant for the C matrix.)
         """
         if num_modes is not None:
             self.num_modes = num_modes

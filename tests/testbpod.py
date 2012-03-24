@@ -266,7 +266,7 @@ class TestBPOD(unittest.TestCase):
                 direct_mode = parallel.comm.bcast(direct_mode, root=0)
                 adjoint_mode = parallel.comm.bcast(adjoint_mode, root=0)
             N.testing.assert_allclose(direct_mode, 
-                self.direct_mode_mat[:mode_num-self.index_from])
+                self.direct_mode_mat[:,mode_num-self.index_from])
             N.testing.assert_allclose(adjoint_mode, 
                 self.adjoint_mode_mat[:,mode_num-self.index_from])
         
