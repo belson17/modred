@@ -257,10 +257,10 @@ def load_signals(signal_path):
     
     Convenience function. Example file has format::
     
-      0 .1 .2
-      .5 .2 .4
-      1 .4 .6
-      1.5 .8 .8
+      0 0.1 0.2
+      1 0.2 0.46
+      2 0.2 1.6
+      3 0.6 0.1
     
     """
     raw_data = load_mat_text(signal_path)
@@ -281,10 +281,10 @@ def load_multiple_signals(signal_paths):
     
     Convenience function. Example file has format::
     
-      0 .1 .2
-      .5 .2 .4
-      1 .4 .6
-      1.5 .8 .8
+      0 0.1 0.2
+      1 0.2 0.46
+      2 0.2 1.6
+      3 0.6 0.1
     
     """
     num_signal_paths = len(signal_paths)

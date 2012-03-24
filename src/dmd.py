@@ -7,38 +7,36 @@ import util
 import parallel
 
 class DMD(object):
-    """Dynamic Mode Decomposition/Koopman Mode Decomposition
+    """Dynamic Mode Decomposition/Koopman Mode Decomposition.
         
+    Kwargs:
+        get_vec: Function to get a vec from elsewhere (memory or a file).
+        
+        put_vec: Function to put a vec elsewhere (to memory or a file).
+        
+        put_mat: Function to put a matrix (to memory or file).
+        
+        inner_product: Function to take inner product of two vecs.
+        
+        verbose: Print more information about progress and warnings
+        
+        max_vecs_per_node: max number of vectors in memory per node.
+    
     Computes Ritz vectors from vecs.
     
     Usage::
     
-      myDMD = DMD()
+      myDMD = DMD(get_vec=my_get_vec, put_vec=my_put_vec,
+          inner_product=my_inner_product, max_vecs_per_node=500)
       myDMD.compute_decomp(sources)
       myDMD.compute_modes(range(1, 50), ['mode_%02d.txt'%i for i in range(1,50)])
+    
     """
     def __init__(self, get_vec=None, put_vec=None, 
         get_mat=util.load_mat_text, put_mat=util.save_mat_text,
         inner_product=None, 
         max_vecs_per_node=None, POD=None, verbose=True):
-        """Constructor
-        
-        Kwargs:
-            get_vec: Function to get a vec from elsewhere (memory or a file).
-            
-            put_vec: Function to put a vec elsewhere (to memory or a file).
-            
-            put_mat: Function to put a matrix (to memory or file).
-            
-            inner_product: Function to take inner product of two vecs.
-            
-            verbose: Print more information about progress and warnings
-            
-            max_vecs_per_node: max number of vectors in memory per node.
-        
-        Returns:
-            DMD instance
-        """
+        """Constructor"""
         self.vec_ops = VecOperations(get_vec=get_vec, \
             put_vec=put_vec, inner_product=inner_product, 
             max_vecs_per_node=max_vecs_per_node, verbose=verbose)

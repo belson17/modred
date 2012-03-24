@@ -8,15 +8,22 @@ import numpy as N
 class BPODROM(object):
     """Computes the ROM matrices from BPOD modes for an LTI plant.
     
+    Kwargs:
+        get_vec: Function to get a vec from elsewhere (memory or file).
+        
+        put_vec: Function to put a vec elsewhere (memory or file).
+        
+        put_mat: Function to put a matrix elsewhere (memory or file).
+        
+        inner_product: Function to take inner product of two vecs.
+        
+        verbose: print more information about progress and warnings
+        
+        max_vecs_per_node: max number of vectors in memory per node.
+    
     First compute the BPOD modes with the BPOD class.
     Then, you can create either discrete or continuous time models.
-    Usage::
-
-      myBPODROM = BPODROM(...)
-      myBPODROM.form_A(A_dest, deriv_direct_mode_sources, adjoint_mode_sources)
-      myBPODROM.form_B(B_dest, input_vec_sources, adjoint_mode_sources)
-      myBPODROM.form_C(C_dest, output_vec_sources, direct_mode_sources)
-
+    
     To find a discrete time model, advance the direct modes forward in 
     time by a time step dt and replace ``deriv_direct_mode_sources`` with
     the sources to the advanced direct modes.
@@ -25,6 +32,14 @@ class BPODROM(object):
     First, you can compute d(mode)/dt yourself.
     Or, you can advance the direct modes one time step and 
     approximate a first-order time derivative with ``compute_derivs``.
+        
+    Usage::
+
+      myBPODROM = BPODROM(...)
+      myBPODROM.form_A(A_dest, deriv_direct_mode_sources, adjoint_mode_sources)
+      myBPODROM.form_B(B_dest, input_vec_sources, adjoint_mode_sources)
+      myBPODROM.form_C(C_dest, output_vec_sources, direct_mode_sources)
+
     """
 
     def __init__(self, inner_product=None, put_mat=util.save_mat_text,

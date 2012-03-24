@@ -88,7 +88,25 @@ def compute_ROM(Markovs, num_states):
 
 
 class ERA(object):
-    """Forms ERA ROM for discrete-time system from impulse output data 
+    """Forms ERA ROM for discrete-time system from impulse output data. 
+    
+    Kwargs:
+        put_mat: put matrix function. Default is save to text file.
+    
+        mc: number of Markov parameters for controllable dimension.
+            Default is mc and mo equal and maximal for a balanced model.
+        mo: number of Markov parameters for observable dimension.
+            Default is mc and mo equal and maximal for a balanced model.
+        verbose: print non-essential warnings and statuses
+
+    The Markov parameters should be sampled at times in the format:
+    dt_system*[0, 1, P, P+1, 2P, 2P+1, ... ]
+    
+    The special case where P=2 results in, 
+    dt_system*[0, 1, 2, 3, 4, ... ], 
+    and can be recast into P=1 using ``make_sampled_format``.
+      
+    See Ma et al. 2011 TCFD for ERA details.
 
     Usage::
     
@@ -101,31 +119,11 @@ class ERA(object):
       myERA = ERA()
       myERA.compute_ROM(Markovs, 50)
       myERA.put_ROM('A.txt','B.txt','C.txt')
-    
-    The Markov parameters should be sampled at times in the format:
-    dt_system*[0, 1, P, P+1, 2P, 2P+1, ... ]
-    
-    The special case where P=2 results in, 
-    dt_system*[0, 1, 2, 3, 4, ... ], 
-    and can be recast into P=1 using ``make_sampled_format``.
-      
-    See Ma et al. 2011 TCFD for ERA details.
     """
     
     def __init__(self, put_mat=util.save_mat_text, mc=None, mo=None,
         verbose=True):
-        """Constructor
-        
-        Kwargs:
-            put_mat: put matrix function. Default is save to text file.
-        
-            mc: number of Markov parameters for controllable dimension.
-                Default is mc and mo equal and maximal for a balanced model.
-            mo: number of Markov parameters for observable dimension.
-                Default is mc and mo equal and maximal for a balanced model.
-            verbose: print non-essential warnings and statuses
-            
-        """
+        """Constructor """
         self.put_mat = put_mat
         self.mc = mc
         self.mo = mo

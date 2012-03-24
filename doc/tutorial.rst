@@ -6,23 +6,23 @@ Tutorial
 The vector object
 -------------------
 
-The building block of the modal decompositions is the vector object, where 
-a set of these vector objects are modally decomposed by POD, BPOD, and DMD.
-Others call these snapshots, vectors (as in elements of a vector space), 
-planes of spatial data, fields, time histories, and many other names.
+The building block of the modal decompositions is the vector object.
+Sets of these vector objects are modally decomposed by POD, BPOD, and DMD.
+Others call these snapshots, planes of spatial data, fields, time histories,
+and many other names.
 Within modred, vector refers to the object you, the user, use to represent your data.
 You are free to choose *any* object, from numpy arrays to your own class, so long as it satisfies
 a few simple requirements.
 It is intentionally extremely flexible so it can fill many different needs.
-By "vector", we **do not** mean a 1D array. 
+**By "vector", we do not mean a 1D array**. 
 We do mean an element of a vector space (technically a Hilbert space).
 
-These requirements are:
+The requirements of the vector object are that it must:
 
-1. Must be compatible with supplied ``inner_product`` function (described later).
-2. Must support scalar multiplication, i.e. ``vector2 = 2.0*vector1``. 
-3. Must support addition with other vectors, i.e. ``vector3 = vector1 + vector2``.
-4. Must be compatible with supplied ``get_vector`` and ``put_vector`` functions (described later).
+1. Be compatible with supplied ``inner_product`` function (described later).
+2. Support scalar multiplication, i.e. ``vector2 = 2.0*vector1``. 
+3. Support addition with other vectors, i.e. ``vector3 = vector1 + vector2``.
+4. Be compatible with supplied ``get_vector`` and ``put_vector`` functions (described later).
 
 Numpy arrays already meet requirements 2 and 3. 
 For your own classes, define ``__mul__`` and ``__add__`` special methods for 2 and 3 (see
@@ -66,7 +66,7 @@ Your inner product must satisfy the mathematical definition for an inner product
 The modes that are produced are also vectors.
 We mean this in both the programming sense that modes are also vector objects and the mathematical
 sense that modes live in the same vector space as vectors.
-modred ``put_vec``s them.
+After computing them, modred calls ``put_vec`` on them.
 
 
 This is all a bit abstract; the following use-cases are helpful.
@@ -78,10 +78,11 @@ Examples of ``get_vec`` and ``put_vec``
 **Case 1: Loading and saving vectors**
 
 This is a good choice when your data is large and cannot all be in memory simultaneously.
-You could define your ``get_vec`` function to simply take a path as its argument,
+Even if your data isn't that large, this is a fine choice.
+You can define your ``get_vec`` function to simply take a path as its argument,
 load the data in that path, and return a vector object. Similarly, ``put_vec`` can
-save the vector to a path. For parellelization, using files to store vectors is **strongly 
-recommended**.
+save the vector to a path. For parellelization, using files to store vectors is 
+**strongly recommended**. (If you don't, you have to do a lot more work yourself.)
 
 A typical case is provided in examples/main_bpod_disk.py.
 Here we show a brief example::
@@ -96,7 +97,7 @@ Here we show a brief example::
       
 Here the ``vec`` is actually a numpy array, which is perfectly fine.
 
-Another simple case is defining wrappers for your own ``VectorClass`` class::
+You could also make your own ``VectorClass`` class::
 
   class VectorClass(object):
       def load(self, path):
@@ -116,14 +117,15 @@ Another simple case is defining wrappers for your own ``VectorClass`` class::
 
 **Case 2: Putting vectors into an external array**
 
-If your data is not very big and you do not plan on using modred in parallel, saving and loading
-your data can be unnecessary. 
+If your data is not very big and you do not plan on using modred in parallel,
+saving and loading your data can be unnecessary. 
 Instead, you might just want modred to return the modes.
-*We provide you with convenience classes which make this very easy*, 
+**We provide you with convenience classes which make this very easy**, 
 see classes ``modred.SimpleUsePOD``, ``modred.SimpleUseBPOD``, and ``modred.SimpleUseDMD``.
 
 Below we show you the basic way these convenience classes interact with the rest of the
-modred library::
+modred library solely for educational purposes. 
+You should never have to write this, use the "SimpleUse" classes we give you!::
 
   def my_get_vec(array_and_index):
       my_array = array_and_index[0]
@@ -136,7 +138,8 @@ modred library::
       my_array[index] = vec
 
 
-As another demonstrationg of how to bypass loading and saving, you can use a ``DataClass``::
+As another demonstration of how to bypass loading and saving, you can use
+a ``DataClass``::
   
   class DataClass(object):
       def __init__(self):
@@ -179,7 +182,8 @@ Checking requirements automatically
 ---------------------------------------
 
 Classes ``BPOD, POD, DMD`` (and ``VecOperations``) include a method ``idiot_check``
-that checks common mistakes. 
+that checks common mistakes in your vector object addition, scalar multiplication,
+and inner products. 
 Still, we encourage you to write your own tests and not risk being exposed
 by the ``idiot_check``!
 
@@ -189,10 +193,9 @@ Functions of matrices
 ---------------------------------------
 
 You can also define ``put_mat`` and ``get_mat``. 
-They are exactly analagous to the vector
-cases. 
-However, in this case modred supplies a default to save and load matrices to text files.
-
+They are exactly analagous to the vector cases. 
+However, modred supplies a default to save and load matrices (real and imaginary)
+to text files.
 
 
 
@@ -218,5 +221,5 @@ The examples directory is a good place to see how everything works together.
 ERA and OKID
 ---------------------------------------
 
-The terminology in ERA and OKID is more standardized among different disciplines, and so the
-naming schemes should be sufficiently explained by the documentation of those classes.
+ERA and OKID are standardized among different disciplines, and the 
+documentation of those classes should be sufficient.

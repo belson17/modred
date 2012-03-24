@@ -6,39 +6,37 @@ import util
 import parallel
 
 class POD(object):
-    """Proper Orthogonal Decomposition
+    """Proper Orthogonal Decomposition.
     
-    Computes orthonormal modes from vecs.  
+    Kwargs:
+        get_vec: function to get a vec from elsewhere (memory or a file).
+        
+        put_vec: function to put a vec elsewhere (to memory or a file).
+        
+        put_mat: function to put a matrix (to memory or file).
+        
+        inner_product: function to take inner product of two vecs.
+        
+        verbose: print more information about progress and warnings.
+        
+        max_vecs_per_node: max number of vectors in memory per node.
+
+    Computes orthonormal POD modes from vecs.  
     
     Usage::
       
-      myPOD = POD(...)
+      myPOD = POD(get_vec=my_get_vec, put_vec=my_put_vec,
+          inner_product=my_inner_product, max_vecs_per_node=500)
       myPOD.compute_decomp(vec_sources=my_vec_sources)
       myPOD.compute_modes(range(1,100), ['mode%d.txt'%i for i in range(1,100)])
+    
     """
         
     def __init__(self, get_vec=None, put_vec=None, 
         get_mat=util.load_mat_text, put_mat=util.save_mat_text, 
         inner_product=None, max_vecs_per_node=None, verbose=True, 
         print_interval=10):
-        """Constructor
-        
-        Kwargs:
-            get_vec: function to get a vec from elsewhere (memory or a file).
-            
-            put_vec: function to put a vec elsewhere (to memory or a file).
-            
-            put_mat: function to put a matrix (to memory or file).
-            
-            inner_product: function to take inner product of two vecs.
-            
-            verbose: print more information about progress and warnings.
-            
-            max_vecs_per_node: max number of vectors in memory per node.
-            
-        Returns:
-            POD instance
-        """
+        """Constructor """
         self.vec_ops = VecOperations(get_vec=get_vec, 
             put_vec=put_vec, inner_product=inner_product, 
             max_vecs_per_node=max_vecs_per_node, 
@@ -141,8 +139,8 @@ class POD(object):
         Kwargs:
             index_from: Index modes starting from 0, 1, or other.
               
-            vec_sources: Paths to vecs. Optional if already given when calling 
-                ``self.compute_decomp``.
+            vec_sources: Paths to vecs. 
+                Optional if already given when calling ``self.compute_decomp``.
 
 
         self.sing_vecs, self.sing_vals must exist or an UndefinedError.

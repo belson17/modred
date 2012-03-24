@@ -11,6 +11,14 @@ import parallel as parallel_mod
 class VecOperations(object):
     """Responsible for low level operations on vecs.
 
+    Kwargs:
+        max_vecs_per_node: max number of vecs that can be in memory
+            simultaneously on a node.
+        
+        verbose: True or False, sets if warnings are printed.
+        
+        print_interval: max of how frequently progress is printed, in seconds.
+
     The class is a collection of methods used in the high-level 
     modred classes like POD, BPOD, and DMD. 
     It's responsible for all non-trivial parallelization.
@@ -22,19 +30,7 @@ class VecOperations(object):
     
     def __init__(self, get_vec=None, put_vec=None, inner_product=None, 
         max_vecs_per_node=None, verbose=True, print_interval=10):
-        """Constructor.
-        
-        Args:
-            max_vecs_per_node: max number of vecs that can be in memory
-                simultaneously on a node.
-            
-            verbose: True or False, sets if warnings are printed.
-            
-            print_interval: max of how frequently progress is printed, in seconds.
-        
-        Returns:
-            VecOperations instance
-        """
+        """Constructor. """
         self.get_vec = get_vec
         self.put_vec = put_vec
         self.inner_product = inner_product

@@ -61,7 +61,7 @@ class SimpleUsePOD(object):
         """Sets the vecs used in POD.
         
         Args:
-            vecs: a 2D array with columns of vecs, ``X'' in literature.
+            vecs: a 2D array with columns of vecs, "X" in literature.
         """ 
         self.vecs = vecs
         self.num_vecs = vecs.shape[1]
@@ -74,7 +74,7 @@ class SimpleUsePOD(object):
         then U E V^* = correlation_mat.
         
         Kwargs:
-            vecs: a 2D array with columns of vecs, ``X'' in literature.
+            vecs: a 2D array with columns of vecs, "X" in literature.
         
         Returns:
             singular vectors (U, which equals V)
@@ -127,7 +127,7 @@ class SimpleUseBPOD(object):
       my_BPOD = SimpleUseBPOD(direct_vecs=direct_vecs, adjoint_vecs=adjoint_vecs)
       num_modes = 20
       direct_modes = my_BPOD.compute_direct_modes(num_modes)
-      adjoint_modes = my_BPOD.compute_adjoing_modes(num_modes)
+      adjoint_modes = my_BPOD.compute_adjoint_modes(num_modes)
       sing_vals = my_BPOD.sing_vals
     
     More fine-grain control is available through the other methods.
@@ -151,7 +151,7 @@ class SimpleUseBPOD(object):
         """Sets the direct vecs.
         
         Args:
-            direct_vecs: a 2D array with columns of vecs, ``X'' in literature.
+            direct_vecs: a 2D array with columns of vecs, "X" in literature.
         """ 
         self.direct_vecs = direct_vecs
         self.num_direct_vecs = self.direct_vecs.shape[1]
@@ -160,7 +160,7 @@ class SimpleUseBPOD(object):
         """Sets the adjoint vecs.
         
         Args:
-            adjoint_vecs: a 2D array with columns of vecs, ``Y'' in literature.
+            adjoint_vecs: a 2D array with columns of vecs, "Y" in literature.
         """ 
         self.adjoint_vecs = adjoint_vecs
         self.num_adjoint_vecs = self.adjoint_vecs.shape[1]
@@ -173,9 +173,9 @@ class SimpleUseBPOD(object):
         then U E V^* = hankel_mat.
         
         Kwargs:
-           direct_vecs: a 2D array with columns of vecs, ``X'' in literature.
+           direct_vecs: a 2D array with columns of vecs, "X" in literature.
            
-           adjoint_vecs: a 2D array with columns of vecs, ``Y'' in literature.
+           adjoint_vecs: a 2D array with columns of vecs, "Y" in literature.
         
         Returns:
             left singular vectors (U)
@@ -271,7 +271,7 @@ class SimpleUseDMD(object):
         """Sets the vecs used in DMD.
         
         Args:
-            vecs: a 2D array with columns of vecs, ``X'' in literature.
+            vecs: a 2D array with columns of vecs, "X" in literature.
         """ 
         self.vecs = vecs
         self.num_vecs = vecs.shape[1]

@@ -8,6 +8,19 @@ import parallel
 class BPOD(object):
     """Balanced Proper Orthogonal Decomposition
     
+    Kwargs:
+        get_vec: Function to get a vec from elsewhere (memory or file).
+        
+        put_vec: Function to put a vec elsewhere (memory or file).
+        
+        put_mat: Function to put a matrix elsewhere (memory or file).
+        
+        inner_product: Function to take inner product of two vecs.
+        
+        verbose: print more information about progress and warnings
+        
+        max_vecs_per_node: max number of vectors in memory per node.
+    
     Computes direct and adjoint modes from direct and adjoint vecs.
     It uses VecOperations for low level functions.
     
@@ -18,26 +31,13 @@ class BPOD(object):
       myBPOD.compute_decomp(direct_vec_sources, adjoint_vec_sources)      
       myBPOD.compute_direct_modes(range(1, 50), 'bpod_direct_mode_%03d.txt')
       myBPOD.compute_adjoint_modes(range(1, 50), 'bpod_adjoint_mode_%03d.txt')
+
     """
     
     def __init__(self, get_vec=None, put_vec=None, 
         put_mat=util.save_mat_text, get_mat=util.load_mat_text,
         inner_product=None, max_vecs_per_node=2, verbose=True):
-        """Constructor
-        
-        Kwargs:
-            get_vec: Function to get a vec from elsewhere (memory or file).
-            
-            put_vec: Function to put a vec elsewhere (memory or file).
-            
-            put_mat: Function to put a matrix elsewhere (memory or file).
-            
-            inner_product: Function to take inner product of two vecs.
-            
-            verbose: print more information about progress and warnings
-            
-            max_vecs_per_node: max number of vectors in memory per node.
-        """
+        """Constructor """
         # Class that contains all of the low-level vec operations
         # and parallelizes them.
         self.vec_ops = VecOperations(get_vec=get_vec, 
@@ -130,16 +130,13 @@ class BPOD(object):
         self.hankel_mat = self.vec_ops.compute_inner_product_mat(
             self.adjoint_vec_sources, self.direct_vec_sources)
         self.compute_SVD()        
-        #self.parallel.evaluate_and_bcast(
-        #    [self.L_sing_vecs,self.sing_vals,self.\
-        #    R_sing_vecs], util.svd, arguments = [self.hankel_mat])
 
 
     def compute_SVD(self):
         """Takes the SVD of the Hankel matrix.
         
         Useful if you already have the Hankel mat and want to skip 
-        recomputing it. Intead, set self.hankel_mat, and call this.
+        recomputing it. Intead, set ``self.hankel_mat``, and call this.
         """
         if self.parallel.is_rank_zero():
             self.L_sing_vecs, self.sing_vals, self.R_sing_vecs = \
@@ -159,7 +156,7 @@ class BPOD(object):
 
     def compute_direct_modes(self, mode_nums, mode_dests, index_from=1,
         direct_vec_sources=None):
-        """Computes the direct modes and ``self.put_vec``s them.
+        """Computes the direct modes and ``self.put_vec`` s them.
         
         Args:
           mode_nums: Mode numbers to compute. 
@@ -175,9 +172,8 @@ class BPOD(object):
           
           direct_vec_sources: sources to direct vecs. 
               Optional if already given when calling ``self.compute_decomp``.
-            
-        self.R_sing_vecs and self.sing_vals must exist, else UndefinedError.
         """
+        #self.R_sing_vecs and self.sing_vals must exist, else UndefinedError.
         
         if self.R_sing_vecs is None:
             raise util.UndefinedError('Must define self.R_sing_vecs')
@@ -196,7 +192,7 @@ class BPOD(object):
     
     def compute_adjoint_modes(self, mode_nums, mode_dests, index_from=1,
         adjoint_vec_sources=None):
-        """Computes the adjoint modes ``self.put_vec``s them.
+        """Computes the adjoint modes ``self.put_vec`` s them.
         
         Args:
             mode_nums: Mode numbers to compute. 
@@ -211,9 +207,8 @@ class BPOD(object):
                 
             adjoint_vec_sources: sources of adjoint vecs. 
             		Optional if already given when calling ``self.compute_decomp``.
-            
-        self.L_sing_vecs and self.sing_vals must exist, else UndefinedError.
         """
+        #self.L_sing_vecs and self.sing_vals must exist, else UndefinedError.
         
         if self.L_sing_vecs is None:
             raise util.UndefinedError('Must define self.L_sing_vecs')
