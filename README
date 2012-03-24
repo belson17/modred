@@ -1,0 +1,62 @@
+Welcome to the modred library!
+
+
+Installation
+------------
+
+To install:
+>> [sudo] python setup.py install
+
+To run the unit tests and be sure it's working, run the following from
+a directory to which you have read/write access:
+>> python -c 'import modred.tests; modred.tests.run()'
+
+Please report test failures to bbelson@princeton.edu with the following 
+information:
+
+1. Copying the entire output of the tests
+2. Python version (use python -V)
+3. Numpy version (use python -c 'import numpy; print numpy.__version__')
+4. Your operating system
+
+
+Sphinx Documentation
+--------------------
+The code is primarily documented with reStructuredText docstrings which
+Sphinx reads and makes pretty.
+
+To see the documentation, currently you must build it yourself.
+This is usually quite simple.
+
+-  Get Sphinx 
+    Easier way:
+      easy_install sphinx
+    
+    Harder way:
+      http://sphinx.pocoo.org/    
+      python setup.py build/install
+    
+-  Optional, install numpydoc 
+    Easier way:
+      >> easy_install numpydoc
+    
+    Harder way:
+      http://pypi.python.org/pypi/numpydoc 
+    
+
+-  Build the documentation   
+     Easier way:
+       From the modred directory, run 
+       >> sphinx-build doc doc/_build
+       Open doc/_build/index.html in a browser to view the HTML documentation
+
+     Harder way:
+       In Makefile point to your own copy of sphinx-build, e.g.
+       SPHINXBUILD   = /Users/yourname/CODES/Sphinx-1.0.6/sphinx-build.py
+       From within doc/ directory 
+       >> make html  (or make latex)
+       Open doc/_build/index.html in a browser to view the HTML documentation
+
+
+
+
