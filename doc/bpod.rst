@@ -1,4 +1,4 @@
-BPOD Class
+BPOD 
 ********** 
 
 .. automodule:: bpod

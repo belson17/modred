@@ -1,4 +1,4 @@
-POD Class
+POD 
 ********** 
 
 .. automodule:: pod

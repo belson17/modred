@@ -1,4 +1,4 @@
-BPODROM Class
+BPODROM
 ************* 
 
 .. automodule:: bpodltirom

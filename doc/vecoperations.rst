@@ -1,4 +1,4 @@
-VecOperations Class
+VecOperations 
 ********************* 
 
 .. automodule:: vecoperations

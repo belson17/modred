@@ -1,4 +1,4 @@
-DMD Class
+DMD 
 ********** 
 
 .. automodule:: dmd
