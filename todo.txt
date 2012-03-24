@@ -4,8 +4,6 @@
 
 #### Important ####
 
-Change names of field_path and mode_path for new functions get_field put_field.
-
 If POD's sing_vals is a 1-element 1d array, then after squeezing it is not an array,
 just a float, which breaks other parts of the code. This should be fixed to make it
 a 1d array always and can be done with numpy 1.7's squeeze function.
@@ -15,15 +13,8 @@ ill-conditioned, then the resulting computation results can be invalid.  for
 instance the mode norms may come out negative...(when computed using
 coefficients rather than the modes themselves).
 
-BPODLTIROM needs some cleaning up. There are too many args for some functions,
-and some are redundant. We are trying to eliminate using many optional args, instead
-using a few required ones closer to where they are used.
-
-
 
 #### Less important ####
-
-Run pychecker or pylint or one of the python naming convention tools on the code.
 
 Make the formatting at line breaks better, do not break at '.'s. Talk to Clancy
 about possible solutions to our many line breaks.
@@ -33,7 +24,7 @@ code like this, and that's why we always have to go back and redo the formatting
 It's completely imposed and unnatural currently.
 
 Make a style guide for future developers. In this, include:
-field_num and similar should be called field_index. This is because the "number" of
+vec_num and similar should be called vec_index. This is because the "number" of
 a mode
 is generally different than its index. The most common example of this is the
 first mode is called mode number 1 but has index 0 (indexFrom=1). To be clear, I
@@ -41,23 +32,23 @@ differentiate between a mode number and mode index. To be consistent with all
 naming conventions, index should be used instead of num when referring to some
 object's "index" internally and starting from 0.  Number is more of a
 name, index is hidden from the user and starts from 0.
-  - This has been done for fieldopersations and bpod, and their tests. All future
+  - This has been done for vecopersations and bpod, and their tests. All future
     code should make the distinction between xxxNum and xxxIndex notation.
 
 The tests for DMD should be updated so that we check that the internal POD
 object has the correct arguments passed to it.
 
-Write tests directly for lin_combine in fieldoperations, not just
+Write tests directly for lin_combine in vecoperations, not just
 _compute_modes.
 
 Rename/move _compute_modes. As it is, it doesn't make sense to be in
-fieldoperations.
+vecoperations.
 
-Automatically detect the maxFieldsPerNode. This would require some fancier
-things, like determining the available RAM and the size of a fieldshot object. It
-might not be possible since some memory is used by the field/mode objects when
+Automatically detect the maxVecsPerNode. This would require some fancier
+things, like determining the available RAM and the size of a vecshot object. It
+might not be possible since some memory is used by the vec/mode objects when
 doing inner products, etc. We could leave a safety factor though, and maybe
-leave space for 1-2 fields/modes for scratch space for the user's functions. 
+leave space for 1-2 vecs/modes for scratch space for the user's functions. 
 
 Create a more general subpackage that computes ROMs. It would interact well with
 other classes when necessary (for example for BPOD). 
