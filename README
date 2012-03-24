@@ -11,6 +11,9 @@ To run the unit tests and be sure it's working, run the following from
 a directory to which you have read/write access:
 >> python -c 'import modred.tests; modred.tests.run()'
 
+To test the parallel components (requires mpi4py), do:
+>> mpiexec -n 3 python -c 'import modred.tests; modred.tests.run()'
+
 Please report test failures to bbelson@princeton.edu with the following 
 information:
 
@@ -20,8 +23,10 @@ information:
 4. Your operating system
 
 
+
 Sphinx Documentation
 --------------------
+
 The code is primarily documented with reStructuredText docstrings which
 Sphinx reads and makes pretty.
 
@@ -59,4 +64,11 @@ This is usually quite simple.
 
 
 
+(Old) Users Guide
+------------------
+
+There is currently a user's guide in the doc directory. 
+You can take a look at it for some more discussion.
+However, it is out of date, may contain errors, and will eventually be
+replaced by a SIAM JSC publication (in preparation).
 

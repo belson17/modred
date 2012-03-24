@@ -36,7 +36,6 @@ from os.path import join
 from shutil import rmtree
 import numpy as N
 import modred
-import modred.util as util
 from parallel import default_instance
 parallel = default_instance
 
@@ -50,11 +49,11 @@ class Vec(object):
     
     def save(self, path):
         """Save vec to text format"""
-        util.save_mat_text(self.data, path)
+        modred.save_mat_text(self.data, path)
     
     def load(self, path):
         """Load vec from text format, still with base vec"""
-        self.data = util.load_mat_text(path)
+        self.data = modred.load_mat_text(path)
     
     def __mul__(self, a):
         vec_return = copy.deepcopy(self)
@@ -112,9 +111,9 @@ def main(verbose=True, make_plots=True):
     adjoint_vec_paths = [join(save_dir, 'adjoint_vec_%02d.txt'%i)
         for i in xrange(num_adjoint_vecs)]
     for path in direct_vec_paths:
-        util.save_mat_text(N.random.random((nx,ny)), path)
+        modred.save_mat_text(N.random.random((nx,ny)), path)
     for path in adjoint_vec_paths:
-        util.save_mat_text(N.random.random((nx,ny)), path)
+        modred.save_mat_text(N.random.random((nx,ny)), path)
     
     # Create an instance of BPOD.
     my_BPOD = modred.BPOD(put_vec=put_vec, get_vec=get_vec,
@@ -149,12 +148,12 @@ def main(verbose=True, make_plots=True):
             import matplotlib.pyplot as PLT
             X,Y = N.meshgrid(x_grid, y_grid)
             PLT.figure()
-            PLT.contourf(X, Y, util.load_mat_text(direct_mode_paths[0]).T)
+            PLT.contourf(X, Y, modred.load_mat_text(direct_mode_paths[0]).T)
             PLT.colorbar()
             PLT.title('Direct mode 1')
             
             PLT.figure()
-            PLT.contourf(X, Y, util.load_mat_text(adjoint_mode_paths[0]).T)
+            PLT.contourf(X, Y, modred.load_mat_text(adjoint_mode_paths[0]).T)
             PLT.colorbar()
             PLT.title('Adjoint mode 1')
             
