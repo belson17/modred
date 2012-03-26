@@ -12,5 +12,4 @@
 # it's easiest to make many modules available from the top level.
 # There are no naming conflicts and there is no room for confusion.
 
-from simpleuse import *
 

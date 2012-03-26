@@ -11,6 +11,10 @@ import parallel as parallel_mod
 class VecOperations(object):
     """Responsible for low level operations on vecs.
 
+    Args:
+        vec_defs: Class or module w/functions ``get_vec``, ``put_vec``,
+        ``inner_product``
+
     Kwargs:
         max_vecs_per_node: max number of vecs that can be in memory
             simultaneously on a node.
@@ -28,12 +32,13 @@ class VecOperations(object):
     supplied. In some cases, loading from file is slower with more processors.
     """
     
-    def __init__(self, get_vec=None, put_vec=None, inner_product=None, 
+    def __init__(self, vec_defs, 
         max_vecs_per_node=None, verbose=True, print_interval=10):
         """Constructor. """
-        self.get_vec = get_vec
-        self.put_vec = put_vec
-        self.inner_product = inner_product
+        self.vec_defs = vec_defs
+        self.get_vec = vec_defs.get_vec
+        self.put_vec = vec_defs.put_vec
+        self.inner_product = vec_defs.inner_product
         self.verbose = verbose 
         self.print_interval = print_interval
         self.prev_print_time = 0.
@@ -58,10 +63,12 @@ class VecOperations(object):
             self.max_vecs_per_proc = self.max_vecs_per_node * \
                 self.parallel.get_num_nodes()/self.parallel.get_num_procs()
     
+    
     def print_msg(self, msg, output_channel=sys.stdout):
         """Print a message from rank 0 if verbose"""
         if self.verbose and self.parallel.is_rank_zero():
             print >> output_channel, msg
+
 
     def idiot_check(self, test_obj=None, test_obj_source=None):
         """Checks that the user-supplied objects and functions work.
@@ -359,7 +366,7 @@ class VecOperations(object):
         idea how this works.
         
         TODO: JON, write detailed documentation similar to 
-        ``compute_inner_product_mat``'s.
+        ``compute_inner_product_mat``.
         """
         if isinstance(vec_sources, str):
             vec_sources = [vec_sources]
@@ -609,12 +616,7 @@ class VecOperations(object):
     def compute_modes(self, mode_nums, mode_dests, vec_sources, vec_coeff_mat,
         index_from=1):
         """A common method to compute modes from vecs and ``put_vec`` them.
-        
-        This method recasts computing modes as a linear combination of elements.
-        To this end, it calls lin_combine_vecs.
-        It rearranges the coeff matrix so that the first column corresponds to
-        the first mode number in mode_nums.
-        
+                
         Args:
           mode_nums: mode numbers to compute. 
               Examples are: [1,2,3,4,5] or [3,1,6,8]. 
@@ -633,6 +635,14 @@ class VecOperations(object):
         Kwargs:
           index_from: integer from which to index modes. E.g. from 0, 1, or other.
         
+        Returns:
+            A list: If ``put_vec`` returns something, returns a list of that.
+                The index of the list corresponds to the index of ``mode_nums``.
+
+        
+        This method recasts computing modes as a linear combination of elements.
+        It rearranges the coeff matrix so that the first column corresponds to
+        the first mode number in mode_nums.
         Calls lin_combine_fiels with sum_vecs as the modes and the
         basis_vecs as the vecs.
         """        
@@ -674,7 +684,7 @@ class VecOperations(object):
         mode_nums_from_zero = [mode_num-index_from for mode_num in mode_nums]
         vec_coeff_mat_reordered = vec_coeff_mat[:,mode_nums_from_zero]
         
-        self.lin_combine(mode_dests, vec_sources, vec_coeff_mat_reordered)
+        return self.lin_combine(mode_dests, vec_sources, vec_coeff_mat_reordered)
         self.parallel.sync() # ensure that all procs leave function at same time
     
     
@@ -693,7 +703,10 @@ class VecOperations(object):
                 The rows and columns correspond, by index,
                 to the lists basis_vec_sources and sum_vec_dests.
                 ``sums = basis * vec_coeff_mat``
-          
+        Returns:
+            A list: If ``put_vec`` returns something, returns a list of that.
+                The index of the list corresponds to the index of ``mode_nums``.
+
         Each processor retrieves a subset of the basis vecs to compute as many
         outputs as a processor can have in memory at once. Each processor
         computes the "layers" from the basis it is resonsible for, and for
@@ -736,7 +749,10 @@ class VecOperations(object):
         if num_sums < vec_coeff_mat.shape[1] and self.parallel.is_rank_zero():
             print 'Warning: fewer outputs than rows in the coeff matrix'
             print '  some cols of coeff matrix will not be used'
-
+        
+        # List of all the outputs from put_vec
+        put_vec_outputs = []
+        
         # convencience
         rank = self.parallel.get_rank()        
 
@@ -838,8 +854,9 @@ class VecOperations(object):
 
             # Completed this set of sum vecs, puts them to memory or file
             for sum_index in xrange(start_sum_index, end_sum_index):
-                self.put_vec(sum_layers[sum_index-start_sum_index], \
-                    sum_vec_dests[sum_index])
+                put_vec_outputs.append(
+                    self.put_vec(sum_layers[sum_index-start_sum_index],
+                        sum_vec_dests[sum_index]))
             del sum_layers
             if (T.time() - self.prev_print_time) > self.print_interval:    
                 self.print_msg('Completed %.1f%% of sum vecs' %
@@ -847,8 +864,24 @@ class VecOperations(object):
                     output_channel = sys.stderr)
                 self.prev_print_time = T.time()
             
-
-        self.parallel.sync() # ensure that all procs leave function at same time
+        # Have each processor gather all of the put_vec_outputs.
+        # put_vec_outputs_list is a list of lists, each sublist is the
+        # put_vec_outputs of each processor, in order by rank.
+        if self.parallel.is_distributed():
+            put_vec_outputs_list = self.parallel.comm.allgather(put_vec_outputs)
+            # all_put_vec_outputs is a 1D list of all processors' put_vec_outputs.
+            all_put_vec_outputs = []
+            for proc_put_vec_outputs in put_vec_outputs_list:
+                all_put_vec_outputs.extend(proc_put_vec_outputs)
+        else:
+            all_put_vec_outputs = put_vec_outputs
+        
+        if all_put_vec_outputs.count(None) != len(all_put_vec_outputs):
+            return all_put_vec_outputs
+        # ensure that all procs leave function at same time
+        #self.parallel.sync() 
+         
+         
 
     def __eq__(self, other):
         """Equal or not"""

@@ -8,16 +8,16 @@ import parallel
 class POD(object):
     """Proper Orthogonal Decomposition.
     
+    Args:
+        vec_defs: Class or module w/functions ``get_vec``, ``put_vec``,
+        ``inner_product``
+  
     Kwargs:
-        get_vec: function to get a vec from elsewhere (memory or a file).
-        
-        put_vec: function to put a vec elsewhere (to memory or a file).
-        
-        put_mat: function to put a matrix (to memory or file).
-        
-        inner_product: function to take inner product of two vecs.
-        
-        verbose: print more information about progress and warnings.
+        put_mat: Function to put a matrix out of modred
+      	
+      	get_mat: Function to get a matrix into modred
+      	
+        verbose: print more information about progress and warnings
         
         max_vecs_per_node: max number of vectors in memory per node.
 
@@ -32,17 +32,15 @@ class POD(object):
     
     """
         
-    def __init__(self, get_vec=None, put_vec=None, 
+    def __init__(self, vec_defs, 
         get_mat=util.load_mat_text, put_mat=util.save_mat_text, 
-        inner_product=None, max_vecs_per_node=None, verbose=True, 
+        max_vecs_per_node=None, verbose=True, 
         print_interval=10):
         """Constructor """
-        self.vec_ops = VecOperations(get_vec=get_vec, 
-            put_vec=put_vec, inner_product=inner_product, 
+        self.vec_ops = VecOperations(vec_defs, 
             max_vecs_per_node=max_vecs_per_node, 
             verbose=verbose, print_interval=print_interval)
         self.parallel = parallel.default_instance
-
         self.get_mat = get_mat
         self.put_mat = put_mat
         self.verbose = verbose
@@ -142,9 +140,11 @@ class POD(object):
             vec_sources: Paths to vecs. 
                 Optional if already given when calling ``self.compute_decomp``.
 
-
-        self.sing_vecs, self.sing_vals must exist or an UndefinedError.
+        Returns:
+            A list: If ``put_vec`` returns something, returns a list of that.
+                The index of the list corresponds to the index of ``mode_nums``.
         """
+        #self.sing_vecs, self.sing_vals must exist or an UndefinedError.
         if self.sing_vecs is None:
             raise util.UndefinedError('Must define self.sing_vecs')
         if self.sing_vals is None:
@@ -154,7 +154,7 @@ class POD(object):
 
         build_coeff_mat = N.dot(self.sing_vecs, N.diag(self.sing_vals**-0.5))
 
-        self.vec_ops.compute_modes(mode_nums, mode_dests,
+        return self.vec_ops.compute_modes(mode_nums, mode_dests,
              self.vec_sources, build_coeff_mat, index_from=index_from)
     
 

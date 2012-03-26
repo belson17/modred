@@ -9,15 +9,15 @@ import parallel
 class DMD(object):
     """Dynamic Mode Decomposition/Koopman Mode Decomposition.
         
-    Kwargs:
-        get_vec: Function to get a vec from elsewhere (memory or a file).
-        
-        put_vec: Function to put a vec elsewhere (to memory or a file).
-        
-        put_mat: Function to put a matrix (to memory or file).
-        
-        inner_product: Function to take inner product of two vecs.
-        
+    Args:
+        vec_defs: Class or module w/functions ``get_vec``, ``put_vec``,
+        ``inner_product``
+
+    Kwargs:        
+        put_mat: Function to put a matrix out of modred
+      	
+      	get_mat: Function to get a matrix into modred
+               
         verbose: Print more information about progress and warnings
         
         max_vecs_per_node: max number of vectors in memory per node.
@@ -26,22 +26,18 @@ class DMD(object):
     
     Usage::
     
-      myDMD = DMD(get_vec=my_get_vec, put_vec=my_put_vec,
-          inner_product=my_inner_product, max_vecs_per_node=500)
+      myDMD = DMD(vec_defs, max_vecs_per_node=500)
       myDMD.compute_decomp(sources)
-      myDMD.compute_modes(range(1, 50), ['mode_%02d.txt'%i for i in range(1,50)])
+      myDMD.compute_modes(range(1, 51), ['mode_%02d.txt'%i for i in range(1,51)])
     
     """
-    def __init__(self, get_vec=None, put_vec=None, 
+    def __init__(self, vec_defs, 
         get_mat=util.load_mat_text, put_mat=util.save_mat_text,
-        inner_product=None, 
         max_vecs_per_node=None, POD=None, verbose=True):
         """Constructor"""
-        self.vec_ops = VecOperations(get_vec=get_vec, \
-            put_vec=put_vec, inner_product=inner_product, 
+        self.vec_ops = VecOperations(vec_defs, 
             max_vecs_per_node=max_vecs_per_node, verbose=verbose)
         self.parallel = parallel.default_instance
-
         self.get_mat = get_mat
         self.put_mat = put_mat
         self.POD = POD
@@ -112,8 +108,7 @@ class DMD(object):
 
         # Compute POD from vecs (excluding last vec)
         if self.POD is None:
-            self.POD = pod.POD(get_vec=self.vec_ops.get_vec, 
-                inner_product=self.vec_ops.inner_product, 
+            self.POD = pod.POD(self.vec_ops.vec_defs, 
                 max_vecs_per_node=self.vec_ops.max_vecs_per_node, 
                 verbose=self.verbose)
             self.POD.compute_decomp(vec_sources=self.vec_sources[:-1])
@@ -151,6 +146,7 @@ class DMD(object):
             low_order_eig_vecs * ritz_vec_scaling
         self.mode_norms = N.diag(self.build_coeffs.H * self.POD.\
             correlation_mat * self.build_coeffs).real
+            
         
     def compute_modes(self, mode_nums, mode_dests, index_from=1, vec_sources=None):
         """Computes modes
@@ -164,6 +160,10 @@ class DMD(object):
             index_from: where to start numbering modes from, 0, 1, or other.
             
             vec_sources: sources to vecs, can omit if given in compute_decomp.
+        
+        Returns:
+            A list: If ``put_vec`` returns something, returns a list of that.
+                The index of the list corresponds to the index of ``mode_nums``.
         """
         if self.build_coeffs is None:
             raise util.UndefinedError('Must define self.build_coeffs')
@@ -171,6 +171,6 @@ class DMD(object):
         if vec_sources is not None:
             self.vec_sources = vec_sources
         
-        self.vec_ops.compute_modes(mode_nums, mode_dests, 
+        return self.vec_ops.compute_modes(mode_nums, mode_dests, 
             self.vec_sources[:-1], self.build_coeffs, index_from=index_from)
         

@@ -1,5 +1,5 @@
 =============
-Tutorial
+Customization
 =============
 
 -------------------
@@ -68,7 +68,6 @@ We mean this in both the programming sense that modes are also vector objects an
 sense that modes live in the same vector space as vectors.
 After computing them, modred calls ``put_vec`` on them.
 
-
 This is all a bit abstract; the following use-cases are helpful.
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -81,11 +80,12 @@ This is a good choice when your data is large and cannot all be in memory simult
 Even if your data isn't that large, this is a fine choice.
 You can define your ``get_vec`` function to simply take a path as its argument,
 load the data in that path, and return a vector object. Similarly, ``put_vec`` can
-save the vector to a path. For parellelization, using files to store vectors is 
-**strongly recommended**. (If you don't, you have to do a lot more work yourself.)
+save the vector to a path. 
+For parellelization, using files to store vectors is **strongly recommended**
+for efficiency. 
 
-A typical case is provided in examples/main_bpod_disk.py.
-Here we show a brief example::
+Many common functions are provided in the ``vecdefs`` module.
+Here we reproduce a brief example::
 
   import modred
   def my_get_vec(path):

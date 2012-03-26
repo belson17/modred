@@ -7,15 +7,13 @@ import numpy as N
 
 class BPODROM(object):
     """Computes the ROM matrices from BPOD modes for an LTI plant.
-    
-    Kwargs:
-        get_vec: Function to get a vec from elsewhere (memory or file).
-        
-        put_vec: Function to put a vec elsewhere (memory or file).
-        
+
+    Args:
+        vec_defs: Class or module w/functions ``get_vec``, ``put_vec``,
+        ``inner_product``
+
+    Kwargs:       
         put_mat: Function to put a matrix elsewhere (memory or file).
-        
-        inner_product: Function to take inner product of two vecs.
         
         verbose: print more information about progress and warnings
         
@@ -42,13 +40,13 @@ class BPODROM(object):
 
     """
 
-    def __init__(self, inner_product=None, put_mat=util.save_mat_text,
-        get_vec=None, put_vec=None, verbose=True, max_vecs_per_node=2):
+    def __init__(self, vec_defs, put_mat=util.save_mat_text,
+        verbose=True, max_vecs_per_node=2):
         """Constructor"""
-        self.inner_product = inner_product
+        self.inner_product = vec_defs.inner_product
+        self.get_vec = vec_defs.get_vec
+        self.put_vec = vec_defs.put_vec
         self.put_mat = put_mat
-        self.get_vec = get_vec
-        self.put_vec = put_vec
         self.max_vecs_per_node = max_vecs_per_node
         self.max_vecs_per_proc = self.max_vecs_per_node
         self.num_modes = None
@@ -143,9 +141,7 @@ class BPODROM(object):
                             adjoint_modes[row_num - start_row_num],
                             advanced_mode)
 
-        self.put_mat(self.A, A_dest)
-        if self.verbose:
-            print 'A matrix put to %s'%A_dest
+        return self.put_mat(self.A, A_dest)
 
       
     def compute_B(self, B_dest, input_vec_sources, adjoint_mode_sources, 
@@ -213,10 +209,7 @@ class BPODROM(object):
         
         #if self.dt != 0:
         #    self.B *= self.dt
-            
-        self.put_mat(self.B, B_dest)
-        if self.verbose:
-            print 'B matrix put to', B_dest
+        return self.put_mat(self.B, B_dest)
         
     
     def compute_C(self, C_dest, output_vec_sources, direct_mode_sources,
@@ -263,8 +256,6 @@ class BPODROM(object):
                         self.inner_product(output_vec, 
                             direct_modes[col_num-start_col_num])      
   
-        self.put_mat(self.C, C_dest)
-        if self.verbose:
-            print 'C matrix put to %s'%C_dest
+        return self.put_mat(self.C, C_dest)
     
     

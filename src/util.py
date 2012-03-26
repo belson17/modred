@@ -11,14 +11,14 @@ class UndefinedError(Exception):
 def save_mat_text(mat, filename, delimiter=' '):
     """Writes a 1D or 2D array or matrix to a text file
     
-    delimeter separates the elements
+    ``delimeter`` separates the elements
     Complex data is saved in the following format (as floats)::
     
       real00 imag00 real01 imag01 ...
       real10 imag10 real11 imag11 ...
       ...
   
-    It can easily be read in Matlab with the provided matlab functions. 
+    It can be read in Matlab with the provided matlab functions. 
     """
     # Must cast mat into an array. Also makes it memory C-contiguous.
     mat_save = N.array(mat)

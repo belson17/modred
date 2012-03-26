@@ -13,6 +13,8 @@ Contents:
    
    intro
    
+   quickstart
+   
    tutorial
    
    pod
@@ -22,8 +24,6 @@ Contents:
    bpodltirom
    
    dmd
-
-   simpleuse
 
    era
      

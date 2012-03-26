@@ -2,7 +2,7 @@
 
 __all__ = ['testbpod', 'testbpodltirom', 'testdmd', 'testera', \
     'testvecoperations', 'testparallel', 'testpod', 'testutil', \
-    'alltests']
+    'test_scripts', 'alltests']
 
 # Modules available from the top-level namespace.
 from alltests import *

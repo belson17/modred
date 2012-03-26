@@ -19,9 +19,9 @@ class TestExampleScripts(unittest.TestCase):
         M.main(make_plots=False, verbose=False)
 
     @unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
-    def test_main_simple_pod(self):
+    def test_main_pod_in_memory(self):
         """Runs main_simple_pod. If runs without error, passes test"""
-        import main_simple_pod as M
+        import main_pod_in_memory as M
         M.main(make_plots=False, verbose=False)
 
 if __name__ == '__main__':

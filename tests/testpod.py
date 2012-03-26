@@ -14,6 +14,7 @@ parallel = parallel_mod.default_instance
 
 from pod import POD
 from vecoperations import VecOperations
+from vecdefs import VecDefsArrayText
 import util
 
 
@@ -30,9 +31,10 @@ class TestPOD(unittest.TestCase):
         self.num_vecs = 40
         self.num_states = 100
         self.index_from = 2
-        self.pod = POD(get_vec=util.load_mat_text, put_vec=
-            util.save_mat_text, put_mat=util.save_mat_text, inner_product=
-            util.inner_product, verbose=False)
+        self.my_vec_defs = VecDefsArrayText()
+        
+        self.my_POD = POD(self.my_vec_defs,
+            util.save_mat_text, put_mat=util.save_mat_text, verbose=False)
         self.generate_data_set()
         parallel.sync()
 
@@ -79,42 +81,34 @@ class TestPOD(unittest.TestCase):
             util.load_mat_text, 'parallel': parallel_mod.default_instance,
             'verbose': False, 'sing_vecs': None, 'sing_vals': None,
             'correlation_mat': None, 'vec_sources': None,
-            'vec_ops': VecOperations(get_vec=None, put_vec=None,
-            inner_product=None, max_vecs_per_node=2, verbose=False)}
+            'vec_ops': VecOperations(self.my_vec_defs,
+                max_vecs_per_node=2, verbose=False)}
         
-        self.assertEqual(util.get_data_members(POD(verbose=False)), 
-            data_members_default)
+        self.assertEqual(util.get_data_members(POD(self.my_vec_defs, 
+            verbose=False)), data_members_default)
+        
+        def my_load(): pass
+        def my_save(): pass
 
-        def my_load(fname): pass
-        my_POD = POD(get_vec=my_load, verbose=False)
+        my_POD = POD(self.my_vec_defs, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_ops'].get_vec = my_load
+        data_members_modified['vec_ops'] = VecOperations(self.my_vec_defs,
+            verbose=False)
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
        
-        my_POD = POD(get_mat=my_load, verbose=False)
+        my_POD = POD(self.my_vec_defs, get_mat=my_load, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['get_mat'] = my_load
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
  
-        def my_save(data, fname): pass 
-        my_POD = POD(put_vec=my_save, verbose=False)
-        data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_ops'].put_vec = my_save
-        self.assertEqual(util.get_data_members(my_POD), data_members_modified)
-        
-        my_POD = POD(put_mat=my_save, verbose=False)
+        my_POD = POD(self.my_vec_defs, put_mat=my_save, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['put_mat'] = my_save
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
         
-        def my_ip(f1, f2): pass
-        my_POD = POD(inner_product=my_ip, verbose=False)
-        data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_ops'].inner_product = my_ip
-        self.assertEqual(util.get_data_members(my_POD), data_members_modified)
-
         max_vecs_per_node = 500
-        my_POD = POD(max_vecs_per_node=max_vecs_per_node, verbose=False)
+        my_POD = POD(self.my_vec_defs, max_vecs_per_node=max_vecs_per_node,
+            verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_ops'].max_vecs_per_node =\
             max_vecs_per_node
@@ -138,9 +132,9 @@ class TestPOD(unittest.TestCase):
         sing_vals_path = join(self.test_dir, 'sing_vals.txt')
         correlation_mat_path = join(self.test_dir, 'correlation.txt')
         
-        self.pod.compute_decomp(self.vec_paths)
-        self.pod.put_correlation_mat(correlation_mat_path)
-        self.pod.put_decomp(sing_vecs_path, sing_vals_path)
+        self.my_POD.compute_decomp(self.vec_paths)
+        self.my_POD.put_correlation_mat(correlation_mat_path)
+        self.my_POD.put_decomp(sing_vecs_path, sing_vals_path)
         
         if parallel.is_rank_zero():
             sing_vecs_loaded = util.load_mat_text(sing_vecs_path)
@@ -158,11 +152,11 @@ class TestPOD(unittest.TestCase):
             correlation_mat_loaded = parallel.comm.bcast(correlation_mat_loaded,
                 root=0)
         
-        N.testing.assert_allclose(self.pod.correlation_mat, 
+        N.testing.assert_allclose(self.my_POD.correlation_mat, 
             self.correlation_mat_true, rtol=tol)
-        N.testing.assert_allclose(self.pod.sing_vecs, 
+        N.testing.assert_allclose(self.my_POD.sing_vecs, 
             self.sing_vecs_true, rtol=tol)
-        N.testing.assert_allclose(self.pod.sing_vals, 
+        N.testing.assert_allclose(self.my_POD.sing_vals, 
             self.sing_vals_true, rtol=tol)
           
         N.testing.assert_allclose(correlation_mat_loaded, 
@@ -184,10 +178,10 @@ class TestPOD(unittest.TestCase):
         mode_path = join(self.test_dir, 'mode_%03d.txt')
         
         # starts with the CORRECT decomposition.
-        self.pod.sing_vecs = self.sing_vecs_true
-        self.pod.sing_vals = self.sing_vals_true
+        self.my_POD.sing_vecs = self.sing_vecs_true
+        self.my_POD.sing_vals = self.sing_vals_true
         
-        self.pod.compute_modes(self.mode_nums, 
+        self.my_POD.compute_modes(self.mode_nums, 
             [mode_path%i for i in self.mode_nums], 
             index_from=self.index_from, vec_sources=self.vec_paths)
           
@@ -206,7 +200,7 @@ class TestPOD(unittest.TestCase):
                 mode1 = util.load_mat_text(mode_path % mode_num1)
                 for mode_num2 in self.mode_nums:
                     mode2 = util.load_mat_text(mode_path % mode_num2)
-                    IP = self.pod.vec_ops.inner_product(mode1, mode2)
+                    IP = self.my_POD.vec_ops.inner_product(mode1, mode2)
                     if mode_num1 != mode_num2:
                         self.assertAlmostEqual(IP, 0.)
                     else:

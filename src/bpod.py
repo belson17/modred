@@ -8,15 +8,15 @@ import parallel
 class BPOD(object):
     """Balanced Proper Orthogonal Decomposition
     
+    Args:
+        vec_defs: Class or module w/functions ``get_vec``, ``put_vec``,
+        ``inner_product``
+  
     Kwargs:
-        get_vec: Function to get a vec from elsewhere (memory or file).
-        
-        put_vec: Function to put a vec elsewhere (memory or file).
-        
-        put_mat: Function to put a matrix elsewhere (memory or file).
-        
-        inner_product: Function to take inner product of two vecs.
-        
+        put_mat: Function to put a matrix out of modred
+      	
+      	get_mat: Function to get a matrix into modred
+      	                
         verbose: print more information about progress and warnings
         
         max_vecs_per_node: max number of vectors in memory per node.
@@ -34,14 +34,13 @@ class BPOD(object):
 
     """
     
-    def __init__(self, get_vec=None, put_vec=None, 
+    def __init__(self, vec_defs, 
         put_mat=util.save_mat_text, get_mat=util.load_mat_text,
-        inner_product=None, max_vecs_per_node=2, verbose=True):
+        max_vecs_per_node=2, verbose=True):
         """Constructor """
         # Class that contains all of the low-level vec operations
         # and parallelizes them.
-        self.vec_ops = VecOperations(get_vec=get_vec, 
-            put_vec=put_vec, inner_product=inner_product, 
+        self.vec_ops = VecOperations(vec_defs, 
             max_vecs_per_node=max_vecs_per_node, verbose=verbose)
         self.parallel = parallel.default_instance
 
@@ -187,7 +186,7 @@ class BPOD(object):
         # Switch to N.dot...
         build_coeff_mat = N.mat(self.R_sing_vecs) * \
             N.mat(N.diag(self.sing_vals**-0.5))
-        self.vec_ops.compute_modes(mode_nums, mode_dests, 
+        return self.vec_ops.compute_modes(mode_nums, mode_dests, 
             self.direct_vec_sources, build_coeff_mat, index_from=index_from)
     
     def compute_adjoint_modes(self, mode_nums, mode_dests, index_from=1,
@@ -207,6 +206,11 @@ class BPOD(object):
                 
             adjoint_vec_sources: sources of adjoint vecs. 
             		Optional if already given when calling ``self.compute_decomp``.
+
+        Returns:
+            A list: If ``put_vec`` returns something, returns a list of that.
+                The index of the list corresponds to the index of ``mode_nums``.
+
         """
         #self.L_sing_vecs and self.sing_vals must exist, else UndefinedError.
         
@@ -223,6 +227,6 @@ class BPOD(object):
         
         build_coeff_mat = N.dot(self.L_sing_vecs, N.diag(self.sing_vals**-0.5))
                  
-        self.vec_ops.compute_modes(mode_nums, mode_dests,
+        return self.vec_ops.compute_modes(mode_nums, mode_dests,
             self.adjoint_vec_sources, build_coeff_mat, index_from=index_from)
     

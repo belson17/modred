@@ -15,6 +15,7 @@ parallel = parallel_mod.default_instance
 from dmd import DMD
 from pod import POD
 from vecoperations import VecOperations
+from vecdefs import VecDefsArrayText
 import util
 
 
@@ -34,9 +35,11 @@ class TestDMD(unittest.TestCase):
         self.num_vecs = 6 # number of vecs to generate
         self.num_states = 7 # dimension of state vector
         self.index_from = 2
-        self.DMD = DMD(get_vec=util.load_mat_text, put_vec=util.\
-            save_mat_text, put_mat=util.save_mat_text, inner_product=util.\
-            inner_product, verbose=False)
+
+        self.my_vec_defs = VecDefsArrayText()
+        self.my_DMD = DMD(self.my_vec_defs, 
+            put_mat=util.save_mat_text, verbose=False)
+
         self.generate_data_set()
         parallel.sync()
         
@@ -88,7 +91,7 @@ class TestDMD(unittest.TestCase):
         self.build_coeffs_true = W * (Sigma_mat ** -1) * eig_vecs * scaling
         self.mode_norms_true = N.zeros(self.ritz_vecs_true.shape[1])
         for i in xrange(self.ritz_vecs_true.shape[1]):
-            self.mode_norms_true[i] = self.DMD.vec_ops.inner_product(N.\
+            self.mode_norms_true[i] = self.my_DMD.vec_ops.inner_product(N.\
                 array(self.ritz_vecs_true[:,i]), N.array(self.ritz_vecs_true[:, 
                 i])).real
 
@@ -106,56 +109,46 @@ class TestDMD(unittest.TestCase):
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
         
-        data_members_default = {'put_mat': util.save_mat_text, 
-            'get_mat': util.load_mat_text, 'POD': None,
-            'parallel': parallel_mod.default_instance,
+        data_members_default = {'put_mat': util.save_mat_text, 'get_mat':
+             util.load_mat_text, 'parallel': parallel_mod.default_instance,
             'verbose': False, 'ritz_vals': None, 'build_coeffs': None,
-            'mode_norms': None, 'vec_sources': None,
-            'vec_ops': VecOperations(get_vec=None, 
-            put_vec=None, inner_product=None, max_vecs_per_node=2,
-            verbose=False)}
-
-        self.assertEqual(util.get_data_members(DMD(verbose=False)), \
-            data_members_default)
-
-        def my_load(fname): pass
-        myDMD = DMD(get_vec=my_load, verbose=False)
-        data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_ops'].get_vec = my_load
-        self.assertEqual(util.get_data_members(myDMD), data_members_modified)
+            'mode_norms': None, 'vec_sources': None, 'POD': None,
+            'vec_ops': VecOperations(self.my_vec_defs, verbose=False)}
         
-        myDMD = DMD(get_mat=my_load, verbose=False)
+        # Get default data member values
+        # Set verbose to false, to avoid printing warnings during tests
+        self.assertEqual(util.get_data_members(DMD(self.my_vec_defs, 
+            verbose=False)), data_members_default)
+        
+        def my_load(fname): pass
+        def my_save(data, fname): pass 
+        
+        my_DMD = DMD(self.my_vec_defs, verbose=False)
+        data_members_modified = copy.deepcopy(data_members_default)
+        data_members_modified['vec_ops'] = VecOperations(self.my_vec_defs,
+            verbose=False)
+        self.assertEqual(util.get_data_members(my_DMD), data_members_modified)
+       
+        my_DMD = DMD(self.my_vec_defs, get_mat=my_load, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['get_mat'] = my_load
-        self.assertEqual(util.get_data_members(myDMD), data_members_modified)
-
-        def my_save(data,fname): pass 
-        myDMD = DMD(put_vec=my_save, verbose=False)
-        data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_ops'].put_vec = my_save
-        self.assertEqual(util.get_data_members(myDMD), data_members_modified)
-        
-        myDMD = DMD(put_mat=my_save, verbose=False)
+        self.assertEqual(util.get_data_members(my_DMD), data_members_modified)
+ 
+        my_DMD = DMD(self.my_vec_defs, put_mat=my_save, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['put_mat'] = my_save
-        self.assertEqual(util.get_data_members(myDMD), data_members_modified)
+        self.assertEqual(util.get_data_members(my_DMD), data_members_modified)
         
-        def my_ip(f1, f2): pass
-        myDMD = DMD(inner_product=my_ip, verbose=False)
-        data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_ops'].inner_product = my_ip
-        self.assertEqual(util.get_data_members(myDMD), data_members_modified)
-
         max_vecs_per_node = 500
-        myDMD = DMD(max_vecs_per_node=max_vecs_per_node, verbose=False)
+        my_DMD = DMD(self.my_vec_defs, max_vecs_per_node=max_vecs_per_node,
+            verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_ops'].max_vecs_per_node =\
             max_vecs_per_node
         data_members_modified['vec_ops'].max_vecs_per_proc =\
             max_vecs_per_node * parallel.get_num_nodes() / parallel.\
             get_num_procs()
-        self.assertEqual(util.get_data_members(myDMD), data_members_modified)
-       
+        self.assertEqual(util.get_data_members(my_DMD), data_members_modified)
        
 
     def test_compute_decomp(self):
@@ -170,15 +163,15 @@ class TestDMD(unittest.TestCase):
         mode_norms_path = join(self.test_dir, 'dmd_mode_energies.txt')
         build_coeffs_path = join(self.test_dir, 'dmd_build_coeffs.txt')
 
-        self.DMD.compute_decomp(self.vec_paths)
-        self.DMD.put_decomp(ritz_vals_path, mode_norms_path, build_coeffs_path)
+        self.my_DMD.compute_decomp(self.vec_paths)
+        self.my_DMD.put_decomp(ritz_vals_path, mode_norms_path, build_coeffs_path)
        
         # Test that matrices were correctly computed
-        N.testing.assert_allclose(self.DMD.ritz_vals, 
+        N.testing.assert_allclose(self.my_DMD.ritz_vals, 
             self.ritz_vals_true, rtol=tol)
-        N.testing.assert_allclose(self.DMD.build_coeffs, 
+        N.testing.assert_allclose(self.my_DMD.build_coeffs, 
             self.build_coeffs_true, rtol=tol)
-        N.testing.assert_allclose(self.DMD.mode_norms, 
+        N.testing.assert_allclose(self.my_DMD.mode_norms, 
             self.mode_norms_true, rtol=tol)
 
         # Test that matrices were correctly stored
@@ -214,9 +207,9 @@ class TestDMD(unittest.TestCase):
         tol = 1e-8
 
         mode_path = join(self.test_dir, 'dmd_mode_%03d.txt')
-        self.DMD.build_coeffs = self.build_coeffs_true
+        self.my_DMD.build_coeffs = self.build_coeffs_true
         mode_nums = list(N.array(range(self.num_vecs-1))+self.index_from)
-        self.DMD.compute_modes(mode_nums, 
+        self.my_DMD.compute_modes(mode_nums, 
             [mode_path%i for i in mode_nums],
             index_from=self.index_from, vec_sources=self.vec_paths)
             
