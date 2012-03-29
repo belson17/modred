@@ -14,7 +14,7 @@ parallel = parallel_mod.default_instance
 
 from pod import POD
 from vecoperations import VecOperations
-from vecdefs import VecDefsArrayText
+from vecdefs import ArrayText
 import util
 
 
@@ -31,7 +31,7 @@ class TestPOD(unittest.TestCase):
         self.num_vecs = 40
         self.num_states = 100
         self.index_from = 2
-        self.my_vec_defs = VecDefsArrayText()
+        self.my_vec_defs = ArrayText()
         
         self.my_POD = POD(self.my_vec_defs,
             util.save_mat_text, put_mat=util.save_mat_text, verbose=False)
@@ -81,8 +81,7 @@ class TestPOD(unittest.TestCase):
             util.load_mat_text, 'parallel': parallel_mod.default_instance,
             'verbose': False, 'sing_vecs': None, 'sing_vals': None,
             'correlation_mat': None, 'vec_sources': None,
-            'vec_ops': VecOperations(self.my_vec_defs,
-                max_vecs_per_node=2, verbose=False)}
+            'vec_ops': VecOperations(self.my_vec_defs, verbose=False)}
         
         self.assertEqual(util.get_data_members(POD(self.my_vec_defs, 
             verbose=False)), data_members_default)
@@ -132,9 +131,11 @@ class TestPOD(unittest.TestCase):
         sing_vals_path = join(self.test_dir, 'sing_vals.txt')
         correlation_mat_path = join(self.test_dir, 'correlation.txt')
         
-        self.my_POD.compute_decomp(self.vec_paths)
+        self.my_POD.compute_decomp(self.vec_paths, sing_vecs_path, 
+            sing_vals_path)
         self.my_POD.put_correlation_mat(correlation_mat_path)
-        self.my_POD.put_decomp(sing_vecs_path, sing_vals_path)
+        sing_vecs_returned, sing_vals_returned = \
+            self.my_POD.compute_decomp_and_return(self.vec_paths)
         
         if parallel.is_rank_zero():
             sing_vecs_loaded = util.load_mat_text(sing_vecs_path)
@@ -157,6 +158,11 @@ class TestPOD(unittest.TestCase):
         N.testing.assert_allclose(self.my_POD.sing_vecs, 
             self.sing_vecs_true, rtol=tol)
         N.testing.assert_allclose(self.my_POD.sing_vals, 
+            self.sing_vals_true, rtol=tol)
+          
+        N.testing.assert_allclose(sing_vecs_returned, 
+            self.sing_vecs_true, rtol=tol)
+        N.testing.assert_allclose(sing_vals_returned, 
             self.sing_vals_true, rtol=tol)
           
         N.testing.assert_allclose(correlation_mat_loaded, 
@@ -200,7 +206,7 @@ class TestPOD(unittest.TestCase):
                 mode1 = util.load_mat_text(mode_path % mode_num1)
                 for mode_num2 in self.mode_nums:
                     mode2 = util.load_mat_text(mode_path % mode_num2)
-                    IP = self.my_POD.vec_ops.inner_product(mode1, mode2)
+                    IP = self.my_vec_defs.inner_product(mode1, mode2)
                     if mode_num1 != mode_num2:
                         self.assertAlmostEqual(IP, 0.)
                     else:

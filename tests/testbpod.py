@@ -15,7 +15,7 @@ parallel = parallel_mod.default_instance
 from bpod import BPOD
 from vecoperations import VecOperations
 import util
-from vecdefs import VecDefsArrayText
+from vecdefs import ArrayText
 
 
 class TestBPOD(unittest.TestCase):
@@ -35,7 +35,7 @@ class TestBPOD(unittest.TestCase):
         self.num_states = 100
         self.index_from = 2
         
-        self.my_vec_defs = VecDefsArrayText()
+        self.my_vec_defs = ArrayText()
         self.my_BPOD = BPOD(self.my_vec_defs, 
             put_mat=util.save_mat_text, verbose=False)
         self.generate_data_set()
@@ -111,8 +111,7 @@ class TestBPOD(unittest.TestCase):
             'verbose': False, 'L_sing_vecs': None, 'R_sing_vecs': None,
             'sing_vals': None, 'direct_vec_sources': None,
             'adjoint_vec_sources': None, 'hankel_mat': None,
-            'vec_ops': VecOperations(self.my_vec_defs, max_vecs_per_node=2,
-            verbose=False)}
+            'vec_ops': VecOperations(self.my_vec_defs, verbose=False)}
         
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
@@ -167,11 +166,14 @@ class TestBPOD(unittest.TestCase):
         hankel_mat_path = join(self.test_dir, 'hankel.txt')
         
         self.my_BPOD.compute_decomp(self.direct_vec_paths, 
+            self.adjoint_vec_paths, L_sing_vecs_path, sing_vals_path, 
+            R_sing_vecs_path)
+        L_sing_vecs_return, sing_vals_return, R_sing_vecs_return = \
+            self.my_BPOD.compute_decomp_and_return(self.direct_vec_paths, 
             self.adjoint_vec_paths)
         
         self.my_BPOD.put_hankel_mat(hankel_mat_path)
-        self.my_BPOD.put_decomp(L_sing_vecs_path, sing_vals_path, 
-            R_sing_vecs_path)
+        
         if parallel.is_rank_zero():
             L_sing_vecs_loaded = util.load_mat_text(L_sing_vecs_path)
             R_sing_vecs_loaded = util.load_mat_text(R_sing_vecs_path)
@@ -202,7 +204,14 @@ class TestBPOD(unittest.TestCase):
           self.R_sing_vecs_true, rtol=tol)
         N.testing.assert_allclose(self.my_BPOD.sing_vals,
           self.sing_vals_true, rtol=tol)
-          
+        
+        N.testing.assert_allclose(L_sing_vecs_return,
+          self.L_sing_vecs_true, rtol=tol)
+        N.testing.assert_allclose(R_sing_vecs_return,
+          self.R_sing_vecs_true, rtol=tol)
+        N.testing.assert_allclose(sing_vals_return,
+          self.sing_vals_true, rtol=tol)
+        
         N.testing.assert_allclose(hankel_mat_loaded,
           self.hankel_mat_true, rtol=tol)
         N.testing.assert_allclose(L_sing_vecs_loaded,
@@ -262,7 +271,7 @@ class TestBPOD(unittest.TestCase):
                 for mode_num2 in self.mode_nums:
                     adjoint_mode = util.load_mat_text(
                         adjoint_mode_path%mode_num2)
-                    IP = self.my_BPOD.vec_ops.inner_product(
+                    IP = self.my_vec_defs.inner_product(
                       direct_mode,adjoint_mode)
                     if mode_num1 != mode_num2:
                         self.assertAlmostEqual(IP, 0.)

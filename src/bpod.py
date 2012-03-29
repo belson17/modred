@@ -116,19 +116,26 @@ class BPOD(object):
         self.put_L_sing_vecs(L_sing_vecs_dest)
         self.put_R_sing_vecs(R_sing_vecs_dest)
         self.put_sing_vals(sing_vals_dest)
-        
-        
-    def compute_decomp(self, direct_vec_sources, adjoint_vec_sources):
-        """Compute BPOD from given vecs.
-        
-        Computes the Hankel mat Y*X, then takes the SVD of this matrix.
-        """        
+    
+    
+    def _compute_decomp(self, direct_vec_sources, adjoint_vec_sources):
+        """Finds Hankel mat and its SVD."""
         self.direct_vec_sources = direct_vec_sources
         self.adjoint_vec_sources = adjoint_vec_sources
-        # Do Y.conj()*X
         self.hankel_mat = self.vec_ops.compute_inner_product_mat(
             self.adjoint_vec_sources, self.direct_vec_sources)
-        self.compute_SVD()        
+        self.compute_SVD()
+    
+    def compute_decomp(self, direct_vec_sources, adjoint_vec_sources,
+        L_sing_vecs_dest, sing_vals_dest, R_sing_vecs_dest):
+        """Finds Hankel mat and its SVD, puts result to destinations. """
+        self._compute_decomp(direct_vec_sources, adjoint_vec_sources)
+        self.put_decomp(L_sing_vecs_dest, sing_vals_dest, R_sing_vecs_dest)
+        
+    def compute_decomp_and_return(self, direct_vec_sources, adjoint_vec_sources):
+        """Finds Hankel mat and its SVD, and returns decomp mats. """
+        self._compute_decomp(direct_vec_sources, adjoint_vec_sources)
+        return self.L_sing_vecs, self.sing_vals, self.R_sing_vecs
 
 
     def compute_SVD(self):
@@ -151,26 +158,12 @@ class BPOD(object):
                 root=0)
             self.R_sing_vecs = self.parallel.comm.bcast(self.R_sing_vecs,
                 root=0)
-        
-
-    def compute_direct_modes(self, mode_nums, mode_dests, index_from=1,
-        direct_vec_sources=None):
-        """Computes the direct modes and ``self.put_vec`` s them.
-        
-        Args:
-          mode_nums: Mode numbers to compute. 
-              Examples are [1,2,3,4,5] or [3,1,6,8]. 
-              The mode numbers need not be sorted,
-              and sorting does not increase efficiency. 
-              
-          mode_dest: list of modes' destinations (file or memory)
-          
-        Kwargs:
-          index_from:
-              Index modes starting from 0, 1, or other.
-          
-          direct_vec_sources: sources to direct vecs. 
-              Optional if already given when calling ``self.compute_decomp``.
+    
+    
+    
+    def _compute_direct_modes_helper(self, direct_vec_sources=None):
+        """Helper for ``compute_direct_modes`` and 
+        ``compute_direct_modes_and_return`` see their docs for more info.
         """
         #self.R_sing_vecs and self.sing_vals must exist, else UndefinedError.
         
@@ -186,31 +179,50 @@ class BPOD(object):
         # Switch to N.dot...
         build_coeff_mat = N.mat(self.R_sing_vecs) * \
             N.mat(N.diag(self.sing_vals**-0.5))
-        return self.vec_ops.compute_modes(mode_nums, mode_dests, 
+        return build_coeff_mat
+        
+    def compute_direct_modes_and_return(self, mode_nums, 
+        direct_vec_sources=None, index_from=0):
+        """Computes direct modes and returns them in a list.
+        
+        See ``compute_direct_modes`` for details.
+        
+        Returns:
+            a list of modes
+            
+        In parallel, each MPI worker is returned a complete list of modes
+        """
+        self._compute_direct_modes_helper(direct_vec_sources)
+        return self.vec_ops.compute_modes_and_return(mode_nums, 
             self.direct_vec_sources, build_coeff_mat, index_from=index_from)
-    
-    def compute_adjoint_modes(self, mode_nums, mode_dests, index_from=1,
-        adjoint_vec_sources=None):
-        """Computes the adjoint modes ``self.put_vec`` s them.
+            
+    def compute_direct_modes(self, mode_nums, mode_dests,
+        direct_vec_sources=None, index_from=0):
+        """Computes direct modes and calls ``self.put_vec`` on them.
         
         Args:
-            mode_nums: Mode numbers to compute. 
-                Examples are [1,2,3,4,5] or [3,1,6,8]. 
-                The mode numbers need not be sorted,
-                and sorting does not increase efficiency. 
-                
-            mode_dest: list of modes' destinations (file or memory).
-        
+          mode_nums: Mode numbers to compute. 
+              Examples are ``range(10)`` or ``[3,1,6,8]``. 
+              The mode numbers need not be sorted,
+              and sorting does not increase efficiency. 
+              
+          mode_dests: list of modes' destinations.
+          
         Kwargs:
-            index_from: Index modes starting from 0, 1, or other.
-                
-            adjoint_vec_sources: sources of adjoint vecs. 
-            		Optional if already given when calling ``self.compute_decomp``.
-
-        Returns:
-            A list: If ``put_vec`` returns something, returns a list of that.
-                The index of the list corresponds to the index of ``mode_nums``.
-
+          index_from: Index modes starting from 0, 1, or other.
+          
+          direct_vec_sources: sources to direct vecs. 
+              Optional if already given when calling ``self.compute_decomp``.
+        """
+        build_coeff_mat = self._compute_direct_modes_helper(direct_vec_sources)
+        self.vec_ops.compute_modes(mode_nums, mode_dests, 
+            self.direct_vec_sources, build_coeff_mat, index_from=index_from)
+        
+        
+    
+    def _compute_adjoint_modes_helper(self, adjoint_vec_sources=None):
+        """Helper for ``compute_adjoint_modes`` and 
+        ``compute_adjoint_modes_and_return``, see those docs for more info.
         """
         #self.L_sing_vecs and self.sing_vals must exist, else UndefinedError.
         
@@ -226,7 +238,45 @@ class BPOD(object):
         self.sing_vals = N.squeeze(N.array(self.sing_vals))
         
         build_coeff_mat = N.dot(self.L_sing_vecs, N.diag(self.sing_vals**-0.5))
-                 
-        return self.vec_ops.compute_modes(mode_nums, mode_dests,
-            self.adjoint_vec_sources, build_coeff_mat, index_from=index_from)
+        return build_coeff_mat      
     
+    def compute_adjoint_modes(self, mode_nums, mode_dests,
+        adjoint_vec_sources=None,  index_from=0):
+        """Computes the adjoint modes ``self.put_vec`` s them.
+        
+        Args:
+            mode_nums: Mode numbers to compute. 
+                Examples are ``range(10)`` or ``[3, 1, 6, 8]``. 
+                The mode numbers need not be sorted,
+                and sorting does not increase efficiency. 
+                
+            mode_dest: list of modes' destinations (file or memory).
+        
+        Kwargs:
+            index_from: Index modes starting from 0, 1, or other.
+                
+            adjoint_vec_sources: sources of adjoint vecs. 
+            		Optional if already given when calling ``self.compute_decomp``.
+
+        """
+        build_coeff_mat = self._compute_adjoint_modes_helper(adjoint_vec_sources)
+        self.vec_ops.compute_modes(mode_nums, mode_dests, 
+            self.adjoint_vec_sources, build_coeff_mat, index_from=index_from)
+        
+    def compute_adjoint_modes_and_return(self, mode_nums, 
+        adjoint_vec_sources=None, index_from=0):
+        """Computes the adjoint modes returns them.
+        
+        See ``compute_adjoint_modes`` for details.
+
+        Returns:
+            a list of modes
+            
+        In parallel, each MPI worker returns a complete list of modes.
+        """
+        build_coeff_mat = self._compute_adjoint_modes_helper(adjoint_vec_sources)
+        self.vec_ops.compute_modes_and_return(mode_nums, 
+            self.adjoint_vec_sources, 
+            build_coeff_mat, index_from=index_from)
+        
+

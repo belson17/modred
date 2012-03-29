@@ -25,36 +25,17 @@ import cPickle
 import time as T
 import numpy as N
 
-import modred as M
+import modred as MR
 
-parallel = M.parallel.default_instance
-
-def save_pickle(obj, filename):
-    fid = open(filename,'wb')
-    cPickle.dump(obj,fid)
-    fid.close()
-    
-    
-def load_pickle(filename):
-    fid = open(filename,'rb')
-    obj = cPickle.load(fid)
-    fid.close()
-    return obj
-
-
-save_vec = save_pickle 
-load_vec = load_pickle
-#save_vec = M.util.save_mat_text
-#load_vec = M.util.load_mat_text
-inner_product = M.util.inner_product
-
+parallel = MR.parallel.default_instance
+my_vec_defs = MR.vecdefs.ArrayPickle()
 
 import argparse
 parser = argparse.ArgumentParser(description='Get directory in which to ' +\
     'save data.')
 parser.add_argument('--outdir', default='files_benchmark', help='Directory in ' +\
     'which to save data.')
-parser.add_argument('--function', required=True, choices=['lin_combine',
+parser.add_argument('--function', choices=['lin_combine',
     'inner_product_mat', 'symmetric_inner_product_mat'], help='Function to ' +\
     'benchmark.')
 args = parser.parse_args()
@@ -86,12 +67,13 @@ def generate_vecs(num_states, num_vecs, vec_dir, vec_name):
     if parallel.is_rank_zero():
         for vec_num in xrange(num_vecs):
             vec = N.random.random(num_states)
-            save_vec(vec, join(vec_dir, vec_name%vec_num))
+            my_vec_defs.put_vec(vec, join(vec_dir, vec_name%vec_num))
     
     parallel.sync()
 
 
-def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node):
+def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node, 
+    verbose=True):
     """
     Computes inner products from known vecs.
     
@@ -101,61 +83,61 @@ def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node):
     col_vec_paths = [join(data_dir, col_vec_name%col_num) for col_num in range(num_cols)]
     generate_vecs(num_states, num_cols, data_dir, col_vec_name)
     
-    row_vec_name = 'row_%04d.txt'    
+    row_vec_name = 'row_%04d.txt'
     row_vec_paths = [join(data_dir, row_vec_name%row_num) for row_num in range(num_rows)]
     generate_vecs(num_states, num_rows, data_dir, row_vec_name)
     
-    my_FO = M.VecOperations(max_vecs_per_node=max_vecs_per_node, put_vec=\
-        save_vec, get_vec=load_vec, inner_product=inner_product, 
-        verbose=True) 
+    my_VO = MR.VecOperations(my_vec_defs, max_vecs_per_node=max_vecs_per_node,
+        verbose=verbose) 
     
     start_time = T.time()
-    inner_product_mat = my_FO.compute_inner_product_mat(col_vec_paths, 
+    inner_product_mat = my_VO.compute_inner_product_mat(col_vec_paths, 
         row_vec_paths)
     total_time = T.time() - start_time
     return total_time
     
     
-def symmetric_inner_product_mat(num_states, num_vecs, max_vecs_per_node):
+def symmetric_inner_product_mat(num_states, num_vecs, max_vecs_per_node, 
+    verbose=True):
     """
     Computes symmetric inner product matrix from known vecs (as in POD).
     """    
-    vec_name = 'vec_%04d.txt'
-    vecPaths = [join(data_dir, vec_name % vec_num) for vec_num in range(
+    vec_name = 'vec_%04d'
+    vec_paths = [join(data_dir, vec_name % vec_num) for vec_num in range(
         num_vecs)]
     generate_vecs(num_states, num_vecs, data_dir, vec_name)
     
-    my_FO = M.VecOperations(max_vecs_per_node=max_vecs_per_node, put_vec=\
-        save_vec, get_vec=load_vec, inner_product=inner_product, 
-        verbose=True) 
+    my_VO = MR.VecOperations(my_vec_defs, max_vecs_per_node=max_vecs_per_node,
+        verbose=verbose) 
     
     start_time = T.time()
-    inner_product_mat = my_FO.compute_symmetric_inner_product_mat(vecPaths)
+    inner_product_mat = my_VO.compute_symmetric_inner_product_mat(vec_paths)
     total_time = T.time() - start_time
     return total_time
 
 
-def lin_combine(num_states, num_bases, num_products, max_vecs_per_node):
+def lin_combine(num_states, num_bases, num_products, max_vecs_per_node,
+    verbose=True):
     """
     Computes linear combination of vecs from saved vecs and random coeffs
     
     num_bases is number of vecs to be linearly combined
     num_products is the resulting number of vecs
     """
-    basis_name = 'vec_%04d.txt'
-    product_name = 'product_%04d.txt'
+    basis_name = 'vec_%04d'
+    product_name = 'product_%04d'
     generate_vecs(num_states, num_bases, data_dir, basis_name)
     parallel.sync()
-    my_FO = M.VecOperations(max_vecs_per_node=max_vecs_per_node,
-        put_vec=save_vec, get_vec=load_vec, inner_product=inner_product)
+    my_VO = MR.VecOperations(my_vec_defs, max_vecs_per_node=max_vecs_per_node,
+        verbose=verbose)
     coeff_mat = N.random.random((num_bases, num_products))
     
-    basis_paths = [join(data_dir,  basis_name%basis_num) for basis_num in range(num_bases)]
-    product_paths = [join(data_dir,  product_name%product_num) for product_num in range \
+    basis_paths = [join(data_dir, basis_name%basis_num) for basis_num in range(num_bases)]
+    product_paths = [join(data_dir, product_name%product_num) for product_num in range \
         (num_products)]
     
     start_time = T.time()
-    my_FO.lin_combine(product_paths, basis_paths, coeff_mat)
+    my_VO.lin_combine(product_paths, basis_paths, coeff_mat)
     total_time = T.time() - start_time
     return total_time
     
@@ -173,13 +155,13 @@ def main():
     
     # Common parameters
     max_vecs_per_node = 5
-    num_states = 3500
+    num_states = 50
     
     # Run test of choice
     if method_to_test == 'lin_combine':
         # lin_combine test
-        num_bases = 2000
-        num_products = 1000
+        num_bases = 200
+        num_products = 100
         time_elapsed = lin_combine(
                 num_states, num_bases, num_products, max_vecs_per_node)
     elif method_to_test == 'inner_product_mat':
@@ -188,11 +170,14 @@ def main():
         num_cols = 2000
         time_elapsed = inner_product_mat(
                 num_states, num_rows, num_cols, max_vecs_per_node)
-    elif method_to_test == 'symmetric_inner_product_mat':
+    elif method_to_test == 'inner_product_mat':
         # symmetric_inner_product_mat test
         num_vecs = 2000
         time_elapsed = symmetric_inner_product_mat(
                 num_states, num_vecs, max_vecs_per_node)
+    else:
+        print 'Did not recognize --function argument, choose from'
+        print 'lin_combine, inner_product_mat, and inner_product_mat'
     print 'Time for %s is %f'%(method_to_test, time_elapsed)
     
     parallel.sync()

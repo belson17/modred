@@ -47,9 +47,12 @@ class DMD(object):
         self.mode_norms = None
         self.vec_sources = None
 
+
+
     def idiot_check(self, test_obj=None, test_obj_source=None):
         """See VecOperations documentation"""
         return self.vec_ops.idiot_check(test_obj, test_obj_source)
+
 
     def get_decomp(self, ritz_vals_source, mode_norms_source, 
         build_coeffs_source):
@@ -98,7 +101,7 @@ class DMD(object):
 
 
 
-    def compute_decomp(self, vec_sources):
+    def _compute_decomp(self, vec_sources):
         """Compute decomposition"""
          
         if vec_sources is not None:
@@ -111,66 +114,114 @@ class DMD(object):
             self.POD = pod.POD(self.vec_ops.vec_defs, 
                 max_vecs_per_node=self.vec_ops.max_vecs_per_node, 
                 verbose=self.verbose)
-            self.POD.compute_decomp(vec_sources=self.vec_sources[:-1])
+            # Don't use the returned mats, get them later from POD instance.
+            dum, dum = self.POD.compute_decomp_and_return(
+                vec_sources=self.vec_sources[:-1])
         elif self.vec_sources[:-1] != self.POD.vec_sources or \
             len(vec_sources) != len(self.POD.vec_sources)+1:
             raise RuntimeError('vec mismatch between POD and DMD '+\
-                'objects.')     
+                'objects.')
+        pod_sing_vecs = self.POD.sing_vecs
+        pod_sing_vals = self.POD.sing_vals
         _pod_sing_vals_sqrt_mat = N.mat(
-            N.diag(N.array(self.POD.sing_vals).squeeze() ** -0.5))
+            N.diag(N.array(pod_sing_vals).squeeze() ** -0.5))
 
         # Inner product of vecs w/POD modes
         num_vecs = len(self.vec_sources)
         pod_modes_star_times_vecs = N.mat(N.empty((num_vecs-1, num_vecs-1)))
         pod_modes_star_times_vecs[:,:-1] = self.POD.correlation_mat[:,1:]  
-        pod_modes_star_times_vecs[:,-1] = self.vec_ops.\
-            compute_inner_product_mat(self.vec_sources[:-1], 
+        pod_modes_star_times_vecs[:,-1] = \
+            self.vec_ops.compute_inner_product_mat(self.vec_sources[:-1], 
                 self.vec_sources[-1])
-        pod_modes_star_times_vecs = _pod_sing_vals_sqrt_mat * self.POD.\
-            sing_vecs.H * pod_modes_star_times_vecs
+        pod_modes_star_times_vecs = _pod_sing_vals_sqrt_mat * pod_sing_vecs.H *\
+            pod_modes_star_times_vecs
             
         # Reduced order linear system
-        low_order_linear_map = pod_modes_star_times_vecs * self.POD.sing_vecs * \
+        low_order_linear_map = pod_modes_star_times_vecs * pod_sing_vecs * \
             _pod_sing_vals_sqrt_mat
         self.ritz_vals, low_order_eig_vecs = N.linalg.eig(low_order_linear_map)
         
         # Scale Ritz vectors
         ritz_vecs_star_times_init_vec = low_order_eig_vecs.H * _pod_sing_vals_sqrt_mat * \
-            self.POD.sing_vecs.H * self.POD.correlation_mat[:,0]
+            pod_sing_vecs.H * self.POD.correlation_mat[:,0]
         ritz_vec_scaling = N.linalg.inv(low_order_eig_vecs.H * low_order_eig_vecs) *\
             ritz_vecs_star_times_init_vec
         ritz_vec_scaling = N.mat(N.diag(N.array(ritz_vec_scaling).squeeze()))
 
         # Compute mode energies
-        self.build_coeffs = self.POD.sing_vecs * _pod_sing_vals_sqrt_mat *\
+        self.build_coeffs = pod_sing_vecs * _pod_sing_vals_sqrt_mat *\
             low_order_eig_vecs * ritz_vec_scaling
-        self.mode_norms = N.diag(self.build_coeffs.H * self.POD.\
-            correlation_mat * self.build_coeffs).real
+        self.mode_norms = N.diag(self.build_coeffs.H * 
+            self.POD.correlation_mat * self.build_coeffs).real
             
-        
-    def compute_modes(self, mode_nums, mode_dests, index_from=1, vec_sources=None):
-        """Computes modes
+            
+    def compute_decomp(self, vec_sources, ritz_vals_dest, mode_norms_dest, 
+        build_coeffs_dest):
+        """Computes decomposition and puts mats with ``put_mat``.
         
         Args:
-            mode_nums: list of mode numbers, e.g. [1, 2, 3] or [3, 2, 5] 
+            vec_sources: list of sources from which vecs are retrieved
             
-            mode_dests: destinations to ``put_vec`` the modes (memory or file)
+            ritz_vals_dest: destination to which ritz_vals are ``put_mat``.
             
-        Kwargs:
-            index_from: where to start numbering modes from, 0, 1, or other.
+            mode_norms_dest: destination to which mode_norms are ``put_mat``.
             
-            vec_sources: sources to vecs, can omit if given in compute_decomp.
+            build_coeffs_dest: destination to which build_coeffs are ``put_mat``.
+        """
+        self._compute_decomp(vec_sources)
+        self.put_decomp(ritz_vals_dest, mode_norms_dest, build_coeffs_dest)
+        
+    def compute_decomp_and_return(self, vec_sources):
+        """Computes decomposition and returns.
         
         Returns:
-            A list: If ``put_vec`` returns something, returns a list of that.
-                The index of the list corresponds to the index of ``mode_nums``.
+            vec_sources, ritz_vals, mode_norms, build_coeffs
         """
+        self._compute_decomp(vec_sources)
+        return self.ritz_vals, self.mode_norms, self.build_coeffs
+        
+        
+        
+        
+    def _compute_modes_helper(self, vec_sources=None):
+        """Helper for ``compute_modes`` and ``compute_modes_helper``"""
         if self.build_coeffs is None:
             raise util.UndefinedError('Must define self.build_coeffs')
         # User should specify ALL vecs, even though all but last are used
         if vec_sources is not None:
             self.vec_sources = vec_sources
         
-        return self.vec_ops.compute_modes(mode_nums, mode_dests, 
+    def compute_modes(self, mode_nums, mode_dests, vec_sources=None, 
+        index_from=0):
+        """Computes modes
+        
+        Args:
+            mode_nums: list of mode numbers, ``range(10)`` or ``[3, 2, 5]`` 
+            
+            mode_dests: destinations to ``put_vec`` the modes
+            
+        Kwargs:
+            index_from: integer to start numbering modes from, 0, 1, or other.
+            
+            vec_sources: sources to vecs, can omit if given in ``compute_decomp``.
+        """
+        self._compute_modes_helper(vec_sources=vec_sources)
+        self.vec_ops.compute_modes(mode_nums, mode_dests, 
             self.vec_sources[:-1], self.build_coeffs, index_from=index_from)
         
+    def compute_modes_and_return(self, mode_nums, vec_sources=None, 
+        index_from=0):
+        """Computes modes and returns
+        
+        See ``compute_modes`` for details.
+
+        Returns:
+            a list of modes.
+
+        In parallel, each MPI worker is returned a complete list of modes
+        """
+        self._compute_modes_helper(vec_sources=vec_sources)
+        return self.vec_ops.compute_modes_and_return(mode_nums, 
+            self.vec_sources[:-1], self.build_coeffs, index_from=index_from)
+ 
+ 

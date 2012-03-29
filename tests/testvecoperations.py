@@ -15,7 +15,7 @@ import parallel as parallel_mod
 parallel = parallel_mod.default_instance
 
 from vecoperations import VecOperations
-from vecdefs import VecDefsArrayText,VecDefsArrayInMemory
+from vecdefs import ArrayText,ArrayInMemory
 import util
 
 class TestVecOperations(unittest.TestCase):
@@ -26,7 +26,7 @@ class TestVecOperations(unittest.TestCase):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
             
-        self.test_dir = 'DELETE_ME_test_files_vecoperations'    
+        self.test_dir = 'DELETE_ME_test_files_vecoperations'
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
             os.mkdir(self.test_dir)
 
@@ -34,18 +34,17 @@ class TestVecOperations(unittest.TestCase):
         self.total_num_vecs_in_mem = parallel.get_num_procs() * self.max_vecs_per_proc
 
         # VecOperations object for running tests
-        self.my_vec_defs = VecDefsArrayText()
+        self.my_vec_defs = ArrayText()
         self.my_vec_ops = VecOperations(self.my_vec_defs, verbose=False)
         self.my_vec_ops.max_vecs_per_proc = self.max_vecs_per_proc
 
         # Default data members, verbose set to false even though default is true
         # so messages won't print during tests
         self.default_data_members = {'vec_defs': self.my_vec_defs,
-            'get_vec': self.my_vec_defs.get_vec, 
-            'put_vec': self.my_vec_defs.put_vec,
-            'inner_product': self.my_vec_defs.inner_product,
-            'max_vecs_per_node': 2,
-            'max_vecs_per_proc': 2, 'parallel':parallel_mod.default_instance,
+            'max_vecs_per_node': int(1e6),
+            'max_vecs_per_proc': int(1e6) * parallel.get_num_nodes() / \
+                parallel.get_num_procs(),
+            'parallel':parallel_mod.default_instance,
             'verbose': False, 'print_interval': 10, 'prev_print_time': 0.}
        
         
@@ -66,14 +65,12 @@ class TestVecOperations(unittest.TestCase):
         """
         data_members_original = util.get_data_members(
             VecOperations(self.my_vec_defs, verbose=False))
+        self.assertEqual(self.my_vec_defs, ArrayText())
         self.assertEqual(data_members_original, self.default_data_members)
         
         my_VO = VecOperations(self.my_vec_defs, verbose=False)
         data_members = copy.deepcopy(data_members_original)
         data_members['vec_defs'] = self.my_vec_defs
-        data_members['get_vec'] = self.my_vec_defs.get_vec
-        data_members['put_vec'] = self.my_vec_defs.put_vec
-        data_members['inner_product'] = self.my_vec_defs.inner_product
         self.assertEqual(util.get_data_members(my_VO), data_members)
                 
         max_vecs_per_node = 500
@@ -100,7 +97,7 @@ class TestVecOperations(unittest.TestCase):
         
         def my_IP(vec1, vec2):
             return (vec1.arr * vec2.arr).sum()
-        my_VO.inner_product = my_IP
+        my_VO.vec_defs.inner_product = my_IP
         
         # An idiot's vector that redefines multiplication to modify its data
         class IdiotMultVec(object):
@@ -160,8 +157,7 @@ class TestVecOperations(unittest.TestCase):
     
     #@unittest.skip('testing other things')
     def test_compute_modes(self):
-        """
-        Test that can compute modes from arguments. 
+        """Test that can compute modes from arguments. 
                
         Cases are tested for numbers of vecs, states per vec,
         mode numbers, number of vecs/modes allowed in memory
@@ -278,12 +274,12 @@ class TestVecOperations(unittest.TestCase):
         parallel.sync()
 
     def test_compute_modes_return(self):
-        """Tests that compute_modes returns the modes when put_vec does"""
+        """Tests that compute_modes returns the modes"""
         num_states = 21
         num_modes_list = [1, 5, 22]
         num_vecs = 30
         index_from = 1
-        my_vec_ops = VecOperations(VecDefsArrayInMemory(), verbose=False)
+        my_vec_ops = VecOperations(ArrayInMemory(), verbose=False)
         for num_modes in num_modes_list:
             #generate data and then broadcast to all procs
             if parallel.is_rank_zero():
@@ -297,26 +293,16 @@ class TestVecOperations(unittest.TestCase):
                 true_modes = None
                 mode_paths = None
             if parallel.is_distributed():
-                mode_nums = parallel.comm.bcast(
-                    mode_nums, root=0)
-                build_coeff_mat = parallel.comm.bcast(
-                    build_coeff_mat, root=0)
-                vec_mat = parallel.comm.bcast(
-                    vec_mat, root=0)
-                true_modes = parallel.comm.bcast(
-                    true_modes, root=0)
-            
-            # Dummy argument
-            mode_dests = [None]*num_modes
+                mode_nums = parallel.comm.bcast(mode_nums, root=0)
+                build_coeff_mat = parallel.comm.bcast(build_coeff_mat, root=0)
+                vec_mat = parallel.comm.bcast(vec_mat, root=0)
+                true_modes = parallel.comm.bcast(true_modes, root=0)
                 
             # Returns modes
-            computed_modes = my_vec_ops.compute_modes(mode_nums, 
-                mode_dests,
+            computed_modes = my_vec_ops.compute_modes_and_return(mode_nums, 
                 [vec_mat[:,i] for i in range(num_vecs)],
                 build_coeff_mat, index_from=index_from)
-
             for mode_index,mode_num in enumerate(mode_nums):
-                #print 'computed mode',computed_mode
                 N.testing.assert_allclose(computed_modes[mode_index], 
                     true_modes[:,mode_num-index_from])
                     
@@ -373,9 +359,9 @@ class TestVecOperations(unittest.TestCase):
             col_vec_paths = col_vec_paths[0]
     
         # Comptue inner product matrix and check type
-        for load, type in [(get_vec_as_complex, complex), (util.\
-            load_mat_text, float)]:
-            self.my_vec_ops.get_vec = load
+        for load, type in [(get_vec_as_complex, complex), 
+            (util.load_mat_text, float)]:
+            self.my_vec_ops.vec_defs.get_vec = load
             inner_product_mat = self.my_vec_ops.compute_inner_product_mat(
                 row_vec_paths, col_vec_paths)
             symm_inner_product_mat = self.my_vec_ops.\

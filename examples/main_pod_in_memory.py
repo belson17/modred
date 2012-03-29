@@ -24,12 +24,11 @@ def main(verbose=True, make_plots=True):
     
     vecs = [N.random.random((num_states)) for i in range(num_vecs)]
     
-    my_POD = modred.POD(modred.vecdefs.VecDefsArrayInMemory(), 
+    my_POD = modred.POD(modred.vecdefs.ArrayInMemory(), 
         max_vecs_per_node=1000, verbose=verbose)
-    my_POD.compute_decomp(vecs)
+    sing_vecs, sing_vals = my_POD.compute_decomp_and_return(vecs)
 
     # Want to capture 90% of the energy, so:
-    sing_vals = my_POD.sing_vals
     energy = 0.9
     sing_vals_norm = sing_vals/N.sum(sing_vals)
     num_modes = N.nonzero(N.cumsum(sing_vals_norm) > energy)[0][0] + 1

@@ -9,14 +9,14 @@ Welcome to modred's documentation!
 Contents:
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    
    intro
    
    quickstart
-   
-   tutorial
-   
+ 
+   detailed_guide
+ 
    pod
    
    bpod

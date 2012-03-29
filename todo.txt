@@ -4,6 +4,9 @@
 
 #### Important ####
 
+Make BPODLTIROM use vecoperations.
+
+
 If POD's sing_vals is a 1-element 1d array, then after squeezing it is not an array,
 just a float, which breaks other parts of the code. This should be fixed to make it
 a 1d array always and can be done with numpy 1.7's squeeze function.

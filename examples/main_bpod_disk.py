@@ -101,7 +101,7 @@ def main(verbose=True, make_plots=True):
     y_grid = 1 + N.sin(N.linspace(-N.pi, N.pi, ny))
     num_direct_vecs = 30
     num_adjoint_vecs = 25
-    save_dir = join(os.path.dirname(__file__), 'DELETE_ME_bpod_example_files')
+    save_dir = 'DELETE_ME_bpod_example_files'
     
     # Create the directory for example files only on processor 0.
     if not os.path.exists(save_dir) and parallel.is_rank_zero():
@@ -129,15 +129,15 @@ def main(verbose=True, make_plots=True):
     # Quick check that functions are ok.
     my_BPOD.idiot_check(test_obj_source=direct_vec_paths[0])
     
-    my_BPOD.compute_decomp(direct_vec_paths, adjoint_vec_paths)
+    L_sing_vecs, sing_vals, R_sing_vecs = \
+        my_BPOD.compute_decomp_and_return(direct_vec_paths, adjoint_vec_paths)
     
     # Model error less than ~10%
-    sing_vals_norm = my_BPOD.sing_vals/N.sum(my_BPOD.sing_vals)
+    sing_vals_norm = sing_vals/N.sum(sing_vals)
     num_modes = N.nonzero(N.cumsum(sing_vals_norm) > 0.9)[0][0] + 1
     
     # Compute the first ``num_modes`` modes, save to file.
-    # The "+1"s are because we index modes from 1.
-    mode_nums = range(1, num_modes+1)
+    mode_nums = range(num_modes)
     direct_mode_paths = [join(save_dir, 'direct_mode_%02d.txt'%i)
         for i in mode_nums]
     adjoint_mode_paths = [join(save_dir, 'adjoint_mode_%02d.txt'%i)

@@ -15,7 +15,7 @@ parallel = parallel_mod.default_instance
 from dmd import DMD
 from pod import POD
 from vecoperations import VecOperations
-from vecdefs import VecDefsArrayText
+from vecdefs import ArrayText
 import util
 
 
@@ -32,11 +32,11 @@ class TestDMD(unittest.TestCase):
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
             os.mkdir(self.test_dir)
         
-        self.num_vecs = 6 # number of vecs to generate
-        self.num_states = 7 # dimension of state vector
+        self.num_vecs = 6 
+        self.num_states = 7 
         self.index_from = 2
 
-        self.my_vec_defs = VecDefsArrayText()
+        self.my_vec_defs = ArrayText()
         self.my_DMD = DMD(self.my_vec_defs, 
             put_mat=util.save_mat_text, verbose=False)
 
@@ -47,7 +47,6 @@ class TestDMD(unittest.TestCase):
     def tearDown(self):
         parallel.sync()
         if parallel.is_rank_zero():
-            #pass
             rmtree(self.test_dir, ignore_errors=True)
         parallel.sync()
         
@@ -91,7 +90,7 @@ class TestDMD(unittest.TestCase):
         self.build_coeffs_true = W * (Sigma_mat ** -1) * eig_vecs * scaling
         self.mode_norms_true = N.zeros(self.ritz_vecs_true.shape[1])
         for i in xrange(self.ritz_vecs_true.shape[1]):
-            self.mode_norms_true[i] = self.my_DMD.vec_ops.inner_product(N.\
+            self.mode_norms_true[i] = self.my_vec_defs.inner_product(N.\
                 array(self.ritz_vecs_true[:,i]), N.array(self.ritz_vecs_true[:, 
                 i])).real
 
@@ -163,15 +162,25 @@ class TestDMD(unittest.TestCase):
         mode_norms_path = join(self.test_dir, 'dmd_mode_energies.txt')
         build_coeffs_path = join(self.test_dir, 'dmd_build_coeffs.txt')
 
-        self.my_DMD.compute_decomp(self.vec_paths)
-        self.my_DMD.put_decomp(ritz_vals_path, mode_norms_path, build_coeffs_path)
-       
+        self.my_DMD.compute_decomp(self.vec_paths, ritz_vals_path, 
+            mode_norms_path, build_coeffs_path)
+        
+        ritz_vals_returned, mode_norms_returned, build_coeffs_returned = \
+            self.my_DMD.compute_decomp_and_return(self.vec_paths)
+        
         # Test that matrices were correctly computed
         N.testing.assert_allclose(self.my_DMD.ritz_vals, 
             self.ritz_vals_true, rtol=tol)
         N.testing.assert_allclose(self.my_DMD.build_coeffs, 
             self.build_coeffs_true, rtol=tol)
         N.testing.assert_allclose(self.my_DMD.mode_norms, 
+            self.mode_norms_true, rtol=tol)
+
+        N.testing.assert_allclose(ritz_vals_returned, 
+            self.ritz_vals_true, rtol=tol)
+        N.testing.assert_allclose(build_coeffs_returned, 
+            self.build_coeffs_true, rtol=tol)
+        N.testing.assert_allclose(mode_norms_returned, 
             self.mode_norms_true, rtol=tol)
 
         # Test that matrices were correctly stored

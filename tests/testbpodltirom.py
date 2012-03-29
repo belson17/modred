@@ -13,7 +13,7 @@ parallel = parallel_mod.default_instance
 
 import bpodltirom as BPR
 import util
-from vecdefs import VecDefsArrayText
+from vecdefs import ArrayText
 
 @unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
 class TestBPODROM(unittest.TestCase):
@@ -35,7 +35,7 @@ class TestBPODROM(unittest.TestCase):
         self.input_vec_path = join(self.test_dir, 'input_vec_%03d.txt')
         self.output_vec_path = join(self.test_dir, 'output_vec_%03d.txt')
         
-        self.my_vec_defs = VecDefsArrayText()
+        self.my_vec_defs = ArrayText()
         self.myBPODROM = BPR.BPODROM(self.my_vec_defs, 
             put_mat=util.save_mat_text, verbose=False)
             
@@ -119,7 +119,12 @@ class TestBPODROM(unittest.TestCase):
         A_path = join(self.test_dir, 'A.txt')
         self.myBPODROM.compute_A(A_path, self.direct_deriv_mode_paths,
             self.adjoint_mode_paths, num_modes=self.num_ROM_modes)
+        A_returned = self.myBPODROM.compute_A_and_return(
+            self.direct_deriv_mode_paths,
+            self.adjoint_mode_paths, num_modes=self.num_ROM_modes)
         N.testing.assert_allclose(self.A_true, util.load_mat_text(A_path))
+        N.testing.assert_allclose(self.A_true, A_returned)
+
 
 
     @unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
@@ -128,10 +133,13 @@ class TestBPODROM(unittest.TestCase):
         Test that, given modes, can find correct B matrix
         """
         B_path = join(self.test_dir, 'B.txt')
-        self.myBPODROM.compute_B(B_path, self.input_vec_paths,\
+        self.myBPODROM.compute_B(B_path, self.input_vec_paths,
             self.adjoint_mode_paths, num_modes=self.num_ROM_modes)
-        N.testing.assert_allclose(self.B_true, \
-            util.load_mat_text(B_path))
+        B_returned = self.myBPODROM.compute_B_and_return(
+            self.input_vec_paths,
+            self.adjoint_mode_paths, num_modes=self.num_ROM_modes)
+        N.testing.assert_allclose(self.B_true, util.load_mat_text(B_path))
+        N.testing.assert_allclose(self.B_true, B_returned)
 
 
     @unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
@@ -142,8 +150,11 @@ class TestBPODROM(unittest.TestCase):
         C_path = join(self.test_dir, 'C.txt')
         self.myBPODROM.compute_C(C_path, self.output_vec_paths,
             self.direct_mode_paths, num_modes=self.num_ROM_modes)
-        
+        C_returned = self.myBPODROM.compute_C_and_return(self.output_vec_paths,
+            self.direct_mode_paths, num_modes=self.num_ROM_modes)
         N.testing.assert_allclose(self.C_true, util.load_mat_text(C_path))
+        N.testing.assert_allclose(self.C_true, C_returned)
+
 
 
 if __name__ == '__main__':
