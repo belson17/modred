@@ -14,7 +14,7 @@ parallel = parallel_mod.default_instance
 
 from pod import POD
 from vecoperations import VecOperations
-from vecdefs import ArrayText
+from vecdefs import ArrayTextUniform
 import util
 
 
@@ -31,7 +31,7 @@ class TestPOD(unittest.TestCase):
         self.num_vecs = 40
         self.num_states = 100
         self.index_from = 2
-        self.my_vec_defs = ArrayText()
+        self.my_vec_defs = ArrayTextUniform()
         
         self.my_POD = POD(self.my_vec_defs,
             util.save_mat_text, put_mat=util.save_mat_text, verbose=False)

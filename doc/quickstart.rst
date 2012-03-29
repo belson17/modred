@@ -36,16 +36,16 @@ A simple way to use modred to find POD modes is::
   num_vecs = 30
   vecs = [N.random.random(50) for i in range(num_vecs)]
   
-  my_POD = MR.POD(MR.vecdefs.ArrayInMemory())
+  my_POD = MR.POD(MR.vecdefs.ArrayInMemoryUniform())
   sing_vecs, sing_vals = my_POD.compute_decomp_and_return(vecs)
   num_modes = 10
   modes = my_POD.compute_modes_and_return(range(num_modes))
 
 Let's walk through the important steps.
-First, we put our vector data into a list of numpy arrays.
+First, we created random vector data and put it into a list of numpy arrays.
 Then we created an instance of ``POD`` called ``my_POD``.
 The constructor took the argument
-``MR.vecdefs.ArrayInMemory()``, which
+``MR.vecdefs.ArrayInMemoryUniform()``, which
 is a class instance that contains functions for interacting with
 the vectors (numpy arrays). 
 
@@ -62,14 +62,18 @@ The last line returns a list of the modes, ``modes``.
 The argument is a list of the mode numbers.
 
 The above example can be run in parallel with *no modifications*.
-At the end, each MPI worker (processor) will have all of the modes in its
+At the end, each MPI worker (process) will have all of the modes in its
 list, ``modes``.
+To do this, assuming the above script is saved as ``find_POD.py`:: 
+  
+  mpiexec -n 8 python find_POD.py
+
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 2 -- loading/saving data
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Here's an example that uses the ``cPickle`` module to save/load vectors to
-compute the BPOD modes::
+Here's an example that uses the ``cPickle`` module to save/load vectors 
+(snapshots) to compute the BPOD modes::
   
   import numpy as N
   import modred as MR
@@ -77,14 +81,14 @@ compute the BPOD modes::
   # Save your data into pickle files
   # We use random data as a placeholder
   num_vecs = 30
-  my_vec_defs = MR.vecdefs.ArrayPickle()
-  direct_vec_paths = ['direct_vec%d.pkl'%i for i in range(num_vecs)]
-  adjoint_vec_paths = ['adjoint_vec%d.pkl'%i for i in range(num_vecs)]
+  my_vec_defs = MR.vecdefs.ArrayPickleUniform()
+  direct_snap_paths = ['direct_vec%d.pkl'%i for i in range(num_vecs)]
+  adjoint_snap_paths = ['adjoint_vec%d.pkl'%i for i in range(num_vecs)]
   
-  for direct_vec_path in direct_vec_paths:
-      my_vec_defs.put_vec(N.random.random(50), direct_vec_path)
-  for adjoint_vec_path in adjoint_vec_paths:
-      my_vec_defs.put_vec(N.random.random(50), adjoint_vec_path)
+  for direct_snap_path in direct_snap_paths:
+      my_vec_defs.put_vec(N.random.random(50), direct_snap_path)
+  for adjoint_snap_path in adjoint_snap_paths:
+      my_vec_defs.put_vec(N.random.random(50), adjoint_snap_path)
   
   my_BPOD = MR.BPOD(my_vec_defs, max_vecs_per_node=10)
   L_sing_vecs, sing_vals, R_sing_vecs = \
@@ -99,11 +103,11 @@ compute the BPOD modes::
 Let's walk through the important steps.
 Random data is created and saved to pickle files via ``my_vec_defs.put_vec``.
 An important difference from the previous example is the use of class
-``MR.vecdefs.ArrayPickle()``.
+``MR.vecdefs.ArrayPickleUniform()``.
 This class contains a function to load vectors from pickle files.
 Also, ``my_BPOD.compute_modes`` doesn't return the modes like before, instead
 they're saved to pickle files directly.
-Simply replacing ``ArrayPickle()`` with ``ArrayText()`` would load/save  
+Simply replacing ``ArrayPickleUniform()`` with ``ArrayTextUniform()`` would load/save  
 vectors (including the modes) to text files.
 
 Then an instance of ``BPOD`` is created.
@@ -118,7 +122,7 @@ Moving those lines inside the following if block solves this::
   
   parallel = MR.parallel.default_instance
   if parallel.is_rank_zero():
-      # Loops that call put_pickle
+      # Loops that call my_vec_defs.put_vec
       pass
 
 After this change, the code works in serial too.
@@ -140,16 +144,27 @@ Text files and arrays, with a base vector to subtract from each saved vector::
 
   import modred as MR
   # A base vector to be subtracted off from each vector as it is loaded.
-  base_vec = MR.vecdefs.get_vec_text('base_vec.txt')
+  base_vec_source = 'base_vec.txt'
   
-  my_DMD = MR.DMD(MR.vecdefs.ArrayText(base_vec=base_vec))
-  # Generate vectors and save them to vec_paths.
+  my_DMD = MR.DMD(MR.vecdefs.ArrayTextUniform(base_vec_source=base_vec_source))
+  
+  # Generate your own vectors and save them to vec_paths.
+  
   my_DMD.compute_decomp(vec_paths, 'ritz_vals.txt', 'mode_norms.txt', 
       'build_coeffs.txt')
   mode_nums = [1, 4, 0, 2, 10]
   mode_paths = ['mode%02d'%i for i in mode_nums]
   my_DMD.compute_modes(mode_nums, mode_paths)
+
+The text files are saved with whitespace after each column entry and
+line breaks after each row, so the 2x3 array::
   
+  1 2 3
+  4 5 6
+
+looks just like this in the text file. See docs for ``util.load_mat_text`` 
+and ``util.save_mat_text`` for more functionality. 
+
 
 Defining your own vector defintion module::
 
@@ -165,10 +180,10 @@ Defining your own vector defintion module::
       pass
 
   #--------- main_script.py ---------
-  import newvecdefs as VD
+  import newvecdefs
   # fill this in...
   vec_paths = ['a', 'b'] 
-  my_POD = MR.POD(VD)
+  my_POD = MR.POD(newvecdefs)
   sing_vecs, sing_vals = my_POD.compute_decomp_and_return(vec_paths)
   num_modes = 15
   mode_nums = range(num_modes)  
@@ -178,7 +193,7 @@ Defining your own vector defintion module::
 Defining your own vector object and vector definition class::
   
   import modred as MR
-  class VectorClass(object):
+  class VecObject(object):
       def load(self, path):
           # Load data from disk in any format
           pass
@@ -197,7 +212,7 @@ Defining your own vector object and vector definition class::
   
   class VecDefs(object):
       def get_vec(path):
-          vec = VectorClass()
+          vec = VecObject()
           vec.load(path)
           return vec
       def put_vec(vec, path):
@@ -218,8 +233,8 @@ Defining your own vector object and vector definition class::
 Other formats and data types
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-It's quite possible you need to define your own inner product or maybe your 
-data is already saved in some format.
+It's quite possible your data requires a more complicated inner product or is 
+already saved in another format.
 Modred is designed for arbitrary data and functions, and most of the
 examples above are actually just special, common, cases.
 When you're ready to start using modred, take a look at what types of 
@@ -227,14 +242,12 @@ vectors, file formats, and functions we supply in the ``vecdef`` module.
 If you don't find what you need, that's fine; modred works with **any** data
 in any format!
 That's worth saying again, **modred works with any data in any format!**
-
-The last example is an outline of how you'd write your own functions to
-interact with modred.
-
 Of course, you'll have to tell modred how to interact with your data, but 
 that's pretty easy and covered in the following sections. 
+(The last example is an outline of how you'd do this.)
 
-Extended examples are provided in the examples directory.
+
+A few extended examples are provided in the examples directory.
 
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -243,7 +256,7 @@ Functions of matrices
 
 You can define ``put_mat(mat, mat_dest)`` and ``mat = get_mat(mat_source)``, 
 and pass them as optional arguments to the constructors.
-The default is to save and load matrices (real and imaginary) to text files.
+By default, ``put_mat`` and ``get_mat`` save and load to text files.
 This tends to be a good option even for advanced use (e.g. easy loading into
 Matlab and other programs).
 
@@ -251,5 +264,5 @@ Matlab and other programs).
 ---------------------------------------
 System identification (ERA and OKID)
 ---------------------------------------
-These are fairly straight-forward and the documenation of these algorithms
+These are fairly straight-forward and the documentation of these algorithms
 should be enough to get started quickly.

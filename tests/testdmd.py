@@ -15,7 +15,7 @@ parallel = parallel_mod.default_instance
 from dmd import DMD
 from pod import POD
 from vecoperations import VecOperations
-from vecdefs import ArrayText
+from vecdefs import ArrayTextUniform
 import util
 
 
@@ -36,7 +36,7 @@ class TestDMD(unittest.TestCase):
         self.num_states = 7 
         self.index_from = 2
 
-        self.my_vec_defs = ArrayText()
+        self.my_vec_defs = ArrayTextUniform()
         self.my_DMD = DMD(self.my_vec_defs, 
             put_mat=util.save_mat_text, verbose=False)
 

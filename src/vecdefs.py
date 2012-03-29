@@ -15,35 +15,6 @@ import cPickle
 import numpy as N
 import util
 
-##### Common functions that *only* work when vectors are arrays. ######
-# Mix and match these as needed.
-def get_vec_text(vec_path):
-    """Loads 1D and 2D arrays from text file"""
-    return util.load_mat_text(vec_path)
-def put_vec_text(vec, vec_path):
-    """Saves 1D and 2D arrays to text file"""
-    util.save_mat_text(vec, vec_path)
-def inner_product_uniform(vec1, vec2):
-    """Only for arrays"""
-    return util.inner_product(vec1, vec2)
-
-
-
-##### Common functions that work when vectors are *any* object. ######
-# Mix and match these as needed.
-def get_vec_pickle(vec_path):
-    """Loads object from pickle file"""
-    return cPickle.load(open(vec_path, 'rb'))
-def put_vec_pickle(vec, vec_path):
-    """Saves object from pickle file"""
-    cPickle.dump(vec, open(vec_path, 'wb'))
-def get_vec_in_memory(vec):
-    """Returns object"""
-    return vec
-def put_vec_in_memory(vec, dummy_dest):
-    """Return object (ignores second argument)"""
-    return vec
-
 
 class Base(object):
     """Supplies the common methods.
@@ -51,77 +22,110 @@ class Base(object):
     Kwargs:
         base_vec: Subtracted from each vector when ``get_vec`` is called.
     """
-    def __init__(self, base_vec=None):
-        self.base_vec = base_vec
+    def __init__(self, base_vec_source=None):
+        if base_vec_source is not None:
+            self.base_vec = self.get_vec(base_vec_source)
+        else:
+            self.base_vec = None
+    
+    def _subtract_base_vec(self, vec):
+        """Subtracts base vector from vec, if it is not none"""
+        if self.base_vec is not None:
+            return vec - base_vec
+        else:
+            return vec
+
     def __eq__(self, other): 
         """Check equal"""
         return util.get_data_members(self) == util.get_data_members(other)
     
+    
 class ArrayText(Base):
     """Vec object is an array, loads/saves to text files.
     
-    Usage::
-    
-      my_POD = POD(ArrayText())
-      sing_vecs, sing_vals = my_POD.compute_decomp_and_return(vectors)
-      modes = my_POD.compute_modes_and_return(range(10))
-      
+    This class is meant to be a base class, where the derived class
+    also contains an inner product.
     """
-    def __init__(self, base_vec=None):
-        Base.__init__(self, base_vec)
-        self.put_vec = put_vec_text
-        self.inner_product = inner_product_uniform
-    def get_vec(self, vec_source):
-        vec = get_vec_text(vec_source)
-        if self.base_vec is not None:
-            vec = vec - base_vec
-        return vec
+    def __init__(self, base_vec_source=None):
+        Base.__init__(self, base_vec_source=base_vec_source)
+    def get_vec(self, vec_path):
+        """Loads 1D or 2D array from text file"""
+        return self._subtract_base_vec(util.load_mat_text(vec_path))
+    def put_vec(self, vec, vec_path):
+        """Saves 1D or 2D arrays to text file"""
+        util.save_mat_text(vec, vec_path)
+    def inner_product(self, v1, v2):
+        raise RuntimeError('Base class, has no inner_product')
+    
     
 class ArrayPickle(Base):
     """Vec object is an array, loads/saves to pickle files.
     
-    Usage::
-    
-      my_POD = POD(ArrayPickle())
-      my_POD.compute_decomp(vectors, 'sing_vecs.txt', 'sing_vals.txt')
-      my_POD.compute_modes(range(10), ['mode%02d.pkl'%i for i in range(10)])
-        
+    This class is meant to be a base class, where the derived class
+    also contains an inner product.
     """
-    def __init__(self, base_vec=None):
-        Base.__init__(self, base_vec)
-        self.put_vec = put_vec_pickle
-        self.inner_product = inner_product_uniform
-    def get_vec(self, vec_source):
-        if self.base_vec is not None:
-            return get_vec_pickle(vec_source) - base_vec
-        return get_vec_pickle(vec_source)        
+    def __init__(self, base_vec_source=None):
+        Base.__init__(self, base_vec_source=base_vec_source)
+    def get_vec(self, vec_path):
+        """Loads 1D or 2D array from text file"""
+        return self._subtract_base_vec(cPickle.load(open(vec_path, 'rb')))
+    def put_vec(self, vec, vec_path):
+        """Saves 1D or 2D arrays to text file"""
+        cPickle.dump(vec, open(vec_path, 'wb'))
+    def inner_product(self, v1, v2):
+        raise RuntimeError('Base class, has no inner_product')      
 
 class ArrayInMemory(Base):
-    """Vec object is an array, returns vecs in memory.
+    """Vec object is an array, puts/gets arrays in memory.
     
-    Usage::
-    
-      # Define a list of vectors.
-      my_POD = POD(ArrayInMemory(base_vec))
-      sing_vecs, sing_vals = my_POD.compute_decomp_and_return(vectors)
-      modes = my_POD.compute_modes_and_return(range(10))      
+    This class is meant to be a base class, where the derived class
+    also contains an inner product.
     """
-    def __init__(self, base_vec=None):
-        Base.__init__(self, base_vec)
-        self.inner_product = inner_product_uniform
-        self.put_vec = put_vec_in_memory
-    def get_vec(self, vec_source):
-        if self.base_vec is not None:
-            return get_vec_in_memory(vec_source) - base_vec
-        return get_vec_in_memory(vec_source)
-    def __eq__(self, other): 
-        """Check equal"""
-        return (other.get_vec==self.get_vec and other.put_vec==self.put_vec and
-            other.inner_product==self.inner_product)
+    def __init__(self, base_vec_source=None):
+        Base.__init__(self, base_vec_source=base_vec_source)
+    def get_vec(self, vec):
+        """Returns vec in memory"""
+        return self._subtract_base_vec(vec)
+    def put_vec(self, vec, dummy_dest):
+        """Returns vec in memory, ignores destination argument"""
+        return vec
+
+
+class ArrayInMemoryUniform(ArrayInMemory):
+    def inner_product(self, vec1, vec2):
+        return N.vdot(vec1, vec2)  
+        
+class ArrayTextUniform(ArrayText):
+    """Vec object is a 1D or 2D array, loads/saves in text.
+       
+    The inner products are taken assuming a uniform sampling or grid.
+    
+      my_POD = POD(ArrayTextUniform(base_vec_source='base_vec.txt'))
+      sing_vecs, sing_vals = my_POD.compute_decomp_and_return(vectors)
+      modes = my_POD.compute_modes(range(20), ['mode%02d.txt'%i for i in range(20)])
+    
+    """
+    def inner_product(self, vec1, vec2):
+        return N.vdot(vec1, vec2)     
+
+
+class ArrayPickleUniform(ArrayPickle):
+    """Vec object is a 1D or 2D array, loads/saves in pickle format.
+       
+    The inner products are taken assuming a uniform sampling or grid.
+    
+      my_POD = POD(ArrayTextUniform(base_vec_source='base_vec.pkl'))
+      sing_vecs, sing_vals = my_POD.compute_decomp_and_return(vectors)
+      modes = my_POD.compute_modes(range(20), ['mode%02d.pkl'%i for i in range(20)])
+    
+    """
+    def inner_product(self, vec1, vec2):
+        return N.vdot(vec1, vec2)     
 
 
 
-class ArrayTextNonUniform2D(Base):
+
+class ArrayTextNonUniform2D(ArrayText):
     """Vec object is a 2D array on non-uniform grid, loads/saves in text.
     
     Args:
@@ -137,17 +141,11 @@ class ArrayTextNonUniform2D(Base):
       modes = my_POD.compute_modes(range(20), ['mode%02d.pkl'%i for i in range(20)])
     
     """
-    def __init__(self, x_grid, y_grid, base_vec=None):
-        Base.__init__(self, base_vec)
+    def __init__(self, x_grid, y_grid, base_vec_source=None):
+        Base.__init__(self, base_vec_source=base_vec_source)
         self.x_grid = x_grid
         self.y_grid = y_grid
-        self.put_vec = put_vec_text
-        
-    def get_vec(self, vec_source):
-        if self.base_vec is not None:
-            return get_vec_text(vec_source) - base_vec
-        return get_vec_text(vec_source)
-
+       
     def inner_product(self, vec1, vec2):
         return N.trapz(N.trapz(vec1 * vec2, x=self.y_grid), x=self.x_grid) 
     

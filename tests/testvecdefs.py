@@ -40,16 +40,19 @@ class TestVecDefs(unittest.TestCase):
         test_path = join(self.test_dir, 'test_vec')
         vec_true = N.random.random((3,4))
         
-        v_out = VD.put_vec_in_memory(N.copy(vec_true), None)
-        v_out = VD.get_vec_in_memory(v_out)
+        my_VD = VD.ArrayInMemoryUniform()
+        v_out = my_VD.put_vec(N.copy(vec_true), None)
+        v_out = my_VD.get_vec(v_out)
         N.testing.assert_allclose(v_out, vec_true)
         
-        VD.put_vec_text(N.copy(vec_true), test_path)
-        v_out = VD.get_vec_text(test_path)
+        my_VD = VD.ArrayTextUniform()
+        my_VD.put_vec(N.copy(vec_true), test_path)
+        v_out = my_VD.get_vec(test_path)
         N.testing.assert_allclose(v_out, vec_true)
         
-        VD.put_vec_pickle(N.copy(vec_true), test_path)
-        v_out = VD.get_vec_pickle(test_path)
+        my_VD = VD.ArrayPickleUniform()
+        my_VD.put_vec(N.copy(vec_true), test_path)
+        v_out = my_VD.get_vec(test_path)
         N.testing.assert_allclose(v_out, vec_true)
 
     # Test classes too, but they're very simple so no tests right now

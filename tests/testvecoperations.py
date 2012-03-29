@@ -15,7 +15,7 @@ import parallel as parallel_mod
 parallel = parallel_mod.default_instance
 
 from vecoperations import VecOperations
-from vecdefs import ArrayText,ArrayInMemory
+from vecdefs import ArrayTextUniform, ArrayInMemoryUniform
 import util
 
 class TestVecOperations(unittest.TestCase):
@@ -34,7 +34,7 @@ class TestVecOperations(unittest.TestCase):
         self.total_num_vecs_in_mem = parallel.get_num_procs() * self.max_vecs_per_proc
 
         # VecOperations object for running tests
-        self.my_vec_defs = ArrayText()
+        self.my_vec_defs = ArrayTextUniform()
         self.my_vec_ops = VecOperations(self.my_vec_defs, verbose=False)
         self.my_vec_ops.max_vecs_per_proc = self.max_vecs_per_proc
 
@@ -65,7 +65,7 @@ class TestVecOperations(unittest.TestCase):
         """
         data_members_original = util.get_data_members(
             VecOperations(self.my_vec_defs, verbose=False))
-        self.assertEqual(self.my_vec_defs, ArrayText())
+        self.assertEqual(self.my_vec_defs, ArrayTextUniform())
         self.assertEqual(data_members_original, self.default_data_members)
         
         my_VO = VecOperations(self.my_vec_defs, verbose=False)
@@ -78,8 +78,8 @@ class TestVecOperations(unittest.TestCase):
             max_vecs_per_node=max_vecs_per_node, verbose=False)
         data_members = copy.deepcopy(data_members_original)
         data_members['max_vecs_per_node'] = max_vecs_per_node
-        data_members['max_vecs_per_proc'] = max_vecs_per_node * my_VO.parallel.get_num_nodes()/ \
-            my_VO.parallel.get_num_procs()
+        data_members['max_vecs_per_proc'] = max_vecs_per_node * \
+            my_VO.parallel.get_num_nodes()/ my_VO.parallel.get_num_procs()
         self.assertEqual(util.get_data_members(my_VO), data_members)
 
         
@@ -279,7 +279,7 @@ class TestVecOperations(unittest.TestCase):
         num_modes_list = [1, 5, 22]
         num_vecs = 30
         index_from = 1
-        my_vec_ops = VecOperations(ArrayInMemory(), verbose=False)
+        my_vec_ops = VecOperations(ArrayInMemoryUniform(), verbose=False)
         for num_modes in num_modes_list:
             #generate data and then broadcast to all procs
             if parallel.is_rank_zero():
