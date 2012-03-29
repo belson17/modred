@@ -13,7 +13,7 @@ parallel = parallel_mod.default_instance
 
 import bpodltirom as BPR
 import util
-from vecdefs import ArrayText
+from vecdefs import ArrayTextUniform
 
 @unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
 class TestBPODROM(unittest.TestCase):
@@ -35,7 +35,7 @@ class TestBPODROM(unittest.TestCase):
         self.input_vec_path = join(self.test_dir, 'input_vec_%03d.txt')
         self.output_vec_path = join(self.test_dir, 'output_vec_%03d.txt')
         
-        self.my_vec_defs = ArrayText()
+        self.my_vec_defs = ArrayTextUniform()
         self.myBPODROM = BPR.BPODROM(self.my_vec_defs, 
             put_mat=util.save_mat_text, verbose=False)
             

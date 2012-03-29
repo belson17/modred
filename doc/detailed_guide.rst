@@ -2,10 +2,9 @@
 Working with arbitrary data
 ================================
 
-As stated before, modred can work on any data in any format provided that you
-tell it how to.
-This section explains how you can do that, along with the relevant
-mathematical background.
+As stated before, modred can work with any data in any format.
+Of course, you'll need to tell modred how to do this.
+This section explains the steps, along with the relevant mathematical background.
 
 -------------------
 The vector object
@@ -23,13 +22,17 @@ We do mean an element of a vector space (technically a Hilbert space).
 
 The requirements of the vector object are that it must:
 
-1. Be compatible with supplied ``inner_product`` function (described later).
-2. Support scalar multiplication, i.e. ``vector2 = 2.0*vector1``. 
-3. Support addition with other vectors, i.e. ``vector3 = vector1 + vector2``.
-4. Be compatible with supplied ``get_vec`` and ``put_vec`` functions (described later).
 
-Numpy arrays already meet requirements 2 and 3. 
-For your own classes, define ``__mul__`` and ``__add__`` special methods for 2 and 3.
+1. Support scalar multiplication, i.e. ``vector2 = 2.0*vector1``. 
+2. Support addition with other vectors, i.e. ``vector3 = vector1 + vector2``.
+3. Be compatible with supplied ``get_vec`` function.
+4. Be compatible with supplied ``put_vec`` function.
+5. Be compatible with supplied ``inner_product`` function.
+
+Numpy arrays already meet requirements 1 and 2. 
+For your own classes, define ``__mul__`` and ``__add__`` special methods for 1 and 2.
+
+Requirements 3--5 are discussed next.
 
 ----------------------------
 Functions of vectors
@@ -64,10 +67,11 @@ You also need an inner product function that takes two vectors returns a single 
 This number can be real or complex, but must always be the same type.
 Your inner product must satisfy the mathematical definition for an inner product:
 
-1. Conjugate symmetry: ``inner_product(vec1, vec2) == numpy.conj(inner_product(vec2, vec1))``
-2. Linearity: ``inner_product(a*vec1, vec2) == a*inner_product(vec1, vec2)`` 
-   for a scalar ``a``.
-3. Implied norm: ``inner_product(vec1, vec1) >= 0``, with equality iff ``vec1 == 0``.
+- Conjugate symmetry: 
+  ``inner_product(vec1, vec2) == numpy.conj(inner_product(vec2, vec1))``.
+- Linearity: ``inner_product(a*vec1, vec2) == a*inner_product(vec1, vec2)`` 
+  for a scalar ``a``.
+- Implied norm: ``inner_product(vec1, vec1) >= 0``, with equality iff ``vec1 == 0``.
 
 To see an example for a non-uniform grid/sampling, see main_bpod_disk.py.
 
@@ -76,11 +80,11 @@ We mean this in both the programming sense that modes are also vector objects
 and the mathematical sense that modes live in the same vector space as vectors.
 After computing the modes, modred calls ``put_vec`` on them.
 
-The three functions ``inner_product``, ``get_vec``, and ``put_vec`` must be
+The three functions ``get_vec``, ``put_vec``, and  ``inner_product`` must be
 defined as member functions of a module or class.
 We provided a few common ones in ``src/vecdefs``, named as such because
 these three functions (along with the "+" and "*" operators) define the
-behavior of the vector objects.
+way modred handles the vector objects.
 
 
 **Checking requirements automatically**
@@ -124,12 +128,15 @@ Similarly, POD, BPOD, and DMD all have functions resembling
 Both call ``put_vec`` on the modes.
 The difference between ``compute_modes`` and ``compute_modes_and_return`` is
 that ``compute_modes`` doesn't return the modes. 
-Thus ``put_vec`` must return the mode when using ``compute_modes_and_return``.
 When using ``compute_modes``, ``put_vec`` instead puts the modes to some destination.
 Thus, ``compute_modes`` requires a list ``vec_dests`` which contains elements
 of type ``vec_dest``, which are in turn given to ``put_vec``. 
 In many cases, ``vec_dests`` is a list of paths where the modes are to be saved.
-The difference is::
+When using ``compute_modes_and_return``, the ``put_vec`` function must return
+a vector (a mode). The ``vec_dest`` argument to ``put_vec`` is generally left
+unused in this case.
+
+The usage difference is::
 
   mode_nums = range(10)
   sing_vecs, sing_vals = my_POD.compute_modes_and_return(mode_nums)
@@ -137,23 +144,23 @@ The difference is::
   vec_dests = ['mode%02d.txt'%i for i in mode_nums]
   my_POD.compute_modes(mode_nums, vec_dests)
   
-The ``get_vec`` and ``put_vec`` functions look different for these two cases.
-For example::
- 
-  # For saving/loading with "compute_modes".
-  def get_vec(vec_path):
-      return my_load(vec_path)
-  def put_vec(vec_object, vec_path):
-      my_save(vec_object, vec_path)
-  
+Here's a simple outline of what the ``get_vec`` and ``put_vec`` functions
+do for these two cases::
+
   # For doing everything in memory with "compute_modes_and_return".
   def get_vec(vec_object):
       return vec_object
   def put_vec(vec_object, dummy_dest):
       return vec_object
-  
+      
+  # For saving/loading with "compute_modes".
+  def get_vec(vec_path):
+      return my_load(vec_path)
+  def put_vec(vec_object, vec_path):
+      my_save(vec_object, vec_path)
 
-This can all come off as a bit abstract; the following use-cases are helpful.
+This can all come off as a bit abstract; the following use-cases are helpful 
+(also see the Quickstart).
 
 
 -------------------------------
@@ -164,7 +171,7 @@ Examples of vector functions
 Loading and saving
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This is a good choice when your data is large or comes from some a separate
+This is a good choice when your data is large or comes from some an independent
 simulation.
 The ``get_vec`` function simply takes a path as its ``vec_source`` argument,
 loads the data from that path, and returns a vector object. 
@@ -173,10 +180,11 @@ Similarly, ``put_vec`` saves the vector to the given path (as argument
 For parellelization, using files to store vectors is **strongly recommended**
 for efficiency. 
 
-Here we reproduce a brief example that's provided in the ``vecdef`` module::
+Here we reproduce a brief example that's provided in the ``vecdef`` module 
+(as ``ArrayTextUniform``)::
 
   import modred as MR
-  class VecDefsArrayText(object):
+  class ArrayText(object):
       def get_vec(self, path):
           vec = MR.load_mat_text(path)
           return vec
@@ -189,7 +197,7 @@ Then we use this class with the following::
           
   num_vecs = 30
   vec_paths = ['vec%02d.txt'%i for i in range(num_vecs)]
-  my_DMD = MR.DMD(VecDefsArrayText())
+  my_DMD = MR.DMD(ArrayText())
   ritz_vals, mode_norms, build_coeffs = \
       my_DMD.compute_decomp_and_return(vec_paths)
   num_modes = 10
@@ -208,7 +216,9 @@ Returning, in memory
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This case was summarized in the quickstart, and now you can see how the vector
-definition class (shown below) enables the usage::
+definition class (shown below) enables the usage. 
+(This class is supplied as ``vecdefs.ArrayInMemoryUniform``, with only slight 
+differences.)::
 
   import numpy as N
   import modred as MR
@@ -230,32 +240,25 @@ definition class (shown below) enables the usage::
 
 This case is a bit special/degenerate; ``get_vec`` just returns its argument, and 
 ``put_vec`` returns its first argument while ignoring its second!
-In the previous save/load example, ``get_vec``  on the ``vec_sources`` argument  and loaded.
-didn't return anything, only saved.
-Instead, here ``get_vec`` is 
-So when using the modal decomp classes like POD with this vec def, 
-``compute_decomp`` must take a list of vectors as an argument.
-This contrasts the previous example, where the where the argument was a list of
-vector paths. 
-Function ``compute_modes_and_return`` is used rather than ``compute_modes`` 
-since ``put_vec`` is returning modes.
-As seen in the previous example, ``compute_modes`` doesn't return anything,
-instead it calls ``put_vec`` to put the modes into ``mode_dests``.
+In the previous save/load example, ``get_vec`` loaded from the ``vec_source``
+argument.
+In this example, the ``vec_source`` argument is the vector object itself, so it is simply
+returned.
+In the previous save/load example, ``put_vec`` saved to the ``vec_dest``
+argument and returned nothing.
+In this example, ``put_vec`` simply returns the vector object, and doesn't use
+the ``vec_dest`` argument.
 
-The ``ArrayInMemory`` class is supplied in the ``vecdefs`` module
-with only slight differences.
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-User-defined vector
+User-defined vector object
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Sometimes using numpy arrays as your vector objects just isn't flexible enough,
-for example if you have more complicated simulations.
-For this case, don't fool around with the simple stuff in ``vecdefs``, 
-take total control with your own vector object, e.g. ``VectorClass``::
+If your data is more complicated, don't use the simple stuff in ``vecdefs``. 
+Instead, write your own vector object, e.g. ``VecObject``::
 
   import modred as MR
-  class VectorClass(object):
+  class VecObject(object):
       def load(self, path):
           # Load data from disk in any format
           pass
@@ -272,9 +275,10 @@ take total control with your own vector object, e.g. ``VectorClass``::
           # Return a new object that is "self * scalar"
           pass
   
+  
   class VecDefs(object):
       def get_vec(path):
-          vec = VectorClass()
+          vec = VecObject()
           vec.load(path)
           return vec
       def put_vec(vec, path):
@@ -295,7 +299,7 @@ take total control with your own vector object, e.g. ``VectorClass``::
 Data class, in memory
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Here are the beginnings of another way to bypass loading and saving  by  using
+Here are the beginnings of another way to bypass loading and saving by using
 a ``DataClass``::
   
   class DataClass(object):
@@ -321,7 +325,7 @@ a ``DataClass``::
           # Some inner product
           pass
 
-(The use of static methods isn't necessary, but it's often appropriate.)
+(The use of static methods isn't necessary, but is often appropriate.)
 
 There are of course many other choices, these are just a 
 few examples to help your understanding and inspire your own choices.
@@ -334,7 +338,7 @@ Summary and next steps
 
 Summarizing, define
 
-1. A ``vec`` object that has:
+1. A vector object that has:
   1. vector addition ("+", ``__add__``)
   2. scalar multiplication ("*", ``__mul__``)
 2. A vector defintion class or module that has:
@@ -344,12 +348,11 @@ Summarizing, define
 
 Then you can get started using any of the modal decomposition classes 
 (POD, BPOD, and DMD)!
+See the examples directory for more examples of how everything works 
+together. 
+The rest of this documentation details how to use each individual class and
+method.
 
-The rest of this documentation details how to use each individual class
-and method.
-
-The examples directory contains some extended examples of how everything works 
-together.
 
 There has been essentially no discussion of ERA and OKID.
 The documentation for the individual classes and functions should be sufficient.

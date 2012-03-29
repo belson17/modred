@@ -15,7 +15,7 @@ parallel = parallel_mod.default_instance
 from bpod import BPOD
 from vecoperations import VecOperations
 import util
-from vecdefs import ArrayText
+from vecdefs import ArrayTextUniform
 
 
 class TestBPOD(unittest.TestCase):
@@ -35,7 +35,7 @@ class TestBPOD(unittest.TestCase):
         self.num_states = 100
         self.index_from = 2
         
-        self.my_vec_defs = ArrayText()
+        self.my_vec_defs = ArrayTextUniform()
         self.my_BPOD = BPOD(self.my_vec_defs, 
             put_mat=util.save_mat_text, verbose=False)
         self.generate_data_set()
