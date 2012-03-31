@@ -14,7 +14,7 @@ parallel = parallel_mod.default_instance
 
 from pod import POD
 from vecoperations import VecOperations
-from vecdefs import ArrayTextUniform
+from vecdefs import ArrayTextUniform, ArrayInMemoryUniform
 import util
 
 
@@ -187,11 +187,18 @@ class TestPOD(unittest.TestCase):
         self.my_POD.sing_vecs = self.sing_vecs_true
         self.my_POD.sing_vals = self.sing_vals_true
         
+        my_POD_in_memory = POD(ArrayInMemoryUniform(), verbose=False)
+        my_POD_in_memory.sing_vecs = self.sing_vecs_true
+        my_POD_in_memory.sing_vals = self.sing_vals_true
+        
         self.my_POD.compute_modes(self.mode_nums, 
             [mode_path%i for i in self.mode_nums], 
             index_from=self.index_from, vec_sources=self.vec_paths)
-          
-        for mode_num in self.mode_nums:
+        
+        modes_returned = my_POD_in_memory.compute_modes_and_return(self.mode_nums, 
+            vec_sources=self.vec_mat.T, index_from=self.index_from) 
+        
+        for mode_index,mode_num in enumerate(self.mode_nums):
             if parallel.is_rank_zero():
                 mode = util.load_mat_text(mode_path % mode_num)
             else:
@@ -200,6 +207,13 @@ class TestPOD(unittest.TestCase):
                 mode = parallel.comm.bcast(mode, root=0)
             N.testing.assert_allclose(mode, 
                 self.mode_mat[:,mode_num - self.index_from])
+            N.testing.assert_allclose(mode, 
+                self.mode_mat[:,mode_num - self.index_from])
+            N.testing.assert_allclose(modes_returned[mode_index].squeeze(), 
+                self.mode_mat[:,mode_num - self.index_from].squeeze())
+            N.testing.assert_allclose(modes_returned[mode_index].squeeze(), 
+                self.mode_mat[:,mode_num - self.index_from].squeeze())
+
         
         if parallel.is_rank_zero():
             for mode_num1 in self.mode_nums:

@@ -15,7 +15,7 @@ parallel = parallel_mod.default_instance
 from bpod import BPOD
 from vecoperations import VecOperations
 import util
-from vecdefs import ArrayTextUniform
+from vecdefs import ArrayTextUniform, ArrayInMemoryUniform
 
 
 class TestBPOD(unittest.TestCase):
@@ -245,11 +245,27 @@ class TestBPOD(unittest.TestCase):
 
         self.my_BPOD.compute_direct_modes(self.mode_nums, direct_mode_paths,
             index_from=self.index_from, direct_vec_sources=self.direct_vec_paths)
-          
         self.my_BPOD.compute_adjoint_modes(self.mode_nums, adjoint_mode_paths,
             index_from=self.index_from, adjoint_vec_sources=self.adjoint_vec_paths)
-          
-        for mode_num in self.mode_nums:
+        
+        my_BPOD_in_memory = BPOD(ArrayInMemoryUniform(), 
+            put_mat=util.save_mat_text, verbose=False)
+
+        # start with the CORRECT decomposition.
+        my_BPOD_in_memory.R_sing_vecs = self.R_sing_vecs_true
+        my_BPOD_in_memory.L_sing_vecs = self.L_sing_vecs_true
+        my_BPOD_in_memory.sing_vals = self.sing_vals_true
+        
+
+        
+        direct_modes_returned = my_BPOD_in_memory.compute_direct_modes_and_return(
+            self.mode_nums, direct_vec_sources=self.direct_vec_mat.T,
+            index_from=self.index_from)
+        adjoint_modes_returned = my_BPOD_in_memory.compute_adjoint_modes_and_return(
+            self.mode_nums, adjoint_vec_sources=self.adjoint_vec_mat.T, 
+            index_from=self.index_from)
+
+        for mode_index,mode_num in enumerate(self.mode_nums):
             if parallel.is_rank_zero():
                 direct_mode = util.load_mat_text(direct_mode_path % mode_num)
                 adjoint_mode = util.load_mat_text(adjoint_mode_path % mode_num)
@@ -263,6 +279,11 @@ class TestBPOD(unittest.TestCase):
                 self.direct_mode_mat[:,mode_num-self.index_from])
             N.testing.assert_allclose(adjoint_mode, 
                 self.adjoint_mode_mat[:,mode_num-self.index_from])
+            N.testing.assert_allclose(direct_modes_returned[mode_index].squeeze(), 
+                self.direct_mode_mat[:,mode_num-self.index_from].squeeze())
+            N.testing.assert_allclose(adjoint_modes_returned[mode_index].squeeze(), 
+                self.adjoint_mode_mat[:,mode_num-self.index_from].squeeze())
+            
         
         if parallel.is_rank_zero():
             for mode_num1 in self.mode_nums:

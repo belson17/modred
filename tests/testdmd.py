@@ -15,7 +15,7 @@ parallel = parallel_mod.default_instance
 from dmd import DMD
 from pod import POD
 from vecoperations import VecOperations
-from vecdefs import ArrayTextUniform
+from vecdefs import ArrayTextUniform, ArrayInMemoryUniform
 import util
 
 
@@ -33,7 +33,7 @@ class TestDMD(unittest.TestCase):
             os.mkdir(self.test_dir)
         
         self.num_vecs = 6 
-        self.num_states = 7 
+        self.num_states = 12
         self.index_from = 2
 
         self.my_vec_defs = ArrayTextUniform()
@@ -221,8 +221,12 @@ class TestDMD(unittest.TestCase):
         self.my_DMD.compute_modes(mode_nums, 
             [mode_path%i for i in mode_nums],
             index_from=self.index_from, vec_sources=self.vec_paths)
+        my_DMD_in_memory = DMD(ArrayInMemoryUniform(), verbose=False)
+        my_DMD_in_memory.build_coeffs = self.build_coeffs_true
+        modes_returned = my_DMD_in_memory.compute_modes_and_return(mode_nums, 
+            vec_sources=self.vec_mat.T, index_from=self.index_from)
             
-        # Load all vecs into matrix
+        # Load all modes into matrix
         if parallel.is_rank_zero():
             mode_mat = N.mat(N.zeros((self.num_states, self.num_vecs-1)), dtype=\
                 complex)
@@ -233,8 +237,12 @@ class TestDMD(unittest.TestCase):
             mode_mat = None
         if parallel.is_distributed():
             mode_mat = parallel.comm.bcast(mode_mat,root=0)
-        N.testing.assert_allclose(mode_mat,self.ritz_vecs_true, rtol=\
+        N.testing.assert_allclose(mode_mat, self.ritz_vecs_true, rtol=\
             tol)
+        for mode_index in range(len(mode_nums)):
+            N.testing.assert_allclose(modes_returned[mode_index].squeeze(),
+                self.ritz_vecs_true[:,mode_index].squeeze(), rtol=tol)
+        
 
         vandermonde_mat = N.fliplr(N.vander(self.ritz_vals_true, self.num_vecs-1))
         N.testing.assert_allclose(self.vec_mat[:,:-1],

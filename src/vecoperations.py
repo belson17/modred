@@ -624,7 +624,8 @@ class VecOperations(object):
                     
         if isinstance(mode_nums, int):
             mode_nums = [mode_nums]
-        if not isinstance(vec_sources, list):
+        if not isinstance(vec_sources, list) and not \
+            isinstance(vec_sources, N.ndarray):
             vec_sources = [vec_sources]
         if not isinstance(mode_dests, list):
             mode_dests = [mode_dests]
@@ -704,10 +705,10 @@ class VecOperations(object):
         See ``compute_modes`` for details.
         
         Returns:
-            a list of modes (or whatever is output by ``put_vec``)
+            a list of modes.
                 In parallel, each MPI worker has the full list of outputs.
         """
-        dummy_mode_dests = [None]*vec_coeff_mat.shape[1]
+        dummy_mode_dests = [None]*len(mode_nums)
         return self._compute_modes(mode_nums, dummy_mode_dests, vec_sources, 
             vec_coeff_mat, index_from)
     
@@ -726,7 +727,8 @@ class VecOperations(object):
                    
         if not isinstance(sum_vec_dests, list):
             sum_vec_dests = [sum_vec_dests]
-        if not isinstance(basis_vec_sources, list):
+        if not isinstance(basis_vec_sources, list) and \
+            not isinstance(basis_vec_sources, N.ndarray):
             basis_vec_sources = [basis_vec_sources]
         num_bases = len(basis_vec_sources)
         num_sums = len(sum_vec_dests)
@@ -870,7 +872,6 @@ class VecOperations(object):
                 all_put_vec_outputs.extend(proc_put_vec_outputs)
         else:
             all_put_vec_outputs = put_vec_outputs
-        
         return all_put_vec_outputs
         # ensure that all workers leave function at same time
         #self.parallel.sync() 
@@ -925,8 +926,6 @@ class VecOperations(object):
         dummy_sum_vec_dests = [None]*vec_coeff_mat.shape[1]
         output= self._lin_combine(dummy_sum_vec_dests, basis_vec_sources,
             vec_coeff_mat)
-        print 'lin combine rturning',output
-        return output
     
          
 

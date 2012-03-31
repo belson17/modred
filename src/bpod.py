@@ -192,7 +192,7 @@ class BPOD(object):
             
         In parallel, each MPI worker is returned a complete list of modes
         """
-        self._compute_direct_modes_helper(direct_vec_sources)
+        build_coeff_mat = self._compute_direct_modes_helper(direct_vec_sources)
         return self.vec_ops.compute_modes_and_return(mode_nums, 
             self.direct_vec_sources, build_coeff_mat, index_from=index_from)
             
@@ -275,7 +275,7 @@ class BPOD(object):
         In parallel, each MPI worker returns a complete list of modes.
         """
         build_coeff_mat = self._compute_adjoint_modes_helper(adjoint_vec_sources)
-        self.vec_ops.compute_modes_and_return(mode_nums, 
+        return self.vec_ops.compute_modes_and_return(mode_nums, 
             self.adjoint_vec_sources, 
             build_coeff_mat, index_from=index_from)
         

@@ -24,7 +24,7 @@ def main(verbose=True, make_plots=True):
     
     vecs = [N.random.random((num_states)) for i in range(num_vecs)]
     
-    my_POD = modred.POD(modred.vecdefs.ArrayInMemory(), 
+    my_POD = modred.POD(modred.vecdefs.ArrayInMemoryUniform(), 
         max_vecs_per_node=1000, verbose=verbose)
     sing_vecs, sing_vals = my_POD.compute_decomp_and_return(vecs)
 

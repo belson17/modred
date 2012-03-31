@@ -28,7 +28,7 @@ import numpy as N
 import modred as MR
 
 parallel = MR.parallel.default_instance
-my_vec_defs = MR.vecdefs.ArrayPickle()
+my_vec_defs = MR.vecdefs.ArrayPickleUniform()
 
 import argparse
 parser = argparse.ArgumentParser(description='Get directory in which to ' +\
