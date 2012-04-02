@@ -10,7 +10,7 @@ class Scaling(object):
         pass
 
 def lin():
-    """Scaling of lin_combine on della, max procs/node (12)"""
+    """Scaling of lin_combine on lonestar, max procs/node (12)"""
     cases = []
     
     s = Scaling()
@@ -64,16 +64,15 @@ def lin():
     cases.append(s)
     
     s = Scaling()
-    s.total = 18.126
-    s.loads = 3.888
+    s.total = 301.889
+    s.loads = 70.511
     s.addmult = 0
-    s.sends = 2.201
-    s.recvs =3.875
-    s.barriers = 3.928
+    s.sends = 45.402
+    s.recvs = 83.424
+    s.barriers = 39.339
     s.workers = 48
     cases.append(s)
     
-    """
     s = Scaling()
     s.total = 18.126
     s.loads = 3.888
@@ -85,36 +84,64 @@ def lin():
     cases.append(s)
     
     s = Scaling()
-    s.total = 18.126
-    s.loads = 3.888
+    s.total = 245.177
+    s.loads = 48.990
     s.addmult = 0
-    s.sends = 2.201
-    s.recvs =3.875
-    s.barriers = 3.928
+    s.sends = 35.351
+    s.recvs = 68.313
+    s.barriers = 45.808
     s.workers = 72
     cases.append(s)
     
     s = Scaling()
-    s.total = 18.126
-    s.loads = 3.888
+    s.total = 226.324
+    s.loads = 42.373
     s.addmult = 0
-    s.sends = 2.201
-    s.recvs =3.875
-    s.barriers = 3.928
+    s.sends = 35.178
+    s.recvs = 64.374
+    s.barriers = 35.643
     s.workers = 84
     cases.append(s)
     
     s = Scaling()
-    s.total = 18.126
-    s.loads = 3.888
+    s.total = 166.702
+    s.loads = 28.007
     s.addmult = 0
-    s.sends = 2.201
-    s.recvs =3.875
-    s.barriers = 3.928
+    s.sends = 27.575
+    s.recvs = 49.278
+    s.barriers = 26.481
     s.workers = 96
     cases.append(s)
-    """
     
+    s = Scaling()
+    s.total = 104.949
+    s.loads = 12.439
+    s.addmult = 0
+    s.sends = 18.688
+    s.recvs = 31.588
+    s.barriers = 20.009
+    s.workers = 144
+    cases.append(s)
+    
+    s = Scaling()
+    s.total = 82.448
+    s.loads = 7.041
+    s.addmult = 0
+    s.sends = 14.170
+    s.recvs = 26.106
+    s.barriers = 17.349
+    s.workers = 192
+    cases.append(s)
+    
+    s = Scaling()
+    s.total = 77.737
+    s.loads = 4.519
+    s.addmult = 0
+    s.sends = 21.531
+    s.recvs = 11.368
+    s.barriers = 26.603
+    s.workers = 240
+    cases.append(s)
     
     
     workers = N.array([c.workers for c in cases])
