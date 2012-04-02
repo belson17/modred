@@ -161,7 +161,7 @@ def main():
         # lin_combine test
         num_bases = 8000
         num_products = 4000
-        generate_vecs(num_states, num_bases, data_dir, basis_name)
+        #generate_vecs(num_states, num_bases, data_dir, basis_name)
         parallel.sync()
         #time_elapsed = lin_combine(
         #        num_states, num_bases, num_products, max_vecs_per_node)
