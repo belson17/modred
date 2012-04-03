@@ -11,14 +11,30 @@ class UndefinedError(Exception):
 def save_mat_text(mat, filename, delimiter=' '):
     """Writes a 1D or 2D array or matrix to a text file
     
-    ``delimeter`` separates the elements
+    Args:
+        mat: matrix or array to save to file (1D or 2D)
+        
+        filename: path to save to, string.
+        
+    Kwargs:   
+        delimeter: delimeter in file, default is a whitespace.
+    
+    Format of saved files is::
+      
+      2.3 3.1 2.1 ...
+      5.1 2.2 9.8 ...
+      7.6 3.1 5.5 ...
+      0.1 1.9 9.1 ...
+      ...
+       
     Complex data is saved in the following format (as floats)::
     
       real00 imag00 real01 imag01 ...
       real10 imag10 real11 imag11 ...
       ...
   
-    It can be read in Matlab with the provided matlab functions. 
+    Files can be read in Matlab with the provided functions, or often
+    with Matlab's ``load``.
     """
     # Must cast mat into an array. Also makes it memory C-contiguous.
     mat_save = N.array(mat)
@@ -33,16 +49,17 @@ def save_mat_text(mat, filename, delimiter=' '):
     
     
 def load_mat_text(filename, delimiter=' ', is_complex=False):
-    """Reads a matrix written by write_mat_text, returns an *array*.
+    """Reads a text file, returns an *array*.
+    
+    See ``save_mat_text`` for the format used by this function.
     
     Kwargs:
         ``is_complex``: if the data saved is complex, then set  to ``True``.
     """
     # Check the version of numpy, requires version >= 1.6 for ndmin option
-    numpy_version = int(N.version.version[2])
-    if numpy_version < 6:
+    if int(N.version.version[2]) < 6:
         print ('Warning: load_mat_text requires numpy version >= 1.6 '
-            'but you are running version %d'%numpy_version)
+            'but you are running version %s'%N.version.version)
     
     if is_complex:
         dtype = complex
@@ -66,9 +83,13 @@ def inner_product(vec1, vec2):
 def svd(mat, tol = 1e-13):
     """An SVD that better meets our needs.
     
-    Returns U,E,V where U.E.V* = mat. It truncates the matrices such that
-    there are no ~0 singular values. U and V are numpy.matrix's, E is
-    a 1D numpy.array.
+    Args:
+        mat: array or matrix to take SVD of.
+    
+    Returns:
+        U, E, V: U.E.V* = mat. U and V are matrices, E is a 1D array.
+    
+    Truncates the U, E, and V such that there are no ~0 singular values.
     """
     U, E, V_comp_conj = N.linalg.svd(N.mat(mat), full_matrices=0)
     V = N.mat(V_comp_conj).H
@@ -80,7 +101,7 @@ def svd(mat, tol = 1e-13):
         U = U[:,:num_nonzeros]
         V = V[:,:num_nonzeros]
         E = E[:num_nonzeros]
-    
+
     return U, E, V
 
 
@@ -100,7 +121,7 @@ def get_file_list(directory, file_extension=None):
         
 
 def get_data_members(obj):
-    """ Returns a dictionary containing data members of an object"""
+    """Returns a dictionary containing data members of an object"""
     pr = {}
     for name in dir(obj):
         value = getattr(obj, name)
@@ -141,7 +162,13 @@ def solve_Lyapunov(A, Q):
 
 
 def drss(num_states, num_inputs, num_outputs):
-    """Generates a discrete random state space system
+    """Generates a discrete-time random state space system
+    
+    Args:
+        number of states, inputs, and outputs.
+    
+    Returns:
+        A, B, and C matrices of system.
     
     All e-vals are real.
     """
@@ -154,8 +181,14 @@ def drss(num_states, num_inputs, num_outputs):
     return A, B, C
 
 def rss(num_states, num_inputs, num_outputs):
-    """ Generates a continuous random state space systme.
+    """Generates a continuous-time random state space systme.
+
+    Args:
+        number of states, inputs, and outputs.
     
+    Returns:
+        A, B, and C matrices of system.
+        
     All e-vals are real.
     """
     e_vals = -N.random.random(num_states)
@@ -167,14 +200,18 @@ def rss(num_states, num_inputs, num_outputs):
     return A, B, C
         
         
-def lsim(A, B, C, D, inputs):
-    """
-    Simulates a discrete time system with arbitrary inputs. 
+def lsim(A, B, C, inputs):
+    """Simulates a discrete time system with arbitrary inputs. 
     
-    inputs: [num_time_steps, num_inputs]
-    Returns the outputs, [num_time_steps, num_outputs].
-    """
+    Args:
+        inputs: array with indices [num_time_steps, num_inputs]
     
+    Returns:
+        outputs: array with indicies [num_time_steps, num_outputs]
+    
+    Currently D matrix is not used, assumed to be zero.
+    """
+    D = 0
     if inputs.ndim == 1:
         inputs = inputs.reshape((len(inputs), 1))
     num_steps, num_inputs = inputs.shape
@@ -215,13 +252,16 @@ def lsim(A, B, C, D, inputs):
 
     
 def impulse(A, B, C, time_step=None, time_steps=None):
-    """Generates impulse response outputs for a discrete system, A, B, C.
+    """Generates impulse response outputs for a discrete-time system.
     
-    sample_interval is the interval of time steps between samples,
-    Uses format [CB CAB CA**PB CA**(P+1)B ...].
-    By default, will find impulse until outputs are below a tolerance.
-    time_steps specifies time intervals, must be 1D array of integers.
-    No D is included, but can simply be prepended to the output if it is
+    Args:
+        A, B, C: state-space system matrices
+        
+        time_step: integer, the time step of the discrete-time system.
+        
+        time_steps: 1D array of integers specifying the time steps
+        
+    No D matrix is included, but can simply be prepended to the output if it is
     non-zero. 
     """
     #num_states = A.shape[0]
@@ -253,8 +293,11 @@ def impulse(A, B, C, time_step=None, time_steps=None):
 
 
 
-def load_signals(signal_path):
+def load_signals(signal_path, delimiter=' '):
     """Loads signals with columns [t signal1 signal2 ...].
+    
+    Args:
+        signal_paths: list of paths to signals, strings
     
     Convenience function. Example file has format::
     
@@ -262,9 +305,9 @@ def load_signals(signal_path):
       1 0.2 0.46
       2 0.2 1.6
       3 0.6 0.1
-    
+      
     """
-    raw_data = load_mat_text(signal_path)
+    raw_data = load_mat_text(signal_path, delimiter=delimiter)
     num_signals = raw_data.shape[1] - 1
     if num_signals == 0:
         raise ValueError('Data must have at least two columns')
@@ -277,23 +320,19 @@ def load_signals(signal_path):
 
 
 
-def load_multiple_signals(signal_paths):
+def load_multiple_signals(signal_paths, delimiter=' '):
     """Loads multiple signal files w/columns [t channel1 channel2 ...].
     
-    Convenience function. Example file has format::
+    Args:
+        signal_paths: list of paths to signals, strings
     
-      0 0.1 0.2
-      1 0.2 0.46
-      2 0.2 1.6
-      3 0.6 0.1
-    
+    See ``load_signals`` for details.
     """
     num_signal_paths = len(signal_paths)
     # Read the first file to get parameters
-    time_values, signals = load_signals(signal_paths[0])
+    time_values, signals = load_signals(signal_paths[0], delimiter=delimiter)
     num_time_values = len(time_values)
 
-    
     num_signals = signals.shape[1]
     
     # Now allocate array and read all of the signals
@@ -304,7 +343,7 @@ def load_multiple_signals(signal_paths):
     
     # Load all remaining files
     for path_num, signal_path in enumerate(signal_paths):
-        time_values_read, signals = load_signals(signal_path)
+        time_values_read, signals = load_signals(signal_path, delimiter=delimiter)
         if not N.allclose(time_values_read, time_values):
             raise ValueError('Time values in %s are inconsistent with '
                 'other files')

@@ -7,17 +7,15 @@ class ParallelError(Exception):
     pass
     
 class Parallel(object):
-    """For parallelization with mpi4py
+    """For parallelization with mpi4py.
     
-    Is a wrapper for the mpi4py module.
-    Also, it contains information about how many processors there are.
-    It ensures no failure in case mpi4py is not installed or running serial.
-    In the future, this could be extended for shared memory as well.
-    Almost always one should use the given instance of this class,
-    parallel.default_instance!
+    It ensures no failure in case mpi4py is not installed or when running in
+    serial.    
+    It is best to use the given instance, parallel.default_instance.
     """
+    # TODO: Could be extended for shared memory.
     def __init__(self):
-        """Constructor, tries to import mpi4py."""
+        """Constructor, tries to import mpi4py and reductions."""
         try:
             from mpi4py import MPI
             self.comm = MPI.COMM_WORLD

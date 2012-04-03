@@ -240,6 +240,8 @@ class TestVecOperations(unittest.TestCase):
                           mode_paths, vec_paths, build_coeff_mat,
                           index_from=index_from)
                     else:
+                        # Remove this test, can't interpret what a user means?
+                        # Can replace with a warning message
                         # Test the case that only one mode is desired,
                         # in which case user might pass in an int
                         if len(mode_nums) == 1:

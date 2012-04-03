@@ -77,6 +77,11 @@ def compute_ROM(Markovs, num_states):
     Returns:
         A, B, and C reduced matrices.
     
+    Usage::
+     
+      # Obtain Markov parameters, array "Markovs" with dims [time, output, input]
+      A, B, C = compute_ROM(Markovs, 20)
+        
     Markov params are defined as [CB, CAB, CA**PB, CA**(P+1)B, ...]
     """
     my_ERA = ERA()

@@ -1,5 +1,4 @@
-
-"""Collection of low level functions for modaldecomp library"""
+"""Collection of low level, parallel, functions and VecOperations class."""
 
 import sys  
 import copy
@@ -12,24 +11,23 @@ class VecOperations(object):
     """Responsible for low level operations on vecs.
 
     Args:
-        vec_defs: Class or module w/functions ``get_vec``, ``put_vec``,
+        vec_defs: Class or module w/functions ``get_vec``, ``put_vec``, and
         ``inner_product``
 
     Kwargs:
         max_vecs_per_node: max number of vecs that can be in memory
-            simultaneously on a node.
+        simultaneously per node.
         
-        verbose: True or False, sets if warnings are printed.
+        verbose: print non-essential statuses and warnings, boolean.
         
         print_interval: max of how frequently progress is printed, in seconds.
 
-    The class is a collection of methods used in the high-level 
-    modred classes like POD, BPOD, and DMD. 
-    It's responsible for all non-trivial parallelization.
-   
-    It is generally best to use all available processors, however this
+    The class is a collection of non-trivial parallel methods used in the 
+    high-level modred classes like POD, BPOD, and DMD. 
+    
+    Note: It is generally best to use all available processors, however this
     depends on the computer and the nature of the functions
-    supplied. In some cases, loading from file is slower with more processors.
+    supplied. In some cases, loading from file is slower with more workers.
     """
     
     def __init__(self, vec_defs, 
@@ -70,13 +68,17 @@ class VecOperations(object):
     def idiot_check(self, test_obj=None, test_obj_source=None):
         """Checks that the user-supplied objects and functions work.
         
-        The arguments are for a test object or the source to one (retrieved with 
-        ``get_vec``).  One of these should be supplied for thorough testing. 
+        Kwargs (One of these *must* be supplied):
+            test_obj: a vector object
+            
+            test_obj_source: a source which points to a vector object.
+                ``get_vec`` is passed this arg to retrieve a test vector.
+        
         The add and mult functions are tested for the generic object.  This is 
         not a complete testing, but catches some common mistakes.
         
-        Other things which could be tested:
-            reading/writing doesnt effect other vecs/modes (memory problems)
+        TODO: Other things which could be tested:
+            get/put doesn't effect other vecs (memory problems)
             subtraction, division (currently not used in modred)
         """
         tol = 1e-10
@@ -365,7 +367,8 @@ class VecOperations(object):
         TODO: JON, write detailed documentation similar to 
         ``compute_inner_product_mat``.
         """
-        if isinstance(vec_sources, str):
+        # Remove this check to allow for any vec_sources?
+        if not isinstance(vec_sources, list) and not isinstance(vec_sources, N.array):
             vec_sources = [vec_sources]
  
         num_vecs = len(vec_sources)
@@ -706,7 +709,8 @@ class VecOperations(object):
         
         Returns:
             a list of modes.
-                In parallel, each MPI worker has the full list of outputs.
+        
+        In parallel, each MPI worker has the full list of outputs.
         """
         dummy_mode_dests = [None]*len(mode_nums)
         return self._compute_modes(mode_nums, dummy_mode_dests, vec_sources, 

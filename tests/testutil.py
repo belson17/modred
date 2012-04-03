@@ -157,7 +157,7 @@ class TestUtil(unittest.TestCase):
                     #print 'Shape of C is',C.shape
                     nt = 5
                     inputs = N.random.random((nt, num_inputs))
-                    outputs = util.lsim(A,B,C,0,inputs)
+                    outputs = util.lsim(A, B, C, inputs)
                     self.assertEqual(outputs.shape, (nt, num_outputs))
                     
                     
