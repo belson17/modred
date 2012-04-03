@@ -1,4 +1,4 @@
-"""OKID function, see 1991 NASA TM-104069 by Juang, Phan, Horta and Longman."""
+"""OKID function. (Juang, Phan, Horta and Longman 1991 NASA TM-104069)"""
 
 import numpy as N
 
@@ -8,7 +8,7 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
     Args:
         inputs: array of input signals, with indices [inputs, time sample]
         
-        outputs: array of output signals, with indicies [outputs, time sample]
+        outputs: array of output signals, with indices [outputs, time sample]
         
         num_Markovs: integer number of Markov parameters to estimate.
             
@@ -24,12 +24,13 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
       parameters might grow rather than decay at large times.
     - In the tail, have input=0.
     - If necessary, artificially append your data with zero input and 
-      exponentially decayingoutput.
-    - Typically estimate num_Markovs = 1/3--1/2 of the number of samples and
-      approximately 5x number of ROM states (e.g. ERA).
-      Too large of num_Markovs can result in oscillations. 
-      Fewer is fine for OKID, but a subsequent ERA model may suffer.
-    - Data with more than one input is the most sensitive and hardest to 
+      exponentially decaying output.
+    - Typically use at most num_Markovs = 1/3 to 1/2 of the number of samples.
+      Estimating too many Markov params can result in spurious oscillations. 
+      If using the estimated Markov parameters for ERA, use
+      approximately 5x number of ROM states.
+      
+    - Data with more than one input tends to be more sensitive and harder to 
       work with. 
       
     Some comments and variables refer to notation from original paper.

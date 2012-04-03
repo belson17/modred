@@ -1,4 +1,4 @@
-"""Functions and classes for ERA models, See Ma et al. 2011 TCFD."""
+"""Functions and classes for ERA models. (Ma et al. 2011 TCFD)"""
 import numpy as N
 import util
 
@@ -42,8 +42,9 @@ def make_sampled_format(times, Markovs, dt_tol=1e-6):
         dt: the time interval between each time step
     
     Takes a series of data at times dt*[0 1 2 3 ...] and duplicates entries
-    s.t. result is sampled at dt*[0 1 1 2 2 3 ...]. 
-    The second format is useful for ERA so the model uses dt rather than 2*dt. 
+    so that the result is sampled at dt*[0 1 1 2 2 3 ...]. 
+    When the second format is used in ERA, the resulting model has a time step
+    of dt rather than 2*dt. 
     """
     num_time_steps, num_Markovs, num_inputs = Markovs.shape
     if num_time_steps != times.shape[0]:
@@ -89,9 +90,9 @@ class ERA(object):
     Kwargs:
         put_mat: put matrix function. Default is save to text file.
     
-        mc: number of Markov parameters for controllable dimension.
+        mc: number of Markov parameters for controllable dimension of Hankel mat.
             
-        mo: number of Markov parameters for observable dimension.
+        mo: number of Markov parameters for observable dimension of Hankel mat.
             
         verbose: print non-essential warnings and statuses
 
@@ -109,9 +110,10 @@ class ERA(object):
       myERA = ERA()
       myERA.compute_ROM(Markovs, 50, 'A.txt','B.txt','C.txt')
     
-    Default for mc and mo is for them to be equal and maximal (balanced model).
+    Default values of ``mc`` and ``mo`` are equal and maximal
+    for a balanced model.
         
-    The Markov parameters are to be in the time-sampled format:
+    The Markov parameters are to be given in the time-sampled format:
     dt*[0, 1, P, P+1, 2P, 2P+1, ... ]
     
     The special case where P=2 results in, 
@@ -145,26 +147,27 @@ class ERA(object):
         """Computes the A, B, and C LTI ROM matrices.
 
         Args:
-            Markovs: array of Markov params.
-                Indices are [time_interval#, output#, input#), so that 
+            Markovs: array of Markov params w/indices [time#, output#, input#] 
                 ``Markovs[i]`` is the Markov parameter C A**i B.
                 
             num_states: number of states to be found for the model.
             
-            A_dest: destination of A matrix, arg for put_mat
+            A_dest: destination of A matrix, arg for ``put_mat``
             
-            B_dest: destination of B matrix, arg for put_mat
+            B_dest: destination of B matrix, arg for ``put_mat``
             
-            C_dest: destination of C matrix, arg for put_mat
+            C_dest: destination of C matrix, arg for ``put_mat``
             
         Kwargs:
             mc: number of Markov parameters for controllable dimension.
-            		Default is mc and mo equal and maximal for a balanced model.
-            
+            		
             mo: number of Markov parameters for observable dimension.
             		Default is mc and mo equal and maximal for a balanced model.
         
         Assembles the Hankel matrices from self.Markovs and takes SVD.
+        
+        Default values of ``mc`` and ``mo`` are equal and maximal
+        for a balanced model.            
         
         Tip: For discrete time systems the impulse is applied over a time
         interval dt and so has a time-integral 1*dt rather than 1. 
