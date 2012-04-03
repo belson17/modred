@@ -36,7 +36,8 @@ class TestParallel(unittest.TestCase):
         
         
     def tearDown(self):
-        MPI.COMM_WORLD.Barrier()
+        if distributed:
+            MPI.COMM_WORLD.Barrier()
         
         
     def test_sync(self):
