@@ -1,41 +1,38 @@
-"""OKID function"""
+"""OKID function, see 1991 NASA TM-104069 by Juang, Phan, Horta and Longman."""
 
 import numpy as N
-#import util
 
 def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
     """Approximates the Markov paramters from arbitrary inputs and outputs.
     
     Args:
-        inputs: array containing input signals, shape (num_inputs, num_samples)
+        inputs: array of input signals, with indices [inputs, time sample]
         
-        outputs: array containing output signals, shape (num_outputs, num_samples)
+        outputs: array of output signals, with indicies [outputs, time sample]
         
-        num_Markovs: integer, number of approx Markov parameters to return.
-            Typically 5x the number of ROM states is good.
+        num_Markovs: integer number of Markov parameters to estimate.
             
     Kwargs:
         cutoff: condition number used for the pseudo-inverse
-        
-    OKID is sensitive to the parameters used. 
-    For example, if the outputs do not have a long tail, the Markov parameters
-    could be growing rather than decaying.
-    Also, if you try to estimate too many Markov parameters, then it appears
-    that they *all* 
-    suffer in decreased accuracy and spurious oscillations.
-    A few tips:
-      - Use a long tail for your input/output data.
-      - In the tail, have input=0.
-      - If necessary, artificially append your data with zero input and 
-        exponentially decayingoutput.
-      - Estimate fewer Markov parameters if oscillations are seen, typically
-        1/3--1/2 of the number of samples.
-      - Data with more than one input is the most sensitive and hardest to 
-        work with. 
-        More than one input tends not to complicate matters.
-          
-    The original paper is 1991 NASA TM-104069 by Juang, Phan, Horta and Longman.
-    Some comments and variables refer to notation from this paper.
+    
+    Returns:
+        Markovs_est: array of estim. Markov params, indices [time, input, output]
+    
+    OKID can be sensitive to the choice of parameters. A few tips:
+
+    - Use a long tail for your input/output data, otherwise the Markov
+      parameters might grow rather than decay at large times.
+    - In the tail, have input=0.
+    - If necessary, artificially append your data with zero input and 
+      exponentially decayingoutput.
+    - Typically estimate num_Markovs = 1/3--1/2 of the number of samples and
+      approximately 5x number of ROM states (e.g. ERA).
+      Too large of num_Markovs can result in oscillations. 
+      Fewer is fine for OKID, but a subsequent ERA model may suffer.
+    - Data with more than one input is the most sensitive and hardest to 
+      work with. 
+      
+    Some comments and variables refer to notation from original paper.
     """    
     # Force arrays to be 2 dimensional
     if inputs.ndim == 1:

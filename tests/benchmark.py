@@ -154,15 +154,14 @@ def main():
     
     # Common parameters
     max_vecs_per_node = 5
-    num_states = 9000
+    num_states = 900
     
     # Run test of choice
     if method_to_test == 'lin_combine':
         # lin_combine test
-        num_bases = 8000
-        num_products = 4000
-        #generate_vecs(num_states, num_bases, data_dir, basis_name)
-        parallel.sync()
+        num_bases = 800
+        num_products = 400
+        generate_vecs(num_states, num_bases, data_dir, basis_name)
         #time_elapsed = lin_combine(
         #        num_states, num_bases, num_products, max_vecs_per_node)
         cProfile.runctx('lin_combine(num_states, num_bases, num_products, '+\

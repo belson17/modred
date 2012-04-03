@@ -141,7 +141,7 @@ class testERA(unittest.TestCase):
                     B_path_computed = join(self.test_dir, 'B_computed.txt')
                     C_path_computed = join(self.test_dir, 'C_computed.txt')
                     
-                    myERA.compute_ROM(Markovs, num_states_model)
+                    myERA.compute_ROM_and_return(Markovs, num_states_model)
                     A = myERA.A
                     B = myERA.B
                     C = myERA.C

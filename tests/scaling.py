@@ -104,12 +104,12 @@ def lin():
     cases.append(s)
     
     s = Scaling()
-    s.total = 166.702
+    s.total = 20059.660
     s.loads = 28.007
     s.addmult = 0
-    s.sends = 27.575
-    s.recvs = 49.278
-    s.barriers = 26.481
+    s.sends = 2749.347
+    s.recvs = 4335.871
+    s.barriers = 6554.987
     s.workers = 96
     cases.append(s)
     
@@ -146,6 +146,16 @@ def lin():
     
     workers = N.array([c.workers for c in cases])
     
+    # Find the average for each processor, so now in Wall time instead of 
+    # CPU time.
+    for s in cases:
+        s.total /= s.workers
+        s.loads /= s.workers
+        s.addmult /= s.workers
+        s.sends /= s.workers
+        s.recvs /= s.workers
+        s.barriers /= s.workers
+    
     # Speedup plot
     PLT.figure()
     width = .4
@@ -155,7 +165,16 @@ def lin():
     PLT.xlabel('Workers')
     PLT.ylabel('Speedup')
     PLT.legend(['Linear','Measured'])
-    PLT.savefig('lin_combine_speedup_n1.eps')
+    #PLT.savefig('lin_combine_speedup_n1.eps')
+    
+    # Table of time spent in each operation for diff num of workers
+    print 'Workers |   Total Wall   |        Loads       |' +\
+        '      sends+recvs     |   barriers'
+    for s in cases:
+        print '  %d    |  %f   | %f (%f) | %f (%f) | %f (%f)'%(
+            s.workers, s.total, s.loads, s.loads/s.total, (s.sends+s.recvs), 
+            (s.sends+s.recvs)/s.total, s.barriers, s.barriers/s.total)
+    
     
     # Time spent breakdown
     """
@@ -183,121 +202,11 @@ def lin():
     PLT.show()
     
 
-
-def ips_n1p_rainier():
-    """Scaling of cases_mat on rainier, one node"""
-    cases = []
-    
-    s = Scaling()
-    s.total = 284.086
-    s.loads = 199.399
-    s.ips = 75.034
-    s.sendrecvs = 0.
-    s.workers=1
-    cases.append(s)
-    
-    s = Scaling()
-    s.total = 158.920
-    s.loads = 108.425
-    s.ips = 37.661
-    s.sendrecvs = 3.264 + 3.121
-    s.workers=2
-    cases.append(s)
-    
-    s = Scaling()
-    s.total = 119.216
-    s.loads = 75.131
-    s.ips = 27.425
-    s.sendrecvs = 8.646 + 6.346
-    s.workers=3
-    cases.append(s)
-    
-    s = Scaling()
-    s.total = 95.416
-    s.loads = 58.081
-    s.ips = 19.615
-    s.sendrecvs = 7.398 +5.031
-    s.workers=4
-    cases.append(s)
-    
-    s = Scaling()
-    s.total = 78.554
-    s.loads = 46.082
-    s.ips = 15.239
-    s.sendrecvs = 7.278 +5.143
-    s.workers=5
-    cases.append(s)
-    
-    s = Scaling()
-    s.total = 78.310
-    s.loads = 46.695
-    s.ips = 13.159
-    s.sendrecvs = 7.286 + 4.484
-    s.workers=6
-    cases.append(s)
-    
-    s = Scaling()
-    s.total = 69.798
-    s.loads = 37.203
-    s.ips = 12.181
-    s.sendrecvs = 8.518 + 6.627
-    s.workers=7
-    cases.append(s)
-    
-    s = Scaling()
-    s.total = 67.698
-    s.loads = 34.888
-    s.ips = 10.658
-    s.sendrecvs =10.069 + 6.906
-    s.workers=8
-    cases.append(s)
-    
-    workers = N.array([c.workers for c in cases])
-    
-    # Speedup plot
-    PLT.figure()
-    width = .4
-    PLT.hold(True)
-    PLT.plot(workers, workers, 'k-')
-    PLT.plot(workers, cases[0].total/workers, 'ro-')
-    PLT.xlabel('Workers')
-    PLT.ylabel('Speedup')
-    PLT.legend(['Linear', 'Measured'])
-    PLT.savefig('IP_speedup_n1.eps')
-    
-    # Time spent breakdown
-    PLT.figure()
-    PLT.hold(True)
-    PLT.plot(workers, cases[0].total/workers, 'k-')
-    PLT.plot(workers, [c.total for c in cases], 'ro-')
-    
-    for c in cases:
-        bottom = 0
-        top = c.sendrecvs
-        PLT.bar(c.workers - width/2, top - bottom, width=width,bottom=bottom,color='r')
-        
-        bottom = top
-        top += c.loads
-        PLT.bar(c.workers - width/2, top - bottom,width=width,bottom=bottom,color='g')
-        
-        bottom = top
-        top += c.ips
-        PLT.bar(c.workers - width/2, top - bottom,width=width,bottom=bottom,color='k')
-        
-        bottom = top
-        top = c.total
-        PLT.bar(c.workers - width/2, top - bottom,width=width,bottom=bottom,color='k')
-
-    PLT.legend(['Linear','Measured','Send/Recvs','Loads','IPs','Other'])
-    PLT.xlabel('Workers')
-    PLT.ylabel('Time [s]')
-    PLT.savefig('IP_time_n1.eps')
-    PLT.show()
     
 
-def ips_np1_della():
+def ips():
     """
-    profiling data for one processor per node, varying # nodes, cases_mat
+    profiling data for IP mats
     """
     cases = []
     

@@ -24,6 +24,8 @@ class TestExampleScripts(unittest.TestCase):
         """Runs main_simple_pod. If runs without error, passes test"""
         import main_pod_in_memory as M
         M.main(make_plots=False, verbose=False)
+        
+    @unittest.skip('Unnecessary test for user')
     def test_benchmark(self):
         import benchmark as B
         num_states = 14
