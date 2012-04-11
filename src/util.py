@@ -131,7 +131,7 @@ def get_data_members(obj):
 
 
 def sum_arrays(arr1, arr2):
-    """Used for allreduce command, not necessary"""
+    """Used for allreduce command"""
     return arr1 + arr2
 
     
@@ -251,13 +251,11 @@ def lsim(A, B, C, inputs):
     return outputs_array
 
     
-def impulse(A, B, C, time_step=None, time_steps=None):
+def impulse(A, B, C, time_steps=None):
     """Generates impulse response outputs for a discrete-time system.
     
     Args:
         A, B, C: state-space system matrices
-        
-        time_step: integer, the time step of the discrete-time system.
         
         time_steps: 1D array of integers specifying the time steps
         
@@ -268,21 +266,18 @@ def impulse(A, B, C, time_step=None, time_steps=None):
     num_inputs = B.shape[1]
     num_outputs = C.shape[0]
     if time_steps is None:
-        if time_step is None:
-            print 'Warning: setting time_step to 1 by default'
-            time_step = 1
         tol = 1e-6
-        max_time_steps = 1000
+        max_time_steps = 2000
         Markovs = [C*B]
         time_steps = [0]
         while (N.amax(abs(Markovs[-1])) > tol or len(Markovs) < 20) and \
             len(Markovs) < max_time_steps:
-            time_steps.append(time_steps[-1] + time_step)
+            time_steps.append(time_steps[-1] + 1)
             Markovs.append(C * (A**time_steps[-1]) * B)
     else:
         Markovs = []
-        for tv in time_steps:
-            Markovs.append(C*(A**tv)*B)
+        for ts in time_steps:
+            Markovs.append(C*(A**ts)*B)
 
     outputs = N.zeros((len(Markovs), num_outputs, num_inputs))
     for time_step, Markov in enumerate(Markovs):

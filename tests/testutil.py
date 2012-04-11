@@ -167,34 +167,33 @@ class TestUtil(unittest.TestCase):
         for num_states in [1, 10]:
             for num_inputs in [1, 3]:
                 for num_outputs in [1, 2, 3, 5]:
-                    for time_step in [1, 2, 4]:
-                        A, B, C = util.drss(num_states, num_inputs, num_outputs)
-                        # Check that can give time_step
-                        time_steps, outputs = util.impulse(A, B, C, time_step=time_step)
-                        num_time_steps = len(time_steps)
-                        time_steps_true = N.arange(0,num_time_steps*time_step,time_step)
-                        N.testing.assert_array_equal(time_steps, time_steps_true)
-                        outputs_true = N.zeros((num_time_steps, num_outputs, num_inputs))
-                        for ti,tv in enumerate(time_steps):
-                            outputs_true[ti] = C*(A**tv)*B
-                        N.testing.assert_array_equal(outputs, outputs_true)
-                        
-                        # Check can give time_steps
-                        time_steps, outputs = util.impulse(A,B,C,time_steps=time_steps)
-                        N.testing.assert_array_equal(time_steps, time_steps_true)
-                        N.testing.assert_array_equal(outputs, outputs_true)
-                        
-                        # Check can give arbitrary time steps (even out of order)
-                        time_steps = N.zeros(num_time_steps,dtype=int)
-                        for i in range(num_time_steps):
-                            time_steps[i] = int((N.random.random()*10000)%100)
-                        time_steps, outputs = util.impulse(A,B,C,time_steps=time_steps)
-                        outputs_true = N.zeros((num_time_steps, num_outputs, num_inputs))
-                        for ti,tv in enumerate(time_steps):
-                            outputs_true[ti] = C*(A**tv)*B
-                        N.testing.assert_array_equal(outputs, outputs_true)
-                        
-        
+                    A, B, C = util.drss(num_states, num_inputs, num_outputs)
+                    # Check that can give time_step
+                    time_steps, outputs = util.impulse(A, B, C)
+                    num_time_steps = len(time_steps)
+                    time_steps_true = N.arange(0, num_time_steps, 1)
+                    N.testing.assert_array_equal(time_steps, time_steps_true)
+                    outputs_true = N.zeros((num_time_steps, num_outputs, num_inputs))
+                    for ti,tv in enumerate(time_steps):
+                        outputs_true[ti] = C*(A**tv)*B
+                    N.testing.assert_array_equal(outputs, outputs_true)
+                    
+                    # Check can give time_steps
+                    time_steps, outputs = util.impulse(A,B,C,time_steps=time_steps)
+                    N.testing.assert_array_equal(time_steps, time_steps_true)
+                    N.testing.assert_array_equal(outputs, outputs_true)
+                    
+                    # Check can give arbitrary time steps (even out of order)
+                    time_steps = N.zeros(num_time_steps,dtype=int)
+                    for i in range(num_time_steps):
+                        time_steps[i] = int((N.random.random()*10000)%100)
+                    time_steps, outputs = util.impulse(A,B,C,time_steps=time_steps)
+                    outputs_true = N.zeros((num_time_steps, num_outputs, num_inputs))
+                    for ti,tv in enumerate(time_steps):
+                        outputs_true[ti] = C*(A**tv)*B
+                    N.testing.assert_array_equal(outputs, outputs_true)
+                    
+    
         
     
 if __name__=='__main__':

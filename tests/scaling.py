@@ -34,78 +34,78 @@ def lin():
     cases.append(s)
     
     s = Scaling()
-    s.total = 183.618
-    s.loads = 119.532
+    s.total = 65101.676
+    s.loads = 37823.560
     s.addmult = 0
-    s.sends = 12.215
-    s.recvs = 16.438
-    s.barriers = 12.973
+    s.sends = 3100.815
+    s.recvs = 11785.722
+    s.barriers = 5549.159
     s.workers = 12
     cases.append(s)
     
     s = Scaling()
-    s.total = 57.529
-    s.loads = 24.666
+    s.total = 38372.495
+    s.loads = 17996.821
     s.addmult = 0
-    s.sends = 5.794
-    s.recvs = 5.284
-    s.barriers = 7.334
+    s.sends = 3034.603
+    s.recvs = 7725.519
+    s.barriers = 5077.610
     s.workers = 24
     cases.append(s)
     
     s = Scaling()
-    s.total = 30.213
-    s.loads = 9.525
+    s.total = 28519.787
+    s.loads = 10257.985
     s.addmult = 0
-    s.sends = 3.859
-    s.recvs = 5.831
-    s.barriers = 4.921
+    s.sends = 2856.050
+    s.recvs = 5032.965
+    s.barriers = 7292.715
     s.workers = 36
     cases.append(s)
     
     s = Scaling()
-    s.total = 301.889
-    s.loads = 70.511
+    s.total = 21455.413
+    s.loads = 7398.958
     s.addmult = 0
-    s.sends = 45.402
-    s.recvs = 83.424
-    s.barriers = 39.339
+    s.sends = 2785.200
+    s.recvs = 4511.474
+    s.barriers = 4088.371
     s.workers = 48
     cases.append(s)
     
     s = Scaling()
-    s.total = 18.126
-    s.loads = 3.888
+    s.total = 18999.739
+    s.loads = 5840.044
     s.addmult = 0
-    s.sends = 2.201
-    s.recvs =3.875
-    s.barriers = 3.928
+    s.sends = 2747.765
+    s.recvs = 4150.445
+    s.barriers = 3648.425
     s.workers = 60
     cases.append(s)
     
     s = Scaling()
-    s.total = 245.177
-    s.loads = 48.990
+    s.total = 18481.499
+    s.loads = 4961.553
     s.addmult = 0
-    s.sends = 35.351
-    s.recvs = 68.313
-    s.barriers = 45.808
+    s.sends = 2705.876
+    s.recvs = 4026.794
+    s.barriers = 4266.667
     s.workers = 72
     cases.append(s)
     
     s = Scaling()
-    s.total = 226.324
-    s.loads = 42.373
+    s.total = 19403.340
+    s.loads = 4522.620
     s.addmult = 0
-    s.sends = 35.178
-    s.recvs = 64.374
-    s.barriers = 35.643
+    s.sends = 2725.450
+    s.recvs = 4188.932
+    s.barriers = 5296.319
     s.workers = 84
     cases.append(s)
     
     s = Scaling()
     s.total = 20059.660
-    s.loads = 28.007
+    s.loads = 3844.509
     s.addmult = 0
     s.sends = 2749.347
     s.recvs = 4335.871
@@ -114,33 +114,44 @@ def lin():
     cases.append(s)
     
     s = Scaling()
-    s.total = 104.949
-    s.loads = 12.439
+    s.total = 17326.856
+    s.loads = 2933.798
     s.addmult = 0
-    s.sends = 18.688
-    s.recvs = 31.588
-    s.barriers = 20.009
+    s.sends = 2686.343
+    s.recvs = 4316.174
+    s.barriers = 4922.009
     s.workers = 144
     cases.append(s)
     
     s = Scaling()
-    s.total = 82.448
-    s.loads = 7.041
+    s.total = 17125.556
+    s.loads = 2454.333
     s.addmult = 0
-    s.sends = 14.170
-    s.recvs = 26.106
-    s.barriers = 17.349
+    s.sends = 2679.164
+    s.recvs = 4312.584
+    s.barriers = 5155.768
     s.workers = 192
     cases.append(s)
     
     s = Scaling()
-    s.total = 77.737
-    s.loads = 4.519
+    s.total = 17159.692
+    s.loads = 2229.482
     s.addmult = 0
-    s.sends = 21.531
-    s.recvs = 11.368
-    s.barriers = 26.603
+    s.sends = 2717.322
+    s.recvs = 4291.430
+    s.barriers = 5294.237
     s.workers = 240
+    cases.append(s)
+
+
+    s = Scaling()
+    s.total = 18944.590
+    s.loads = 2543.070
+    s.addmult = 0
+    s.sends = 2729.350
+    s.recvs = 4242.178
+    s.barriers = 6553.161
+    s.workers = 288
     cases.append(s)
     
     

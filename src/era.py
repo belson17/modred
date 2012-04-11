@@ -65,7 +65,7 @@ def make_sampled_format(times, Markovs, dt_tol=1e-6):
     return time_steps_corr, Markovs_corr, dt
 
 
-def compute_ROM(Markovs, num_states):
+def compute_ERA_ROM(Markovs, num_states):
     """Convenience function to find ERA A, B, and C matrices w/default settings.
     
     Args:
