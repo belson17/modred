@@ -4,15 +4,14 @@ Currently not parallelized."""
 
 import util
 import numpy as N
+import vectors as V
 
 class BPODROM(object):
     """Computes the ROM matrices from BPOD modes for an LTI plant.
-
-    Args:
-        vec_defs: Class or module w/functions ``get_vec``, ``put_vec``,
-        ``inner_product``
-
+    
     Kwargs:       
+        inner_product: Function to take inner products.
+        
         put_mat: Function to put a matrix elsewhere (memory or file).
         
         verbose: print more information about progress and warnings
@@ -20,11 +19,11 @@ class BPODROM(object):
         max_vecs_per_node: max number of vectors in memory per node.
     
     First compute the BPOD modes with the BPOD class.
-    Then, you can create either discrete or continuous time models.
+    Then, this class creates either discrete or continuous time models.
     
     To find a discrete time model, advance the direct modes forward in 
-    time by a time step dt and replace ``deriv_direct_mode_sources`` with
-    the sources to the advanced direct modes.
+    time by a time step ``dt`` and set ``A_full_direct_mode_handles`` with
+    the handles to the advanced direct modes.
     
     For a continuous time ROM, you have a few options.
     First, you can compute d(mode)/dt yourself.
@@ -34,84 +33,83 @@ class BPODROM(object):
     Usage::
 
       myBPODROM = BPODROM(...)
-      myBPODROM.form_A(A_dest, deriv_direct_mode_sources, adjoint_mode_sources)
-      myBPODROM.form_B(B_dest, input_vec_sources, adjoint_mode_sources)
-      myBPODROM.form_C(C_dest, output_vec_sources, direct_mode_sources)
+      myBPODROM.compute_A(A_dest, deriv_direct_mode_handles, adjoint_mode_handles)
+      myBPODROM.compute_B(B_dest, input_vec_handles, adjoint_mode_handles)
+      myBPODROM.compute_C(C_dest, output_vec_handles, direct_mode_handles)
 
     """
 
-    def __init__(self, vec_defs, put_mat=util.save_mat_text,
-        verbose=True, max_vecs_per_node=2):
+    def __init__(self, inner_product=None, put_mat=util.save_array_text,
+        verbose=True, max_vecs_per_node=10000):
         """Constructor"""
-        self.vec_defs = vec_defs
+        self.inner_product = inner_product
         self.put_mat = put_mat
         self.max_vecs_per_node = max_vecs_per_node
         self.max_vecs_per_proc = self.max_vecs_per_node
         self.num_modes = None
         self.verbose = verbose
-        self.dt = None
         self.A = None
         self.B = None
         self.C = None
 
       
-    def compute_derivs(self, vec_sources, vec_adv_sources, 
-        vec_deriv_dests, dt):
+    def compute_derivs(self, vec_handles, vec_adv_handles, 
+        vec_deriv_handles, dt):
         """Computes 1st-order time derivatives of vectors. 
         
         Args:
-        		vec_sources: list of sources of vecs.
-        		
-        		vec_dt_sources: list of sources of vecs advanced dt
-        		in time
-        		
-        		vec_deriv_dests: list of destinations for time derivatives of
-        		vecs.
+			vec_handles: list of handles of vecs.
+			
+			vec_dt_handles: list of handles of vecs advanced dt
+			in time
+			
+			vec_deriv_handle: list of handles for time derivatives of vecs.
+        
+        Returns:
+        	Outputs of vec_deriv_handles.put()
         
         Computes d(mode)/dt = (mode(t=dt) - mode(t=0)) / dt.
         """
-        if (self.vec_defs.get_vec is None):
-            raise util.UndefinedError('no get_vec defined')
-        if (self.vec_defs.put_vec is None):
-            raise util.UndefinedError('no put_vec defined')
-        
-        num_vecs = min(len(vec_sources), len(vec_adv_sources), 
+        num_vecs = min(len(vec_handles), len(vec_adv_handles), 
             len(vec_deriv_dests))
-       
-        for vec_index in xrange(len(vec_adv_sources)):
-            vec = self.vec_defs.get_vec(vec_sources[vec_index])
-            vec_dt = self.vec_defs.get_vec(vec_adv_sources[vec_index])
-            self.vec_defs.put_vec((vec_dt - vec)*(1./dt), vec_deriv_dests[vec_index])
             
+        put_outputs = [None]*len(vec_adv_handles)
+        for vec_index in xrange(len(vec_adv_handles)):
+            vec = vec_handles[vec_index].get()
+            vec_dt = vec_adv_handles[vec_index].get()
+            put_outputs[vec_index] = vec_deriv_handles.put(
+            	(vec_dt - vec)*(1./dt), vec_deriv_dests[vec_index])
+        return put_outputs
     
-    def compute_A(self, A_dest, A_full_direct_mode_sources, 
-        adjoint_mode_sources, num_modes=None):
+    
+    def compute_A(self, A_dest, A_full_direct_mode_handles, 
+        adjoint_mode_handles, num_modes=None):
         """Forms the continous or discrete time A matrix.
         
         Args:
-		        A_dest: where the reduced A matrix will be put
-		        
-		        A_full_direct_mode_sources: list of sources to direct modes
-		        that have been operated on by the full A matrix. 
-		            For a discrete time system, these are the 
-								sources of the direct modes that have been advanced one
-								time step.
-								For continuous time systems, these are the sources of the
-								time derivatives of the direct modes (see also 
-								``compute_derivs``).
-        
-        		adjoint_mode_sources: list of sources to the adjoint modes
-        		
+			A_dest: where the reduced A matrix will be put
+			
+			A_full_direct_mode_handles: list of handles to direct modes
+			that have been operated on by the full A matrix. 
+			For a discrete time system, these are the 
+			handles of the direct modes that have been advanced one
+			time step.
+			For continuous time systems, these are the handles of the
+			time derivatives of the direct modes (see also 
+			``compute_derivs``).
+	
+			adjoint_mode_handles: list of handles to the adjoint modes
+			
         Kwargs:
         		num_modes: number of modes/states to keep in the ROM. 
         		    Can omit if already given. Default is maximum possible.
         """
-        self._compute_A(A_full_direct_mode_sources, 
-            adjoint_mode_sources, num_modes=num_modes)
+        self._compute_A(A_full_direct_mode_handles, 
+            adjoint_mode_handles, num_modes=num_modes)
         self.put_mat(self.A, A_dest)
         
-    def compute_A_and_return(self, A_full_direct_mode_sources, 
-        adjoint_mode_sources, num_modes=None):
+    def compute_A_and_return(self, A_full_direct_mode_handles, 
+        adjoint_mode_handles, num_modes=None):
         """Forms the continous or discrete time A matrix and returns it
         
         See ``compute_A`` for details.
@@ -119,12 +117,12 @@ class BPODROM(object):
         Returns:
             A: reduced model matrix
         """
-        self._compute_A(A_full_direct_mode_sources, 
-            adjoint_mode_sources, num_modes=num_modes)
+        self._compute_A(A_full_direct_mode_handles, 
+            adjoint_mode_handles, num_modes=num_modes)
         return self.A
     
-    def _compute_A(self, A_full_direct_mode_sources, 
-        adjoint_mode_sources, num_modes=None):
+    def _compute_A(self, A_full_direct_mode_handles, 
+        adjoint_mode_handles, num_modes=None):
         """Forms the continous or discrete time A matrix.
         
         See ``compute_A`` for details.
@@ -134,8 +132,8 @@ class BPODROM(object):
         if num_modes is not None:
             self.num_modes = num_modes
         if self.num_modes is None:
-            self.num_modes = min(len(A_full_direct_mode_sources),
-                len(adjoint_mode_sources))
+            self.num_modes = min(len(A_full_direct_mode_handles),
+                len(adjoint_mode_handles))
         
         self.A = N.zeros((self.num_modes, self.num_modes))
         
@@ -147,49 +145,50 @@ class BPODROM(object):
             end_row_num = min(start_row_num+num_rows_per_chunk, self.num_modes)
             #a list of 'row' adjoint modes (row because Y' has rows 
             #   of adjoint vecs)
-            adjoint_modes = [self.vec_defs.get_vec(adjoint_source) \
-                for adjoint_source in 
-                adjoint_mode_sources[start_row_num:end_row_num]] 
+            adjoint_modes = [adjoint_handle.get() 
+                for adjoint_handle in 
+                adjoint_mode_handles[start_row_num:end_row_num]] 
               
             #now read in each column (direct modes advanced dt or time deriv)
-            for col_num, advanced_source in enumerate(
-                A_full_direct_mode_sources[:self.num_modes]):
-                advanced_mode = self.vec_defs.get_vec(advanced_source)
+            for col_num, advanced_handle in enumerate(
+                A_full_direct_mode_handles[:self.num_modes]):
+                advanced_mode = advanced_handle.get()
                 for row_num in range(start_row_num, end_row_num):
                     self.A[row_num,col_num] = \
-                        self.vec_defs.inner_product(
+                        self.inner_product(
                             adjoint_modes[row_num - start_row_num],
                             advanced_mode)
     
-    def compute_B(self, B_dest, input_vec_sources, adjoint_mode_sources, 
+    
+    def compute_B(self, B_dest, input_vec_handles, adjoint_mode_handles, 
         num_modes=None):
         """Forms the B matrix.
         
         Computes inner products of adjoint modes with input vecs (B in Ax+Bu).
         
         Args:
-		        B_dest: where the reduced B matrix will be put
-		        
-        		input_vec_sources: list of sources to input vecs.
-        				These are spatial representations of the B matrix in the 
-        				full system.
-        				
-          	adjoint_mode_sources: list of sources to the adjoint modes
+			B_dest: where the reduced B matrix will be put
+			
+			input_vec_handles: list of handles to input vecs.
+					These are spatial representations of the B matrix in the 
+					full system.
+					
+			adjoint_mode_handles: list of handles to the adjoint modes
         		
         Kwargs:
-        		num_modes: number of modes/states to keep in the ROM. 
-        		    Can omit if already given.
-        		    
-        Tip: If you found the modes via IC responses to B and C*,
+			num_modes: number of modes/states to keep in the ROM. 
+				Can omit if already given.
+				
+        Tip: If you found the modes via sampling IC responses to B and C*,
         then your impulse responses may be missing a factor of 1/dt
         (where dt is the first simulation time step).
         This can be remedied by multiplying the reduced B by dt.
         """
-        self._compute_B(input_vec_sources, adjoint_mode_sources, 
+        self._compute_B(input_vec_handles, adjoint_mode_handles, 
             num_modes=num_modes)
         self.put_mat(self.B, B_dest)
 
-    def compute_B_and_return(self, input_vec_sources, adjoint_mode_sources, 
+    def compute_B_and_return(self, input_vec_handles, adjoint_mode_handles, 
         num_modes=None):
         """Forms the B matrix and returns it
         
@@ -198,11 +197,11 @@ class BPODROM(object):
         Returns:
             B matrix
         """
-        self._compute_B(input_vec_sources, adjoint_mode_sources, 
+        self._compute_B(input_vec_handles, adjoint_mode_handles, 
             num_modes=num_modes)
         return self.B
       
-    def _compute_B(self, input_vec_sources, adjoint_mode_sources, 
+    def _compute_B(self, input_vec_handles, adjoint_mode_handles, 
         num_modes=None):
         """Forms the B matrix
         
@@ -225,9 +224,9 @@ class BPODROM(object):
         if num_modes is not None:
             self.num_modes = num_modes
         if self.num_modes is None:
-            self.num_modes = len(adjoint_mode_sources)
+            self.num_modes = len(adjoint_mode_handles)
             
-        num_inputs = len(input_vec_sources)
+        num_inputs = len(input_vec_handles)
         self.B = N.zeros((self.num_modes, num_inputs))
         
         num_rows_per_chunk = self.max_vecs_per_proc - 1
@@ -235,20 +234,20 @@ class BPODROM(object):
             end_row_num = min(start_row_num + num_rows_per_chunk,
                 self.num_modes)
             # list of adjoint modes, which correspond to rows of B
-            adjoint_modes = [self.vec_defs.get_vec(adjoint_source) \
-                for adjoint_source in 
-                adjoint_mode_sources[start_row_num:end_row_num]] 
+            adjoint_modes = [adjoint_handle.get() \
+                for adjoint_handle in 
+                adjoint_mode_handles[start_row_num:end_row_num]] 
                 
             # now get the input vecs, which correspond to columns of B
-            for col_num, input_source in enumerate(input_vec_sources):
-                input_vec = self.vec_defs.get_vec(input_source)
+            for col_num, input_handle in enumerate(input_vec_handles):
+                input_vec = input_handle.get()
                 for row_num in range(start_row_num, end_row_num):
                     self.B[row_num, col_num] = \
-                      self.vec_defs.inner_product(adjoint_modes[row_num-start_row_num],
+                      self.inner_product(adjoint_modes[row_num-start_row_num],
                           input_vec)
     
     
-    def compute_C_and_return(self, output_vec_sources, direct_mode_sources,
+    def compute_C_and_return(self, output_vec_handles, direct_mode_handles,
         num_modes=None):
         """Forms the C matrix and returns it
         
@@ -257,36 +256,36 @@ class BPODROM(object):
         Returns:
             C matrix
         """
-        self._compute_C(output_vec_sources, direct_mode_sources, 
+        self._compute_C(output_vec_handles, direct_mode_handles, 
             num_modes=num_modes)
         return self.C
         
     
-    def compute_C(self, C_dest, output_vec_sources, direct_mode_sources,
+    def compute_C(self, C_dest, output_vec_handles, direct_mode_handles,
         num_modes=None):
         """Forms the C matrix, either continuous or discrete.
         
         Computes inner products of adjoint mode with output vecs (C in y=Cx).
         
         Args: 
-		        C_dest: where the reduced C matrix will be put.
-		        
-        		output_vec_sources: list of sources to output vecs.
-        				These are spatial representations of the C matrix in the full 
-        				system.
+			C_dest: where the reduced C matrix will be put.
+			
+			output_vec_handles: list of handles to output vecs.
+				These are spatial representations of the C matrix in the full 
+				system.
         				
-          	direct_mode_sources: list of sources to the direct modes
+          	direct_mode_handles: list of handles to the direct modes
         		
         Kwargs:
             num_modes: number of modes/states to keep in the ROM. 
                 Can omit if already given.
         """
-        self._compute_C(output_vec_sources, direct_mode_sources,
+        self._compute_C(output_vec_handles, direct_mode_handles,
             num_modes=num_modes)
         self.put_mat(self.C, C_dest)
     
     
-    def _compute_C(self, output_vec_sources, direct_mode_sources,
+    def _compute_C(self, output_vec_handles, direct_mode_handles,
         num_modes=None):
         """Forms the C matrix
         
@@ -295,9 +294,9 @@ class BPODROM(object):
         if num_modes is not None:
             self.num_modes = num_modes
         if self.num_modes is None:
-            self.num_modes = len(direct_mode_sources)
+            self.num_modes = len(direct_mode_handles)
         
-        num_outputs = len(output_vec_sources)
+        num_outputs = len(output_vec_handles)
         self.C = N.zeros((num_outputs, self.num_modes))
         num_cols_per_chunk = self.max_vecs_per_proc - 1
         
@@ -305,16 +304,14 @@ class BPODROM(object):
             end_col_num = min(start_col_num+num_cols_per_chunk, self.num_modes)
             
             # list of direct modes, which correspond to columns of C
-            direct_modes = [self.vec_defs.get_vec(direct_source) \
-                for direct_source in 
-                direct_mode_sources[start_col_num:end_col_num]]
+            direct_modes = [direct_handle.get() for direct_handle in 
+                direct_mode_handles[start_col_num:end_col_num]]
             
             # get the output vecs, which correspond to rows of C
-            for row_num, output_source in enumerate(output_vec_sources):
-                output_vec = self.vec_defs.get_vec(output_source)
+            for row_num, output_handle in enumerate(output_vec_handles):
+                output_vec = output_handle.get()
                 for col_num in range(start_col_num, end_col_num):
                     self.C[row_num,col_num] = \
-                        self.vec_defs.inner_product(output_vec, 
+                        self.inner_product(output_vec, 
                             direct_modes[col_num-start_col_num])      
-    
     

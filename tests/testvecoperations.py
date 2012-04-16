@@ -15,7 +15,7 @@ import parallel as parallel_mod
 parallel = parallel_mod.default_instance
 
 from vecoperations import VecOperations
-from vecdefs import ArrayTextUniform, ArrayInMemoryUniform
+import vectors as V
 import util
 
 class TestVecOperations(unittest.TestCase):
@@ -34,21 +34,19 @@ class TestVecOperations(unittest.TestCase):
         self.total_num_vecs_in_mem = parallel.get_num_procs() * self.max_vecs_per_proc
 
         # VecOperations object for running tests
-        self.my_vec_defs = ArrayTextUniform()
-        self.my_vec_ops = VecOperations(self.my_vec_defs, verbose=False)
+        self.my_vec_ops = VecOperations(inner_product=N.vdot, verbose=False)
         self.my_vec_ops.max_vecs_per_proc = self.max_vecs_per_proc
 
         # Default data members, verbose set to false even though default is true
         # so messages won't print during tests
-        self.default_data_members = {'vec_defs': self.my_vec_defs,
+        self.default_data_members = {'inner_product': N.vdot,
             'max_vecs_per_node': int(1e6),
             'max_vecs_per_proc': int(1e6) * parallel.get_num_nodes() / \
                 parallel.get_num_procs(),
             'parallel':parallel_mod.default_instance,
-            'verbose': False, 'print_interval': 10, 'prev_print_time': 0.}
-       
-        
+            'verbose': False, 'print_interval': 10, 'prev_print_time': 0.}        
         parallel.sync()
+
 
     def tearDown(self):
         parallel.sync()
@@ -57,24 +55,17 @@ class TestVecOperations(unittest.TestCase):
         parallel.sync()
  
  
- 
     #@unittest.skip('testing other things')
     def test_init(self):
         """
         Test arguments passed to the constructor are assigned properly.
         """
         data_members_original = util.get_data_members(
-            VecOperations(self.my_vec_defs, verbose=False))
-        self.assertEqual(self.my_vec_defs, ArrayTextUniform())
+            VecOperations(inner_product=N.vdot, verbose=False))
         self.assertEqual(data_members_original, self.default_data_members)
-        
-        my_VO = VecOperations(self.my_vec_defs, verbose=False)
-        data_members = copy.deepcopy(data_members_original)
-        data_members['vec_defs'] = self.my_vec_defs
-        self.assertEqual(util.get_data_members(my_VO), data_members)
                 
         max_vecs_per_node = 500
-        my_VO = VecOperations(self.my_vec_defs, 
+        my_VO = VecOperations(inner_product=N.vdot, 
             max_vecs_per_node=max_vecs_per_node, verbose=False)
         data_members = copy.deepcopy(data_members_original)
         data_members['max_vecs_per_node'] = max_vecs_per_node
@@ -92,15 +83,17 @@ class TestVecOperations(unittest.TestCase):
         nx = 40
         ny = 15
         test_array = N.random.random((nx,ny))
-        my_VO = VecOperations(self.my_vec_defs, verbose=False)
-        self.assertTrue(my_VO.idiot_check(test_obj=test_array))
-        
-        def my_IP(vec1, vec2):
-            return (vec1.arr * vec2.arr).sum()
-        my_VO.vec_defs.inner_product = my_IP
+            
+        my_VO = VecOperations(inner_product=N.vdot, verbose=False)
+        in_mem_handle = V.InMemoryHandle(test_array)
+        # Currently not testing this, there is a problem with max recursion
+        # depth
+        #self.assertRaises(RuntimeError, my_VO.idiot_check, in_mem_handle,
+        #    max_handle_size=0)       
+        my_VO.idiot_check(in_mem_handle, max_handle_size=1e6)
         
         # An idiot's vector that redefines multiplication to modify its data
-        class IdiotMultVec(object):
+        class IdiotMultVec(V.VectorBase):
             def __init__(self, arr):
                 self.arr = arr
             def __add__(self, obj):
@@ -111,7 +104,7 @@ class TestVecOperations(unittest.TestCase):
                 self.arr *= a
                 return self
                 
-        class IdiotAddVec(object):
+        class IdiotAddVec(V.VectorBase):
             def __init__(self, arr):
                 self.arr = arr
             def __add__(self, obj):
@@ -122,12 +115,15 @@ class TestVecOperations(unittest.TestCase):
                 f_return.arr *= a
                 return f_return
         
+        def my_IP(vec1, vec2):
+            return N.vdot(vec1.arr, vec2.arr)
+        my_VO.inner_product = my_IP
         my_idiot_mult_vec = IdiotMultVec(test_array)
         self.assertRaises(ValueError, my_VO.idiot_check, 
-            test_obj=my_idiot_mult_vec)
+            V.InMemoryHandle(my_idiot_mult_vec), max_handle_size=1e6)
         my_idiot_add_vec = IdiotAddVec(test_array)
         self.assertRaises(ValueError, my_VO.idiot_check, 
-            test_obj=my_idiot_add_vec)
+            V.InMemoryHandle(my_idiot_add_vec), max_handle_size=1e6)
                 
         
         
@@ -186,33 +182,29 @@ class TestVecOperations(unittest.TestCase):
                     #print 'num_modes =',num_modes
                     #print 'max_vecs_per_node =',max_vecs_per_node                          
                     #print 'index_from =',index_from
-                    vec_paths = [vec_path % vec_index \
-                        for vec_index in xrange(num_vecs)]
+                    vec_handles = [V.ArrayTextHandle(vec_path%i) 
+                        for i in xrange(num_vecs)]
 
                     if parallel.is_rank_zero():
-                        vec_mat,mode_nums, build_coeff_mat, true_modes = \
+                        vec_mat, mode_nums, build_coeff_mat, true_modes = \
                           self.generate_vecs_modes(num_states, num_vecs,
                           num_modes, index_from=index_from)
-                        for vec_index,s in enumerate(vec_paths):
-                            util.save_mat_text(vec_mat[:,vec_index], s)
+                        for vec_index, vec_handle in enumerate(vec_handles):
+                            vec_handle.put(vec_mat[:,vec_index])
                     else:
                         mode_nums = None
                         build_coeff_mat = None
                         vec_mat = None
                         true_modes = None
-                        mode_paths = None
                     if parallel.is_distributed():
-                        mode_nums = parallel.comm.bcast(
-                            mode_nums, root=0)
-                        build_coeff_mat = parallel.comm.bcast(
-                            build_coeff_mat, root=0)
-                        vec_mat = parallel.comm.bcast(
-                            vec_mat, root=0)
-                        true_modes = parallel.comm.bcast(
-                            true_modes, root=0)
+                        mode_nums = parallel.comm.bcast(mode_nums, root=0)
+                        build_coeff_mat = parallel.comm.bcast(build_coeff_mat,
+                            root=0)
+                        vec_mat = parallel.comm.bcast(vec_mat, root=0)
+                        true_modes = parallel.comm.bcast(true_modes, root=0)
                     
-                    mode_paths = [mode_path%mode_num for mode_num in
-                            mode_nums]
+                    mode_handles = [V.ArrayTextHandle(mode_path%mode_num)
+                        for mode_num in mode_nums]
                     # if any mode number (minus starting indxex)
                     # is greater than the number of coeff mat columns,
                     # or is less than zero
@@ -224,20 +216,20 @@ class TestVecOperations(unittest.TestCase):
                             check_assert_raises = True
                     if check_assert_raises:
                         self.assertRaises(ValueError, self.my_vec_ops.\
-                            _compute_modes, mode_nums, mode_paths, 
-                            vec_paths, build_coeff_mat, index_from=\
+                            _compute_modes, mode_nums, mode_handles, 
+                            vec_handles, build_coeff_mat, index_from=\
                             index_from)
                     # If the coeff mat has more rows than there are 
                     # vec paths
                     elif num_vecs > build_coeff_mat.shape[0]:
                         self.assertRaises(ValueError, self.my_vec_ops.\
-                            _compute_modes, mode_nums, mode_paths,
-                            vec_paths, build_coeff_mat, index_from=\
+                            _compute_modes, mode_nums, mode_handles,
+                            vec_handles, build_coeff_mat, index_from=\
                             index_from)
                     elif num_modes > num_vecs:
                         self.assertRaises(ValueError,
                           self.my_vec_ops.compute_modes, mode_nums,
-                          mode_paths, vec_paths, build_coeff_mat,
+                          mode_handles, vec_handles, build_coeff_mat,
                           index_from=index_from)
                     else:
                         # Remove this test, can't interpret what a user means?
@@ -246,23 +238,23 @@ class TestVecOperations(unittest.TestCase):
                         # in which case user might pass in an int
                         if len(mode_nums) == 1:
                             mode_nums = mode_nums[0]
-                            mode_paths = mode_paths[0]
+                            mode_handles = mode_handles[0]
                             
                         # Saves modes to files
                         self.my_vec_ops.compute_modes(mode_nums, 
-                            mode_paths,
-                            vec_paths, build_coeff_mat, 
+                            mode_handles,
+                            vec_handles, build_coeff_mat, 
                             index_from=index_from)
 
                         # Change back to list so is iterable
-                        if isinstance(mode_nums, int):
+                        if not isinstance(mode_nums, list):
                             mode_nums = [mode_nums]
 
                         parallel.sync()
                         #print 'mode_nums',mode_nums
                         for mode_num in mode_nums:
-                            computed_mode = util.load_mat_text(
-                                mode_path % mode_num)
+                            computed_mode = V.ArrayTextHandle(
+                                mode_path % mode_num).get()
                             #print 'mode number',mode_num
                             #print 'true mode',true_modes[:,\
                             #    mode_num-index_from]
@@ -274,18 +266,19 @@ class TestVecOperations(unittest.TestCase):
                         parallel.sync()
        
         parallel.sync()
-
+    
+    #@unittest.skip('testing others')
     def test_compute_modes_return(self):
         """Tests that compute_modes returns the modes"""
         num_states = 21
         num_modes_list = [1, 5, 22]
         num_vecs = 30
         index_from = 1
-        my_vec_ops = VecOperations(ArrayInMemoryUniform(), verbose=False)
+        my_vec_ops = VecOperations(inner_product=N.vdot, verbose=False)
         for num_modes in num_modes_list:
             #generate data and then broadcast to all procs
             if parallel.is_rank_zero():
-                vec_mat,mode_nums, build_coeff_mat, true_modes = \
+                vec_mat, mode_nums, build_coeff_mat, true_modes = \
                   self.generate_vecs_modes(num_states, num_vecs,
                   num_modes, index_from)
             else:
@@ -293,7 +286,6 @@ class TestVecOperations(unittest.TestCase):
                 build_coeff_mat = None
                 vec_mat = None
                 true_modes = None
-                mode_paths = None
             if parallel.is_distributed():
                 mode_nums = parallel.comm.bcast(mode_nums, root=0)
                 build_coeff_mat = parallel.comm.bcast(build_coeff_mat, root=0)
@@ -302,9 +294,9 @@ class TestVecOperations(unittest.TestCase):
                 
             # Returns modes
             computed_modes = my_vec_ops.compute_modes_and_return(mode_nums, 
-                [vec_mat[:,i] for i in range(num_vecs)],
+                [V.InMemoryHandle(vec_mat[:,i]) for i in range(num_vecs)],
                 build_coeff_mat, index_from=index_from)
-            for mode_index,mode_num in enumerate(mode_nums):
+            for mode_index, mode_num in enumerate(mode_nums):
                 N.testing.assert_allclose(computed_modes[mode_index], 
                     true_modes[:,mode_num-index_from])
                     
@@ -313,11 +305,13 @@ class TestVecOperations(unittest.TestCase):
     parallel.sync()
 
 
-
+    #@unittest.skip('testing others')
+    @unittest.skipIf(parallel.is_distributed(), 'serial only')
     def test_compute_inner_product_mat_types(self):
-        def get_vec_as_complex(path):
-            return (1 + 1j) * util.load_mat_text(path) 
-
+        class ArrayTextComplexHandle(V.ArrayTextHandle):
+            def get(self):
+                return (1 + 1j)*V.ArrayTextHandle.get(self)
+        
         num_row_vecs = 4
         num_col_vecs = 6
         num_states = 7
@@ -325,49 +319,32 @@ class TestVecOperations(unittest.TestCase):
         row_vec_path = join(self.test_dir, 'row_vec_%03d.txt')
         col_vec_path = join(self.test_dir, 'col_vec_%03d.txt')
         
-        # generate vecs and save to file, only do on proc 0
-        parallel.sync()
-        if parallel.is_rank_zero():
-            row_vec_mat = N.mat(N.random.random((num_states,
-                num_row_vecs)))
-            col_vec_mat = N.mat(N.random.random((num_states,
-                num_col_vecs)))
-            row_vec_paths = []
-            col_vec_paths = []
-            for vec_index in xrange(num_row_vecs):
-                path = row_vec_path % vec_index
-                util.save_mat_text(row_vec_mat[:,vec_index],path)
-                row_vec_paths.append(path)
-            for vec_index in xrange(num_col_vecs):
-                path = col_vec_path % vec_index
-                util.save_mat_text(col_vec_mat[:,vec_index],path)
-                col_vec_paths.append(path)
-        else:
-            row_vec_mat = None
-            col_vec_mat = None
-            row_vec_paths = None
-            col_vec_paths = None
-        if parallel.is_distributed():
-            row_vec_mat = parallel.comm.bcast(row_vec_mat, root=0)
-            col_vec_mat = parallel.comm.bcast(col_vec_mat, root=0)
-            row_vec_paths = parallel.comm.bcast(row_vec_paths, root=0)
-            col_vec_paths = parallel.comm.bcast(col_vec_paths, root=0)
-
-        # If number of rows/cols is 1, test case that a string, not
-        # a list, is passed in
-        if len(row_vec_paths) == 1:
-            row_vec_paths = row_vec_paths[0]
-        if len(col_vec_paths) == 1:
-            col_vec_paths = col_vec_paths[0]
+        # generate vecs and save to file
+        row_vec_mat = N.mat(N.random.random((num_states,
+            num_row_vecs)))
+        col_vec_mat = N.mat(N.random.random((num_states,
+            num_col_vecs)))
+        row_vec_paths = []
+        col_vec_paths = []
+        for vec_index in xrange(num_row_vecs):
+            path = row_vec_path % vec_index
+            util.save_array_text(row_vec_mat[:,vec_index], path)
+            row_vec_paths.append(path)
+        for vec_index in xrange(num_col_vecs):
+            path = col_vec_path % vec_index
+            util.save_array_text(col_vec_mat[:,vec_index], path)
+            col_vec_paths.append(path)
     
-        # Comptue inner product matrix and check type
-        for load, type in [(get_vec_as_complex, complex), 
-            (util.load_mat_text, float)]:
-            self.my_vec_ops.vec_defs.get_vec = load
+        # Compute inner product matrix and check type
+        for handle, type in [(V.ArrayTextHandle, float), 
+            (ArrayTextComplexHandle, complex)]:
+            row_vec_handles = [handle(path) for path in row_vec_paths] 
+            col_vec_handles = [handle(path) for path in col_vec_paths]
             inner_product_mat = self.my_vec_ops.compute_inner_product_mat(
-                row_vec_paths, col_vec_paths)
-            symm_inner_product_mat = self.my_vec_ops.\
-                compute_symmetric_inner_product_mat(row_vec_paths)
+                row_vec_handles, col_vec_handles)
+            symm_inner_product_mat = \
+                self.my_vec_ops.compute_symmetric_inner_product_mat(
+                    row_vec_handles)
             self.assertEqual(inner_product_mat.dtype, type)
             self.assertEqual(symm_inner_product_mat.dtype, type)
 
@@ -397,49 +374,42 @@ class TestVecOperations(unittest.TestCase):
                         num_row_vecs)))
                     col_vec_mat = N.mat(N.random.random((num_states,
                         num_col_vecs)))
-                    row_vec_paths = []
-                    col_vec_paths = []
+                    row_vec_handles = []
+                    col_vec_handles = []
                     for vec_index in xrange(num_row_vecs):
                         path = row_vec_path % vec_index
-                        util.save_mat_text(row_vec_mat[:,vec_index],path)
-                        row_vec_paths.append(path)
+                        util.save_array_text(row_vec_mat[:,vec_index],path)
+                        row_vec_handles.append(V.ArrayTextHandle(path))
                     for vec_index in xrange(num_col_vecs):
                         path = col_vec_path % vec_index
-                        util.save_mat_text(col_vec_mat[:,vec_index],path)
-                        col_vec_paths.append(path)
+                        util.save_array_text(col_vec_mat[:,vec_index],path)
+                        col_vec_handles.append(V.ArrayTextHandle(path))
                 else:
                     row_vec_mat = None
                     col_vec_mat = None
-                    row_vec_paths = None
-                    col_vec_paths = None
+                    row_vec_handles = None
+                    col_vec_handles = None
                 if parallel.is_distributed():
                     row_vec_mat = parallel.comm.bcast(row_vec_mat, root=0)
                     col_vec_mat = parallel.comm.bcast(col_vec_mat, root=0)
-                    row_vec_paths = parallel.comm.bcast(row_vec_paths, root=0)
-                    col_vec_paths = parallel.comm.bcast(col_vec_paths, root=0)
+                    row_vec_handles = parallel.comm.bcast(row_vec_handles,
+                        root=0)
+                    col_vec_handles = parallel.comm.bcast(col_vec_handles, 
+                        root=0)
 
-                # If number of rows/cols is 1, test case that a string, not
-                # a list, is passed in
-                if len(row_vec_paths) == 1:
-                    row_vec_paths = row_vec_paths[0]
-                if len(col_vec_paths) == 1:
-                    col_vec_paths = col_vec_paths[0]
+                # If number of rows/cols is 1, check case of passing a handle
+                if len(row_vec_handles) == 1:
+                    row_vec_handles = row_vec_handles[0]
+                if len(col_vec_handles) == 1:
+                    col_vec_handles = col_vec_handles[0]
 
-                # Path list may actually be a string, in which case covert to list
-                if not isinstance(row_vec_paths, list):
-                    row_vec_paths = [row_vec_paths]
-                if not isinstance(col_vec_paths, list):
-                    col_vec_paths = [col_vec_paths]
-    
                 # True inner product matrix
                 product_true = row_vec_mat.T * col_vec_mat
                
                 # Test paralleized computation.  
-                product_computed = \
-                    self.my_vec_ops.compute_inner_product_mat(row_vec_paths,
-                        col_vec_paths)
-                N.testing.assert_allclose(product_computed, 
-                    product_true)
+                product_computed = self.my_vec_ops.compute_inner_product_mat(
+                    row_vec_handles, col_vec_handles)
+                N.testing.assert_allclose(product_computed, product_true)
                         
 if __name__=='__main__':
     unittest.main()    

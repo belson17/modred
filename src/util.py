@@ -8,7 +8,7 @@ class UndefinedError(Exception):
     """Error when something has not been defined"""
     pass
     
-def save_mat_text(mat, filename, delimiter=' '):
+def save_array_text(array, filename, delimiter=' '):
     """Writes a 1D or 2D array or matrix to a text file
     
     Args:
@@ -37,41 +37,40 @@ def save_mat_text(mat, filename, delimiter=' '):
     with Matlab's ``load``.
     """
     # Must cast mat into an array. Also makes it memory C-contiguous.
-    mat_save = N.array(mat)
+    mat_save = N.array(array)
     
     # If one-dimensional array, then make a vector of many rows, 1 column
     if mat_save.ndim == 1:
         mat_save = mat_save.reshape((-1, 1))
     elif mat_save.ndim > 2:
-        raise RuntimeError('Cannot save a matrix with >2 dimensions')
+        raise RuntimeError('Cannot save an array with >2 dimensions')
 
     N.savetxt(filename, mat_save.view(float), delimiter=delimiter)
     
     
-def load_mat_text(filename, delimiter=' ', is_complex=False):
-    """Reads a text file, returns an *array*.
+def load_array_text(file_name, delimiter=' ', is_complex=False):
+    """Reads a text file, returns an array.
     
-    See ``save_mat_text`` for the format used by this function.
+    See ``save_array_text`` for the format used by this function.
     
     Kwargs:
         ``is_complex``: if the data saved is complex, then set  to ``True``.
     """
     # Check the version of numpy, requires version >= 1.6 for ndmin option
     if int(N.version.version[2]) < 6:
-        print ('Warning: load_mat_text requires numpy version >= 1.6 '
+        print ('Warning: load_array_text requires numpy version >= 1.6 '
             'but you are running version %s'%N.version.version)
-    
     if is_complex:
         dtype = complex
     else:
         dtype = float
-    mat = N.loadtxt(filename, delimiter=delimiter, ndmin=2)
-    if is_complex and mat.shape[1] % 2 != 0:
-        raise ValueError(('Cannot load complex data, file %s '%filename)+\
+    array = N.loadtxt(file_name, delimiter=delimiter, ndmin=2)
+    if is_complex and array.shape[1] % 2 != 0:
+        raise ValueError(('Cannot load complex data, file %s '%file_name)+\
             'has an odd number of columns. Maybe it has real data.')
             
     # Cast as an array, copies to make it C-contiguous memory
-    return N.array(mat.view(dtype))
+    return N.array(array.view(dtype))
 
 
 def inner_product(vec1, vec2):
@@ -302,7 +301,7 @@ def load_signals(signal_path, delimiter=' '):
       3 0.6 0.1
       
     """
-    raw_data = load_mat_text(signal_path, delimiter=delimiter)
+    raw_data = load_array_text(signal_path, delimiter=delimiter)
     num_signals = raw_data.shape[1] - 1
     if num_signals == 0:
         raise ValueError('Data must have at least two columns')

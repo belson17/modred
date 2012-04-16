@@ -10,11 +10,9 @@ import parallel as parallel_mod
 class VecOperations(object):
     """Responsible for low level operations on vecs.
 
-    Args:
-        vec_defs: Class or module w/functions ``get_vec``, ``put_vec``, and
-        ``inner_product``
-
     Kwargs:
+        inner_product: inner product callable
+        
         max_vecs_per_node: max number of vecs that can be in memory
         simultaneously per node.
         
@@ -30,10 +28,10 @@ class VecOperations(object):
     supplied. In some cases, loading from file is slower with more workers.
     """
     
-    def __init__(self, vec_defs, 
+    def __init__(self, inner_product=None, 
         max_vecs_per_node=None, verbose=True, print_interval=10):
         """Constructor. """
-        self.vec_defs = vec_defs
+        self.inner_product = inner_product
         self.verbose = verbose 
         self.print_interval = print_interval
         self.prev_print_time = 0.
@@ -57,7 +55,12 @@ class VecOperations(object):
         else:
             self.max_vecs_per_proc = self.max_vecs_per_node * \
                 self.parallel.get_num_nodes()/self.parallel.get_num_procs()
-    
+                
+    def _check_inner_product(self):
+        """Check that inner_product is defined"""
+        if self.inner_product is None:
+            raise RuntimeError('No inner product function/callable defined')
+        
     
     def print_msg(self, msg, output_channel=sys.stdout):
         """Print a message from rank 0 if verbose"""
@@ -65,70 +68,82 @@ class VecOperations(object):
             print >> output_channel, msg
 
 
-    def idiot_check(self, test_obj=None, test_obj_source=None):
-        """Checks that the user-supplied objects and functions work.
+    def idiot_check(self, test_vec_handle, max_handle_size=None):
+        """Check user-supplied vec handle and vec objects.
         
-        Kwargs (One of these *must* be supplied):
-            test_obj: a vector object
+        Args:
+            test_vec_handle: a vector handle.
+        
+        Kwargs:
+            max_size_handle: maximum size (in bytes) of vector handle.
+                Currently not used!
             
-            test_obj_source: a source which points to a vector object.
-                ``get_vec`` is passed this arg to retrieve a test vector.
-        
-        The add and mult functions are tested for the generic object.  This is 
-        not a complete testing, but catches some common mistakes.
+        The add and mult functions are tested for the generic object.  
+        This is not a complete testing, but catches some common mistakes.
+        Raises error if a check fails.
         
         TODO: Other things which could be tested:
             get/put doesn't effect other vecs (memory problems)
-            subtraction, division (currently not used in modred)
         """
+        self._check_inner_product()
         tol = 1e-10
-        if test_obj_source is not None:
-          test_obj = self.vec_defs.get_vec(test_obj_source)
-        if test_obj is None:
-            raise RuntimeError('Supply vec object or source for idiot check!')
-        obj_copy = copy.deepcopy(test_obj)
-        obj_copy_mag2 = self.vec_defs.inner_product(obj_copy, obj_copy)
+        
+        """
+        if max_handle_size is None:
+            max_handle_size = 5000
+        try:
+            getsizeof = sys.getsizeof
+        except:
+            def getsizeof(arg): return 0
+            self.print_msg('Warning: not checking size of vector handle')
+        
+        if getsizeof(test_vec_handle) > max_handle_size:
+            raise RuntimeError('Vector handle exceeded max size, %d bytes'%
+                max_handle_size)    
+        """
+        test_vec = test_vec_handle.get()
+        vec_copy = copy.deepcopy(test_vec)
+        vec_copy_mag2 = self.inner_product(vec_copy, vec_copy)
         
         factor = 2.
-        obj_mult = test_obj * factor
+        vec_mult = test_vec * factor
         
-        if abs(self.vec_defs.inner_product(obj_mult, obj_mult) -
-                obj_copy_mag2 * factor**2) > tol:
-            raise ValueError('Multiplication of vec/mode object failed')
+        if abs(self.inner_product(vec_mult, vec_mult) -
+                vec_copy_mag2 * factor**2) > tol:
+            raise ValueError('Multiplication of vec/mode vecect failed')
         
-        if abs(self.vec_defs.inner_product(test_obj, test_obj) - 
-                obj_copy_mag2) > tol:  
-            raise ValueError('Original object modified by multiplication!') 
-        obj_add = test_obj + test_obj
-        if abs(self.vec_defs.inner_product(obj_add, obj_add) - obj_copy_mag2 * 4) > tol:
+        if abs(self.inner_product(test_vec, test_vec) - 
+                vec_copy_mag2) > tol:  
+            raise ValueError('Original vecect modified by multiplication!') 
+        vec_add = test_vec + test_vec
+        if abs(self.inner_product(vec_add, vec_add) - vec_copy_mag2 * 4) > tol:
             raise ValueError('Addition does not give correct result')
         
-        if abs(self.vec_defs.inner_product(test_obj, test_obj) - obj_copy_mag2) > tol:  
-            raise ValueError('Original object modified by addition!')       
+        if abs(self.inner_product(test_vec, test_vec) - vec_copy_mag2) > tol:  
+            raise ValueError('Original vecect modified by addition!')       
         
-        obj_add_mult = test_obj * factor + test_obj
-        if abs(self.vec_defs.inner_product(obj_add_mult, obj_add_mult) - obj_copy_mag2 *
+        vec_add_mult = test_vec * factor + test_vec
+        if abs(self.inner_product(vec_add_mult, vec_add_mult) - vec_copy_mag2 *
                 (factor + 1) ** 2) > tol:
             raise ValueError('Multiplication and addition of vec/mode are '+\
                 'inconsistent')
         
-        if abs(self.vec_defs.inner_product(test_obj, test_obj) - obj_copy_mag2) > tol:  
-            raise ValueError('Original object modified by combo of mult/add!') 
+        if abs(self.inner_product(test_vec, test_vec) - vec_copy_mag2) > tol:  
+            raise ValueError('Original vecect modified by combo of mult/add!') 
         
-        #objSub = 3.5*test_obj - test_obj
-        #N.testing.assert_array_almost_equal(objSub,2.5*test_obj)
-        #N.testing.assert_array_almost_equal(test_obj,obj_copy)
+        #vecSub = 3.5*test_vec - test_vec
+        #N.testing.assert_array_almost_equal(vecSub,2.5*test_vec)
+        #N.testing.assert_array_almost_equal(test_vec,vec_copy)
         self.print_msg('Passed the idiot check')
-        return True
 
 
-    def compute_inner_product_mat(self, row_vec_sources, col_vec_sources):
+    def compute_inner_product_mat(self, row_vec_handles, col_vec_handles):
         """Computes a matrix of inner products and returns it.
         
         Args:
-            row_vec_sources: list of row vec sources (BPOD adjoint vecs, "Y")
+            row_vec_handles: list of row vec handles (e.g. BPOD adjoints, "Y")
           
-            col_vec_sources: list of column vec sources (BPOD direct vecs, "X")
+            col_vec_handles: list of column vec handles (e.g. BPOD directs, "X")
 
         Within this method, the vecs are retrieved in a memory-efficient
         chunks so that they are not all in memory at once.
@@ -190,20 +205,20 @@ class VecOperations(object):
         It is good to use all available processors, even if it lowers max.
         However, sometimes simultaneous loads actually makes each load slow.     
         """
-             
-        if not isinstance(row_vec_sources, list):
-            row_vec_sources = [row_vec_sources]
-        if not isinstance(col_vec_sources, list):
-            col_vec_sources = [col_vec_sources]
+        self._check_inner_product()
+        if not isinstance(row_vec_handles, list):
+            row_vec_handles = [row_vec_handles]
+        if not isinstance(col_vec_handles, list):
+            col_vec_handles = [col_vec_handles]
             
-        num_cols = len(col_vec_sources)
-        num_rows = len(row_vec_sources)
+        num_cols = len(col_vec_handles)
+        num_rows = len(row_vec_handles)
 
         if num_rows > num_cols:
             transpose = True
-            temp = row_vec_sources
-            row_vec_sources = col_vec_sources
-            col_vec_sources = temp
+            temp = row_vec_handles
+            row_vec_handles = col_vec_handles
+            col_vec_handles = temp
             temp = num_rows
             num_rows = num_cols
             num_cols = temp
@@ -212,10 +227,10 @@ class VecOperations(object):
        
         # Compute a single inner product in order to determine matrix datatype
         # (real or complex) and to estimate the amount of time the IPs will take.
-        row_vec = self.vec_defs.get_vec(row_vec_sources[0])
-        col_vec = self.vec_defs.get_vec(col_vec_sources[0])
+        row_vec = row_vec_handles[0].get()
+        col_vec = col_vec_handles[0].get()
         start_time = T.time()
-        IP = self.vec_defs.inner_product(row_vec, col_vec)
+        IP = self.inner_product(row_vec, col_vec)
         IP_type = type(IP)
         end_time = T.time()
 
@@ -268,8 +283,8 @@ class VecOperations(object):
                     row_get_index*num_rows_per_proc_chunk, row_tasks[rank][-1]+1)
                 end_row_index = min(row_tasks[rank][-1]+1, 
                     start_row_index + num_rows_per_proc_chunk)
-                row_vecs = [self.vec_defs.get_vec(row_vec_source) for row_vec_source in 
-                    row_vec_sources[start_row_index:end_row_index]]
+                row_vecs = [row_vec_handle.get() for row_vec_handle in 
+                    row_vec_handles[start_row_index:end_row_index]]
             else:
                 row_vecs = []
 
@@ -293,8 +308,8 @@ class VecOperations(object):
                     # This is all that is called when in serial, loop iterates
                     # once.
                     if pass_index == 0:
-                        col_vecs = [self.vec_defs.get_vec(col_source) 
-                            for col_source in col_vec_sources[start_col_index:
+                        col_vecs = [col_handle.get() 
+                            for col_handle in col_vec_handles[start_col_index:
                             end_col_index]]
                     else:
                         # Determine with whom to communicate
@@ -325,7 +340,7 @@ class VecOperations(object):
                         for row_index in xrange(start_row_index, end_row_index):
                             for col_vec_index, col_vec in enumerate(col_vecs):
                                 IP_mat_chunk[row_index, col_indices[
-                                    col_vec_index]] = self.vec_defs.inner_product(
+                                    col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - start_row_index],
                                     col_vec)
                     
@@ -345,8 +360,7 @@ class VecOperations(object):
             
         # Assign these chunks into IP_mat.
         if self.parallel.is_distributed():
-            IP_mat = self.parallel.custom_comm.allreduce( 
-                IP_mat_chunk)
+            IP_mat = self.parallel.custom_comm.allreduce(IP_mat_chunk)
         else:
             IP_mat = IP_mat_chunk 
 
@@ -357,7 +371,7 @@ class VecOperations(object):
         return IP_mat
 
         
-    def compute_symmetric_inner_product_mat(self, vec_sources):
+    def compute_symmetric_inner_product_mat(self, vec_handles):
         """Computes an upper-triangular chunk of a symmetric matrix of inner 
         products.
         
@@ -367,12 +381,11 @@ class VecOperations(object):
         TODO: JON, write detailed documentation similar to 
         ``compute_inner_product_mat``.
         """
-        # Remove this check to allow for any vec_sources?
-        if not isinstance(vec_sources, list) and not isinstance(vec_sources, N.array):
-            vec_sources = [vec_sources]
+        self._check_inner_product()
+        if not isinstance(vec_handles, list):
+            vec_handles = [vec_handles]
  
-        num_vecs = len(vec_sources)
-        
+        num_vecs = len(vec_handles)        
         
         # num_cols_per_chunk is the number of cols each proc gets at once.  
         # Columns are retrieved if the matrix must be broken up into sets of 
@@ -393,8 +406,8 @@ class VecOperations(object):
                 'redundant "get_vecs"s and get a big speedup.') % num_row_chunks    
         
         # Compute a single inner product in order to determin matrix datatype
-        test_vec = self.vec_defs.get_vec(vec_sources[0])
-        IP = self.vec_defs.inner_product(test_vec, test_vec)
+        test_vec = vec_handles[0].get()
+        IP = self.inner_product(test_vec, test_vec)
         IP_type = type(IP)
         del test_vec
         
@@ -402,8 +415,7 @@ class VecOperations(object):
         # fill in elements of a num_rows x num_rows sized matrix, rather than
         # assembling small chunks. This is done for the triangular portions. For
         # the rectangular portions, the inner product mat is filled in directly.
-        IP_mat_chunk = N.mat(N.zeros((num_vecs, num_vecs), dtype=\
-            IP_type))
+        IP_mat_chunk = N.mat(N.zeros((num_vecs, num_vecs), dtype=IP_type))
         for start_row_index in xrange(0, num_vecs, num_rows_per_chunk):
             end_row_index = min(num_vecs, start_row_index + num_rows_per_chunk)
             proc_row_tasks_all = self.parallel.find_assignments(range(
@@ -412,7 +424,7 @@ class VecOperations(object):
                 proc_row_tasks_all if task != []])
             proc_row_tasks = proc_row_tasks_all[self.parallel.get_rank()]
             if len(proc_row_tasks)!=0:
-                row_vecs = [self.vec_defs.get_vec(source) for source in vec_sources[
+                row_vecs = [vec_handle.get() for vec_handle in vec_handles[
                     proc_row_tasks[0]:proc_row_tasks[-1] + 1]]
             else:
                 row_vecs = []
@@ -428,14 +440,14 @@ class VecOperations(object):
                 for row_index in xrange(proc_row_tasks[0], 
                     proc_row_tasks[-1] + 1):
                     # Diagonal term
-                    IP_mat_chunk[row_index, row_index] = self.vec_defs.\
+                    IP_mat_chunk[row_index, row_index] = self.\
                         inner_product(row_vecs[row_index - proc_row_tasks[
                         0]], row_vecs[row_index - proc_row_tasks[0]])
                         
                     # Off-diagonal terms
                     for col_index in xrange(row_index + 1, proc_row_tasks[
                         -1] + 1):
-                        IP_mat_chunk[row_index, col_index] = self.vec_defs.\
+                        IP_mat_chunk[row_index, col_index] = self.\
                             inner_product(row_vecs[row_index -\
                             proc_row_tasks[0]], row_vecs[col_index -\
                             proc_row_tasks[0]])
@@ -510,7 +522,7 @@ class VecOperations(object):
                             my_row_indices[-1] + 1):
                             for col_vec_index, col_vec in enumerate(col_vecs):
                                 IP_mat_chunk[row_index, my_col_indices[
-                                    col_vec_index]] = self.vec_defs.inner_product(
+                                    col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - my_row_indices[0]],
                                     col_vec)
                                    
@@ -543,8 +555,8 @@ class VecOperations(object):
                     # once.
                     if num_passes == 0:
                         if len(col_indices) > 0:
-                            col_vecs = [self.vec_defs.get_vec(col_source) \
-                                for col_source in vec_sources[col_indices[0]:\
+                            col_vecs = [col_handle.get() \
+                                for col_handle in vec_handles[col_indices[0]:\
                                     col_indices[-1] + 1]]
                         else:
                             col_vecs = []
@@ -580,7 +592,7 @@ class VecOperations(object):
                             proc_row_tasks[-1]+1):
                             for col_vec_index, col_vec in enumerate(col_vecs):
                                 IP_mat_chunk[row_index, col_indices[
-                                    col_vec_index]] = self.vec_defs.inner_product(
+                                    col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - proc_row_tasks[0]],
                                     col_vec)
             # Completed a chunk of rows and all columns on all processors.
@@ -613,44 +625,38 @@ class VecOperations(object):
         return IP_mat
         
         
-    def _compute_modes(self, mode_nums, mode_dests, vec_sources, vec_coeff_mat,
+    def _compute_modes(self, mode_nums, mode_handles, vec_handles, vec_coeff_mat,
         index_from=0):
         """Compute modes from vectors.
         
         See ``compute_modes`` and ``compute_modes_and return`` for details.
         
         Returns:
-            a list of modes or whatever is output by ``put_vec``.
-        """
-        if self.vec_defs.put_vec is None:
-            raise UndefinedError('put_vec is undefined')
-                    
-        if isinstance(mode_nums, int):
+            a list of modes or whatever is output by ``mode_handle.put()``.
+        """                    
+        if not isinstance(mode_nums, list):
             mode_nums = [mode_nums]
-        if not isinstance(vec_sources, list) and not \
-            isinstance(vec_sources, N.ndarray):
-            vec_sources = [vec_sources]
-        if not isinstance(mode_dests, list):
-            mode_dests = [mode_dests]
+        if not isinstance(mode_handles, list):
+            mode_handles = [mode_handles]
         
         num_modes = len(mode_nums)
-        num_vecs = len(vec_sources)
+        num_vecs = len(vec_handles)
         
         if num_modes > num_vecs:
-            raise ValueError(('Cannot compute more modes (%d) than number of ' +\
+            raise ValueError(('Cannot compute more modes (%d) than number of '
                 'vecs(%d)')%(num_modes, num_vecs))
         
-        if num_modes > len(mode_dests):
+        if num_modes > len(mode_handles):
             raise ValueError('More mode numbers than mode destinations')
-        elif num_modes < len(mode_dests):
-            print ('Warning: Fewer mode numbers (%d) than mode destinations(%d),'+
+        elif num_modes < len(mode_handles):
+            print ('Warning: Fewer mode numbers (%d) than mode destinations(%d),'
                 ' some mode destinations will not be used')%(
-                    num_modes, len(mode_dests))
-            mode_dests = mode_dests[:num_modes] # deepcopy?
+                    num_modes, len(mode_handles))
+            mode_handles = mode_handles[:num_modes] # deepcopy?
         
         for mode_num in mode_nums:
             if mode_num < index_from:
-                raise ValueError('Cannot compute if mode number is less than '+\
+                raise ValueError('Cannot compute if mode number is less than '
                     'index_from')
             elif mode_num-index_from > vec_coeff_mat.shape[1]:
                 raise ValueError('Mode index, %d, is greater '
@@ -661,11 +667,11 @@ class VecOperations(object):
         mode_nums_from_zero = [mode_num-index_from for mode_num in mode_nums]
         vec_coeff_mat_reordered = vec_coeff_mat[:,mode_nums_from_zero]
         
-        return self._lin_combine(mode_dests, vec_sources, vec_coeff_mat_reordered)
+        return self._lin_combine(mode_handles, vec_handles, vec_coeff_mat_reordered)
         self.parallel.sync() # ensure that all procs leave function at same time
     
     
-    def compute_modes(self, mode_nums, mode_dests, vec_sources, vec_coeff_mat,
+    def compute_modes(self, mode_nums, mode_handles, vec_handles, vec_coeff_mat,
         index_from=0):
         """A common method to compute modes from vecs and ``put_vec`` them.
                 
@@ -675,13 +681,14 @@ class VecOperations(object):
               The mode numbers need not be sorted,
               and sorting does not increase efficiency. 
               
-          mode_dests: destination for modes, passed to ``put_vec``
+          mode_handles: list of handles for modes (each requires ``put``)
           
-          vec_sources: list sources from which vecs are retrieved w/ ``get_vec``
+          vec_handles: list of handles for vectors (each requires ``get``)
           
-          vec_coeff_mat: Matrix of coefficients for constructing modes. The kth
-              column contains the coefficients for computing the kth index mode, 
-              ie index_from+k mode number. ith row contains coefficients to 
+          vec_coeff_mat: Matrix of coefficients for constructing modes. 
+              The kth column contains the coefficients for computing the kth 
+              index mode, 
+              i.e. index_from+k mode number. ith row contains coefficients to 
               multiply corresponding to vec i.
               
         Kwargs:
@@ -697,12 +704,12 @@ class VecOperations(object):
         Calls lin_combine_fiels with sum_vecs as the modes and the
         basis_vecs as the vecs.
         """
-        self._compute_modes(mode_nums, mode_dests, vec_sources, vec_coeff_mat,
+        self._compute_modes(mode_nums, mode_handles, vec_handles, vec_coeff_mat,
             index_from)
     
     
-    def compute_modes_and_return(self, mode_nums, vec_sources, vec_coeff_mat,
-        index_from=0):
+    def compute_modes_and_return(self, mode_nums, vec_handles,
+        vec_coeff_mat, index_from=0):
         """Compute modes from vecs and return them.
 
         See ``compute_modes`` for details.
@@ -712,50 +719,47 @@ class VecOperations(object):
         
         In parallel, each MPI worker has the full list of outputs.
         """
-        dummy_mode_dests = [None]*len(mode_nums)
-        return self._compute_modes(mode_nums, dummy_mode_dests, vec_sources, 
-            vec_coeff_mat, index_from)
+        import vectors as V
+        in_memory_mode_handles = [V.InMemoryHandle() for i in mode_nums]
+        return self._compute_modes(mode_nums, in_memory_mode_handles, 
+            vec_handles, vec_coeff_mat, index_from)
     
     
     
     
     
-    def _lin_combine(self, sum_vec_dests, basis_vec_sources, vec_coeff_mat):
+    def _lin_combine(self, sum_vec_handles, basis_vec_handles, vec_coeff_mat):
         """Linearly combines basis vecs.
         
-        Returns output of ``put_vec`` calls on the resulting sum vecs.
+        Returns output of ``put`` calls on the resulting sum vec handles.
         See ``lin_combine`` for full documentation.
-        """
-        if self.vec_defs.put_vec is None:
-            raise util.UndefinedError('put_vec is undefined')
-                   
-        if not isinstance(sum_vec_dests, list):
-            sum_vec_dests = [sum_vec_dests]
-        if not isinstance(basis_vec_sources, list) and \
-            not isinstance(basis_vec_sources, N.ndarray):
-            basis_vec_sources = [basis_vec_sources]
-        num_bases = len(basis_vec_sources)
-        num_sums = len(sum_vec_dests)
+        """                   
+        if not isinstance(sum_vec_handles, list):
+            sum_vec_handles = [sum_vec_handles]
+        if not isinstance(basis_vec_handles, list):
+            basis_vec_handles = [basis_vec_handles]
+        num_bases = len(basis_vec_handles)
+        num_sums = len(sum_vec_handles)
         if num_bases > vec_coeff_mat.shape[0]:
-            raise ValueError(('Coeff mat has fewer rows %d than num of basis sources %d'\
+            raise ValueError(('Coeff mat has fewer rows %d than num of basis handles %d'\
                 %(vec_coeff_mat.shape[0],num_bases)))
                 
         if num_sums > vec_coeff_mat.shape[1]:
             raise ValueError(('Coeff matrix has fewer cols %d than num of ' +\
-                'output sources %d')%(vec_coeff_mat.shape[1],num_sums))
+                'output handles %d')%(vec_coeff_mat.shape[1],num_sums))
                                
-        if num_bases < vec_coeff_mat.shape[0] and self.parallel.is_rank_zero():
-            print 'Warning: fewer bases than cols in the coeff matrix'
-            print '  some rows of coeff matrix will not be used'
-        if num_sums < vec_coeff_mat.shape[1] and self.parallel.is_rank_zero():
-            print 'Warning: fewer outputs than rows in the coeff matrix'
-            print '  some cols of coeff matrix will not be used'
+        if num_bases < vec_coeff_mat.shape[0]:
+            self.print_msg('Warning: fewer bases than cols in the coeff matrix'
+                '  some rows of coeff matrix will not be used')
+        if num_sums < vec_coeff_mat.shape[1]:
+            self.print_msg('Warning: fewer outputs than rows in the coeff matrix'
+                '  some cols of coeff matrix will not be used')
         
-        # List of all the outputs from put_vec
-        put_vec_outputs = []
+        # List of all the outputs from put
+        put_outputs = []
         
-        # convencience
-        rank = self.parallel.get_rank()        
+        # convenience
+        rank = self.parallel.get_rank()
 
         # num_bases_per_proc_chunk is the number of bases each proc gets at once        
         num_bases_per_proc_chunk = 1
@@ -769,7 +773,8 @@ class VecOperations(object):
         max_num_basis_tasks = max([len(tasks) for tasks in basis_tasks])
         max_num_sum_tasks = max([len(tasks) for tasks in sum_tasks])
         
-        # These variables are the number of iters through loops that retrieve ("get")
+        # These variables are the number of iters through loops that retrieve 
+        # ("get")
         # and "put" basis and sum vecs.
         num_basis_get_iters = int(N.ceil(max_num_basis_tasks*1./num_bases_per_proc_chunk))
         num_sum_put_iters = int(N.ceil(max_num_sum_tasks*1./num_sums_per_proc_chunk))
@@ -812,13 +817,13 @@ class VecOperations(object):
                     # This is all that is called when in serial, loop iterates once.
                     if pass_index == 0:
                         if len(basis_indices) > 0:
-                            basis_vecs = [self.vec_defs.get_vec(basis_source) \
-                                for basis_source in basis_vec_sources[
+                            basis_vecs = [basis_handle.get() \
+                                for basis_handle in basis_vec_handles[
                                     basis_indices[0]:basis_indices[-1]+1]]
                         else:
                             basis_vecs = []
                     else:
-                        # Figure out whom to communicate with
+                        # Figure out with whom to communicate
                         source = (self.parallel.get_rank()-1) % \
                             self.parallel.get_num_procs()
                         dest = (self.parallel.get_rank()+1) % \
@@ -855,46 +860,43 @@ class VecOperations(object):
 
             # Completed this set of sum vecs, puts them to memory or file
             for sum_index in xrange(start_sum_index, end_sum_index):
-                put_vec_outputs.append(
-                    self.vec_defs.put_vec(sum_layers[sum_index-start_sum_index],
-                        sum_vec_dests[sum_index]))
+                put_outputs.append(sum_vec_handles[sum_index].put(
+                    sum_layers[sum_index-start_sum_index]))
             del sum_layers
             if (T.time() - self.prev_print_time) > self.print_interval:    
                 self.print_msg('Completed %.1f%% of sum vecs' %
-                    (end_sum_index*100./max_num_sum_tasks), 
-                    output_channel = sys.stderr)
+                    (end_sum_index*100./max_num_sum_tasks))
                 self.prev_print_time = T.time()
             
         # Have each processor gather all of the put_vec_outputs.
         # put_vec_outputs_list is a list of lists, each sublist is the
         # put_vec_outputs of each processor, in order by rank.
         if self.parallel.is_distributed():
-            put_vec_outputs_list = self.parallel.comm.allgather(put_vec_outputs)
+            put_outputs_list = self.parallel.comm.allgather(put_outputs)
             # all_put_vec_outputs is a 1D list of all processors' put_vec_outputs.
-            all_put_vec_outputs = []
-            for proc_put_vec_outputs in put_vec_outputs_list:
-                all_put_vec_outputs.extend(proc_put_vec_outputs)
+            all_put_outputs = []
+            for proc_put_outputs in put_outputs_list:
+                all_put_outputs.extend(proc_put_outputs)
         else:
-            all_put_vec_outputs = put_vec_outputs
-        return all_put_vec_outputs
+            all_put_outputs = put_outputs
+        return all_put_outputs
         # ensure that all workers leave function at same time
         #self.parallel.sync() 
         
 
-    def lin_combine(self, sum_vec_dests, basis_vec_sources, vec_coeff_mat):
-        """Linearly combines the basis vecs and calls ``put_vec`` on result.
+    def lin_combine(self, sum_vec_handles, basis_vec_handles, vec_coeff_mat):
+        """Linearly combines the basis vecs and calls ``put`` on result.
         
         Args:
-            sum_vec_dests: destinations to which the linear combinations
-            are ``self.vec_defs.put_vec`` ed.
+            sum_vec_handles: list of handles of the sum vectors.
                 
-            basis_vec_sources: sources from which the basis vecs 
-            are ``get_vec`` ed.
+            basis_vec_handles: list of handles from which basis vecs are 
+            retrieved
                 
-            vec_coeff_mat: matrix with each row corresponding to a basis vec
-                and each column to a sum (lin. comb.) vec.
+            vec_coeff_mat: matrix with rows corresponding to a basis vecs
+                and columns to sum (lin. comb.) vecs.
                 The rows and columns correspond, by index,
-                to the lists basis_vec_sources and sum_vec_dests.
+                to the lists basis_vec_handles and sum_vec_handles.
                 ``sums = basis * vec_coeff_mat``
 
         Each processor retrieves a subset of the basis vecs to compute as many
@@ -903,7 +905,7 @@ class VecOperations(object):
         as many modes as it can fit in memory. The layers from all procs are
         then
         summed together to form the full outputs. The output sum_vecs 
-        are then ``self.vec_defs.put_vec`` ed.
+        are then ``put`` ed.
         
         Scaling is:
         
@@ -916,29 +918,30 @@ class VecOperations(object):
         Where n_s is number of sum vecs, n_b is number of basis vecs,
         n_p is number of processors, max = max_vecs_per_node.
         """
-        self._lin_combine(sum_vec_dests, basis_vec_sources, vec_coeff_mat)
+        self._lin_combine(sum_vec_handles, basis_vec_handles, vec_coeff_mat)
     
     
-    def lin_combine_and_return(self, basis_vec_sources, vec_coeff_mat):
-        """Linearly combines the basis vecs and returns on result.
+    def lin_combine_and_return(self, basis_vec_handles, vec_coeff_mat):
+        """Linearly combines the basis vecs and returns result.
         
-        For args description, see ``lin_combine``, except returns...
+        For args description, see ``lin_combine``, except returns.
         
         Returns:
-            a list of ``sum_vecs``, (or whatever is output by ``put_vecs``). 
+            a list of linearly combined vectors.
         """
-        dummy_sum_vec_dests = [None]*vec_coeff_mat.shape[1]
-        output= self._lin_combine(dummy_sum_vec_dests, basis_vec_sources,
+        in_memory_vec_handles = [V.InMemoryHandle() 
+            for i in range(vec_coeff_mat.shape[1])]
+        output_vecs = self._lin_combine(in_memory_vec_handles, basis_vec_handles,
             vec_coeff_mat)
+        return output_vecs
     
          
 
     def __eq__(self, other):
         """Equal?"""
-        equal = (self.vec_defs == other.vec_defs and 
+        return (self.inner_product == other.inner_product and 
             self.verbose == other.verbose)
-        return equal
-
+        
     def __ne__(self, other):
         return not (self.__eq__(other))
 

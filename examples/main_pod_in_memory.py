@@ -17,6 +17,7 @@ available to be imported.
 """
 import numpy as N
 import modred
+import vectors as V
 
 def main(verbose=True, make_plots=True):
     num_states = 50
@@ -24,16 +25,17 @@ def main(verbose=True, make_plots=True):
     
     vecs = [N.random.random((num_states)) for i in range(num_vecs)]
     
-    my_POD = modred.POD(modred.vecdefs.ArrayInMemoryUniform(), 
-        max_vecs_per_node=1000, verbose=verbose)
-    sing_vecs, sing_vals = my_POD.compute_decomp_and_return(vecs)
+    my_POD = modred.POD(inner_product=N.vdot, verbose=verbose)
+    vec_handles = [V.InMemoryHandle(v) for v in vecs]
+    sing_vecs, sing_vals = my_POD.compute_decomp_and_return(
+        vec_handles)
 
     # Want to capture 90% of the energy, so:
     energy = 0.9
     sing_vals_norm = sing_vals/N.sum(sing_vals)
     num_modes = N.nonzero(N.cumsum(sing_vals_norm) > energy)[0][0] + 1
 
-    modes = my_POD.compute_modes(range(1, 1+num_modes), [None]*num_modes)
+    modes = my_POD.compute_modes_and_return(range(num_modes))
     
     # Make plots of leading modes if have matplotlib
     if make_plots:

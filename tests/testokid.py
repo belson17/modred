@@ -42,8 +42,8 @@ class TestOKID(unittest.TestCase):
     
     def test_OKID(self):
         for case in ['SISO', 'SIMO', 'MISO', 'MIMO']:
-            inputs = util.load_mat_text(join(join(self.test_dir, case), 'inputs.txt'))
-            outputs = util.load_mat_text(join(join(self.test_dir, case), 'outputs.txt'))
+            inputs = util.load_array_text(join(join(self.test_dir, case), 'inputs.txt'))
+            outputs = util.load_array_text(join(join(self.test_dir, case), 'outputs.txt'))
             (num_inputs, nt) = inputs.shape
             (num_outputs, nt2) = outputs.shape
             
@@ -51,17 +51,17 @@ class TestOKID(unittest.TestCase):
             
             Markovs_true = N.zeros((num_outputs, num_inputs, nt))
             
-            temp = util.load_mat_text(join(join(self.test_dir, case),
+            temp = util.load_array_text(join(join(self.test_dir, case),
                 'Markovs_Matlab_output1.txt'))
             temp = temp.reshape((num_inputs, -1))
             num_Markovs_OKID = temp.shape[1]
             Markovs_Matlab = N.zeros((num_outputs, num_inputs, num_Markovs_OKID))
                     
             for iOut in range(num_outputs):
-                Markovs_Matlab[iOut] = util.load_mat_text(join(join(
+                Markovs_Matlab[iOut] = util.load_array_text(join(join(
                     self.test_dir, case), 'Markovs_Matlab_output%d.txt'%(iOut+1))).reshape(
                         (num_inputs,num_Markovs_OKID))
-                Markovs_true[iOut] = util.load_mat_text(join(join(
+                Markovs_true[iOut] = util.load_array_text(join(join(
                     self.test_dir, case), 'Markovs_true_output%d.txt'%(iOut+1))).reshape(
                         (num_inputs,nt))
             

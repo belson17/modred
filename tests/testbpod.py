@@ -15,8 +15,7 @@ parallel = parallel_mod.default_instance
 from bpod import BPOD
 from vecoperations import VecOperations
 import util
-from vecdefs import ArrayTextUniform, ArrayInMemoryUniform
-
+import vectors as V
 
 class TestBPOD(unittest.TestCase):
     """ Test the BPOD class methods """
@@ -28,16 +27,13 @@ class TestBPOD(unittest.TestCase):
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():        
             os.mkdir(self.test_dir)
         
-        self.maxDiff = 1000
         self.mode_nums =[2, 4, 3, 6, 9, 8, 10, 11, 30]
         self.num_direct_vecs = 40
         self.num_adjoint_vecs = 45
         self.num_states = 100
         self.index_from = 2
         
-        self.my_vec_defs = ArrayTextUniform()
-        self.my_BPOD = BPOD(self.my_vec_defs, 
-            put_mat=util.save_mat_text, verbose=False)
+        self.my_BPOD = BPOD(inner_product=N.vdot, verbose=False)
         self.generate_data_set()
         parallel.sync()
 
@@ -52,35 +48,25 @@ class TestBPOD(unittest.TestCase):
         self.direct_vec_path = join(self.test_dir, 'direct_vec_%03d.txt')
         self.adjoint_vec_path = join(self.test_dir, 'adjoint_vec_%03d.txt')
 
-        self.direct_vec_paths=[]
-        self.adjoint_vec_paths=[]
+        self.direct_vec_handles = [V.ArrayTextHandle(self.direct_vec_path%i) 
+            for i in range(self.num_direct_vecs)]
+        self.adjoint_vec_handles = [V.ArrayTextHandle(self.adjoint_vec_path%i) 
+            for i in range(self.num_adjoint_vecs)]
         
         if parallel.is_rank_zero():
             self.direct_vec_mat = N.mat(N.random.random((self.num_states,
                 self.num_direct_vecs)))
             self.adjoint_vec_mat = N.mat(N.random.random((self.num_states,
                 self.num_adjoint_vecs))) 
+            for i, handle in enumerate(self.direct_vec_handles):
+                handle.put(self.direct_vec_mat[:,i])
+            for i, handle in enumerate(self.adjoint_vec_handles):
+                handle.put(self.adjoint_vec_mat[:,i])
             
-            for direct_vec_index in range(self.num_direct_vecs):
-                util.save_mat_text(self.direct_vec_mat[:,direct_vec_index],
-                    self.direct_vec_path%direct_vec_index)
-                self.direct_vec_paths.append(self.direct_vec_path % 
-                    direct_vec_index)
-            for adjoint_vec_index in range(self.num_adjoint_vecs):
-                util.save_mat_text(self.adjoint_vec_mat[:,adjoint_vec_index],
-                  self.adjoint_vec_path%adjoint_vec_index)
-                self.adjoint_vec_paths.append(self.adjoint_vec_path %
-                    adjoint_vec_index)
         else:
-            self.direct_vec_paths=None
-            self.adjoint_vec_paths=None
             self.direct_vec_mat = None
             self.adjoint_vec_mat = None
         if parallel.is_distributed():
-            self.direct_vec_paths = parallel.comm.bcast(
-                self.direct_vec_paths, root=0)
-            self.adjoint_vec_paths = parallel.comm.bcast(
-                self.adjoint_vec_paths, root=0)
             self.direct_vec_mat = parallel.comm.bcast(
                 self.direct_vec_mat, root=0)
             self.adjoint_vec_mat = parallel.comm.bcast(
@@ -88,7 +74,7 @@ class TestBPOD(unittest.TestCase):
          
         self.hankel_mat_true = self.adjoint_vec_mat.T * self.direct_vec_mat
         
-        #Do the SVD on all procs.
+        # Do the SVD on all procs.
         self.L_sing_vecs_true, self.sing_vals_true, self.R_sing_vecs_true = \
             util.svd(self.hankel_mat_true)
         self.direct_mode_mat = self.direct_vec_mat * \
@@ -98,48 +84,46 @@ class TestBPOD(unittest.TestCase):
             N.mat(self.L_sing_vecs_true) *\
             N.mat(N.diag(self.sing_vals_true ** -0.5))
         
-        #self.my_BPOD.direct_vec_paths=self.direct_vec_paths
-        #self.my_BPOD.adjoint_vec_paths=self.adjoint_vec_paths
+        #self.my_BPOD.direct_vec_handles=self.direct_vec_handles
+        #self.my_BPOD.adjoint_vec_handles=self.adjoint_vec_handles
         
         
         
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         
-        data_members_default = {'put_mat': util.save_mat_text, 'get_mat':
-             util.load_mat_text, 'parallel': parallel_mod.default_instance,
+        data_members_default = {'put_mat': util.save_array_text, 'get_mat':
+             util.load_array_text, 'parallel': parallel_mod.default_instance,
             'verbose': False, 'L_sing_vecs': None, 'R_sing_vecs': None,
-            'sing_vals': None, 'direct_vec_sources': None,
-            'adjoint_vec_sources': None, 'hankel_mat': None,
-            'vec_ops': VecOperations(self.my_vec_defs, verbose=False)}
+            'sing_vals': None, 'direct_vec_handles': None,
+            'adjoint_vec_handles': None, 'hankel_mat': None,
+            'vec_ops': VecOperations(verbose=False)}
         
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
-        self.assertEqual(util.get_data_members(BPOD(self.my_vec_defs, 
-            verbose=False)), data_members_default)
+        self.assertEqual(util.get_data_members(BPOD(verbose=False)),
+            data_members_default)
         
         def my_load(fname): pass
         def my_save(data, fname): pass 
         
-        my_BPOD = BPOD(self.my_vec_defs, verbose=False)
+        my_BPOD = BPOD(verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_ops'] = VecOperations(self.my_vec_defs,
-            verbose=False)
+        data_members_modified['vec_ops'] = VecOperations(verbose=False)
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
        
-        my_BPOD = BPOD(self.my_vec_defs, get_mat=my_load, verbose=False)
+        my_BPOD = BPOD(get_mat=my_load, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['get_mat'] = my_load
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
  
-        my_BPOD = BPOD(self.my_vec_defs, put_mat=my_save, verbose=False)
+        my_BPOD = BPOD(put_mat=my_save, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['put_mat'] = my_save
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
         
         max_vecs_per_node = 500
-        my_BPOD = BPOD(self.my_vec_defs, max_vecs_per_node=max_vecs_per_node,
-            verbose=False)
+        my_BPOD = BPOD(max_vecs_per_node=max_vecs_per_node, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_ops'].max_vecs_per_node =\
             max_vecs_per_node
@@ -148,7 +132,7 @@ class TestBPOD(unittest.TestCase):
             get_num_procs()
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
        
-        
+    #@unittest.skip('testing others')
     def test_compute_decomp(self):
         """
         Test that can take vecs, compute the Hankel and SVD matrices
@@ -157,72 +141,55 @@ class TestBPOD(unittest.TestCase):
         matrix, then take the SVD. The computed matrices are saved, then
         loaded and compared to the true matrices. 
         """
-        tol = 1e-8
-        direct_vec_path = join(self.test_dir, 'direct_vec_%03d.txt')
-        adjoint_vec_path = join(self.test_dir, 'adjoint_vec_%03d.txt')
+        tol = 1e-6
         L_sing_vecs_path = join(self.test_dir, 'L_sing_vecs.txt')
         R_sing_vecs_path = join(self.test_dir, 'R_sing_vecs.txt')
         sing_vals_path = join(self.test_dir, 'sing_vals.txt')
         hankel_mat_path = join(self.test_dir, 'hankel.txt')
         
-        self.my_BPOD.compute_decomp(self.direct_vec_paths, 
-            self.adjoint_vec_paths, L_sing_vecs_path, sing_vals_path, 
+        self.my_BPOD.compute_decomp(self.direct_vec_handles, 
+            self.adjoint_vec_handles, L_sing_vecs_path, sing_vals_path, 
             R_sing_vecs_path)
         L_sing_vecs_return, sing_vals_return, R_sing_vecs_return = \
-            self.my_BPOD.compute_decomp_and_return(self.direct_vec_paths, 
-            self.adjoint_vec_paths)
+            self.my_BPOD.compute_decomp_and_return(self.direct_vec_handles, 
+            self.adjoint_vec_handles)
         
         self.my_BPOD.put_hankel_mat(hankel_mat_path)
         
-        if parallel.is_rank_zero():
-            L_sing_vecs_loaded = util.load_mat_text(L_sing_vecs_path)
-            R_sing_vecs_loaded = util.load_mat_text(R_sing_vecs_path)
-            sing_vals_loaded = N.squeeze(N.array(util.load_mat_text(
-                sing_vals_path)))
-            hankel_mat_loaded = util.load_mat_text(hankel_mat_path)
-        else:
-            L_sing_vecs_loaded = None
-            R_sing_vecs_loaded = None
-            sing_vals_loaded = None
-            hankel_mat_loaded = None
-
-        if parallel.is_distributed():
-            L_sing_vecs_loaded = parallel.comm.bcast(L_sing_vecs_loaded,
-                root=0)
-            R_sing_vecs_loaded = parallel.comm.bcast(R_sing_vecs_loaded,
-                root=0)
-            sing_vals_loaded = parallel.comm.bcast(sing_vals_loaded, 
-                root=0)
-            hankel_mat_loaded = parallel.comm.bcast(hankel_mat_loaded, 
-                root=0)
+        parallel.sync()
+        L_sing_vecs_loaded = util.load_array_text(L_sing_vecs_path)
+        R_sing_vecs_loaded = util.load_array_text(R_sing_vecs_path)
+        sing_vals_loaded = N.squeeze(N.array(util.load_array_text(
+            sing_vals_path)))
+        hankel_mat_loaded = util.load_array_text(hankel_mat_path)
         
         N.testing.assert_allclose(self.my_BPOD.hankel_mat,
-          self.hankel_mat_true, rtol=tol)
+            self.hankel_mat_true, rtol=tol)
         N.testing.assert_allclose(self.my_BPOD.L_sing_vecs,
-          self.L_sing_vecs_true, rtol=tol)
+            self.L_sing_vecs_true, rtol=tol)
         N.testing.assert_allclose(self.my_BPOD.R_sing_vecs,
-          self.R_sing_vecs_true, rtol=tol)
+            self.R_sing_vecs_true, rtol=tol)
         N.testing.assert_allclose(self.my_BPOD.sing_vals,
-          self.sing_vals_true, rtol=tol)
+            self.sing_vals_true, rtol=tol)
         
         N.testing.assert_allclose(L_sing_vecs_return,
-          self.L_sing_vecs_true, rtol=tol)
+            self.L_sing_vecs_true, rtol=tol)
         N.testing.assert_allclose(R_sing_vecs_return,
-          self.R_sing_vecs_true, rtol=tol)
+            self.R_sing_vecs_true, rtol=tol)
         N.testing.assert_allclose(sing_vals_return,
-          self.sing_vals_true, rtol=tol)
+            self.sing_vals_true, rtol=tol)
         
         N.testing.assert_allclose(hankel_mat_loaded,
-          self.hankel_mat_true, rtol=tol)
+            self.hankel_mat_true, rtol=tol)
         N.testing.assert_allclose(L_sing_vecs_loaded,
-          self.L_sing_vecs_true, rtol=tol)
+            self.L_sing_vecs_true, rtol=tol)
         N.testing.assert_allclose(R_sing_vecs_loaded,
-          self.R_sing_vecs_true, rtol=tol)
+            self.R_sing_vecs_true, rtol=tol)
         N.testing.assert_allclose(sing_vals_loaded,
-          self.sing_vals_true, rtol=tol)
+            self.sing_vals_true, rtol=tol)
         
 
-
+    #@unittest.skip('testing others')
     def test_compute_modes(self):
         """
         Test computing modes in serial and parallel. 
@@ -240,64 +207,59 @@ class TestBPOD(unittest.TestCase):
         self.my_BPOD.L_sing_vecs = self.L_sing_vecs_true
         self.my_BPOD.sing_vals = self.sing_vals_true
         
-        direct_mode_paths = [direct_mode_path%i for i in self.mode_nums]
-        adjoint_mode_paths = [adjoint_mode_path%i for i in self.mode_nums]
+        direct_mode_handles = [V.ArrayTextHandle(direct_mode_path%i) 
+            for i in self.mode_nums]
+        adjoint_mode_handles = [V.ArrayTextHandle(adjoint_mode_path%i)
+            for i in self.mode_nums]
 
-        self.my_BPOD.compute_direct_modes(self.mode_nums, direct_mode_paths,
-            index_from=self.index_from, direct_vec_sources=self.direct_vec_paths)
-        self.my_BPOD.compute_adjoint_modes(self.mode_nums, adjoint_mode_paths,
-            index_from=self.index_from, adjoint_vec_sources=self.adjoint_vec_paths)
+        self.my_BPOD.compute_direct_modes(self.mode_nums, direct_mode_handles,
+            index_from=self.index_from, direct_vec_handles=self.direct_vec_handles)
+        self.my_BPOD.compute_adjoint_modes(self.mode_nums, adjoint_mode_handles,
+            index_from=self.index_from, adjoint_vec_handles=self.adjoint_vec_handles)
         
-        my_BPOD_in_memory = BPOD(ArrayInMemoryUniform(), 
-            put_mat=util.save_mat_text, verbose=False)
+        my_BPOD_in_memory = BPOD(inner_product=N.vdot, verbose=False)
 
         # start with the CORRECT decomposition.
         my_BPOD_in_memory.R_sing_vecs = self.R_sing_vecs_true
         my_BPOD_in_memory.L_sing_vecs = self.L_sing_vecs_true
         my_BPOD_in_memory.sing_vals = self.sing_vals_true
         
-
-        
         direct_modes_returned = my_BPOD_in_memory.compute_direct_modes_and_return(
-            self.mode_nums, direct_vec_sources=self.direct_vec_mat.T,
+            self.mode_nums, direct_vec_handles=self.direct_vec_handles,
             index_from=self.index_from)
         adjoint_modes_returned = my_BPOD_in_memory.compute_adjoint_modes_and_return(
-            self.mode_nums, adjoint_vec_sources=self.adjoint_vec_mat.T, 
+            self.mode_nums, adjoint_vec_handles=self.adjoint_vec_handles, 
             index_from=self.index_from)
 
-        for mode_index,mode_num in enumerate(self.mode_nums):
-            if parallel.is_rank_zero():
-                direct_mode = util.load_mat_text(direct_mode_path % mode_num)
-                adjoint_mode = util.load_mat_text(adjoint_mode_path % mode_num)
-            else:
-                direct_mode = None
-                adjoint_mode = None
-            if parallel.is_distributed():
-                direct_mode = parallel.comm.bcast(direct_mode, root=0)
-                adjoint_mode = parallel.comm.bcast(adjoint_mode, root=0)
-            N.testing.assert_allclose(direct_mode, 
-                self.direct_mode_mat[:,mode_num-self.index_from])
-            N.testing.assert_allclose(adjoint_mode, 
-                self.adjoint_mode_mat[:,mode_num-self.index_from])
-            N.testing.assert_allclose(direct_modes_returned[mode_index].squeeze(), 
-                self.direct_mode_mat[:,mode_num-self.index_from].squeeze())
-            N.testing.assert_allclose(adjoint_modes_returned[mode_index].squeeze(), 
-                self.adjoint_mode_mat[:,mode_num-self.index_from].squeeze())
-            
+        parallel.sync()
+        for mode_index, mode_handle in enumerate(direct_mode_handles):
+            mode = mode_handle.get()
+            N.testing.assert_allclose(mode, 
+                self.direct_mode_mat[:,self.mode_nums[mode_index]-self.index_from])
+            N.testing.assert_allclose(
+                direct_modes_returned[mode_index].squeeze(), 
+                N.array(self.direct_mode_mat[:,self.mode_nums[mode_index]-self.index_from]).squeeze())
+
+        for mode_index, mode_handle in enumerate(adjoint_mode_handles):
+            mode = mode_handle.get()
+            N.testing.assert_allclose(mode, 
+                self.adjoint_mode_mat[:,self.mode_nums[mode_index]-self.index_from])
+            N.testing.assert_allclose(
+                adjoint_modes_returned[mode_index].squeeze(), 
+                N.array(self.adjoint_mode_mat[:,self.mode_nums[mode_index]-self.index_from]).squeeze())
         
-        if parallel.is_rank_zero():
-            for mode_num1 in self.mode_nums:
-                direct_mode = util.load_mat_text(
-                  direct_mode_path%mode_num1)
-                for mode_num2 in self.mode_nums:
-                    adjoint_mode = util.load_mat_text(
-                        adjoint_mode_path%mode_num2)
-                    IP = self.my_vec_defs.inner_product(
-                      direct_mode,adjoint_mode)
-                    if mode_num1 != mode_num2:
-                        self.assertAlmostEqual(IP, 0.)
-                    else:
-                        self.assertAlmostEqual(IP, 1.)
+        for direct_mode_index, direct_handle in \
+            enumerate(direct_mode_handles):
+            direct_mode = direct_handle.get()
+            for adjoint_mode_index, adjoint_handle in \
+                enumerate(adjoint_mode_handles):
+                adjoint_mode = adjoint_handle.get()
+                IP = self.my_BPOD.vec_ops.inner_product(direct_mode, adjoint_mode)
+                if self.mode_nums[direct_mode_index] != \
+                    self.mode_nums[adjoint_mode_index]:
+                    self.assertAlmostEqual(IP, 0.)
+                else:
+                    self.assertAlmostEqual(IP, 1.)
       
       
 if __name__ == '__main__':

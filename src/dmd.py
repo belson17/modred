@@ -9,11 +9,9 @@ import parallel
 class DMD(object):
     """Dynamic Mode Decomposition/Koopman Mode Decomposition.
         
-    Args:
-        vec_defs: Class or module w/functions ``get_vec``, ``put_vec``,
-        ``inner_product``
-
     Kwargs:        
+        inner_product: Function to compute inner product.
+        
         put_mat: Function to put a matrix out of modred
       	
       	get_mat: Function to get a matrix into modred
@@ -26,16 +24,16 @@ class DMD(object):
     
     Usage::
     
-      myDMD = DMD(vec_defs, max_vecs_per_node=500)
-      myDMD.compute_decomp(sources)
-      myDMD.compute_modes(range(1, 51), ['mode_%02d.txt'%i for i in range(1,51)])
+      myDMD = DMD(inner_product=my_inner_product)
+      myDMD.compute_decomp(vec_handles)
+      myDMD.compute_modes(range(50), mode_handles)
     
     """
-    def __init__(self, vec_defs, 
-        get_mat=util.load_mat_text, put_mat=util.save_mat_text,
+    def __init__(self, inner_product=None, 
+        get_mat=util.load_array_text, put_mat=util.save_array_text,
         max_vecs_per_node=None, POD=None, verbose=True):
         """Constructor"""
-        self.vec_ops = VecOperations(vec_defs, 
+        self.vec_ops = VecOperations(inner_product=inner_product, 
             max_vecs_per_node=max_vecs_per_node, verbose=verbose)
         self.parallel = parallel.default_instance
         self.get_mat = get_mat
@@ -45,13 +43,13 @@ class DMD(object):
         self.ritz_vals = None
         self.build_coeffs = None
         self.mode_norms = None
-        self.vec_sources = None
+        self.vec_handles = None
 
 
 
-    def idiot_check(self, test_obj=None, test_obj_source=None):
+    def idiot_check(self, test_vec_handle):
         """See VecOperations documentation"""
-        return self.vec_ops.idiot_check(test_obj, test_obj_source)
+        self.vec_ops.idiot_check(test_vec_handle)
 
 
     def get_decomp(self, ritz_vals_source, mode_norms_source, 
@@ -101,24 +99,24 @@ class DMD(object):
 
 
 
-    def _compute_decomp(self, vec_sources):
+    def _compute_decomp(self, vec_handles):
         """Compute decomposition"""
          
-        if vec_sources is not None:
-            self.vec_sources = vec_sources
-        if self.vec_sources is None:
-            raise util.UndefinedError('vec_sources is not given')
+        if vec_handles is not None:
+            self.vec_handles = vec_handles
+        if self.vec_handles is None:
+            raise util.UndefinedError('vec_handles is not given')
 
         # Compute POD from vecs (excluding last vec)
         if self.POD is None:
-            self.POD = pod.POD(self.vec_ops.vec_defs, 
+            self.POD = pod.POD(inner_product=self.vec_ops.inner_product, 
                 max_vecs_per_node=self.vec_ops.max_vecs_per_node, 
                 verbose=self.verbose)
             # Don't use the returned mats, get them later from POD instance.
             dum, dum = self.POD.compute_decomp_and_return(
-                vec_sources=self.vec_sources[:-1])
-        elif self.vec_sources[:-1] != self.POD.vec_sources or \
-            len(vec_sources) != len(self.POD.vec_sources)+1:
+                vec_handles=self.vec_handles[:-1])
+        elif self.vec_handles[:-1] != self.POD.vec_handles or \
+            len(vec_handles) != len(self.POD.vec_handles)+1:
             raise RuntimeError('vec mismatch between POD and DMD '+\
                 'objects.')
         pod_sing_vecs = self.POD.sing_vecs
@@ -127,12 +125,12 @@ class DMD(object):
             N.diag(N.array(pod_sing_vals).squeeze() ** -0.5))
 
         # Inner product of vecs w/POD modes
-        num_vecs = len(self.vec_sources)
+        num_vecs = len(self.vec_handles)
         pod_modes_star_times_vecs = N.mat(N.empty((num_vecs-1, num_vecs-1)))
         pod_modes_star_times_vecs[:,:-1] = self.POD.correlation_mat[:,1:]  
         pod_modes_star_times_vecs[:,-1] = \
-            self.vec_ops.compute_inner_product_mat(self.vec_sources[:-1], 
-                self.vec_sources[-1])
+            self.vec_ops.compute_inner_product_mat(self.vec_handles[:-1], 
+                self.vec_handles[-1])
         pod_modes_star_times_vecs = _pod_sing_vals_sqrt_mat * pod_sing_vecs.H *\
             pod_modes_star_times_vecs
             
@@ -155,12 +153,12 @@ class DMD(object):
             self.POD.correlation_mat * self.build_coeffs).real
             
             
-    def compute_decomp(self, vec_sources, ritz_vals_dest, mode_norms_dest, 
+    def compute_decomp(self, vec_handles, ritz_vals_dest, mode_norms_dest, 
         build_coeffs_dest):
         """Computes decomposition and puts mats with ``put_mat``.
         
         Args:
-            vec_sources: list of sources from which vecs are retrieved
+            vec_handles: list of handles for the vecs
             
             ritz_vals_dest: destination to which ritz_vals are ``put_mat``.
             
@@ -168,48 +166,49 @@ class DMD(object):
             
             build_coeffs_dest: destination to which build_coeffs are ``put_mat``.
         """
-        self._compute_decomp(vec_sources)
+        self._compute_decomp(vec_handles)
         self.put_decomp(ritz_vals_dest, mode_norms_dest, build_coeffs_dest)
         
-    def compute_decomp_and_return(self, vec_sources):
+    def compute_decomp_and_return(self, vec_handles):
         """Computes decomposition and returns.
         
         Returns:
-            vec_sources, ritz_vals, mode_norms, build_coeffs
+            vec_handles, ritz_vals, mode_norms, build_coeffs
         """
-        self._compute_decomp(vec_sources)
+        self._compute_decomp(vec_handles)
         return self.ritz_vals, self.mode_norms, self.build_coeffs
         
         
         
         
-    def _compute_modes_helper(self, vec_sources=None):
+    def _compute_modes_helper(self, vec_handles=None):
         """Helper for ``compute_modes`` and ``compute_modes_helper``"""
         if self.build_coeffs is None:
             raise util.UndefinedError('Must define self.build_coeffs')
         # User should specify ALL vecs, even though all but last are used
-        if vec_sources is not None:
-            self.vec_sources = vec_sources
+        if vec_handles is not None:
+            self.vec_handles = vec_handles
         
-    def compute_modes(self, mode_nums, mode_dests, vec_sources=None, 
+    def compute_modes(self, mode_nums, mode_handles, vec_handles=None, 
         index_from=0):
         """Computes modes
         
         Args:
             mode_nums: list of mode numbers, ``range(10)`` or ``[3, 2, 5]`` 
             
-            mode_dests: destinations to ``put_vec`` the modes
+            mode_handle: list of handles for modes
             
         Kwargs:
             index_from: integer to start numbering modes from, 0, 1, or other.
             
-            vec_sources: sources to vecs, can omit if given in ``compute_decomp``.
+            vec_handles: list of handles for vecs, can omit if given in
+            ``compute_decomp``.
         """
-        self._compute_modes_helper(vec_sources=vec_sources)
-        self.vec_ops.compute_modes(mode_nums, mode_dests, 
-            self.vec_sources[:-1], self.build_coeffs, index_from=index_from)
+        self._compute_modes_helper(vec_handles=vec_handles)
+        self.vec_ops.compute_modes(mode_nums, mode_handles, 
+            self.vec_handles[:-1], self.build_coeffs, index_from=index_from)
         
-    def compute_modes_and_return(self, mode_nums, vec_sources=None, 
+    def compute_modes_and_return(self, mode_nums, vec_handles=None, 
         index_from=0):
         """Computes modes and returns
         
@@ -220,8 +219,8 @@ class DMD(object):
 
         In parallel, each MPI worker is returned a complete list of modes
         """
-        self._compute_modes_helper(vec_sources=vec_sources)
+        self._compute_modes_helper(vec_handles=vec_handles)
         return self.vec_ops.compute_modes_and_return(mode_nums, 
-            self.vec_sources[:-1], self.build_coeffs, index_from=index_from)
+            self.vec_handles[:-1], self.build_coeffs, index_from=index_from)
  
  

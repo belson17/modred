@@ -4,15 +4,14 @@ import numpy as N
 from vecoperations import VecOperations
 import util
 import parallel
+import vectors as V
 
 class BPOD(object):
     """Balanced Proper Orthogonal Decomposition
     
-    Args:
-        vec_defs: Class or module w/functions ``get_vec``, ``put_vec``,
-        ``inner_product``
-  
     Kwargs:
+        inner_product: Function to take inner products
+        
         put_mat: Function to put a matrix out of modred
       	
       	get_mat: Function to get a matrix into modred
@@ -26,38 +25,37 @@ class BPOD(object):
     
     Usage::
     
-      myBPOD = BPOD(get_vec=my_get_vec, put_vec=my_put_vec,
-          inner_product=my_inner_product, max_vecs_per_node=500)
-      myBPOD.compute_decomp(direct_vec_sources, adjoint_vec_sources)      
-      myBPOD.compute_direct_modes(range(1, 50), 'bpod_direct_mode_%03d.txt')
-      myBPOD.compute_adjoint_modes(range(1, 50), 'bpod_adjoint_mode_%03d.txt')
+      myBPOD = BPOD(inner_product=my_inner_product, max_vecs_per_node=500)
+      myBPOD.compute_decomp(direct_vec_handles, adjoint_vec_handles)
+      myBPOD.compute_direct_modes(range(50), direct_mode_handles)
+      myBPOD.compute_adjoint_modes(range(50), adjoint_mode_handles)
 
     """
     
-    def __init__(self, vec_defs, 
-        put_mat=util.save_mat_text, get_mat=util.load_mat_text,
-        max_vecs_per_node=2, verbose=True):
+    def __init__(self, inner_product=None, 
+        put_mat=util.save_array_text, get_mat=util.load_array_text,
+        max_vecs_per_node=None, verbose=True):
         """Constructor """
         # Class that contains all of the low-level vec operations
         # and parallelizes them.
-        self.vec_ops = VecOperations(vec_defs, 
+        self.vec_ops = VecOperations(inner_product=inner_product, 
             max_vecs_per_node=max_vecs_per_node, verbose=verbose)
         self.parallel = parallel.default_instance
-
         self.get_mat = get_mat
         self.put_mat = put_mat
         self.verbose = verbose
         self.L_sing_vecs = None
         self.R_sing_vecs = None
         self.sing_vals = None
-        self.direct_vec_sources = None
-        self.adjoint_vec_sources = None
+        self.direct_vec_handles = None
+        self.adjoint_vec_handles = None
         self.hankel_mat = None
         
         
-    def idiot_check(self, test_obj=None, test_obj_source=None):
+    def idiot_check(self, test_vec_handle, max_handle_size=None):
         """See VecOperations documentation"""
-        return self.vec_ops.idiot_check(test_obj, test_obj_source)
+        self.vec_ops.idiot_check(test_vec_handle, 
+        	max_handle_size=max_handle_size)
 
     def get_decomp(self, L_sing_vecs_source, sing_vals_source, 
         R_sing_vecs_source):
@@ -118,23 +116,23 @@ class BPOD(object):
         self.put_sing_vals(sing_vals_dest)
     
     
-    def _compute_decomp(self, direct_vec_sources, adjoint_vec_sources):
+    def _compute_decomp(self, direct_vec_handles, adjoint_vec_handles):
         """Finds Hankel mat and its SVD."""
-        self.direct_vec_sources = direct_vec_sources
-        self.adjoint_vec_sources = adjoint_vec_sources
+        self.direct_vec_handles = direct_vec_handles
+        self.adjoint_vec_handles = adjoint_vec_handles
         self.hankel_mat = self.vec_ops.compute_inner_product_mat(
-            self.adjoint_vec_sources, self.direct_vec_sources)
+            self.adjoint_vec_handles, self.direct_vec_handles)
         self.compute_SVD()
     
-    def compute_decomp(self, direct_vec_sources, adjoint_vec_sources,
+    def compute_decomp(self, direct_vec_handles, adjoint_vec_handles,
         L_sing_vecs_dest, sing_vals_dest, R_sing_vecs_dest):
         """Finds Hankel mat and its SVD, puts result to destinations. """
-        self._compute_decomp(direct_vec_sources, adjoint_vec_sources)
+        self._compute_decomp(direct_vec_handles, adjoint_vec_handles)
         self.put_decomp(L_sing_vecs_dest, sing_vals_dest, R_sing_vecs_dest)
         
-    def compute_decomp_and_return(self, direct_vec_sources, adjoint_vec_sources):
+    def compute_decomp_and_return(self, direct_vec_handles, adjoint_vec_handles):
         """Finds Hankel mat and its SVD, and returns decomp mats. """
-        self._compute_decomp(direct_vec_sources, adjoint_vec_sources)
+        self._compute_decomp(direct_vec_handles, adjoint_vec_handles)
         return self.L_sing_vecs, self.sing_vals, self.R_sing_vecs
 
 
@@ -161,7 +159,7 @@ class BPOD(object):
     
     
     
-    def _compute_direct_modes_helper(self, direct_vec_sources=None):
+    def _compute_direct_modes_helper(self, direct_vec_handles=None):
         """Helper for ``compute_direct_modes`` and 
         ``compute_direct_modes_and_return`` see their docs for more info.
         """
@@ -172,17 +170,17 @@ class BPOD(object):
         if self.sing_vals is None:
             raise util.UndefinedError('Must define self.sing_vals')
             
-        if direct_vec_sources is not None:
-            self.direct_vec_sources = direct_vec_sources
-        if self.direct_vec_sources is None:
-            raise util.UndefinedError('Must specify direct_vec_sources')
+        if direct_vec_handles is not None:
+            self.direct_vec_handles = direct_vec_handles
+        if self.direct_vec_handles is None:
+            raise util.UndefinedError('Must specify direct_vec_handles')
         # Switch to N.dot...
         build_coeff_mat = N.mat(self.R_sing_vecs) * \
             N.mat(N.diag(self.sing_vals**-0.5))
         return build_coeff_mat
         
     def compute_direct_modes_and_return(self, mode_nums, 
-        direct_vec_sources=None, index_from=0):
+        direct_vec_handles=None, index_from=0):
         """Computes direct modes and returns them in a list.
         
         See ``compute_direct_modes`` for details.
@@ -192,12 +190,12 @@ class BPOD(object):
             
         In parallel, each MPI worker is returned a complete list of modes
         """
-        build_coeff_mat = self._compute_direct_modes_helper(direct_vec_sources)
+        build_coeff_mat = self._compute_direct_modes_helper(direct_vec_handles)
         return self.vec_ops.compute_modes_and_return(mode_nums, 
-            self.direct_vec_sources, build_coeff_mat, index_from=index_from)
+            self.direct_vec_handles, build_coeff_mat, index_from=index_from)
             
-    def compute_direct_modes(self, mode_nums, mode_dests,
-        direct_vec_sources=None, index_from=0):
+    def compute_direct_modes(self, mode_nums, mode_handles,
+        direct_vec_handles=None, index_from=0):
         """Computes direct modes and calls ``self.put_vec`` on them.
         
         Args:
@@ -206,21 +204,21 @@ class BPOD(object):
               The mode numbers need not be sorted,
               and sorting does not increase efficiency. 
               
-          mode_dests: list of modes' destinations.
+          mode_handles: list of handles for modes.
           
         Kwargs:
           index_from: Index modes starting from 0, 1, or other.
           
-          direct_vec_sources: sources to direct vecs. 
+          direct_vec_handles: list of handles for direct vecs. 
               Optional if already given when calling ``self.compute_decomp``.
         """
-        build_coeff_mat = self._compute_direct_modes_helper(direct_vec_sources)
-        self.vec_ops.compute_modes(mode_nums, mode_dests, 
-            self.direct_vec_sources, build_coeff_mat, index_from=index_from)
+        build_coeff_mat = self._compute_direct_modes_helper(direct_vec_handles)
+        self.vec_ops.compute_modes(mode_nums, mode_handles, 
+            self.direct_vec_handles, build_coeff_mat, index_from=index_from)
         
         
     
-    def _compute_adjoint_modes_helper(self, adjoint_vec_sources=None):
+    def _compute_adjoint_modes_helper(self, adjoint_vec_handles=None):
         """Helper for ``compute_adjoint_modes`` and 
         ``compute_adjoint_modes_and_return``, see those docs for more info.
         """
@@ -230,18 +228,18 @@ class BPOD(object):
             raise util.UndefinedError('Must define self.L_sing_vecs')
         if self.sing_vals is None:
             raise util.UndefinedError('Must define self.sing_vals')
-        if adjoint_vec_sources is not None:
-            self.adjoint_vec_sources = adjoint_vec_sources
-        if self.adjoint_vec_sources is None:
-            raise util.UndefinedError('Must specify adjoint_vec_sources')
+        if adjoint_vec_handles is not None:
+            self.adjoint_vec_handles = adjoint_vec_handles
+        if self.adjoint_vec_handles is None:
+            raise util.UndefinedError('Must specify adjoint_vec_handles')
 
         self.sing_vals = N.squeeze(N.array(self.sing_vals))
         
         build_coeff_mat = N.dot(self.L_sing_vecs, N.diag(self.sing_vals**-0.5))
         return build_coeff_mat      
     
-    def compute_adjoint_modes(self, mode_nums, mode_dests,
-        adjoint_vec_sources=None,  index_from=0):
+    def compute_adjoint_modes(self, mode_nums, mode_handles,
+        adjoint_vec_handles=None,  index_from=0):
         """Computes the adjoint modes ``self.put_vec`` s them.
         
         Args:
@@ -250,21 +248,20 @@ class BPOD(object):
                 The mode numbers need not be sorted,
                 and sorting does not increase efficiency. 
                 
-            mode_dest: list of modes' destinations (file or memory).
-        
+            mode_handles: list of handles for modes
+            
         Kwargs:
             index_from: Index modes starting from 0, 1, or other.
                 
-            adjoint_vec_sources: sources of adjoint vecs. 
-            		Optional if already given when calling ``self.compute_decomp``.
-
+            adjoint_vec_handles: list of handles for adjoint vecs. 
+	      		Optional if already given when calling ``self.compute_decomp``.
         """
-        build_coeff_mat = self._compute_adjoint_modes_helper(adjoint_vec_sources)
-        self.vec_ops.compute_modes(mode_nums, mode_dests, 
-            self.adjoint_vec_sources, build_coeff_mat, index_from=index_from)
+        build_coeff_mat = self._compute_adjoint_modes_helper(adjoint_vec_handles)
+        self.vec_ops.compute_modes(mode_nums, mode_handles, 
+            self.adjoint_vec_handles, build_coeff_mat, index_from=index_from)
         
     def compute_adjoint_modes_and_return(self, mode_nums, 
-        adjoint_vec_sources=None, index_from=0):
+        adjoint_vec_handles=None, index_from=0):
         """Computes the adjoint modes returns them.
         
         See ``compute_adjoint_modes`` for details.
@@ -274,9 +271,7 @@ class BPOD(object):
             
         In parallel, each MPI worker returns a complete list of modes.
         """
-        build_coeff_mat = self._compute_adjoint_modes_helper(adjoint_vec_sources)
+        build_coeff_mat = self._compute_adjoint_modes_helper(adjoint_vec_handles)
         return self.vec_ops.compute_modes_and_return(mode_nums, 
-            self.adjoint_vec_sources, 
-            build_coeff_mat, index_from=index_from)
+            self.adjoint_vec_handles, build_coeff_mat, index_from=index_from)
         
-

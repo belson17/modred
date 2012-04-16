@@ -125,7 +125,7 @@ class ERA(object):
     dt*[0, 1, 2, 3, ... ], see ``make_sampled_format`` docs.
     """
     
-    def __init__(self, put_mat=util.save_mat_text, mc=None, mo=None,
+    def __init__(self, put_mat=util.save_array_text, mc=None, mo=None,
         verbose=True):
         """Constructor """
         self.put_mat = put_mat

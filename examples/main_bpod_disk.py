@@ -38,59 +38,61 @@ import numpy as N
 import modred
 from parallel import default_instance
 parallel = default_instance
+import vectors as V
 
-class Vec(object):
+class Vec(V.VectorBase):
     """The vec objects used will be instances of this class"""
-    def __init__(self, x_grid, y_grid, path=None):
-        self.x_grid = x_grid
-        self.y_grid = y_grid
+    def __init__(self, path=None, x_grid=None, y_grid=None, data=None):
+        if x_grid is not None and y_grid is not None:
+            self._inner_product = V.InnerProductNonUniform(x_grid, y_grid)
         if path is not None:
             self.load(path)
         else:
             self.data = None
+        if data is not None:
+            self.data = data
     def save(self, path):
         """Save vec to text format"""
-        modred.save_mat_text(self.data, path)
+        modred.save_array_text(self.data, path)
     
     def load(self, path):
         """Load vec from text format, still with base vec"""
-        self.data = modred.load_mat_text(path)
+        self.data = modred.load_array_text(path)
     
-    def inner_product(self, vec2):
-        return N.trapz(N.trapz(self.data * vec2.data, x=self.y_grid),
-            x=self.x_grid) 
+    def inner_product(self, other):
+        return self._inner_product(self.data, other.data) 
     
     def __mul__(self, a):
         vec_return = copy.deepcopy(self)
         vec_return.data *= a
         return vec_return
-    def __rmul__(self, a):
-        return self.__mul__(a)
-    def __lmul__(self, a):
-        return self.__mul__(a)
-        
     def __add__(self, other):
         vec_return = copy.deepcopy(self)
         vec_return.data += other.data
         return vec_return
     def __eq__(self, other):
         return N.allclose(self.data, other.data)
-    def __sub__(self, other):
-        return self + (-1.*other)
-
-class VecDefs(object):
-    """Simple wrapper to use ``Vec`` in modred"""
-    def __init__(self, x_grid, y_grid, base_vec):
-        self.x_grid = x_grid
-        self.y_grid = y_grid
-        self.base_vec = base_vec
-    def get_vec(self, vec_source):
-        return Vec(self.x_grid, self.y_grid, vec_source) - self.base_vec    
-    def put_vec(self, vec, vec_dest):
-        vec.save(vec_dest)
-    def inner_product(self, vec1, vec2):
-        return vec1.inner_product(vec2)
-       
+            
+class VecHandle(V.VecHandleBase):
+    """Vector handle that supports a required grid"""
+    x_grid = None
+    y_grid = None
+    def __init__(self, vec_path, x_grid=None, y_grid=None, base_handle=None,
+        scale=1):
+        V.VecHandleBase.__init__(self, base_handle, scale)
+        self.vec_path = vec_path
+        if N.array(x_grid != VecHandle.x_grid).any():
+            VecHandle.x_grid = x_grid
+        if N.array(y_grid != VecHandle.y_grid).any():
+            VecHandle.y_grid = y_grid
+    def _get(self):
+        return Vec(path=self.vec_path, x_grid=VecHandle.x_grid, 
+            y_grid=VecHandle.y_grid)    
+    def _put(self, vec):
+        vec.save(self.vec_path)
+        
+def inner_product(v1, v2):
+    return v1.inner_product(v2)
        
 def main(verbose=True, make_plots=True):        
     # Define some parameters
@@ -109,28 +111,38 @@ def main(verbose=True, make_plots=True):
     # Wait for processor 0 to finish making the directory.
     parallel.sync()
     
-    base_vec = Vec(x_grid, y_grid)
-    base_vec.data = N.random.random((nx, ny))
+    base_vec_data_path = join(save_dir, 'base_vec.txt')
+    base_vec_data = N.random.random((nx, ny))
+    base_vec_handle = VecHandle(base_vec_data_path, x_grid, y_grid)
+    
+    if parallel.is_rank_zero():
+        base_vec_handle.put(Vec(data=base_vec_data))
+    parallel.sync()
     
     # Create random data and save to disk
-    direct_vec_paths = [join(save_dir, 'direct_vec_%02d.txt'%i)
+    direct_vec_handles = [VecHandle(join(save_dir, 'direct_vec_%02d.txt'%i),
+        x_grid=x_grid, y_grid=y_grid, base_handle=base_vec_handle) 
         for i in xrange(num_direct_vecs)]
-    adjoint_vec_paths = [join(save_dir, 'adjoint_vec_%02d.txt'%i)
+    adjoint_vec_handles = [VecHandle(join(save_dir, 'adjoint_vec_%02d.txt'%i),
+        x_grid=x_grid, y_grid=y_grid, base_handle=base_vec_handle)
         for i in xrange(num_adjoint_vecs)]
-    for path in direct_vec_paths:
-        modred.save_mat_text(N.random.random((nx,ny)), path)
-    for path in adjoint_vec_paths:
-        modred.save_mat_text(N.random.random((nx,ny)), path)
+    if parallel.is_rank_zero():
+        for handle in direct_vec_handles:
+            handle.put(Vec(data=N.random.random((nx,ny))))
+        for handle in adjoint_vec_handles:
+            handle.put(Vec(data=N.random.random((nx,ny))))
+    parallel.sync()
     
     # Create an instance of BPOD.
-    my_BPOD = modred.BPOD(VecDefs(x_grid, y_grid, base_vec),
-        max_vecs_per_node=20, verbose=verbose)
+    my_BPOD = modred.BPOD(inner_product=inner_product, max_vecs_per_node=20, 
+        verbose=verbose)
     
     # Quick check that functions are ok.
-    my_BPOD.idiot_check(test_obj_source=direct_vec_paths[0])
+    my_BPOD.idiot_check(direct_vec_handles[0])
     
     L_sing_vecs, sing_vals, R_sing_vecs = \
-        my_BPOD.compute_decomp_and_return(direct_vec_paths, adjoint_vec_paths)
+        my_BPOD.compute_decomp_and_return(direct_vec_handles, 
+            adjoint_vec_handles)
     
     # Model error less than ~10%
     sing_vals_norm = sing_vals/N.sum(sing_vals)
@@ -138,13 +150,13 @@ def main(verbose=True, make_plots=True):
     
     # Compute the first ``num_modes`` modes, save to file.
     mode_nums = range(num_modes)
-    direct_mode_paths = [join(save_dir, 'direct_mode_%02d.txt'%i)
+    direct_mode_handles = [VecHandle(join(save_dir, 'direct_mode_%02d.txt'%i))
         for i in mode_nums]
-    adjoint_mode_paths = [join(save_dir, 'adjoint_mode_%02d.txt'%i)
+    adjoint_mode_handles = [VecHandle(join(save_dir, 'adjoint_mode_%02d.txt'%i))
         for i in mode_nums]
     
-    my_BPOD.compute_direct_modes(mode_nums, direct_mode_paths)
-    my_BPOD.compute_adjoint_modes(mode_nums, adjoint_mode_paths)
+    my_BPOD.compute_direct_modes(mode_nums, direct_mode_handles)
+    my_BPOD.compute_adjoint_modes(mode_nums, adjoint_mode_handles)
     
     # Make plots of leading modes if have matplotlib. 
     # They are meaningless for the random data, of course.
@@ -153,12 +165,12 @@ def main(verbose=True, make_plots=True):
             import matplotlib.pyplot as PLT
             X,Y = N.meshgrid(x_grid, y_grid)
             PLT.figure()
-            PLT.contourf(X, Y, modred.load_mat_text(direct_mode_paths[0]).T)
+            PLT.contourf(X, Y, direct_mode_handles[0].get().data.T)
             PLT.colorbar()
             PLT.title('Direct mode 1')
             
             PLT.figure()
-            PLT.contourf(X, Y, modred.load_mat_text(adjoint_mode_paths[0]).T)
+            PLT.contourf(X, Y, adjoint_mode_handles[0].get().data.T)
             PLT.colorbar()
             PLT.title('Adjoint mode 1')
             

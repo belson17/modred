@@ -36,7 +36,7 @@ class TestUtil(unittest.TestCase):
         
         
     @unittest.skipIf(parallel.is_distributed(), 'Only save/load matrices in serial')
-    def test_load_save_mat_text(self):
+    def test_load_save_array_text(self):
         """Test that can read/write text matrices"""
         tol = 1e-8
         rows = [1, 5, 20]
@@ -57,8 +57,8 @@ class TestUtil(unittest.TestCase):
                             # Check row and column vectors, no squeeze (1,1)
                             if squeeze and (numRows > 1 or numCols > 1):
                                 mat = N.squeeze(mat)
-                            util.save_mat_text(mat, matPath, delimiter=delimiter)
-                            matRead = util.load_mat_text(matPath, delimiter=delimiter,
+                            util.save_array_text(mat, matPath, delimiter=delimiter)
+                            matRead = util.load_array_text(matPath, delimiter=delimiter,
                                 is_complex=is_complex)
                             if squeeze:
                                 matRead = N.squeeze(matRead)
@@ -115,7 +115,7 @@ class TestUtil(unittest.TestCase):
                         data_to_save = N.concatenate( \
                           (time_values_true.reshape(len(time_values_true),1),
                           all_signals_true[path_num]), axis=1)
-                        util.save_mat_text(data_to_save, signal_path%path_num)
+                        util.save_array_text(data_to_save, signal_path%path_num)
                     
                     time_values, all_signals = util.load_multiple_signals(
                         signal_paths)
