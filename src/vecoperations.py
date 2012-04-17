@@ -11,7 +11,7 @@ class VecOperations(object):
     """Responsible for low level operations on vecs.
 
     Kwargs:
-        inner_product: inner product callable
+        inner_product: inner product function
         
         max_vecs_per_node: max number of vecs that can be in memory
         simultaneously per node.
@@ -40,7 +40,7 @@ class VecOperations(object):
         if max_vecs_per_node is None:
             self.max_vecs_per_node = int(1e6) #N.inf? it's a float not an int...
             self.print_msg('Warning: max_vecs_per_node was not specified. '
-                'Assuming infinte vecs can be in memory per node. Decrease'
+                'Assuming infinte vecs can be in memory per node. Decrease '
                 'max_vecs_per_node if get memory errors.')
         else:
             self.max_vecs_per_node = max_vecs_per_node

@@ -96,24 +96,25 @@ class POD(object):
             self.put_mat(self.correlation_mat, correlation_mat_dest)
 
 
-    def _compute_decomp(self, vec_handles):
-        """Computes correlation mat and its SVD"""
+    def compute_decomp(self, vec_handles):
+        """Computes correlation mat X*X, then the SVD of this matrix.
+        
+        Args:
+            vec_handles: list of handles for vecs
+            
+        Returns:
+            sing_vecs: matrix of singular vectors (U, ==V, in UEV*=H)
+        
+            sing_vals: 1D array of singular values (E in UEV*=H) 
+        """
         self.vec_handles = vec_handles
         self.correlation_mat = self.vec_ops.\
             compute_symmetric_inner_product_mat(self.vec_handles)
         #self.correlation_mat = self.vec_ops.\
         #    compute_inner_product_mat(self.vec_handles, self.vec_handles)
-        self.compute_SVD()
-        
-    def compute_decomp(self, vec_handles, sing_vecs_dest, sing_vals_dest):
-        """Computes correlation mat X*X, then the SVD of this matrix."""
-        self._compute_decomp(vec_handles)
-        self.put_decomp(sing_vecs_dest, sing_vals_dest)
-    
-    def compute_decomp_and_return(self, vec_handles):
-        """Computes correlation mat X*X, then the SVD of this matrix."""
-        self._compute_decomp(vec_handles)
+        self.compute_SVD()        
         return self.sing_vecs, self.sing_vals
+       
         
         
     def compute_SVD(self):

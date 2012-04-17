@@ -151,11 +151,10 @@ class TestDMD(unittest.TestCase):
         mode_norms_path = join(self.test_dir, 'dmd_mode_energies.txt')
         build_coeffs_path = join(self.test_dir, 'dmd_build_coeffs.txt')
 
-        self.my_DMD.compute_decomp(self.vec_handles, ritz_vals_path, 
-            mode_norms_path, build_coeffs_path)
-        
         ritz_vals_returned, mode_norms_returned, build_coeffs_returned = \
-            self.my_DMD.compute_decomp_and_return(self.vec_handles)
+            self.my_DMD.compute_decomp(self.vec_handles)
+        self.my_DMD.put_decomp(ritz_vals_path, mode_norms_path, 
+            build_coeffs_path)
         parallel.sync()
         
         # Test that matrices were correctly computed

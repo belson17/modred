@@ -147,13 +147,11 @@ class TestBPOD(unittest.TestCase):
         sing_vals_path = join(self.test_dir, 'sing_vals.txt')
         hankel_mat_path = join(self.test_dir, 'hankel.txt')
         
-        self.my_BPOD.compute_decomp(self.direct_vec_handles, 
-            self.adjoint_vec_handles, L_sing_vecs_path, sing_vals_path, 
-            R_sing_vecs_path)
         L_sing_vecs_return, sing_vals_return, R_sing_vecs_return = \
-            self.my_BPOD.compute_decomp_and_return(self.direct_vec_handles, 
+            self.my_BPOD.compute_decomp(self.direct_vec_handles, 
             self.adjoint_vec_handles)
-        
+        self.my_BPOD.put_decomp(L_sing_vecs_path, sing_vals_path, 
+            R_sing_vecs_path)        
         self.my_BPOD.put_hankel_mat(hankel_mat_path)
         
         parallel.sync()

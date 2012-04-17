@@ -97,11 +97,16 @@ class DMD(object):
         if self.parallel.is_rank_zero():
             self.put_mat(self.build_coeffs, dest)
 
-
-
-    def _compute_decomp(self, vec_handles):
-        """Compute decomposition"""
-         
+            
+    def compute_decomp(self, vec_handles):
+        """Computes decomposition and returns SVD matrices.
+        
+        Args:
+            vec_handles: list of handles for the vecs
+                    
+        Returns:
+            vec_handles, ritz_vals, mode_norms, build_coeffs
+        """
         if vec_handles is not None:
             self.vec_handles = vec_handles
         if self.vec_handles is None:
@@ -113,7 +118,7 @@ class DMD(object):
                 max_vecs_per_node=self.vec_ops.max_vecs_per_node, 
                 verbose=self.verbose)
             # Don't use the returned mats, get them later from POD instance.
-            dum, dum = self.POD.compute_decomp_and_return(
+            dum, dum = self.POD.compute_decomp(
                 vec_handles=self.vec_handles[:-1])
         elif self.vec_handles[:-1] != self.POD.vec_handles or \
             len(vec_handles) != len(self.POD.vec_handles)+1:
@@ -151,34 +156,7 @@ class DMD(object):
             low_order_eig_vecs * ritz_vec_scaling
         self.mode_norms = N.diag(self.build_coeffs.H * 
             self.POD.correlation_mat * self.build_coeffs).real
-            
-            
-    def compute_decomp(self, vec_handles, ritz_vals_dest, mode_norms_dest, 
-        build_coeffs_dest):
-        """Computes decomposition and puts mats with ``put_mat``.
-        
-        Args:
-            vec_handles: list of handles for the vecs
-            
-            ritz_vals_dest: destination to which ritz_vals are ``put_mat``.
-            
-            mode_norms_dest: destination to which mode_norms are ``put_mat``.
-            
-            build_coeffs_dest: destination to which build_coeffs are ``put_mat``.
-        """
-        self._compute_decomp(vec_handles)
-        self.put_decomp(ritz_vals_dest, mode_norms_dest, build_coeffs_dest)
-        
-    def compute_decomp_and_return(self, vec_handles):
-        """Computes decomposition and returns.
-        
-        Returns:
-            vec_handles, ritz_vals, mode_norms, build_coeffs
-        """
-        self._compute_decomp(vec_handles)
         return self.ritz_vals, self.mode_norms, self.build_coeffs
-        
-        
         
         
     def _compute_modes_helper(self, vec_handles=None):

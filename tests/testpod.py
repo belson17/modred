@@ -123,12 +123,10 @@ class TestPOD(unittest.TestCase):
         sing_vals_path = join(self.test_dir, 'sing_vals.txt')
         correlation_mat_path = join(self.test_dir, 'correlation.txt')
         
-        self.my_POD.compute_decomp(self.vec_handles, sing_vecs_path, 
-            sing_vals_path)
-        self.my_POD.put_correlation_mat(correlation_mat_path)
         sing_vecs_returned, sing_vals_returned = \
-            self.my_POD.compute_decomp_and_return(self.vec_handles)
-        parallel.sync()
+            self.my_POD.compute_decomp(self.vec_handles)
+        self.my_POD.put_decomp(sing_vecs_path, sing_vals_path)
+        self.my_POD.put_correlation_mat(correlation_mat_path)
         
         sing_vecs_loaded = util.load_array_text(sing_vecs_path)
         sing_vals_loaded = N.squeeze(N.array(util.load_array_text(

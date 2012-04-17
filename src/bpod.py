@@ -116,25 +116,28 @@ class BPOD(object):
         self.put_sing_vals(sing_vals_dest)
     
     
-    def _compute_decomp(self, direct_vec_handles, adjoint_vec_handles):
-        """Finds Hankel mat and its SVD."""
+    def compute_decomp(self, direct_vec_handles, adjoint_vec_handles):
+        """Finds Hankel mat and its SVD.
+        
+        Args:
+            direct_vec_handles: list of handles for direct vecs
+            
+            adjoint_vec_handles: list of handles for adjoint vecs
+        
+        Returns:
+            L_sing_vecs: matrix of left singular vectors (U in UEV*=H)
+        
+            sing_vals: 1D array of singular values (E in UEV*=H)
+            
+            R_sing_vecs: matrix of right singular vectors (V in UEV*=H)
+        """
         self.direct_vec_handles = direct_vec_handles
         self.adjoint_vec_handles = adjoint_vec_handles
         self.hankel_mat = self.vec_ops.compute_inner_product_mat(
             self.adjoint_vec_handles, self.direct_vec_handles)
         self.compute_SVD()
-    
-    def compute_decomp(self, direct_vec_handles, adjoint_vec_handles,
-        L_sing_vecs_dest, sing_vals_dest, R_sing_vecs_dest):
-        """Finds Hankel mat and its SVD, puts result to destinations. """
-        self._compute_decomp(direct_vec_handles, adjoint_vec_handles)
-        self.put_decomp(L_sing_vecs_dest, sing_vals_dest, R_sing_vecs_dest)
-        
-    def compute_decomp_and_return(self, direct_vec_handles, adjoint_vec_handles):
-        """Finds Hankel mat and its SVD, and returns decomp mats. """
-        self._compute_decomp(direct_vec_handles, adjoint_vec_handles)
         return self.L_sing_vecs, self.sing_vals, self.R_sing_vecs
-
+        
 
     def compute_SVD(self):
         """Takes the SVD of the Hankel matrix.
