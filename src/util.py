@@ -7,6 +7,16 @@ import inspect
 class UndefinedError(Exception): 
     """Error when something has not been defined"""
     pass
+
+def make_list(arg):
+    """Makes argument a list, if not already a list"""
+    if not isinstance(arg, list):
+        arg = [arg]
+    return arg
+    
+def flatten_list(my_list):
+    """Flatten a list of lists into a single list"""
+    return [num for elem in my_list for num in elem]
     
 def save_array_text(array, filename, delimiter=' '):
     """Writes a 1D or 2D array or matrix to a text file

@@ -46,11 +46,12 @@ class POD(object):
         self.sing_vals = None
         self.correlation_mat = None
         self.vec_handles = None
+        self.vecs = None
 
      
-    def idiot_check(self, test_vec_handle):
+    def sanity_check(self, test_vec_handle):
         """See VecOperations documentation"""
-        self.vec_ops.idiot_check(test_vec_handle)
+        self.vec_ops.sanity_check(test_vec_handle)
 
      
     def get_decomp(self, sing_vecs_source, sing_vals_source):
@@ -79,6 +80,7 @@ class POD(object):
             
         if self.parallel.is_rank_zero():
             self.put_mat(self.sing_vecs, dest)
+        self.parallel.sync()
 
     def put_sing_vals(self, dest):
         """Put singular values, E"""
@@ -87,6 +89,7 @@ class POD(object):
             
         if self.parallel.is_rank_zero():
             self.put_mat(self.sing_vals, dest)
+        self.parallel.sync()
 
     def put_correlation_mat(self, correlation_mat_dest):
         """Put correlation matrix"""
@@ -94,6 +97,7 @@ class POD(object):
             raise util.UndefinedError("put_mat is undefined")
         if self.parallel.is_rank_zero():
             self.put_mat(self.correlation_mat, correlation_mat_dest)
+        self.parallel.sync()
 
 
     def compute_decomp(self, vec_handles):
@@ -115,7 +119,15 @@ class POD(object):
         self.compute_SVD()        
         return self.sing_vecs, self.sing_vals
        
-        
+    def compute_decomp_in_memory(self, vecs):
+        """Same as ``compute_decomp`` but takes vecs instead of handles"""
+        self.vecs = vecs
+        self.correlation_mat = self.vec_ops.\
+            compute_symmetric_inner_product_mat_in_memory(self.vecs)
+        #self.correlation_mat = self.vec_ops.\
+        #    compute_inner_product_mat(self.vec_handles, self.vec_handles)
+        self.compute_SVD()
+        return self.sing_vecs, self.sing_vals    
         
     def compute_SVD(self):
         """Compute SVD, UEV*=correlation_mat"""
@@ -132,15 +144,13 @@ class POD(object):
             
             
             
-    def _compute_modes_helper(self, vec_handles=None):
+    def _compute_build_coeff_mat(self):
         """Helper for ``compute_modes`` and ``compute_modes_and_return``."""
         #self.sing_vecs, self.sing_vals must exist or an UndefinedError.
         if self.sing_vecs is None:
             raise util.UndefinedError('Must define self.sing_vecs')
         if self.sing_vals is None:
             raise util.UndefinedError('Must define self.sing_vals')
-        if vec_handles is not None:
-            self.vec_handles = vec_handles
         build_coeff_mat = N.dot(self.sing_vecs, N.diag(self.sing_vals**-0.5))
         return build_coeff_mat
     
@@ -162,24 +172,20 @@ class POD(object):
             vec_handles: list of handles for vectors. 
 	            Optional if already given when calling ``self.compute_decomp``.
         """
-        build_coeff_mat = self._compute_modes_helper(vec_handles)
+        if vec_handles is not None:
+            self.vec_handles = util.make_list(vec_handles)
+        build_coeff_mat = self._compute_build_coeff_mat()
         self.vec_ops.compute_modes(mode_nums, mode_handles,
              self.vec_handles, build_coeff_mat, index_from=index_from)
     
-    def compute_modes_and_return(self, mode_nums, vec_handles=None, 
-    	index_from=0):
-        """Computes modes and returns them in a list.
-        
-        See ``compute_modes`` for details.
-        
-        Returns:
-            a list of modes
-            
-        In parallel, each MPI worker is returned a complete list of modes
+    def compute_modes_in_memory(self, mode_nums, vecs=None, index_from=0):
+        """Same as ``compute_modes`` but takes vecs and returns modes.
         """
-        build_coeff_mat = self._compute_modes_helper(vec_handles)
-        return self.vec_ops.compute_modes_and_return(mode_nums,
-             self.vec_handles, build_coeff_mat, index_from=index_from)
+        if vecs is not None:
+            self.vecs = util.make_list(vecs)
+        build_coeff_mat = self._compute_build_coeff_mat()
+        return self.vec_ops.compute_modes_in_memory(mode_nums,
+             self.vecs, build_coeff_mat, index_from=index_from)
     
 
 

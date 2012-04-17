@@ -6,7 +6,9 @@ import time as T
 import numpy as N
 import util
 import parallel as parallel_mod
+import vectors as V
 
+   
 class VecOperations(object):
     """Responsible for low level operations on vecs.
 
@@ -68,16 +70,12 @@ class VecOperations(object):
             print >> output_channel, msg
 
 
-    def idiot_check(self, test_vec_handle, max_handle_size=None):
+    def sanity_check(self, test_vec_handle):
         """Check user-supplied vec handle and vec objects.
         
         Args:
             test_vec_handle: a vector handle.
         
-        Kwargs:
-            max_size_handle: maximum size (in bytes) of vector handle.
-                Currently not used!
-            
         The add and mult functions are tested for the generic object.  
         This is not a complete testing, but catches some common mistakes.
         Raises error if a check fails.
@@ -87,20 +85,7 @@ class VecOperations(object):
         """
         self._check_inner_product()
         tol = 1e-10
-        
-        """
-        if max_handle_size is None:
-            max_handle_size = 5000
-        try:
-            getsizeof = sys.getsizeof
-        except:
-            def getsizeof(arg): return 0
-            self.print_msg('Warning: not checking size of vector handle')
-        
-        if getsizeof(test_vec_handle) > max_handle_size:
-            raise RuntimeError('Vector handle exceeded max size, %d bytes'%
-                max_handle_size)    
-        """
+
         test_vec = test_vec_handle.get()
         vec_copy = copy.deepcopy(test_vec)
         vec_copy_mag2 = self.inner_product(vec_copy, vec_copy)
@@ -110,17 +95,17 @@ class VecOperations(object):
         
         if abs(self.inner_product(vec_mult, vec_mult) -
                 vec_copy_mag2 * factor**2) > tol:
-            raise ValueError('Multiplication of vec/mode vecect failed')
+            raise ValueError('Multiplication of vec/mode failed')
         
         if abs(self.inner_product(test_vec, test_vec) - 
                 vec_copy_mag2) > tol:  
-            raise ValueError('Original vecect modified by multiplication!') 
+            raise ValueError('Original vec modified by multiplication!') 
         vec_add = test_vec + test_vec
         if abs(self.inner_product(vec_add, vec_add) - vec_copy_mag2 * 4) > tol:
             raise ValueError('Addition does not give correct result')
         
         if abs(self.inner_product(test_vec, test_vec) - vec_copy_mag2) > tol:  
-            raise ValueError('Original vecect modified by addition!')       
+            raise ValueError('Original vec modified by addition!')       
         
         vec_add_mult = test_vec * factor + test_vec
         if abs(self.inner_product(vec_add_mult, vec_add_mult) - vec_copy_mag2 *
@@ -129,12 +114,12 @@ class VecOperations(object):
                 'inconsistent')
         
         if abs(self.inner_product(test_vec, test_vec) - vec_copy_mag2) > tol:  
-            raise ValueError('Original vecect modified by combo of mult/add!') 
+            raise ValueError('Original vec modified by combo of mult/add!') 
         
         #vecSub = 3.5*test_vec - test_vec
         #N.testing.assert_array_almost_equal(vecSub,2.5*test_vec)
         #N.testing.assert_array_almost_equal(test_vec,vec_copy)
-        self.print_msg('Passed the idiot check')
+        self.print_msg('Passed the sanity check')
 
 
     def compute_inner_product_mat(self, row_vec_handles, col_vec_handles):
@@ -206,10 +191,8 @@ class VecOperations(object):
         However, sometimes simultaneous loads actually makes each load slow.     
         """
         self._check_inner_product()
-        if not isinstance(row_vec_handles, list):
-            row_vec_handles = [row_vec_handles]
-        if not isinstance(col_vec_handles, list):
-            col_vec_handles = [col_vec_handles]
+        row_vec_handles = util.make_list(row_vec_handles)
+        col_vec_handles = util.make_list(col_vec_handles)
             
         num_cols = len(col_vec_handles)
         num_rows = len(row_vec_handles)
@@ -370,10 +353,22 @@ class VecOperations(object):
         self.parallel.sync() # ensure that all procs leave function at same time
         return IP_mat
 
+
+    def compute_inner_product_mat_in_memory(self, row_vecs, col_vecs):
+        """See ``compute_inner_product_mat``, but vecs instead of handles.
+        """
+        self._check_inner_product()
+        row_vecs = util.make_list(row_vecs)
+        col_vecs = util.make_list(col_vecs)
+        row_vec_handles = [V.InMemoryVecHandle(v) for v in row_vecs]
+        col_vec_handles = [V.InMemoryVecHandle(v) for v in col_vecs]
+        return self.compute_inner_product_mat(row_vec_handles, col_vec_handles)
+        
+        
+        
         
     def compute_symmetric_inner_product_mat(self, vec_handles):
-        """Computes an upper-triangular chunk of a symmetric matrix of inner 
-        products.
+        """Computes an upper-triangular symmetric matrix of inner products.
         
         See the documentation for compute_inner_product_mat for a general
         idea how this works.
@@ -382,8 +377,7 @@ class VecOperations(object):
         ``compute_inner_product_mat``.
         """
         self._check_inner_product()
-        if not isinstance(vec_handles, list):
-            vec_handles = [vec_handles]
+        vec_handles = util.make_list(vec_handles)
  
         num_vecs = len(vec_handles)        
         
@@ -625,20 +619,48 @@ class VecOperations(object):
         return IP_mat
         
         
-    def _compute_modes(self, mode_nums, mode_handles, vec_handles, vec_coeff_mat,
+    def compute_symmetric_inner_product_mat_in_memory(self, vecs):
+        """See ``compute_symmetric_inner_product_mat``, but vecs instead of 
+        handles.
+        """
+        self._check_inner_product()
+        vecs = util.make_list(vecs)
+        return self.compute_symmetric_inner_product_mat(
+            [V.InMemoryVecHandle(v) for v in vecs])
+        
+        
+    def compute_modes(self, mode_nums, mode_handles, vec_handles, vec_coeff_mat,
         index_from=0):
-        """Compute modes from vectors.
+        """Compute modes from vecs.
         
-        See ``compute_modes`` and ``compute_modes_and return`` for details.
+        Args:
+          mode_nums: mode numbers to compute. 
+              Examples are: ``range(10)`` or ``[3,1,6,8]``. 
+              The mode numbers need not be sorted,
+              and sorting does not increase efficiency. 
+              
+          mode_handles: list of handles for modes (each requires ``put``)
+          
+          vec_handles: list of handles for vectors (each requires ``get``)
+          
+          vec_coeff_mat: Matrix of coefficients for constructing modes. 
+              The kth column contains the coefficients for computing the kth 
+              index mode, 
+              i.e. index_from+k mode number. ith row contains coefficients to 
+              multiply corresponding to vec i.
+              
+        Kwargs:
+          index_from: integer from which to index modes, 0, 1, or other.
         
-        Returns:
-            a list of modes or whatever is output by ``mode_handle.put()``.
-        """                    
-        if not isinstance(mode_nums, list):
-            mode_nums = [mode_nums]
-        if not isinstance(mode_handles, list):
-            mode_handles = [mode_handles]
-        
+        This method recasts computing modes as a linear combination of elements.
+        It rearranges the coeff matrix so that the first column corresponds to
+        the first mode number in mode_nums.
+        Calls ``lin_combine`` with sum_vecs as the modes and the
+        basis_vecs as the vecs.
+        """                   
+        mode_nums = util.make_list(mode_nums)
+        mode_handles = util.make_list(mode_handles)
+                
         num_modes = len(mode_nums)
         num_vecs = len(vec_handles)
         
@@ -667,77 +689,75 @@ class VecOperations(object):
         mode_nums_from_zero = [mode_num-index_from for mode_num in mode_nums]
         vec_coeff_mat_reordered = vec_coeff_mat[:,mode_nums_from_zero]
         
-        return self._lin_combine(mode_handles, vec_handles, vec_coeff_mat_reordered)
+        self.lin_combine(mode_handles, vec_handles, vec_coeff_mat_reordered)
         self.parallel.sync() # ensure that all procs leave function at same time
     
     
-    def compute_modes(self, mode_nums, mode_handles, vec_handles, vec_coeff_mat,
+    def compute_modes_in_memory(self, mode_nums, vecs, vec_coeff_mat, 
         index_from=0):
-        """A common method to compute modes from vecs and ``put_vec`` them.
-                
-        Args:
-          mode_nums: mode numbers to compute. 
-              Examples are: ``range(10)`` or ``[3,1,6,8]``. 
-              The mode numbers need not be sorted,
-              and sorting does not increase efficiency. 
-              
-          mode_handles: list of handles for modes (each requires ``put``)
-          
-          vec_handles: list of handles for vectors (each requires ``get``)
-          
-          vec_coeff_mat: Matrix of coefficients for constructing modes. 
-              The kth column contains the coefficients for computing the kth 
-              index mode, 
-              i.e. index_from+k mode number. ith row contains coefficients to 
-              multiply corresponding to vec i.
-              
-        Kwargs:
-          index_from: integer from which to index modes, 0, 1, or other.
-        
-        Returns:
-            a list of modes (or whatever is output by ``put_vec``)
-                In parallel, each MPI worker has the full list of outputs.
-        
-        This method recasts computing modes as a linear combination of elements.
-        It rearranges the coeff matrix so that the first column corresponds to
-        the first mode number in mode_nums.
-        Calls lin_combine_fiels with sum_vecs as the modes and the
-        basis_vecs as the vecs.
-        """
-        self._compute_modes(mode_nums, mode_handles, vec_handles, vec_coeff_mat,
-            index_from)
-    
-    
-    def compute_modes_and_return(self, mode_nums, vec_handles,
-        vec_coeff_mat, index_from=0):
-        """Compute modes from vecs and return them.
-
-        See ``compute_modes`` for details.
+        """See ``compute_modes`` for details, but takes vecs instead of handles.
         
         Returns:
             a list of modes.
         
         In parallel, each MPI worker has the full list of outputs.
         """
-        import vectors as V
-        in_memory_mode_handles = [V.InMemoryHandle() for i in mode_nums]
-        return self._compute_modes(mode_nums, in_memory_mode_handles, 
+        vecs = util.make_list(vecs)
+        mode_handles = [V.InMemoryVecHandle() for i in mode_nums]
+        vec_handles = [V.InMemoryVecHandle(vec=vec) for vec in vecs]
+        self.compute_modes(mode_nums, mode_handles, 
             vec_handles, vec_coeff_mat, index_from)
+        #print 'mode handles',mode_handles
+        modes = [mode_handle.get() for mode_handle in mode_handles]
+        #print 'rank: %d, modes'%self.parallel.get_rank(),modes
+        if self.parallel.is_distributed():
+            modes_list = self.parallel.comm.allgather(modes)
+            # all_modes is a 1D list of all processors' modes.
+            all_modes = util.flatten_list(modes_list)
+            for i in range(all_modes.count(None)):
+                all_modes.remove(None)
+        else:
+            all_modes = modes
+        return all_modes  
     
     
-    
-    
-    
-    def _lin_combine(self, sum_vec_handles, basis_vec_handles, vec_coeff_mat):
-        """Linearly combines basis vecs.
+    def lin_combine(self, sum_vec_handles, basis_vec_handles, vec_coeff_mat):
+        """Linearly combines the basis vecs and calls ``put`` on result.
         
-        Returns output of ``put`` calls on the resulting sum vec handles.
-        See ``lin_combine`` for full documentation.
-        """                   
-        if not isinstance(sum_vec_handles, list):
-            sum_vec_handles = [sum_vec_handles]
-        if not isinstance(basis_vec_handles, list):
-            basis_vec_handles = [basis_vec_handles]
+        Args:
+            sum_vec_handles: list of handles of the sum vectors.
+                These handles need a ``get`` member function.
+                
+            basis_vec_handles: list of handles of the basis vecs.
+                These handles need a ``put`` member function.
+                
+            vec_coeff_mat: matrix with rows corresponding to a basis vecs
+                and columns to sum (lin. comb.) vecs.
+                The rows and columns correspond, by index,
+                to the lists basis_vec_handles and sum_vec_handles.
+                ``sums = basis * vec_coeff_mat``
+
+        Each processor retrieves a subset of the basis vecs to compute as many
+        outputs as a processor can have in memory at once. Each processor
+        computes the "layers" from the basis it is resonsible for, and for
+        as many modes as it can fit in memory. The layers from all procs are
+        then
+        summed together to form the full outputs. The output sum_vecs 
+        are then ``put`` ed.
+        
+        Scaling is:
+        
+          num gets/worker = n_s/(n_p*(max-1)) * n_b/n_p
+          
+          passes/worker = (n_p-1) * n_s/(n_p*(max-1)) * (n_b/n_p)
+          
+          scalar multiplies/worker = n_s*n_b/n_p
+          
+        Where n_s is number of sum vecs, n_b is number of basis vecs,
+        n_p is number of processors, max = max_vecs_per_node.
+        """
+        sum_vec_handles = util.make_list(sum_vec_handles)
+        basis_vec_handles = util.make_list(basis_vec_handles)
         num_bases = len(basis_vec_handles)
         num_sums = len(sum_vec_handles)
         if num_bases > vec_coeff_mat.shape[0]:
@@ -754,10 +774,7 @@ class VecOperations(object):
         if num_sums < vec_coeff_mat.shape[1]:
             self.print_msg('Warning: fewer outputs than rows in the coeff matrix'
                 '  some cols of coeff matrix will not be used')
-        
-        # List of all the outputs from put
-        put_outputs = []
-        
+                
         # convenience
         rank = self.parallel.get_rank()
 
@@ -860,82 +877,39 @@ class VecOperations(object):
 
             # Completed this set of sum vecs, puts them to memory or file
             for sum_index in xrange(start_sum_index, end_sum_index):
-                put_outputs.append(sum_vec_handles[sum_index].put(
-                    sum_layers[sum_index-start_sum_index]))
+                sum_vec_handles[sum_index].put(
+                    sum_layers[sum_index-start_sum_index])
             del sum_layers
             if (T.time() - self.prev_print_time) > self.print_interval:    
                 self.print_msg('Completed %.1f%% of sum vecs' %
                     (end_sum_index*100./max_num_sum_tasks))
                 self.prev_print_time = T.time()
             
-        # Have each processor gather all of the put_vec_outputs.
-        # put_vec_outputs_list is a list of lists, each sublist is the
-        # put_vec_outputs of each processor, in order by rank.
-        if self.parallel.is_distributed():
-            put_outputs_list = self.parallel.comm.allgather(put_outputs)
-            # all_put_vec_outputs is a 1D list of all processors' put_vec_outputs.
-            all_put_outputs = []
-            for proc_put_outputs in put_outputs_list:
-                all_put_outputs.extend(proc_put_outputs)
-        else:
-            all_put_outputs = put_outputs
-        return all_put_outputs
         # ensure that all workers leave function at same time
         #self.parallel.sync() 
         
-
-    def lin_combine(self, sum_vec_handles, basis_vec_handles, vec_coeff_mat):
-        """Linearly combines the basis vecs and calls ``put`` on result.
-        
-        Args:
-            sum_vec_handles: list of handles of the sum vectors.
-                
-            basis_vec_handles: list of handles from which basis vecs are 
-            retrieved
-                
-            vec_coeff_mat: matrix with rows corresponding to a basis vecs
-                and columns to sum (lin. comb.) vecs.
-                The rows and columns correspond, by index,
-                to the lists basis_vec_handles and sum_vec_handles.
-                ``sums = basis * vec_coeff_mat``
-
-        Each processor retrieves a subset of the basis vecs to compute as many
-        outputs as a processor can have in memory at once. Each processor
-        computes the "layers" from the basis it is resonsible for, and for
-        as many modes as it can fit in memory. The layers from all procs are
-        then
-        summed together to form the full outputs. The output sum_vecs 
-        are then ``put`` ed.
-        
-        Scaling is:
-        
-          num gets/worker = n_s/(n_p*(max-1)) * n_b/n_p
-          
-          passes/worker = (n_p-1) * n_s/(n_p*(max-1)) * (n_b/n_p)
-          
-          scalar multiplies/worker = n_s*n_b/n_p
-          
-        Where n_s is number of sum vecs, n_b is number of basis vecs,
-        n_p is number of processors, max = max_vecs_per_node.
-        """
-        self._lin_combine(sum_vec_handles, basis_vec_handles, vec_coeff_mat)
     
-    
-    def lin_combine_and_return(self, basis_vec_handles, vec_coeff_mat):
-        """Linearly combines the basis vecs and returns result.
-        
-        For args description, see ``lin_combine``, except returns.
+    def lin_combine_in_memory(self, basis_vecs, vec_coeff_mat):
+        """See ``lin_combine``, but takes vecs instead of handles.
         
         Returns:
             a list of linearly combined vectors.
         """
-        in_memory_vec_handles = [V.InMemoryHandle() 
+        basis_vecs = util.make_list(basis_vecs)
+        basis_vec_handles = [V.InMemoryVecHandle(vec=v) for v in basis_vecs]
+        sum_vec_handles = [V.InMemoryVecHandle() 
             for i in range(vec_coeff_mat.shape[1])]
-        output_vecs = self._lin_combine(in_memory_vec_handles, basis_vec_handles,
-            vec_coeff_mat)
-        return output_vecs
-    
-         
+        self.lin_combine(sum_vec_handles, basis_vec_handles, vec_coeff_mat)
+        sum_vecs = [sum_vec_handle.get() for sum_vec_handle in sum_vec_handles]    
+        if self.parallel.is_distributed():
+            sum_vecs_list = self.parallel.comm.allgather(sum_vecs)
+            # all_sum_ves is a 1D list of all processors' sum_vecs.
+            all_sum_vecs = util.flatten_list(sum_vecs_list)
+            for i in range(all_sum_vecs.count(None)):
+                all_sum_vecs.remove(None)
+        else:
+            all_sum_vecs = sum_vecs
+        return all_sum_vecs
 
     def __eq__(self, other):
         """Equal?"""

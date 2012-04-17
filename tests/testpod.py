@@ -45,27 +45,28 @@ class TestPOD(unittest.TestCase):
     def generate_data_set(self):
         """Create data set (saved to file)"""
         self.vec_path = join(self.test_dir, 'vec_%03d.txt')
-        self.vec_handles = [V.ArrayTextHandle(self.vec_path%i)
+        self.vec_handles = [V.ArrayTextVecHandle(self.vec_path%i)
             for i in range(self.num_vecs)]
         
         if parallel.is_rank_zero():
-            self.vec_mat = N.mat(N.random.random((self.num_states, 
-                self.num_vecs)))
+            self.vec_array = N.random.random((self.num_states, 
+                self.num_vecs))
             for vec_index, handle in enumerate(self.vec_handles):
-                handle.put(self.vec_mat[:, vec_index])
+                handle.put(self.vec_array[:, vec_index])
         else:
-            self.vec_mat = None
+            self.vec_array = None
         if parallel.is_distributed():
-            self.vec_mat = parallel.comm.bcast(self.vec_mat,root=0)
-         
-        self.correlation_mat_true = self.vec_mat.T * self.vec_mat
+            self.vec_array = parallel.comm.bcast(self.vec_array,root=0)
+            
+        self.vecs = [self.vec_array[:,i] for i in range(self.num_vecs)]
+        self.correlation_mat_true = N.dot(self.vec_array.T, self.vec_array)
         
         #Do the SVD on all procs.
         self.sing_vecs_true, self.sing_vals_true, dummy = util.svd(
             self.correlation_mat_true)
-        # Use N.dot ?
-        self.mode_mat = self.vec_mat * N.mat(self.sing_vecs_true) * N.mat(N.diag(
-            self.sing_vals_true ** -0.5))
+
+        self.mode_array = N.dot(self.vec_array, N.dot(self.sing_vecs_true, N.diag(
+            self.sing_vals_true**-0.5)))
 
      
     def test_init(self):
@@ -75,7 +76,7 @@ class TestPOD(unittest.TestCase):
         data_members_default = {'put_mat': util.save_array_text, 'get_mat': 
             util.load_array_text, 'parallel': parallel_mod.default_instance,
             'verbose': False, 'sing_vecs': None, 'sing_vals': None,
-            'correlation_mat': None, 'vec_handles': None,
+            'correlation_mat': None, 'vec_handles': None, 'vecs': None,
             'vec_ops': VecOperations(verbose=False)}
         
         self.assertEqual(util.get_data_members(POD(verbose=False)), 
@@ -125,6 +126,11 @@ class TestPOD(unittest.TestCase):
         
         sing_vecs_returned, sing_vals_returned = \
             self.my_POD.compute_decomp(self.vec_handles)
+        sing_vecs_returned2, sing_vals_returned2 = \
+            self.my_POD.compute_decomp_in_memory(self.vecs)
+        N.testing.assert_equal(sing_vecs_returned, sing_vecs_returned2)
+        N.testing.assert_equal(sing_vals_returned, sing_vals_returned2)
+        
         self.my_POD.put_decomp(sing_vecs_path, sing_vals_path)
         self.my_POD.put_correlation_mat(correlation_mat_path)
         
@@ -162,7 +168,7 @@ class TestPOD(unittest.TestCase):
         compares them to the known solution.
         """
         mode_path = join(self.test_dir, 'mode_%03d.txt')
-        mode_handles = [V.ArrayTextHandle(mode_path%i) for i in self.mode_nums]
+        mode_handles = [V.ArrayTextVecHandle(mode_path%i) for i in self.mode_nums]
         # starts with the CORRECT decomposition.
         self.my_POD.sing_vecs = self.sing_vecs_true
         self.my_POD.sing_vals = self.sing_vals_true
@@ -174,17 +180,17 @@ class TestPOD(unittest.TestCase):
         self.my_POD.compute_modes(self.mode_nums, mode_handles, 
             index_from=self.index_from, vec_handles=self.vec_handles)
         
-        modes_returned = my_POD_in_memory.compute_modes_and_return(
-            self.mode_nums, vec_handles=self.vec_handles, 
+        modes_returned = my_POD_in_memory.compute_modes_in_memory(
+            self.mode_nums, vecs=self.vecs, 
             index_from=self.index_from) 
         
         for mode_index, mode_handle in enumerate(mode_handles):
             mode = mode_handle.get()
             N.testing.assert_allclose(mode, 
-                self.mode_mat[:,self.mode_nums[mode_index]-self.index_from])
+                self.mode_array[:,self.mode_nums[mode_index]-self.index_from])
             N.testing.assert_allclose(
                 modes_returned[mode_index].squeeze(), 
-                N.array(self.mode_mat[:,
+                N.array(self.mode_array[:,
                     self.mode_nums[mode_index]-self.index_from]).squeeze())
 
         

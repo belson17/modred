@@ -11,70 +11,65 @@ import sys
 import numpy as N
 import util
 
-class VecHandleBase(object):
+class VecHandle(object):
     cached_base_handle = None
     cached_base_vec = None
 
-    def __init__(self, base_handle=None, scale=1):
+    def __init__(self, base_handle=None, scale=None):
         self.__base_handle = base_handle
         self.scale = scale
-
+    
     def get(self):
         vec = self._get()
         if self.__base_handle is None:
-            return vec * self.scale
-        if self.__base_handle == VecHandleBase.cached_base_handle:
-            base_vec = VecHandleBase.cached_base_vec
+            return self.__scale_vec(vec)
+        if self.__base_handle == VecHandle.cached_base_handle:
+            base_vec = VecHandle.cached_base_vec
         else:
             base_vec = self.__base_handle.get()
-            VecHandleBase.cached_base_handle = self.__base_handle
-            VecHandleBase.cached_base_vec = base_vec
-        return (vec - base_vec) * self.scale
-
+            VecHandle.cached_base_handle = self.__base_handle
+            VecHandle.cached_base_vec = base_vec
+        return self.__scale_vec(vec - base_vec)
+        
     def put(self, vec):
         return self._put(vec)
-
     def _get(self):
         raise NotImplementedError("must be implemented by subclasses")
-
     def _put(self):
         raise NotImplementedError("must be implemented by subclasses")
-    
-    def __sizeof__(self):
-        """Returns size of object in bytes
-        
-        This function cannot account for the case of user-defined classes 
-        that do not have a __sizeof__ function."""
-        my_size = 0
-        for data_member in util.get_data_members(self):
-            my_size += sys.getsizeof(getattr(self, data_member))
-        return my_size
+    def __scale_vec(self, vec):
+        if self.scale is not None:
+            return vec*self.scale
+        return vec
+    #def __eq__(self, other):
+    #    """Equal?"""
+    #    return util.get_data_members(self) == util.get_data_members(other)
 
 
-class InMemoryHandle(VecHandleBase):
+class InMemoryVecHandle(VecHandle):
     """Gets and puts vectors in memory"""
-    def __init__(self, vec=None, base_handle=None, scale=1):
-        VecHandleBase.__init__(self, base_handle, scale)
+    def __init__(self, vec=None, base_handle=None, scale=None):
+        VecHandle.__init__(self, base_handle, scale)
         self.vec = vec
     def _get(self):
         return self.vec
     def _put(self, vec):
-        return vec
+        self.vec = vec
 
-class ArrayTextHandle(VecHandleBase):
+class ArrayTextVecHandle(VecHandle):
     """Gets and puts array vector objects to text files"""
     def __init__(self, vec_path, base_handle=None, scale=1):
-        VecHandleBase.__init__(self, base_handle, scale)
+        VecHandle.__init__(self, base_handle, scale)
         self.vec_path = vec_path
     def _get(self):
         return util.load_array_text(self.vec_path)
     def _put(self, vec):
         util.save_array_text(vec, self.vec_path)
 
-class PickleHandle(VecHandleBase):
+class PickleVecHandle(VecHandle):
     """Gets and puts any vector object to pickle files"""
     def __init__(self, vec_path, base_handle=None, scale=1):
-        VecHandleBase.__init__(self, base_handle, scale)
+        VecHandle.__init__(self, base_handle, scale)
         self.vec_path = vec_path
     def _get(self):
         return cPickle.load(open(self.vec_path, 'rb'))
@@ -114,7 +109,7 @@ class InnerProductNonUniform(object):
         return IP
 
 
-class VectorBase(object):
+class Vector(object):
     """Recommended base class for vector objects (not required)."""
     def __sizeof__(self):
         """Returns size of object in bytes.
@@ -125,6 +120,11 @@ class VectorBase(object):
         for data_member in util.get_data_members(self):
             my_size += sys.getsizeof(getattr(self, data_member))
         return my_size
+    def __add__(self, other):
+        raise NotImplementedError('addition must be implemented by subclasses')
+    def __mul(self, scalar):
+        raise NotImplementedError('multiplication must be implemented by '
+            'subclasses')
     def __rmul__(self, scalar):
         return self.__mul__(scalar)
     def __lmul__(self, scalar):

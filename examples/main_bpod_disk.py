@@ -35,16 +35,15 @@ from os.path import join
 from shutil import rmtree
 import copy
 import numpy as N
-import modred
+import modred as MR
 from parallel import default_instance
 parallel = default_instance
-import vectors as V
 
-class Vec(V.VectorBase):
+class Vec(MR.Vector):
     """The vec objects used will be instances of this class"""
     def __init__(self, path=None, x_grid=None, y_grid=None, data=None):
         if x_grid is not None and y_grid is not None:
-            self._inner_product = V.InnerProductNonUniform(x_grid, y_grid)
+            self._inner_product = MR.InnerProductNonUniform(x_grid, y_grid)
         if path is not None:
             self.load(path)
         else:
@@ -53,11 +52,11 @@ class Vec(V.VectorBase):
             self.data = data
     def save(self, path):
         """Save vec to text format"""
-        modred.save_array_text(self.data, path)
+        MR.save_array_text(self.data, path)
     
     def load(self, path):
         """Load vec from text format, still with base vec"""
-        self.data = modred.load_array_text(path)
+        self.data = MR.load_array_text(path)
     
     def inner_product(self, other):
         return self._inner_product(self.data, other.data) 
@@ -73,13 +72,13 @@ class Vec(V.VectorBase):
     def __eq__(self, other):
         return N.allclose(self.data, other.data)
             
-class VecHandle(V.VecHandleBase):
+class VecHandle(MR.VecHandle):
     """Vector handle that supports a required grid"""
     x_grid = None
     y_grid = None
     def __init__(self, vec_path, x_grid=None, y_grid=None, base_handle=None,
         scale=1):
-        V.VecHandleBase.__init__(self, base_handle, scale)
+        MR.VecHandle.__init__(self, base_handle, scale)
         self.vec_path = vec_path
         if N.array(x_grid != VecHandle.x_grid).any():
             VecHandle.x_grid = x_grid
@@ -134,15 +133,14 @@ def main(verbose=True, make_plots=True):
     parallel.sync()
     
     # Create an instance of BPOD.
-    my_BPOD = modred.BPOD(inner_product=inner_product, max_vecs_per_node=20, 
+    my_BPOD = MR.BPOD(inner_product=inner_product, max_vecs_per_node=20, 
         verbose=verbose)
     
     # Quick check that functions are ok.
-    my_BPOD.idiot_check(direct_vec_handles[0])
+    my_BPOD.sanity_check(direct_vec_handles[0])
     
-    L_sing_vecs, sing_vals, R_sing_vecs = \
-        my_BPOD.compute_decomp_and_return(direct_vec_handles, 
-            adjoint_vec_handles)
+    L_sing_vecs, sing_vals, R_sing_vecs = my_BPOD.compute_decomp(
+        direct_vec_handles, adjoint_vec_handles)
     
     # Model error less than ~10%
     sing_vals_norm = sing_vals/N.sum(sing_vals)

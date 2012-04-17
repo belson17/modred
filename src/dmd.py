@@ -5,6 +5,7 @@ from vecoperations import VecOperations
 import pod
 import util
 import parallel
+import vectors as V
 
 class DMD(object):
     """Dynamic Mode Decomposition/Koopman Mode Decomposition.
@@ -44,12 +45,13 @@ class DMD(object):
         self.build_coeffs = None
         self.mode_norms = None
         self.vec_handles = None
+        self.vecs = None
 
 
 
-    def idiot_check(self, test_vec_handle):
+    def sanity_check(self, test_vec_handle):
         """See VecOperations documentation"""
-        self.vec_ops.idiot_check(test_vec_handle)
+        self.vec_ops.sanity_check(test_vec_handle)
 
 
     def get_decomp(self, ritz_vals_source, mode_norms_source, 
@@ -82,21 +84,23 @@ class DMD(object):
             raise util.UndefinedError("put_mat is undefined, can't put")
         if self.parallel.is_rank_zero():
             self.put_mat(self.ritz_vals, dest)
-
+        self.parallel.sync()
+        
     def put_mode_norms(self, dest):
         """Puts the mode norms"""
         if self.put_mat is None and self.parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined, can't put")
         if self.parallel.is_rank_zero():
             self.put_mat(self.mode_norms, dest)
-
+        self.parallel.sync()
+        
     def put_build_coeffs(self, dest):
         """Puts the build coeffs"""
         if self.put_mat is None and self.parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined, can't put")
         if self.parallel.is_rank_zero():
             self.put_mat(self.build_coeffs, dest)
-
+        self.parallel.sync()
             
     def compute_decomp(self, vec_handles):
         """Computes decomposition and returns SVD matrices.
@@ -108,7 +112,7 @@ class DMD(object):
             vec_handles, ritz_vals, mode_norms, build_coeffs
         """
         if vec_handles is not None:
-            self.vec_handles = vec_handles
+            self.vec_handles = util.make_list(vec_handles)
         if self.vec_handles is None:
             raise util.UndefinedError('vec_handles is not given')
 
@@ -158,15 +162,13 @@ class DMD(object):
             self.POD.correlation_mat * self.build_coeffs).real
         return self.ritz_vals, self.mode_norms, self.build_coeffs
         
+    def compute_decomp_in_memory(self, vecs):
+        """Same as ``compute_decomp`` but takes vecs instead of handles"""
+        self.vecs = util.make_list(vecs)
+        vec_handles = [V.InMemoryVecHandle(v) for v in self.vecs]
+        return self.compute_decomp(vec_handles)
         
-    def _compute_modes_helper(self, vec_handles=None):
-        """Helper for ``compute_modes`` and ``compute_modes_helper``"""
-        if self.build_coeffs is None:
-            raise util.UndefinedError('Must define self.build_coeffs')
-        # User should specify ALL vecs, even though all but last are used
-        if vec_handles is not None:
-            self.vec_handles = vec_handles
-        
+    
     def compute_modes(self, mode_nums, mode_handles, vec_handles=None, 
         index_from=0):
         """Computes modes
@@ -182,23 +184,29 @@ class DMD(object):
             vec_handles: list of handles for vecs, can omit if given in
             ``compute_decomp``.
         """
-        self._compute_modes_helper(vec_handles=vec_handles)
+        if self.build_coeffs is None:
+            raise util.UndefinedError('Must define self.build_coeffs')
+        # User should specify ALL vecs, even though all but last are used
+        if vec_handles is not None:
+            self.vec_handles = util.make_list(vec_handles)
         self.vec_ops.compute_modes(mode_nums, mode_handles, 
             self.vec_handles[:-1], self.build_coeffs, index_from=index_from)
         
-    def compute_modes_and_return(self, mode_nums, vec_handles=None, 
+    def compute_modes_in_memory(self, mode_nums, vecs=None, 
         index_from=0):
-        """Computes modes and returns
+        """Same as ``compute_modes``, but takes vecs instead of handles.
         
-        See ``compute_modes`` for details.
-
         Returns:
-            a list of modes.
+            a list of all modes.
 
-        In parallel, each MPI worker is returned a complete list of modes
+        In parallel, each MPI worker returns all modes.
         """
-        self._compute_modes_helper(vec_handles=vec_handles)
-        return self.vec_ops.compute_modes_and_return(mode_nums, 
-            self.vec_handles[:-1], self.build_coeffs, index_from=index_from)
+        if self.build_coeffs is None:
+            raise util.UndefinedError('Must define self.build_coeffs')
+        # User should specify ALL vecs, even though all but last are used
+        if vecs is not None:
+            self.vecs = util.make_list(vecs)
+        return self.vec_ops.compute_modes_in_memory(mode_nums, 
+            self.vecs[:-1], self.build_coeffs, index_from=index_from)
  
  

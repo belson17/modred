@@ -20,5 +20,4 @@ from vecoperations import *
 from okid import *
 from parallel import *
 from util import *
-#import reductions
-import vecdefs
+from vectors import *

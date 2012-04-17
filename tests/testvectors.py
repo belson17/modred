@@ -52,98 +52,60 @@ class TestVectors(unittest.TestCase):
         self.assertEqual(V.VecHandle.cached_base_vec, base_vec2)
     
     def test_in_memory_handle(self):
-        """Test derived vector handles get/put"""
+        """Test in memory and base class vector handles"""
         base_vec1 = N.random.random((3,4))
         base_vec2 = N.random.random((3,4))
         vec_true = N.random.random((3,4))
         scale = N.random.random()
-        #test_path = join(self.test_dir, 'test_vec')
-        #base_path1 = join(self.test_dir, 'base_vec1')
-        #base_path2 = join(self.test_dir, 'base_vec2')
-    
-        vec_handle = V.InMemoryHandle(vec=vec_true, base_handle=V.InMemoryHandle(base_vec1),
+        
+        # Test base class functionality
+        vec_handle = V.InMemoryVecHandle(vec=vec_true, base_handle=V.InMemoryVecHandle(base_vec1),
             scale=scale)
         vec_comp = vec_handle.get()
-        N.testing.assert_allclose(vec_comp, scale*(vec_true - base_vec1))
+        N.testing.assert_equal(vec_comp, scale*(vec_true - base_vec1))
         
-        vec_handle = V.InMemoryHandle(vec=vec_true, base_handle=V.InMemoryHandle(base_vec2),
+        vec_handle = V.InMemoryVecHandle(vec=vec_true, base_handle=V.InMemoryVecHandle(base_vec2),
             scale=scale)
         vec_comp = vec_handle.get()
-        N.testing.assert_allclose(vec_comp, scale*(vec_true - base_vec2))
+        N.testing.assert_equal(vec_comp, scale*(vec_true - base_vec2))
         
-        vec_handle = V.InMemoryHandle(vec=vec_true, base_handle=V.InMemoryHandle(base_vec1))
+        vec_handle = V.InMemoryVecHandle(vec=vec_true, base_handle=V.InMemoryVecHandle(base_vec1))
         vec_comp = vec_handle.get()
-        N.testing.assert_allclose(vec_comp, vec_true - base_vec1)
+        N.testing.assert_equal(vec_comp, vec_true - base_vec1)
         
-        vec_handle = V.InMemoryHandle(vec=vec_true)
+        vec_handle = V.InMemoryVecHandle(vec=vec_true)
         vec_comp = vec_handle.get()
-        N.testing.assert_allclose(vec_comp, vec_true)
+        N.testing.assert_equal(vec_comp, vec_true)
 
+        # Test put
+        vec_handle = V.InMemoryVecHandle()
+        vec_handle.put(vec_true)
+        N.testing.assert_equal(vec_handle.vec, vec_true)
 
-    def test_array_text_handle(self):
-        """Test derived vector handles get/put"""
-        base_vec1 = N.random.random((3,4))
-        base_vec2 = N.random.random((3,4))
-        vec_true = N.random.random((3,4))
-        scale = N.random.random()
-        test_path = join(self.test_dir, 'test_vec')
-        base_path1 = join(self.test_dir, 'base_vec1')
-        base_path2 = join(self.test_dir, 'base_vec2')
-        util.save_array_text(base_vec1, base_path1)
-        util.save_array_text(base_vec2, base_path2)
-        util.save_array_text(vec_true, test_path)
-        VecHandle = V.ArrayTextHandle #, V.PickleHandle]:
-        vec_handle = VecHandle(test_path, base_handle=VecHandle(base_path1),
-            scale=scale)
-        vec_comp = vec_handle.get()
-        N.testing.assert_allclose(vec_comp, scale*(vec_true - base_vec1))
-        
-        vec_handle = VecHandle(test_path, base_handle=VecHandle(base_path2),
-            scale=scale)
-        vec_comp = vec_handle.get()
-        N.testing.assert_allclose(vec_comp, scale*(vec_true - base_vec2))
-        
-        vec_handle = VecHandle(test_path, base_handle=VecHandle(base_path1))
-        vec_comp = vec_handle.get()
-        N.testing.assert_allclose(vec_comp, vec_true - base_vec1)
-        
-        vec_handle = VecHandle(test_path)
-        vec_comp = vec_handle.get()
-        N.testing.assert_allclose(vec_comp, vec_true)
-
-
-    def test_pickle_handle(self):
-        """Test derived vector handles get/put"""
-        VecHandle = V.PickleHandle
+    def test_handles_which_save(self):
+        """Test handles whose get/put load/save from file"""
         base_vec1 = N.random.random((3,4))
         base_vec2 = N.random.random((3,4))
         vec_true = N.random.random((3,4))
         scale = N.random.random()
         vec_true_path = join(self.test_dir, 'test_vec')
+        vec_saved = join(self.test_dir, 'put_vec')
         base_path1 = join(self.test_dir, 'base_vec1')
         base_path2 = join(self.test_dir, 'base_vec2')
-        VecHandle(base_path1).put(base_vec1)
-        VecHandle(base_path2).put(base_vec2)
-        VecHandle(vec_true_path).put(vec_true)
-        vec_handle = VecHandle(vec_true_path, base_handle=VecHandle(base_path1),
-            scale=scale)
-        vec_comp = vec_handle.get()
-        N.testing.assert_allclose(vec_comp, scale*(vec_true - base_vec1))
+        for VecHandle in [V.ArrayTextVecHandle, V.PickleVecHandle]:
+            VecHandle(base_path1).put(base_vec1)
+            VecHandle(base_path2).put(base_vec2)
+            VecHandle(vec_true_path).put(vec_true)
+            # Test get
+            vec_handle = VecHandle(vec_true_path)
+            vec_comp = vec_handle.get()
+            N.testing.assert_allclose(vec_comp, vec_true)
+            # Test put
+            vec_handle = VecHandle(vec_saved)
+            vec_handle.put(vec_true)
+            N.testing.assert_equal(vec_handle.get(), vec_true)
         
-        vec_handle = VecHandle(vec_true_path, base_handle=VecHandle(base_path2),
-            scale=scale)
-        vec_comp = vec_handle.get()
-        N.testing.assert_allclose(vec_comp, scale*(vec_true - base_vec2))
         
-        vec_handle = VecHandle(vec_true_path, base_handle=VecHandle(base_path1))
-        vec_comp = vec_handle.get()
-        N.testing.assert_allclose(vec_comp, vec_true - base_vec1)
-        
-        vec_handle = VecHandle(vec_true_path)
-        vec_comp = vec_handle.get()
-        N.testing.assert_allclose(vec_comp, vec_true)
-
-
     def test_IP_trapz(self):
         """Test trapezoidal rule inner product for 2nd-order convergence"""
         # Known inner product of x**2 + 1.2y**2 and x**2 over interval
