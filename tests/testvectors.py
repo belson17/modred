@@ -43,12 +43,12 @@ class TestVectors(unittest.TestCase):
         util.save_array_text(base_vec2, base_path2)
         util.save_array_text(vec_true, test_path)
         
-        vec_ptr = V.VecHandle(base_handle=base_path1, scale=scale)
-        self.assertEqual(V.VecHandle.cached_base_handle, base_path1)
+        vec_ptr = V.VecHandle(base_vec_handle=base_path1, scale=scale)
+        self.assertEqual(V.VecHandle.cached_base_vec_handle, base_path1)
         self.assertEqual(V.VecHandle.cached_base_vec, base_vec1)
         
-        vec_ptr = V.VecHandle(base_handle=base_path2)
-        self.assertEqual(V.VecHandle.cached_base_handle, base_path2)
+        vec_ptr = V.VecHandle(base_vec_handle=base_path2)
+        self.assertEqual(V.VecHandle.cached_base_vec_handle, base_path2)
         self.assertEqual(V.VecHandle.cached_base_vec, base_vec2)
     
     def test_in_memory_handle(self):
@@ -59,17 +59,17 @@ class TestVectors(unittest.TestCase):
         scale = N.random.random()
         
         # Test base class functionality
-        vec_handle = V.InMemoryVecHandle(vec=vec_true, base_handle=V.InMemoryVecHandle(vec=base_vec1),
+        vec_handle = V.InMemoryVecHandle(vec=vec_true, base_vec_handle=V.InMemoryVecHandle(vec=base_vec1),
             scale=scale)
         vec_comp = vec_handle.get()
         N.testing.assert_equal(vec_comp, scale*(vec_true - base_vec1))
         
-        vec_handle = V.InMemoryVecHandle(vec=vec_true, base_handle=V.InMemoryVecHandle(vec=base_vec2),
+        vec_handle = V.InMemoryVecHandle(vec=vec_true, base_vec_handle=V.InMemoryVecHandle(vec=base_vec2),
             scale=scale)
         vec_comp = vec_handle.get()
         N.testing.assert_equal(vec_comp, scale*(vec_true - base_vec2))
         
-        vec_handle = V.InMemoryVecHandle(vec=vec_true, base_handle=V.InMemoryVecHandle(vec=base_vec1))
+        vec_handle = V.InMemoryVecHandle(vec=vec_true, base_vec_handle=V.InMemoryVecHandle(vec=base_vec1))
         vec_comp = vec_handle.get()
         N.testing.assert_equal(vec_comp, vec_true - base_vec1)
         

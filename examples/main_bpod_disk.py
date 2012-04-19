@@ -22,7 +22,7 @@ The modes, which are saved to disk, do not include the base vec.
 
 Another benefit of having the vecs saved to disk is BPOD can then be
 used in a distributed memory parallel setting.
-In fact, this script can be run in parallel with, e.g.::
+In fact, this script can be run in parallel with::
 
   mpiexec -n 4 python main_bpod_disk.py
 
@@ -76,9 +76,9 @@ class VecHandle(MR.VecHandle):
     """Vector handle that supports a required grid"""
     x_grid = None
     y_grid = None
-    def __init__(self, vec_path, x_grid=None, y_grid=None, base_handle=None,
+    def __init__(self, vec_path, x_grid=None, y_grid=None, base_vec_handle=None,
         scale=1):
-        MR.VecHandle.__init__(self, base_handle, scale)
+        MR.VecHandle.__init__(self, base_vec_handle, scale)
         self.vec_path = vec_path
         if N.array(x_grid != VecHandle.x_grid).any():
             VecHandle.x_grid = x_grid
@@ -100,43 +100,50 @@ def main(verbose=True, make_plots=True):
     ny = 30
     x_grid = 1 + N.sin(N.linspace(-N.pi, N.pi, nx))
     y_grid = 1 + N.sin(N.linspace(-N.pi, N.pi, ny))
+    X, Y = N.meshgrid(x, y)
     num_direct_vecs = 30
     num_adjoint_vecs = 25
     save_dir = 'DELETE_ME_bpod_example_files'
     
+    base_vec_data_path = join(save_dir, 'base_vec.txt')
+    base_vec_handle = VecHandle(base_vec_data_path, x_grid, y_grid)
+    direct_vec_handles = [VecHandle(join(save_dir, 'direct_vec_%02d.txt'%i),
+        x_grid=x_grid, y_grid=y_grid, base_vec_handle=base_vec_handle) 
+        for i in xrange(num_direct_vecs)]
+    adjoint_vec_handles = [VecHandle(join(save_dir, 'adjoint_vec_%02d.txt'%i),
+        x_grid=x_grid, y_grid=y_grid, base_vec_handle=base_vec_handle)
+        for i in xrange(num_adjoint_vecs)]
+    
+    ###
+    ### This section creates random data as a placeholder. Typically this
+    ### data would already exist and there's no need for these steps.
+    ###
     # Create the directory for example files only on processor 0.
     if not os.path.exists(save_dir) and parallel.is_rank_zero():
         os.mkdir(save_dir)
     # Wait for processor 0 to finish making the directory.
     parallel.sync()
     
-    base_vec_data_path = join(save_dir, 'base_vec.txt')
-    base_vec_data = N.random.random((nx, ny))
-    base_vec_handle = VecHandle(base_vec_data_path, x_grid, y_grid)
-    
+    base_vec_data = 0.5*N.ones((nx, ny))
     if parallel.is_rank_zero():
         base_vec_handle.put(Vec(data=base_vec_data))
     parallel.sync()
-    
     # Create random data and save to disk
-    direct_vec_handles = [VecHandle(join(save_dir, 'direct_vec_%02d.txt'%i),
-        x_grid=x_grid, y_grid=y_grid, base_handle=base_vec_handle) 
-        for i in xrange(num_direct_vecs)]
-    adjoint_vec_handles = [VecHandle(join(save_dir, 'adjoint_vec_%02d.txt'%i),
-        x_grid=x_grid, y_grid=y_grid, base_handle=base_vec_handle)
-        for i in xrange(num_adjoint_vecs)]
     if parallel.is_rank_zero():
         for handle in direct_vec_handles:
-            handle.put(Vec(data=N.random.random((nx,ny))))
+            handle.put(Vec(data=N.random.random((nx,ny))+base_vec_data))
         for handle in adjoint_vec_handles:
-            handle.put(Vec(data=N.random.random((nx,ny))))
+            handle.put(Vec(data=N.random.random((nx,ny))+base_vec_data))
     parallel.sync()
+    ###
+    ### End of data creation section ###
+    ###
     
     # Create an instance of BPOD.
     my_BPOD = MR.BPOD(inner_product=inner_product, max_vecs_per_node=20, 
         verbose=verbose)
     
-    # Quick check that functions are ok.
+    # Check that functions are ok.
     my_BPOD.sanity_check(direct_vec_handles[0])
     
     L_sing_vecs, sing_vals, R_sing_vecs = my_BPOD.compute_decomp(
@@ -176,7 +183,7 @@ def main(verbose=True, make_plots=True):
         except:
             print "Need matplotlib for plots"
     
-    # Delete the save_dir with all vec and mode files
+    # Clean up. Delete the save_dir with all vec and mode files
     parallel.sync()
     if parallel.is_rank_zero():
         rmtree(save_dir)

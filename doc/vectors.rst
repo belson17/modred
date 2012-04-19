@@ -1,4 +1,4 @@
-vectors 
+Module vectors 
 ********************* 
 
 .. automodule:: vectors

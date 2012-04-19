@@ -13,8 +13,10 @@ Contents:
    
    intro
    
-   tutorial
- 
+   requirements
+
+   tutorial 
+   
    detailed_guide
  
    pod

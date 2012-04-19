@@ -1,5 +1,7 @@
+.. _sec_details:
+
 ==================================================
-Interfacing modred with your data 
+Interfacing with your data
 ==================================================
 
 As stated before, modred can work with any data in any format.
@@ -35,9 +37,9 @@ Your inner product must satisfy the mathematical definition for an inner product
 
 - Conjugate symmetry: 
   ``inner_product(vec1, vec2) == numpy.conj(inner_product(vec2, vec1))``.
-- Linearity: ``inner_product(a*vec1, vec2) == a*inner_product(vec1, vec2)`` 
-  for a scalar ``a``.
-- Implied norm: ``inner_product(vec1, vec1) >= 0``, with equality iff ``vec1 == 0``.
+- Linearity: ``inner_product(scalar*vec1, vec2) == scalar*inner_product(vec1, vec2)``.
+- Implied norm: ``inner_product(vec, vec) >= 0`` with equality if and only if
+  ``vec == 0``.
 
 The two examples we show are numpy's ``vdot`` and the trapezoidal rule in
 ``vectors.InnerProductTrapz``.
@@ -169,25 +171,25 @@ The classes POD, BPOD, and DMD have similar interfaces.
 First, they all have ``compute_decomp`` 
 functions that take lists of vector handles, ``vec_handles``, as arguments.
 They also all have member functions ``compute_decomp_in_memory`` for smaller
-data, and these functions directly take lists of vectors, ``vecs``, as 
+data, and these functions directly take lists of vectors as 
 arguments.
 Within each class's ``compute_decomp`` functions, ``vec = vec_handle.get()``
 is called repeatedly to retrieve vectors as needed. 
 In fact, ``compute_decomp`` and ``compute_decomp_in_memory`` do not "know"
-or "care" what's inside the vector handles and vectors; the only dependency is
+or "care" what's inside the vector handles and vectors; only
 that they fulfill the requirements listed above.
 
 Similarly, POD, BPOD, and DMD all have member functions resembling 
 ``compute_modes`` and ``compute_modes_in_memory``.
 Function ``compute_modes`` takes a list of vector handles for the modes and
 calls ``put(mode)``, and returns nothing.
-Function ``compute_modes_in_memory`` doesn't take a list of vector handles for
-the modes, instead returning a list of modes directly. 
-This is a good option for small data, where the use of handles is unnecessary.
+Function ``compute_modes_in_memory`` returns a list of modes directly, which
+is a simple option for small data where the use of handles is unnecessary.
 
 More information about these methods is provided in the documentation
-for each class, (:class:`POD`, :class:`BPOD`, :class:`DMD`).
-For examples, see the quickstart and the examples directory.
+for each class, (see :mod:`pod`, :mod:`bpod`, :mod:`dmd`, and for 
+lower-level operations, :mod:`vecoperations`).
+For more information, see the tutorial and the examples directory.
 
 
 ---------------------------------------
@@ -205,15 +207,12 @@ Summarizing, to use modred on arbitrary data, define
   2. ``put(vec)`` member function
   3. Inherits from MR.VecHandle, if so, requirements 1 and 2 change to:
     1. ``_get()`` member function
-    2. ``_put()`` member function
+    2. ``_put(vec)`` member function
 3. ``inner_product(vec1, vec2)`` function
 
 Then you can get started using any of the modal decomposition classes 
 (POD, BPOD, and DMD)!
-The rest of this documentation details how to use each individual class and
-method.
 
-There has been essentially no discussion of ERA, OKID, and forming reduced-order
-models from BPOD.
-The documentation for the individual classes and functions should be sufficient.
-
+For large data, Python's speed limitations can be 
+bypassed by implementing functions in C/C++ via Cython and SWIG, 
+Fortran via f2py, etc. 

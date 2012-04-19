@@ -13,22 +13,22 @@ import util
 
 class VecHandle(object):
     """Recommended base class for vector handles (not required)"""
-    cached_base_handle = None
+    cached_base_vec_handle = None
     cached_base_vec = None
 
-    def __init__(self, base_handle=None, scale=None):
-        self.__base_handle = base_handle
+    def __init__(self, base_vec_handle=None, scale=None):
+        self.__base_vec_handle = base_vec_handle
         self.scale = scale
     
     def get(self):
         vec = self._get()
-        if self.__base_handle is None:
+        if self.__base_vec_handle is None:
             return self.__scale_vec(vec)
-        if self.__base_handle == VecHandle.cached_base_handle:
+        if self.__base_vec_handle == VecHandle.cached_base_vec_handle:
             base_vec = VecHandle.cached_base_vec
         else:
-            base_vec = self.__base_handle.get()
-            VecHandle.cached_base_handle = self.__base_handle
+            base_vec = self.__base_vec_handle.get()
+            VecHandle.cached_base_vec_handle = self.__base_vec_handle
             VecHandle.cached_base_vec = base_vec
         return self.__scale_vec(vec - base_vec)
         
@@ -46,8 +46,8 @@ class VecHandle(object):
 
 class InMemoryVecHandle(VecHandle):
     """Gets and puts vectors in memory"""
-    def __init__(self, vec=None, base_handle=None, scale=None):
-        VecHandle.__init__(self, base_handle, scale)
+    def __init__(self, vec=None, base_vec_handle=None, scale=None):
+        VecHandle.__init__(self, base_vec_handle, scale)
         self.vec = vec
     def _get(self):
         return self.vec
@@ -60,8 +60,8 @@ class InMemoryVecHandle(VecHandle):
         
 class ArrayTextVecHandle(VecHandle):
     """Gets and puts array vector objects to text files"""
-    def __init__(self, vec_path, base_handle=None, scale=None):
-        VecHandle.__init__(self, base_handle, scale)
+    def __init__(self, vec_path, base_vec_handle=None, scale=None):
+        VecHandle.__init__(self, base_vec_handle, scale)
         self.vec_path = vec_path
     def _get(self):
         return util.load_array_text(self.vec_path)
@@ -75,8 +75,8 @@ class ArrayTextVecHandle(VecHandle):
 
 class PickleVecHandle(VecHandle):
     """Gets and puts any vector object to pickle files"""
-    def __init__(self, vec_path, base_handle=None, scale=None):
-        VecHandle.__init__(self, base_handle, scale)
+    def __init__(self, vec_path, base_vec_handle=None, scale=None):
+        VecHandle.__init__(self, base_vec_handle, scale)
         self.vec_path = vec_path
     def _get(self):
         return cPickle.load(open(self.vec_path, 'rb'))
