@@ -1,0 +1,6 @@
+vectors 
+********************* 
+
+.. automodule:: vectors
+   :members:
+

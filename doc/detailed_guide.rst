@@ -4,10 +4,10 @@ Working with arbitrary data
 
 As stated before, modred can work with any data in any format.
 Of course, you'll need to tell modred how to do this.
-This section explains the steps, along with the relevant mathematical background.
+This section fully explains the process and the relevant mathematical background.
 
 -------------------
-The vector object
+Vector objects
 -------------------
 
 The building block of the modal decompositions is the vector object.
@@ -22,46 +22,12 @@ We do mean an element of a vector space (technically a Hilbert space).
 
 The requirements of the vector object are that it must:
 
-
 1. Support scalar multiplication, i.e. ``vector2 = 2.0*vector1``. 
 2. Support addition with other vectors, i.e. ``vector3 = vector1 + vector2``.
-3. Be compatible with supplied ``get_vec`` function.
-4. Be compatible with supplied ``put_vec`` function.
-5. Be compatible with supplied ``inner_product`` function.
+3. Be compatible with the ``inner_product(vector1, vector2)`` function.
 
 Numpy arrays already meet requirements 1 and 2. 
 For your own classes, define ``__mul__`` and ``__add__`` special methods for 1 and 2.
-
-Requirements 3--5 are discussed next.
-
-----------------------------
-Functions of vectors
-----------------------------
-
-
-^^^^^^^^^^^^^^^^^^
-Definitions
-^^^^^^^^^^^^^^^^^^
-
-The modal decomposition classes (POD, BPOD, and DMD) interact with vectors
-with three functions which you supply:
-
-1. ``get_vec(vec_source)``: Gets a vector specified by ``vec_source`` and returns it.
-2. ``put_vec(vec, vec_dest)``: Puts ``vec`` in the destination specified by ``vec_dest``.
-3. ``inner_product(vec1, vec2)``: Returns the inner product between two vectors.
-
-The first, ``get_vec``, gets a vector from the source specified by its argument
-(which can be anything), 
-possibly does some operations to that vector, then returns that vector for use in modred.
-It is like loading, but more general. 
-The ``vec_source`` can be a file name, a set of indices for accessing data in an array,
-a tuple with several entries, anything.
-Since you choose ``get_vec`` and the arguments it will take, you just have to be consistent.
-
-Similarly, ``put_vec`` takes a vector, possibly does some operations on that vector, 
-then puts that vector into the destination pointed to by its second argument.
-It is like saving, but more general.
-Just like ``vec_source``, ``vec_dest`` can be anything, you just have to be consistent.
 
 You also need an inner product function that takes two vectors returns a single number.
 This number can be real or complex, but must always be the same type.
@@ -73,44 +39,147 @@ Your inner product must satisfy the mathematical definition for an inner product
   for a scalar ``a``.
 - Implied norm: ``inner_product(vec1, vec1) >= 0``, with equality iff ``vec1 == 0``.
 
-To see an example for a non-uniform grid/sampling, see main_bpod_disk.py.
+The two examples we show are numpy's ``vdot`` and the trapezoidal rule in
+``vectors.InnerProductTrapz``.
+It's often a good idea to define an inner product function as a member 
+function of the vector class, and write a simple wrapper. 
+There is an example of this in the quickstart.
 
-The modes that are produced are also vectors.
+The resulting modes are also vectors.
 We mean this in both the programming sense that modes are also vector objects
 and the mathematical sense that modes live in the same vector space as vectors.
-After computing the modes, modred calls ``put_vec`` on them.
-
-The three functions ``get_vec``, ``put_vec``, and  ``inner_product`` must be
-defined as member functions of a module or class.
-We provided a few common ones in ``src/vecdefs``, named as such because
-these three functions (along with the "+" and "*" operators) define the
-way modred handles the vector objects.
-
-
-**Checking requirements automatically**
-
-Classes ``BPOD, POD, DMD`` (and ``VecOperations``) include a method ``idiot_check``
-that checks common mistakes in your vector object addition, scalar multiplication,
-and inner products. 
-Still, we encourage you to write your own tests and not risk being exposed
-by the ``idiot_check``!
 
 
 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Base class
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+We provide a useful base class for all user-defined vectors to inherit from::
+  
+  import modred as MR
+  class CustomVector(MR.Vector):
+      pass
 
-^^^^^^^^^^^^^^^^^^^^^
+This isn't required, but encouraged. 
+The base class defines a few useful special functions, and has some simple
+error checking.
+If you're curious, feel free to take a look at it in the :mod:`vectors` module
+(click on the [source] link on the right side).
+
+----------------------------
+Vector handles
+----------------------------
+
+When the vectors are large, it can be inefficient or impossible to have all 
+of them in memory simultaneously.
+Instead, modred is designed to have only a subset of vectors in memory, loading
+and saving them as necessary.
+Therefore, rather than providing modred with a list of vectors, you can 
+provide it with a list of "vector handles". 
+These are lightweight class instances that in some sense point to a vector's
+location, like the filename of where it's saved.
+In general, vector handles must be able to get a vector from some location and
+return it, and also take a vector and put it to some location.
+That is, they generally must have these two member functions:
+
+ - A get function with interface ``vec = vec_handle.get()``.
+ - A put function with interface ``vec_handle.put(vec)``.
+
+A simple vector handle would have a constructor that takes a path name as
+an argument, a ``get`` that loads and returns the vector, and a ``put``
+that saves the vector to the path name.
+
+One can think of ``get`` as loading, but more general because ``get`` can
+retrieve the vector from anywhere (though most often from file).
+Similarly, one can think of ``put`` as saving, but more general because ``put``
+can send the vector anywhere (though most often to file).
+
+It's natural to think of a vector handle's ``get`` and ``put`` as
+"inverses", but they don't have to be.
+For example, it's acceptable to load an input vector from one file format
+and save modes to another file format.
+However, it does mean that one can't load the modes with this vector handle 
+since ``get`` assumes a different file format.
+
+Another way to handle the case of different input vector and mode (or any output
+vector) file formats is to define a different vector handle class for each.
+In this case, one wouldn't need a ``put`` for the input vector handle
+since one never saves to this format.
+Similarly, one only needs to write a ``get`` for the mode vector handle if 
+one wants to load the modes (for example to plot them).
+
+It's very important that the vector handles actually be lightweight (use
+little memory). 
+Modred is most efficient when it uses all of the memory available to have
+as many vectors in memory as possible.
+So if vector handles contain vectors or other large data, then modred 
+could run slowly or Python could give otherwise inexplicable out of memory
+errors.
+
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Base class
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+We provide a useful base class for all user-defined vector handles
+to inherit from.
+An example of a user-defined vector handle that inherits from ``MR.VecHandle``
+is provided in the quickstart.
+This isn't required, but strongly encouraged because it contains extra
+functionality.
+The ``MR.VecHandle`` constructor accepts two additional arguments, a 
+base vector handle ``base_handle`` and a scaling ``scale``. 
+This allows the ``get`` function to retrieve a vector, subtract a base vector
+(for example an equilibrium or mean), scale (for example by a quadrature weight),
+and return a modified vector.
+The base class achieves this via a ``get`` that calls the derived
+class's member function ``_get`` and performs the additional operations
+for base vectors and/or scaling (or neither, if neither ``base_handle`` or ``scale``
+are given).
+The base class's ``put`` simply calls ``_put`` of the derived class.
+Examples are shown in the quickstart.
+
+One might be concerned that the base class is reloading the base vector
+at each call of ``get``, but this is avoidable. 
+As long as the ``base_handle`` you give each vector handle instance is equal
+(with respect to ``==``), then the base vector is loaded on the first 
+call of ``get`` and stored as ``MR.VecHandle.cached_base_vec``, which is used
+by all instances of classes derived from ``MR.VecHandle``. 
+
+If you're curious, feel free to take a look at it in the :mod:`vectors` module
+(click on the [source] link on the right side).
+
+
+--------------------------------------------------------
+Checking requirements automatically
+--------------------------------------------------------
+
+First off, we encourage you to write your own tests (see module unittest) to
+be sure
+your vector object and vector handle work as you expect.
+Classes ``BPOD, POD, DMD`` (and ``VecOperations``) provide a member function 
+``sanity_check`` 
+that checks a few common mistakes in your vector object addition,
+scalar multiplication, and inner products.
+**We encourage you to run ``sanity_check`` every time you use modred.**
+We used to call this the ``idiot_check`` as motivation to use it... 
+keep that in mind!
+
+
+-----------------------------------
 Use in classes
-^^^^^^^^^^^^^^^^^^^^^
+-----------------------------------
+
+!!!!NOT UPDATED PAST THIS POINT!!!!
+
 
 The classes POD, BPOD, and DMD have very similar interfaces.
-First, they all have ``compute_decomp`` and ``compute_decomp_and_return``
-functions that take as an argument ``vec_sources``, which is a list with 
-``vec_source`` type elements.
-Within each class's ``compute_decomp`` and ``compute_decomp_and_return``
-functions, ``get_vec`` is called repeatedly with an argument that is an element of 
-``vec_sources``.
-In fact, ``compute_decomp`` and ``compute_decomp_and_return`` do not "know"
-what's inside ``vec_sources``, they just pass its elements along to ``get_vec``.
+First, they all have ``compute_decomp`` and ``compute_decomp_in_memory``
+functions that take as arguments ``vec_handles`` and ``vecs``, lists of vector
+handles and vectors, respectively.
+Within each class's ``compute_decomp`` functions, ``vec_handle.get()``
+is called repeatedly. 
+In fact, ``compute_decomp`` and ``compute_decomp_in_memory`` do not "know"
+what's inside  they just pass its elements along to ``get_vec``.
 
 The difference between ``compute_decomp`` and ``compute_decomp_and_return`` is
 that ``compute_decomp`` doesn't return the SVD matrices. 

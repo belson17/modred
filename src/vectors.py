@@ -12,6 +12,7 @@ import numpy as N
 import util
 
 class VecHandle(object):
+    """Recommended base class for vector handles (not required)"""
     cached_base_handle = None
     cached_base_vec = None
 
@@ -41,9 +42,6 @@ class VecHandle(object):
         if self.scale is not None:
             return vec*self.scale
         return vec
-    #def __eq__(self, other):
-    #    """Equal?"""
-    #    return util.get_data_members(self) == util.get_data_members(other)
 
 
 class InMemoryVecHandle(VecHandle):
@@ -55,44 +53,53 @@ class InMemoryVecHandle(VecHandle):
         return self.vec
     def _put(self, vec):
         self.vec = vec
-
+    def __eq__(self, other):
+        if other is not None:
+            return (self.vec == other.vec).all()
+        return False
+        
 class ArrayTextVecHandle(VecHandle):
     """Gets and puts array vector objects to text files"""
-    def __init__(self, vec_path, base_handle=None, scale=1):
+    def __init__(self, vec_path, base_handle=None, scale=None):
         VecHandle.__init__(self, base_handle, scale)
         self.vec_path = vec_path
     def _get(self):
         return util.load_array_text(self.vec_path)
     def _put(self, vec):
         util.save_array_text(vec, self.vec_path)
+    def __eq__(self, other):
+        if other is not None:
+            return (self.vec_path == other.vec_path).all()
+        return False
+        
 
 class PickleVecHandle(VecHandle):
     """Gets and puts any vector object to pickle files"""
-    def __init__(self, vec_path, base_handle=None, scale=1):
+    def __init__(self, vec_path, base_handle=None, scale=None):
         VecHandle.__init__(self, base_handle, scale)
         self.vec_path = vec_path
     def _get(self):
         return cPickle.load(open(self.vec_path, 'rb'))
     def _put(self, vec):
         cPickle.dump(vec, open(self.vec_path, 'wb'))
-
-
+    def __eq__(self, other):
+        if other is not None:
+            return (self.vec_path == other.vec_path).all()
+        return False
+        
+        
 def inner_product_array_uniform(self, vec1, vec2):
     return N.vdot(vec1, vec2)     
 
 
-class InnerProductNonUniform(object):
+class InnerProductTrapz(object):
     """Vec object is an n-dimensional array on non-uniform grid.
     
     Args:
         As many 1D arrays of grid points as there are dimensions, in the
         order of the dimensions.
-        
-        x_grid: 1D array of grid points in x-dimension
-        
-        y_grid: 1D array of grid points in y-dimension
-        
-        more...
+            x_grid: 1D array of grid points in x-dimension;
+            y_grid: 1D array of grid points in y-dimension; ...
     
     The inner products are taken with trapezoidal rule.
     """
@@ -111,15 +118,6 @@ class InnerProductNonUniform(object):
 
 class Vector(object):
     """Recommended base class for vector objects (not required)."""
-    def __sizeof__(self):
-        """Returns size of object in bytes.
-        
-        This function cannot account for the case of user-defined classes 
-        that do not have a __sizeof__ function."""
-        my_size = 0
-        for data_member in util.get_data_members(self):
-            my_size += sys.getsizeof(getattr(self, data_member))
-        return my_size
     def __add__(self, other):
         raise NotImplementedError('addition must be implemented by subclasses')
     def __mul(self, scalar):

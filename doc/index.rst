@@ -28,6 +28,8 @@ Contents:
    era
      
    okid
+
+   vectors
    
    vecoperations
 

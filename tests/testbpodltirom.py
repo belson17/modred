@@ -60,17 +60,17 @@ class TestBPODROM(unittest.TestCase):
         """
         Generates random data, saves to file, and computes corect A,B,C.
         """
-        self.direct_mode_handles = [V.ArrayTextHandle(self.direct_mode_path%i)
+        self.direct_mode_handles = [V.ArrayTextVecHandle(self.direct_mode_path%i)
             for i in range(self.num_direct_modes)]
         self.direct_deriv_mode_handles = \
-            [V.ArrayTextHandle(self.direct_deriv_mode_path%i) 
+            [V.ArrayTextVecHandle(self.direct_deriv_mode_path%i) 
                 for i in range(self.num_direct_modes)]
-        self.adjoint_mode_handles = [V.ArrayTextHandle(self.adjoint_mode_path%i)
+        self.adjoint_mode_handles = [V.ArrayTextVecHandle(self.adjoint_mode_path%i)
             for i in range(self.num_adjoint_modes)]
         
-        self.input_vec_handles = [V.ArrayTextHandle(self.input_vec_path%i)
+        self.input_vec_handles = [V.ArrayTextVecHandle(self.input_vec_path%i)
             for i in range(self.num_inputs)]
-        self.output_vec_handles = [V.ArrayTextHandle(self.output_vec_path%i)
+        self.output_vec_handles = [V.ArrayTextVecHandle(self.output_vec_path%i)
             for i in range(self.num_outputs)]
         
         self.direct_mode_mat = N.random.random((num_states, num_direct_modes))

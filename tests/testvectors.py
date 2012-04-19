@@ -59,17 +59,17 @@ class TestVectors(unittest.TestCase):
         scale = N.random.random()
         
         # Test base class functionality
-        vec_handle = V.InMemoryVecHandle(vec=vec_true, base_handle=V.InMemoryVecHandle(base_vec1),
+        vec_handle = V.InMemoryVecHandle(vec=vec_true, base_handle=V.InMemoryVecHandle(vec=base_vec1),
             scale=scale)
         vec_comp = vec_handle.get()
         N.testing.assert_equal(vec_comp, scale*(vec_true - base_vec1))
         
-        vec_handle = V.InMemoryVecHandle(vec=vec_true, base_handle=V.InMemoryVecHandle(base_vec2),
+        vec_handle = V.InMemoryVecHandle(vec=vec_true, base_handle=V.InMemoryVecHandle(vec=base_vec2),
             scale=scale)
         vec_comp = vec_handle.get()
         N.testing.assert_equal(vec_comp, scale*(vec_true - base_vec2))
         
-        vec_handle = V.InMemoryVecHandle(vec=vec_true, base_handle=V.InMemoryVecHandle(base_vec1))
+        vec_handle = V.InMemoryVecHandle(vec=vec_true, base_handle=V.InMemoryVecHandle(vec=base_vec1))
         vec_comp = vec_handle.get()
         N.testing.assert_equal(vec_comp, vec_true - base_vec1)
         
@@ -120,7 +120,7 @@ class TestVectors(unittest.TestCase):
             X, Y = N.meshgrid(x_grid, y_grid)
             v1 = X**2 + 1.2*Y**2
             v2 = X**2
-            ip_comp = V.InnerProductNonUniform(x_grid, y_grid)(v1,v2)
+            ip_comp = V.InnerProductTrapz(x_grid, y_grid)(v1,v2)
             ip_error.append(N.abs(ip_comp-ip_true))
         convergence = (N.log(ip_error[1]) - N.log(ip_error[0]))/ \
             (N.log(num_points_list[1]) - N.log(num_points_list[0]))

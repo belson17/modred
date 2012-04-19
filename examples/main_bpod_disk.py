@@ -43,7 +43,7 @@ class Vec(MR.Vector):
     """The vec objects used will be instances of this class"""
     def __init__(self, path=None, x_grid=None, y_grid=None, data=None):
         if x_grid is not None and y_grid is not None:
-            self._inner_product = MR.InnerProductNonUniform(x_grid, y_grid)
+            self._inner_product = MR.InnerProductTrapz(x_grid, y_grid)
         if path is not None:
             self.load(path)
         else:
