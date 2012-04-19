@@ -207,7 +207,7 @@ class ERA(object):
         return self.A, self.B, self.C
           
  
-    def put_model_mats(self, A_dest, B_dest, C_dest):
+    def put_model(self, A_dest, B_dest, C_dest):
         """Puts the A, B, and C LTI matrices to destination"""  
         self.put_mat(self.A, A_dest)
         self.put_mat(self.B, B_dest)

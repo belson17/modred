@@ -56,7 +56,7 @@ class BPODROM(object):
         """Put reduced A matrix to ``A_dest``"""
         if self.parallel.is_rank_zero():
             self.put_mat(self.A, A_dest)
-    def put_B(self, C_dest):
+    def put_B(self, B_dest):
         """Put reduced B matrix to ``B_dest``"""
         if self.parallel.is_rank_zero():
             self.put_mat(self.B, B_dest)
@@ -64,6 +64,7 @@ class BPODROM(object):
         """Put reduced C matrix to ``C_dest``"""
         if self.parallel.is_rank_zero():
             self.put_mat(self.C, C_dest)
+            
     def put_model(self, A_dest, B_dest, C_dest):
         """Put reduced matrices A, B, and C to ``A_dest``, ``B_dest``, and
         ``C_dest``."""
@@ -166,8 +167,8 @@ class BPODROM(object):
             A: reduced A matrix
         """
         A_times_direct_modes_handles = [InMemoryVecHandle(v) for v in 
-            A_times_full_direct_modes]
-        adjoint_mode_handle = [InMemoryVecHandle(v) for v in 
+            A_times_direct_modes]
+        adjoint_mode_handles = [InMemoryVecHandle(v) for v in 
             adjoint_modes]
         self.compute_A(A_times_direct_modes_handles, 
             adjoint_mode_handles, num_modes=num_modes)

@@ -101,6 +101,10 @@ class TestBPODROM(unittest.TestCase):
             for i in range(num_direct_modes)]
         self.adjoint_modes = [self.adjoint_mode_array[:,i].squeeze()
             for i in range(num_adjoint_modes)]
+        self.B_vecs = [self.B_array[:,i].squeeze()
+            for i in range(self.num_inputs)]
+        self.C_vecs = [self.C_array[:,i].squeeze()
+            for i in range(self.num_outputs)]
 
         if parallel.is_rank_zero():
             for i,handle in enumerate(self.direct_mode_handles):
@@ -143,13 +147,17 @@ class TestBPODROM(unittest.TestCase):
     def test_compute_A(self):
         """Test that, given modes, can find correct A matrix."""
         A_path = join(self.test_dir, 'A.txt')
-        #self.myBPODROM.compute_A(A_path, self.direct_deriv_mode_handles,
-        #    self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
-        A_returned = self.myBPODROM.compute_A(
-            self.A_times_direct_mode_handles,
+        A_returned_in_mem = self.myBPODROM.compute_A_in_memory(
+            self.A_times_direct_modes,
+            self.adjoint_modes, num_modes=self.num_ROM_modes)
+        A_returned = self.myBPODROM.compute_A(self.A_times_direct_mode_handles,
             self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
-        #N.testing.assert_allclose(self.A_true, util.load_array_text(A_path))
+        self.myBPODROM.put_A(A_path)
+        parallel.sync()
+        N.testing.assert_allclose(util.load_array_text(A_path), self.A_true)
         N.testing.assert_allclose(A_returned, self.A_true)
+        N.testing.assert_allclose(A_returned_in_mem, self.A_true)
+
 
 
 
@@ -158,13 +166,15 @@ class TestBPODROM(unittest.TestCase):
         Test that, given modes, can find correct B matrix
         """
         B_path = join(self.test_dir, 'B.txt')
-        #self.myBPODROM.compute_B(B_path, self.B_vec_handles,
-        #    self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
-        B_returned = self.myBPODROM.compute_B(
-            self.B_vec_handles,
+        B_returned_in_mem = self.myBPODROM.compute_B_in_memory(self.B_vecs,
+            self.adjoint_modes, num_modes=self.num_ROM_modes)
+        B_returned = self.myBPODROM.compute_B(self.B_vec_handles,
             self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
-        #N.testing.assert_allclose(self.B_true, util.load_array_text(B_path))
+        self.myBPODROM.put_B(B_path)
+        parallel.sync()
+        N.testing.assert_allclose(util.load_array_text(B_path), self.B_true)
         N.testing.assert_allclose(B_returned, self.B_true)
+        N.testing.assert_allclose(B_returned_in_mem, self.B_true)
 
 
     def test_compute_C(self):
@@ -172,12 +182,15 @@ class TestBPODROM(unittest.TestCase):
         Test that, given modes, can find correct C matrix
         """
         C_path = join(self.test_dir, 'C.txt')
-        #self.myBPODROM.compute_C(C_path, self.C_vec_handles,
-        #    self.direct_mode_handles, num_modes=self.num_ROM_modes)
+        C_returned_in_mem = self.myBPODROM.compute_C_in_memory(self.C_vecs,
+            self.direct_modes, num_modes=self.num_ROM_modes)
         C_returned = self.myBPODROM.compute_C(self.C_vec_handles,
             self.direct_mode_handles, num_modes=self.num_ROM_modes)
-        #N.testing.assert_allclose(self.C_true, util.load_array_text(C_path))
+        self.myBPODROM.put_C(C_path)
+        parallel.sync()
+        N.testing.assert_allclose(util.load_array_text(C_path), self.C_true)
         N.testing.assert_allclose(C_returned, self.C_true)
+        N.testing.assert_allclose(C_returned_in_mem, self.C_true)
 
 
 

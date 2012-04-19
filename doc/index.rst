@@ -19,6 +19,8 @@ Contents:
    
    detailed_guide
  
+   examples
+   
    pod
    
    bpod

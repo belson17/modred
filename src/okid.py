@@ -6,9 +6,9 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
     """Approximates the Markov paramters from arbitrary inputs and outputs.
     
     Args:
-        inputs: array of input signals, with indices [inputs, time sample]
+        inputs: array of input signals, with indices [input #, time sample #]
         
-        outputs: array of output signals, with indices [outputs, time sample]
+        outputs: array of output signals, with indices [output #, time sample #]
         
         num_Markovs: integer number of Markov parameters to estimate.
             
@@ -22,7 +22,7 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
 
     - Use a long tail for your input/output data, otherwise the Markov
       parameters might grow rather than decay at large times.
-    - In the tail, have input=0.
+    - In the tail, have input = 0.
     - If necessary, artificially append your data with zero input and 
       exponentially decaying output.
     - Typically use at most num_Markovs = 1/3 to 1/2 of the number of samples.

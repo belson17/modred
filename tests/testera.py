@@ -76,7 +76,7 @@ class testERA(unittest.TestCase):
                     A,B,C = util.drss(num_states, num_inputs, num_outputs)
                     time_steps = era.make_time_steps(num_time_steps, sample_interval)
                     time_steps, Markovs = util.impulse(A, B, C, time_steps=time_steps)
-                    myERA = era.ERA()
+                    myERA = era.ERA(verbose=False)
                     myERA._set_Markovs(Markovs)
                     myERA._assemble_Hankel()
                     H = myERA.Hankel_mat
@@ -126,7 +126,7 @@ class testERA(unittest.TestCase):
         for num_inputs in [3]:
             for num_outputs in [2]:
                 for sample_interval in [1,2,5]: 
-                    myERA = era.ERA()
+                    myERA = era.ERA(verbose=False)
                     A,B,C = util.drss(num_states_plant, num_inputs, num_outputs)
                     time_steps = era.make_time_steps(num_time_steps, sample_interval)
                     time_steps, Markovs = util.impulse(A, B, C, time_steps=time_steps)
@@ -142,6 +142,8 @@ class testERA(unittest.TestCase):
                     C_path_computed = join(self.test_dir, 'C_computed.txt')
                     
                     A, B, C = myERA.compute_model(Markovs, num_states_model)
+                    myERA.put_model(A_path_computed, B_path_computed, 
+                        C_path_computed)
                     #sing_vals = myERA.sing_vals[:num_states_model]
                     
                     # Flatten vecs into 2D X and Y mats: [B AB A**PB A**(P+1)B ...]
@@ -185,7 +187,12 @@ class testERA(unittest.TestCase):
                         PLT.show()
                     """
                     N.testing.assert_allclose(Markovs_model, Markovs, rtol=.1, atol=.05)
-                
+                    N.testing.assert_allclose(
+                        util.load_array_text(A_path_computed), A)
+                    N.testing.assert_allclose(
+                        util.load_array_text(B_path_computed), B)
+                    N.testing.assert_allclose(
+                        util.load_array_text(C_path_computed), C)
         
 if __name__ =='__main__':
     unittest.main()

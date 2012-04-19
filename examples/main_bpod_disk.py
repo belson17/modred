@@ -2,11 +2,10 @@
 
 """Example of BPOD on 2D vecs.
 
-This example has most of the complexities we anticipated BPOD to handle, 
-and demonstrates a typical usage.
+This example has some complexities that arise in real applications.
 
-The vecs are larger (2D), so loading them 
-all into memory simultaneously may be inefficient or impossible.
+The vecs are larger (2D), so loading them all into memory simultaneously may be
+inefficient or impossible.
 Instead, they are loaded from disk as needed. 
 
 Further, the inner product is more complicated.
@@ -20,9 +19,7 @@ governing equations are linearized, and so the saved vecs could be
 from some simulation software.
 The modes, which are saved to disk, do not include the base vec.
 
-Another benefit of having the vecs saved to disk is BPOD can then be
-used in a distributed memory parallel setting.
-In fact, this script can be run in parallel with::
+This script can be run in parallel with::
 
   mpiexec -n 4 python main_bpod_disk.py
 
