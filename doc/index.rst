@@ -13,7 +13,7 @@ Contents:
    
    intro
    
-   quickstart
+   tutorial
  
    detailed_guide
  

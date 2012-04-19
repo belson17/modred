@@ -110,9 +110,9 @@ class testERA(unittest.TestCase):
     
     
     #@unittest.skip('testing others')
-    def test_ROM(self):
+    def test_compute_model(self):
         """
-        Test ROM Markov params, e-vals of Grammians approx. Hankel sing. vals
+        Test ROM Markov params similar to those given
         
         - generates data
         - assembles Hankel matrix
@@ -141,10 +141,7 @@ class testERA(unittest.TestCase):
                     B_path_computed = join(self.test_dir, 'B_computed.txt')
                     C_path_computed = join(self.test_dir, 'C_computed.txt')
                     
-                    myERA.compute_ROM_and_return(Markovs, num_states_model)
-                    A = myERA.A
-                    B = myERA.B
-                    C = myERA.C
+                    A, B, C = myERA.compute_model(Markovs, num_states_model)
                     #sing_vals = myERA.sing_vals[:num_states_model]
                     
                     # Flatten vecs into 2D X and Y mats: [B AB A**PB A**(P+1)B ...]

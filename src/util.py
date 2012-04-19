@@ -46,16 +46,16 @@ def save_array_text(array, filename, delimiter=' '):
     Files can be read in Matlab with the provided functions, or often
     with Matlab's ``load``.
     """
-    # Must cast mat into an array. Also makes it memory C-contiguous.
-    mat_save = N.array(array)
+    # Must cast into an array. Also makes it memory C-contiguous.
+    array_save = N.array(array)
     
     # If one-dimensional array, then make a vector of many rows, 1 column
-    if mat_save.ndim == 1:
-        mat_save = mat_save.reshape((-1, 1))
-    elif mat_save.ndim > 2:
+    if array_save.ndim == 1:
+        array_save = array_save.reshape((-1, 1))
+    elif array_save.ndim > 2:
         raise RuntimeError('Cannot save an array with >2 dimensions')
 
-    N.savetxt(filename, mat_save.view(float), delimiter=delimiter)
+    N.savetxt(filename, array_save.view(float), delimiter=delimiter)
     
     
 def load_array_text(file_name, delimiter=' ', is_complex=False):

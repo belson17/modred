@@ -1,4 +1,7 @@
-"""Functions and classes for ERA models. (Ma et al. 2011 TCFD)"""
+"""Functions and classes for ERA models. See paper by Ma et al. 2011, TCFD.
+
+
+"""
 import numpy as N
 import util
 
@@ -65,7 +68,7 @@ def make_sampled_format(times, Markovs, dt_tol=1e-6):
     return time_steps_corr, Markovs_corr, dt
 
 
-def compute_ERA_ROM(Markovs, num_states):
+def compute_ERA_model(Markovs, num_states):
     """Convenience function to find ERA A, B, and C matrices w/default settings.
     
     Args:
@@ -85,7 +88,7 @@ def compute_ERA_ROM(Markovs, num_states):
     Markov params are defined as [CB, CAB, CA**PB, CA**(P+1)B, ...]
     """
     my_ERA = ERA()
-    return my_ERA.compute_ROM_and_return(Markovs, num_states)
+    return my_ERA.compute_model(Markovs, num_states)
 
 
 
@@ -147,8 +150,7 @@ class ERA(object):
      
             
     
-    def compute_ROM(self, Markovs, num_states, A_dest, B_dest, C_dest, 
-        mc=None, mo=None):
+    def compute_model(self, Markovs, num_states, mc=None, mo=None):
         """Computes the A, B, and C LTI ROM matrices.
 
         Args:
@@ -180,22 +182,6 @@ class ERA(object):
         You can account for this by multiplying B by dt.
         """
         #SVD is ``L_sing_vecs*N.mat(N.diag(sing_vals))*R_sing_vecs.H = Hankel_mat``
-        self._compute_ROM(Markovs, num_states, mc=mc, mo=mo)
-        self.put_ROM(A_dest, B_dest, C_dest)
-        
-        
-    def compute_ROM_and_return(self, Markovs, num_states, mc=None, mo=None):
-        """Computes ROM and returns A, B, and C matrices.
-        
-        See ``compute_ROM`` for details.
-        """
-        self._compute_ROM(Markovs, num_states, mc=mc, mo=mo)
-        return self.A, self.B, self.C
- 
- 
-     
-    def _compute_ROM(self, Markovs, num_states, mc=None, mo=None):
-        """Computes ROM matrices, see ``compute_ROM`` for details"""
         self._set_Markovs(Markovs)       
         self.mc = mc
         self.mo = mo
@@ -217,12 +203,11 @@ class ERA(object):
         self.C = Ur[:self.num_Markovs,:] * N.mat(N.diag(Er**.5))
         
         if (N.linalg.eig(self.A)[0] >= 1.).any() and self.verbose:
-            print 'Warning: Unstable eigenvalues of ROM matrix A'
-
+            print 'Warning: Unstable eigenvalues of reduced A matrix'
+        return self.A, self.B, self.C
+          
  
-  
- 
-    def put_ROM(self, A_dest, B_dest, C_dest):
+    def put_model_mats(self, A_dest, B_dest, C_dest):
         """Puts the A, B, and C LTI matrices to destination"""  
         self.put_mat(self.A, A_dest)
         self.put_mat(self.B, B_dest)
@@ -247,8 +232,6 @@ class ERA(object):
         self.put_mat(self.sing_vals, sing_vals_dest)
       
  
- 
-  
     def _set_Markovs(self, Markovs):
         """Set the Markov params to self.Markovs.
         
@@ -316,5 +299,4 @@ class ERA(object):
                     self.Markovs[2*(row+col)]
                 self.Hankel_mat2[row_start:row_end, col_start:col_end] = \
                     self.Markovs[2*(row+col)+1]
-                
                 

@@ -15,7 +15,7 @@ import bpodltirom as BPR
 import util
 import vectors as V
 
-@unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
+#@unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
 class TestBPODROM(unittest.TestCase):
     """
     Tests that can find the correct A, B, and C matrices from modes
@@ -25,15 +25,15 @@ class TestBPODROM(unittest.TestCase):
             raise RuntimeError('Cannot write to current directory')
             
         self.test_dir ='DELETE_ME_test_files_bpodltirom'
-        if not os.path.exists(self.test_dir):
+        if parallel.is_rank_zero() and not os.path.exists(self.test_dir):
             os.mkdir(self.test_dir)
 
         self.direct_mode_path = join(self.test_dir, 'direct_mode_%03d.txt')
         self.adjoint_mode_path = join(self.test_dir, 'adjoint_mode_%03d.txt')
-        self.direct_deriv_mode_path =join(self.test_dir,
+        self.A_times_direct_mode_path =join(self.test_dir,
             'direct_deriv_mode_%03d.txt')
-        self.input_vec_path = join(self.test_dir, 'input_vec_%03d.txt')
-        self.output_vec_path = join(self.test_dir, 'output_vec_%03d.txt')
+        self.B_vec_path = join(self.test_dir, 'B_vec_%03d.txt')
+        self.C_vec_path = join(self.test_dir, 'C_vec_%03d.txt')
         
         self.myBPODROM = BPR.BPODROM(inner_product=N.vdot, verbose=False)
             
@@ -49,7 +49,10 @@ class TestBPODROM(unittest.TestCase):
             self.num_outputs)
         
     def tearDown(self):
-        rmtree(self.test_dir, ignore_errors=True)
+        parallel.sync()
+        if parallel.is_rank_zero():
+            rmtree(self.test_dir, ignore_errors=True)
+        parallel.sync()
         
     def test_init(self):
         """ """
@@ -62,83 +65,119 @@ class TestBPODROM(unittest.TestCase):
         """
         self.direct_mode_handles = [V.ArrayTextVecHandle(self.direct_mode_path%i)
             for i in range(self.num_direct_modes)]
-        self.direct_deriv_mode_handles = \
-            [V.ArrayTextVecHandle(self.direct_deriv_mode_path%i) 
+        self.A_times_direct_mode_handles = \
+            [V.ArrayTextVecHandle(self.A_times_direct_mode_path%i) 
                 for i in range(self.num_direct_modes)]
         self.adjoint_mode_handles = [V.ArrayTextVecHandle(self.adjoint_mode_path%i)
             for i in range(self.num_adjoint_modes)]
         
-        self.input_vec_handles = [V.ArrayTextVecHandle(self.input_vec_path%i)
+        self.B_vec_handles = [V.ArrayTextVecHandle(self.B_vec_path%i)
             for i in range(self.num_inputs)]
-        self.output_vec_handles = [V.ArrayTextVecHandle(self.output_vec_path%i)
+        self.C_vec_handles = [V.ArrayTextVecHandle(self.C_vec_path%i)
             for i in range(self.num_outputs)]
+        if parallel.is_rank_zero():
+            self.direct_mode_array = N.random.random((num_states, num_direct_modes))
+            self.A_times_direct_mode_array = \
+                N.random.random((num_states, num_direct_modes))      
+            self.adjoint_mode_array = N.random.random((num_states, num_adjoint_modes))
+            self.B_array = N.random.random((num_states, num_inputs))
+            self.C_array = N.random.random((num_states, num_outputs))
+        else:
+            self.direct_mode_array = None
+            self.A_times_direct_mode_array = None      
+            self.adjoint_mode_array = None
+            self.B_array = None
+            self.C_array = None
+        if parallel.is_distributed():
+            self.direct_mode_array = parallel.comm.bcast(self.direct_mode_array, root=0)
+            self.A_times_direct_mode_array = parallel.comm.bcast(self.A_times_direct_mode_array, root=0)
+            self.adjoint_mode_array = parallel.comm.bcast(self.adjoint_mode_array, root=0)
+            self.B_array = parallel.comm.bcast(self.B_array, root=0)
+            self.C_array = parallel.comm.bcast(self.C_array, root=0)
+
+        self.direct_modes = [self.direct_mode_array[:,i].squeeze()
+            for i in range(num_direct_modes)]
+        self.A_times_direct_modes = [self.A_times_direct_mode_array[:,i].squeeze() 
+            for i in range(num_direct_modes)]
+        self.adjoint_modes = [self.adjoint_mode_array[:,i].squeeze()
+            for i in range(num_adjoint_modes)]
+
+        if parallel.is_rank_zero():
+            for i,handle in enumerate(self.direct_mode_handles):
+                handle.put(self.direct_modes[i])
+            for i,handle in enumerate(self.A_times_direct_mode_handles):
+                handle.put(self.A_times_direct_modes[i])
+            for i,handle in enumerate(self.adjoint_mode_handles):
+                handle.put(self.adjoint_modes[i])
+            for i,handle in enumerate(self.B_vec_handles):
+                handle.put(self.B_array[:,i].squeeze())
+            for i,handle in enumerate(self.C_vec_handles):
+                handle.put(self.C_array[:,i].squeeze())
+        parallel.sync()
         
-        self.direct_mode_mat = N.random.random((num_states, num_direct_modes))
-        self.direct_deriv_mode_mat = \
-            N.random.random((num_states, num_direct_modes))
-              
-        self.adjoint_mode_mat = N.random.random((num_states, num_adjoint_modes))
-        self.input_mat = N.random.random((num_states, num_inputs))
-        self.output_mat = N.random.random((num_states, num_outputs))
-        
-        for i,handle in enumerate(self.direct_mode_handles):
-            handle.put(self.direct_mode_mat[:,i])
-        for i,handle in enumerate(self.direct_deriv_mode_handles):
-            handle.put(self.direct_deriv_mode_mat[:,i])
-        for i,handle in enumerate(self.adjoint_mode_handles):
-            handle.put(self.adjoint_mode_mat[:,i])
-        for i,handle in enumerate(self.input_vec_handles):
-            handle.put(self.input_mat[:,i])
-        for i,handle in enumerate(self.output_vec_handles):
-            handle.put(self.output_mat[:,i])     
-        
-        self.A_true = N.dot(self.adjoint_mode_mat.T, self.direct_deriv_mode_mat)[
+        self.A_true = N.dot(self.adjoint_mode_array.T, self.A_times_direct_mode_array)[
             :num_ROM_modes,:num_ROM_modes]
-        self.B_true = N.dot(self.adjoint_mode_mat.T, self.input_mat)[:num_ROM_modes,:]
-        self.C_true = N.dot(self.output_mat.T, self.direct_mode_mat)[:,:num_ROM_modes]
+        self.B_true = N.dot(self.adjoint_mode_array.T, self.B_array)[:num_ROM_modes,:]
+        self.C_true = N.dot(self.C_array.T, self.direct_mode_array)[:,:num_ROM_modes]
         
-        
-    @unittest.skipIf(parallel.is_distributed(), 'Only test in serial')    
+    def test_derivs(self):
+        """Test can take derivs"""
+        dt = 0.1
+        true_derivs = []
+        num_vecs = len(self.direct_mode_handles)
+        for i in range(num_vecs):
+            true_derivs.append((self.A_times_direct_mode_handles[i].get() - 
+                self.direct_mode_handles[i].get()).squeeze()/dt)
+        deriv_handles = [V.ArrayTextVecHandle(join(self.test_dir, 'deriv_test%d'%i))
+            for i in range(num_vecs)]
+        self.myBPODROM.compute_derivs(self.direct_mode_handles, 
+            self.A_times_direct_mode_handles, deriv_handles, dt)
+        derivs_loaded = [v.get() for v in deriv_handles]
+        derivs_returned = self.myBPODROM.compute_derivs_in_memory(
+            self.direct_modes, self.A_times_direct_modes, dt)
+        derivs_loaded = map(N.squeeze, derivs_loaded)
+        map(N.testing.assert_allclose, derivs_loaded, true_derivs)
+        map(N.testing.assert_allclose, derivs_returned, true_derivs)
+    
+    
     def test_compute_A(self):
         """Test that, given modes, can find correct A matrix."""
         A_path = join(self.test_dir, 'A.txt')
-        self.myBPODROM.compute_A(A_path, self.direct_deriv_mode_handles,
+        #self.myBPODROM.compute_A(A_path, self.direct_deriv_mode_handles,
+        #    self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
+        A_returned = self.myBPODROM.compute_A(
+            self.A_times_direct_mode_handles,
             self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
-        A_returned = self.myBPODROM.compute_A_and_return(
-            self.direct_deriv_mode_handles,
-            self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
-        N.testing.assert_allclose(self.A_true, util.load_array_text(A_path))
-        N.testing.assert_allclose(self.A_true, A_returned)
+        #N.testing.assert_allclose(self.A_true, util.load_array_text(A_path))
+        N.testing.assert_allclose(A_returned, self.A_true)
 
 
 
-    @unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
     def test_compute_B(self):
         """
         Test that, given modes, can find correct B matrix
         """
         B_path = join(self.test_dir, 'B.txt')
-        self.myBPODROM.compute_B(B_path, self.input_vec_handles,
+        #self.myBPODROM.compute_B(B_path, self.B_vec_handles,
+        #    self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
+        B_returned = self.myBPODROM.compute_B(
+            self.B_vec_handles,
             self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
-        B_returned = self.myBPODROM.compute_B_and_return(
-            self.input_vec_handles,
-            self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
-        N.testing.assert_allclose(self.B_true, util.load_array_text(B_path))
-        N.testing.assert_allclose(self.B_true, B_returned)
+        #N.testing.assert_allclose(self.B_true, util.load_array_text(B_path))
+        N.testing.assert_allclose(B_returned, self.B_true)
 
 
-    @unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
     def test_compute_C(self):
         """
         Test that, given modes, can find correct C matrix
         """
         C_path = join(self.test_dir, 'C.txt')
-        self.myBPODROM.compute_C(C_path, self.output_vec_handles,
+        #self.myBPODROM.compute_C(C_path, self.C_vec_handles,
+        #    self.direct_mode_handles, num_modes=self.num_ROM_modes)
+        C_returned = self.myBPODROM.compute_C(self.C_vec_handles,
             self.direct_mode_handles, num_modes=self.num_ROM_modes)
-        C_returned = self.myBPODROM.compute_C_and_return(self.output_vec_handles,
-            self.direct_mode_handles, num_modes=self.num_ROM_modes)
-        N.testing.assert_allclose(self.C_true, util.load_array_text(C_path))
-        N.testing.assert_allclose(self.C_true, C_returned)
+        #N.testing.assert_allclose(self.C_true, util.load_array_text(C_path))
+        N.testing.assert_allclose(C_returned, self.C_true)
 
 
 
