@@ -100,7 +100,7 @@ def main(verbose=True, make_plots=True):
     ny = 30
     x_grid = 1 + N.sin(N.linspace(-N.pi, N.pi, nx))
     y_grid = 1 + N.sin(N.linspace(-N.pi, N.pi, ny))
-    X, Y = N.meshgrid(x, y)
+    X, Y = N.meshgrid(x_grid, y_grid)
     num_direct_vecs = 30
     num_adjoint_vecs = 25
     save_dir = 'DELETE_ME_bpod_example_files'
