@@ -1,4 +1,4 @@
-"""Collection of low level, parallel, functions and VecOperations class."""
+"""Collection of parallelized functions of vectors and vector handles."""
 
 import sys  
 import copy
@@ -22,14 +22,16 @@ class VecOperations(object):
         
         print_interval: max of how frequently progress is printed, in seconds.
 
-    The class is a collection of non-trivial parallel methods used in the 
+    The class is a collection of parallelized methods used in the 
     high-level modred classes like POD, BPOD, and DMD. 
-    
-    Note: It is generally best to use all available processors, however this
-    depends on the computer and the nature of the functions
-    supplied. In some cases, loading from file is slower with more workers.
+
+    It is good to use all available processors, even if it lowers max.
+
+    Note: It is generally best to use all available processors, even if this
+    lowers ``max_vecs_per_node`` proportionally. 
+    However this depends on the computer and the nature of the functions
+    supplied, and sometimes loading from file is slower with more processors.
     """
-    
     def __init__(self, inner_product=None, 
         max_vecs_per_node=None, verbose=True, print_interval=10):
         """Constructor. """
@@ -40,10 +42,10 @@ class VecOperations(object):
         self.parallel = parallel_mod.default_instance
         
         if max_vecs_per_node is None:
-            self.max_vecs_per_node = int(1e6) #N.inf? it's a float not an int...
+            self.max_vecs_per_node = 10000 # different default?
             self.print_msg('Warning: max_vecs_per_node was not specified. '
-                'Assuming infinte vecs can be in memory per node. Decrease '
-                'max_vecs_per_node if get memory errors.')
+                'Assuming 10000 vecs can be in memory per node. Decrease '
+                'max_vecs_per_node if memory errors.')
         else:
             self.max_vecs_per_node = max_vecs_per_node
         
@@ -61,7 +63,7 @@ class VecOperations(object):
     def _check_inner_product(self):
         """Check that inner_product is defined"""
         if self.inner_product is None:
-            raise RuntimeError('No inner product function/callable defined')
+            raise RuntimeError('No inner product function is defined')
         
     
     def print_msg(self, msg, output_channel=sys.stdout):
@@ -69,6 +71,9 @@ class VecOperations(object):
         if self.verbose and self.parallel.is_rank_zero():
             print >> output_channel, msg
 
+    def sanity_check_in_memory(self, test_vec):
+        """Same as ``sanity_check`` but takes a vec instead of handle"""
+        self.sanity_check(V.InMemoryVecHandle(test_vec)
 
     def sanity_check(self, test_vec_handle):
         """Check user-supplied vec handle and vec objects.
@@ -76,9 +81,9 @@ class VecOperations(object):
         Args:
             test_vec_handle: a vector handle.
         
-        The add and mult functions are tested for the generic object.  
+        The add and mult functions are tested for the vector object.  
         This is not a complete testing, but catches some common mistakes.
-        Raises error if a check fails.
+        Raises an error if a check fails.
         
         TODO: Other things which could be tested:
             get/put doesn't effect other vecs (memory problems)
@@ -130,17 +135,17 @@ class VecOperations(object):
           
             col_vec_handles: list of column vec handles (e.g. BPOD directs, "X")
 
-        Within this method, the vecs are retrieved in a memory-efficient
-        chunks so that they are not all in memory at once.
+        The vecs are retrieved in memory-efficient
+        chunks and are not all in memory at once.
         The row vecs and col vecs are assumed to be different.        
-        When they are the same (POD), a different method is used.
+        When they are the same, use ``compute_symmetric_inner_product`` for a 
+        2x speedup.
         
         Each processor is responsible for retrieving a subset of the rows and
-        columns. The processor which retrieves a particular column vec then sends
-        it to each successive processor so it can be used to compute all IPs
-        for the current row chunk on each processor. This is repeated until all
-        processors are done with all of their row chunks. If there are 2
-        processors::
+        columns. The processors then exchange columns via MPI so it can be 
+        used to compute all IPs for the rows on each processor. This is 
+        repeated until all processors are done with all of their row chunks.
+        If there are 2 processors::
            
                 | x o |
           rank0 | x o |
@@ -164,14 +169,7 @@ class VecOperations(object):
         When the number of cols and rows is
         not divisible by the number of processors, the processors are assigned
         unequal numbers of tasks. However, all processors are always
-        part of the passing circle.
-        
-        This is also generalized to allow the columns to be read in chunks, 
-        rather than only 1 at a time.
-        If we change the implementation to use hybrid distributed-shared 
-        memory where it is best to work in
-        operation-units (load/gets, IPs, etc) of multiples of the number
-        of processors sharing memory (procs/node).
+        part of the passing cycle.
         
         The scaling is:
         
@@ -183,12 +181,9 @@ class VecOperations(object):
         max_vecs_per_proc = max_vecs_per_node/num_procs_per_node, and n_p is
         number of processors.
         
-        It is enforced that there are more columns than rows by doing an
-        internal transpose and un-transpose. This improves efficiency by placing
-        the larger of n_c and n_r on the quadratically scaled portion.
-        
-        It is good to use all available processors, even if it lowers max.
-        However, sometimes simultaneous loads actually makes each load slow.     
+        If there are more rows than columns, then an internal transpose
+        and un-transpose is performed to improve efficiency (since n_c only
+        appears in the scaling in the quadratic term).
         """
         self._check_inner_product()
         row_vec_handles = util.make_list(row_vec_handles)
