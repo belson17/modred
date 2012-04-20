@@ -138,7 +138,7 @@ class BPODROM(object):
         """Computes and returns the continous or discrete time A matrix.
         
         Args:
-			A_times_direct_modes_handles: list of handles to "A * direct modes"
+            A_times_direct_modes_handles: list of handles to "A * direct modes"
                 That is, the direct modes operated on by the full A matrix. 
                 For a discrete time system, these are the 
                 handles of the direct modes that have been advanced one
@@ -146,9 +146,9 @@ class BPODROM(object):
                 For continuous time systems, these are the handles of the
                 time derivatives of the direct modes (see also 
                 :py:meth:`compute_derivs`).
-        
-			adjoint_mode_handles: list of handles to the adjoint modes
-			
+            
+            adjoint_mode_handles: list of handles to the adjoint modes
+            
         Kwargs:
             num_modes: number of modes/states to keep in the ROM. 
                 Can omit if already given. Default is maximum possible.
@@ -173,7 +173,7 @@ class BPODROM(object):
         """Computes and returns the continous or discrete time A matrix.
         
         Args:
-			A_times_direct_modes: list of "A * direct modes"
+            A_times_direct_modes: list of "A * direct modes"
                 That is, the direct modes operated on by the full A matrix. 
                 For a discrete time system, these are the 
                 handles of the direct modes that have been advanced one
@@ -182,8 +182,8 @@ class BPODROM(object):
                 time derivatives of the direct modes (see also 
                 :py:meth:`compute_derivs`).
                 
-			adjoint_modes: list of adjoint modes
-			
+            adjoint_modes: list of adjoint modes
+            
         Kwargs:
             num_modes: number of modes/states to keep in the ROM. 
                 Can omit if already given. Default is maximum possible.
