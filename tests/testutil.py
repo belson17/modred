@@ -29,10 +29,10 @@ class TestUtil(unittest.TestCase):
                 os.mkdir(self.test_dir)
     
     def tearDown(self):
-        parallel.sync()
+        parallel.barrier()
         if parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
-        parallel.sync()
+        parallel.barrier()
         
         
     @unittest.skipIf(parallel.is_distributed(), 'Only save/load matrices in serial')
@@ -192,11 +192,7 @@ class TestUtil(unittest.TestCase):
                     for ti,tv in enumerate(time_steps):
                         outputs_true[ti] = C*(A**tv)*B
                     N.testing.assert_array_equal(outputs, outputs_true)
-                    
-    
-        
+      
     
 if __name__=='__main__':
     unittest.main()
-
-

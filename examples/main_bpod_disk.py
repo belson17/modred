@@ -119,19 +119,19 @@ def main(verbose=True, make_plots=True):
     if not os.path.exists(save_dir) and parallel.is_rank_zero():
         os.mkdir(save_dir)
     # Wait for processor 0 to finish making the directory.
-    parallel.sync()
+    parallel.barrier()
     
     base_vec_data = 0.5*N.ones((nx, ny))
     if parallel.is_rank_zero():
         base_vec_handle.put(Vec(data=base_vec_data))
-    parallel.sync()
+    parallel.barrier()
     # Create random data and save to disk
     if parallel.is_rank_zero():
         for handle in direct_vec_handles:
             handle.put(Vec(data=N.random.random((nx,ny))+base_vec_data))
         for handle in adjoint_vec_handles:
             handle.put(Vec(data=N.random.random((nx,ny))+base_vec_data))
-    parallel.sync()
+    parallel.barrier()
     ###
     ### End of data creation section ###
     ###
@@ -181,7 +181,7 @@ def main(verbose=True, make_plots=True):
             print "Need matplotlib for plots"
     
     # Clean up. Delete the save_dir with all vec and mode files
-    parallel.sync()
+    parallel.barrier()
     if parallel.is_rank_zero():
         rmtree(save_dir)
 

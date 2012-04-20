@@ -17,7 +17,7 @@ import vectors as V
 
 @unittest.skipIf(parallel.is_distributed(), 'No need to test in parallel')
 class TestVectors(unittest.TestCase):
-    """ Test the vector methods """
+    """Test the vector methods """
     def setUp(self):
         self.test_dir ='DELETE_ME_test_files_vectors'
         if not os.access('.', os.W_OK):
@@ -28,28 +28,13 @@ class TestVectors(unittest.TestCase):
         self.num_vecs = 40
         self.num_states = 100
         self.index_from = 2
-        #parallel.sync()
+        #parallel.barrier()
 
     def tearDown(self):
-        parallel.sync()
+        parallel.barrier()
         if parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
     
-    
-    @unittest.skip('Testing others')
-    def test_base_vec_handle(self):
-        """Test base class of vector handles"""
-        util.save_array_text(base_vec1, base_path1)
-        util.save_array_text(base_vec2, base_path2)
-        util.save_array_text(vec_true, test_path)
-        
-        vec_ptr = V.VecHandle(base_vec_handle=base_path1, scale=scale)
-        self.assertEqual(V.VecHandle.cached_base_vec_handle, base_path1)
-        self.assertEqual(V.VecHandle.cached_base_vec, base_vec1)
-        
-        vec_ptr = V.VecHandle(base_vec_handle=base_path2)
-        self.assertEqual(V.VecHandle.cached_base_vec_handle, base_path2)
-        self.assertEqual(V.VecHandle.cached_base_vec, base_vec2)
     
     def test_in_memory_handle(self):
         """Test in memory and base class vector handles"""

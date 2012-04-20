@@ -72,8 +72,12 @@ class VecOperations(object):
             print >> output_channel, msg
 
     def sanity_check_in_memory(self, test_vec):
-        """Same as ``sanity_check`` but takes a vec instead of handle"""
-        self.sanity_check(V.InMemoryVecHandle(test_vec)
+        """Check user-supplied vector object. See :py:meth:`sanity_check`.
+        
+        Args:
+            test_vec: a vector.
+        """
+        self.sanity_check(V.InMemoryVecHandle(test_vec))
 
     def sanity_check(self, test_vec_handle):
         """Check user-supplied vec handle and vec objects.
@@ -134,12 +138,15 @@ class VecOperations(object):
             row_vec_handles: list of row vec handles (e.g. BPOD adjoints, "Y")
           
             col_vec_handles: list of column vec handles (e.g. BPOD directs, "X")
+        
+        Returns:
+            IP_mat: array of inner products
 
         The vecs are retrieved in memory-efficient
         chunks and are not all in memory at once.
         The row vecs and col vecs are assumed to be different.        
-        When they are the same, use ``compute_symmetric_inner_product`` for a 
-        2x speedup.
+        When they are the same, use :py:meth:`compute_symmetric_inner_product` 
+        for a 2x speedup.
         
         Each processor is responsible for retrieving a subset of the rows and
         columns. The processors then exchange columns via MPI so it can be 
@@ -204,7 +211,7 @@ class VecOperations(object):
             transpose = False
        
         # Compute a single inner product in order to determine matrix datatype
-        # (real or complex) and to estimate the amount of time the IPs will take.
+        # (real or complex) and to estimate the time the IPs will take.
         row_vec = row_vec_handles[0].get()
         col_vec = col_vec_handles[0].get()
         start_time = T.time()
@@ -222,9 +229,10 @@ class VecOperations(object):
         # convenience
         rank = self.parallel.get_rank()
 
-        # num_cols_per_proc_chunk is the number of cols each proc gets at once        
+        # num_cols_per_proc_chunk is the number of cols each proc gets at once
         num_cols_per_proc_chunk = 1
-        num_rows_per_proc_chunk = self.max_vecs_per_proc - num_cols_per_proc_chunk         
+        num_rows_per_proc_chunk = self.max_vecs_per_proc - \
+            num_cols_per_proc_chunk         
         
         # Determine how the retrieving and inner products will be split up.
         row_tasks = self.parallel.find_assignments(range(num_rows))
@@ -234,27 +242,29 @@ class VecOperations(object):
         max_num_row_tasks = max([len(tasks) for tasks in row_tasks])
         max_num_col_tasks = max([len(tasks) for tasks in col_tasks])
         
-        # These variables are the number of iters through loops that retrieve ("get")
-        # row and column vecs.
-        num_row_get_loops = int(N.ceil(max_num_row_tasks*1./num_rows_per_proc_chunk))
-        num_col_get_loops = int(N.ceil(max_num_col_tasks*1./num_cols_per_proc_chunk))
+        # These variables are the number of iters through loops that retrieve
+        # ("get") row and column vecs.
+        num_row_get_loops = \
+            int(N.ceil(max_num_row_tasks*1./num_rows_per_proc_chunk))
+        num_col_get_loops = \
+            int(N.ceil(max_num_col_tasks*1./num_cols_per_proc_chunk))
         if num_row_get_loops > 1:
             self.print_msg('Warning: The column vecs, of which '
-                    'there are %d, will be read %d times each. Increase '
+                    'there are %d, will be retrieved %d times each. Increase '
                     'number of nodes or max_vecs_per_node to reduce redundant '
-                    '"get_vecs"s and get a big speedup.'%(
+                    '"get"s for a speedup.'%(
                         num_cols,num_row_get_loops))
         
         # To find all of the inner product mat chunks, each 
         # processor has a full IP_mat with size
         # num_rows x num_cols even though each processor is not responsible for
         # filling in all of these entries. After each proc fills in what it is
-        # responsible for, the other entries are 0's still. Then, an allreduce
-        # is done and all the chunk mats are summed. This is simpler
-        # than trying to figure out the size of each chunk mat for allgather.
+        # responsible for, the other entries remain 0's. Then, an allreduce
+        # is done and all the IP_mats are summed. This is simpler
+        # concatenating chunks of the IPmats.
         # The efficiency is not an issue, the size of the mats
         # are small compared to the size of the vecs for large data.
-        IP_mat_chunk = N.mat(N.zeros((num_rows, num_cols), dtype=IP_type))
+        IP_mat = N.mat(N.zeros((num_rows, num_cols), dtype=IP_type))
         for row_get_index in xrange(num_row_get_loops):
             if len(row_tasks[rank]) > 0:
                 start_row_index = min(row_tasks[rank][0] + 
@@ -276,7 +286,7 @@ class VecOperations(object):
                 else:
                     start_col_index = 0
                     end_col_index = 0
-                # Pass the col vecs to proc with rank -> mod(rank+1,numProcs) 
+                # Cycle the col vecs to proc with rank -> mod(rank+1,numProcs) 
                 # Must do this for each processor, until data makes a circle
                 col_vecs_recv = (None, None)
                 col_indices = range(start_col_index, end_col_index)
@@ -307,17 +317,17 @@ class VecOperations(object):
                         col_vecs_recv = self.parallel.comm.recv(
                             source=source, tag=recv_tag)
                         request.Wait()
-                        self.parallel.sync()
+                        self.parallel.barrier()
                         col_indices = col_vecs_recv[1]
                         col_vecs = col_vecs_recv[0]
                         
                     # Compute the IPs for this set of data col_indices stores
-                    # the indices of the IP_mat_chunk columns to be
+                    # the indices of the IP_mat columns to be
                     # filled in.
                     if len(row_vecs) > 0:
                         for row_index in xrange(start_row_index, end_row_index):
                             for col_vec_index, col_vec in enumerate(col_vecs):
-                                IP_mat_chunk[row_index, col_indices[
+                                IP_mat[row_index, col_indices[
                                     col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - start_row_index],
                                     col_vec)
@@ -329,7 +339,8 @@ class VecOperations(object):
             if ((T.time() - self.prev_print_time > self.print_interval) and 
                 self.verbose and self.parallel.is_rank_zero()):
                 num_completed_IPs = end_row_index * num_cols
-                percent_completed_IPs = 100. * num_completed_IPs/(num_cols*num_rows)           
+                percent_completed_IPs = 100. * num_completed_IPs/(
+                    num_cols*num_rows)
                 print >> sys.stderr, ('Completed %.1f%% of inner ' +\
                     'products: IPMat[:%d, :%d] of IPMat[%d, %d]') % \
                     (percent_completed_IPs, end_row_index, num_cols, 
@@ -338,19 +349,27 @@ class VecOperations(object):
             
         # Assign these chunks into IP_mat.
         if self.parallel.is_distributed():
-            IP_mat = self.parallel.custom_comm.allreduce(IP_mat_chunk)
-        else:
-            IP_mat = IP_mat_chunk 
+            IP_mat = self.parallel.custom_comm.allreduce(IP_mat)
 
         if transpose:
             IP_mat = IP_mat.T
 
-        self.parallel.sync() # ensure that all procs leave function at same time
+        self.parallel.barrier() # ensure that all procs leave function at same time
         return IP_mat
 
 
     def compute_inner_product_mat_in_memory(self, row_vecs, col_vecs):
-        """See ``compute_inner_product_mat``, but vecs instead of handles.
+        """Computes a matrix of inner products and returns it.
+        
+        Args:
+            row_vecs: list of row vecs (e.g. BPOD adjoints, "Y")
+          
+            col_vecs: list of column vecs (e.g. BPOD directs, "X")
+        
+        Returns:
+            IP_mat: array of inner products
+        
+        See :py:meth:`compute_inner_product_mat`.
         """
         self._check_inner_product()
         row_vecs = util.make_list(row_vecs)
@@ -365,11 +384,17 @@ class VecOperations(object):
     def compute_symmetric_inner_product_mat(self, vec_handles):
         """Computes an upper-triangular symmetric matrix of inner products.
         
+        Args:
+            vec_handles: list of vector handles
+        
+        Returns:
+            IP_mat: numpy array of inner products
+
         See the documentation for compute_inner_product_mat for a general
         idea how this works.
         
         TODO: JON, write detailed documentation similar to 
-        ``compute_inner_product_mat``.
+        :py:meth:`compute_inner_product_mat`.
         """
         self._check_inner_product()
         vec_handles = util.make_list(vec_handles)
@@ -392,7 +417,7 @@ class VecOperations(object):
         if self.parallel.is_rank_zero() and num_row_chunks > 1 and self.verbose:
             print ('Warning: The column vecs will be read ~%d times each. ' +\
                 'Increase number of nodes or max_vecs_per_node to reduce ' +\
-                'redundant "get_vecs"s and get a big speedup.') % num_row_chunks    
+                'redundant "get_vecs"s and get a big speedup.') % num_row_chunks
         
         # Compute a single inner product in order to determin matrix datatype
         test_vec = vec_handles[0].get()
@@ -404,7 +429,7 @@ class VecOperations(object):
         # fill in elements of a num_rows x num_rows sized matrix, rather than
         # assembling small chunks. This is done for the triangular portions. For
         # the rectangular portions, the inner product mat is filled in directly.
-        IP_mat_chunk = N.mat(N.zeros((num_vecs, num_vecs), dtype=IP_type))
+        IP_mat = N.mat(N.zeros((num_vecs, num_vecs), dtype=IP_type))
         for start_row_index in xrange(0, num_vecs, num_rows_per_chunk):
             end_row_index = min(num_vecs, start_row_index + num_rows_per_chunk)
             proc_row_tasks_all = self.parallel.find_assignments(range(
@@ -429,14 +454,14 @@ class VecOperations(object):
                 for row_index in xrange(proc_row_tasks[0], 
                     proc_row_tasks[-1] + 1):
                     # Diagonal term
-                    IP_mat_chunk[row_index, row_index] = self.\
+                    IP_mat[row_index, row_index] = self.\
                         inner_product(row_vecs[row_index - proc_row_tasks[
                         0]], row_vecs[row_index - proc_row_tasks[0]])
                         
                     # Off-diagonal terms
                     for col_index in xrange(row_index + 1, proc_row_tasks[
                         -1] + 1):
-                        IP_mat_chunk[row_index, col_index] = self.\
+                        IP_mat[row_index, col_index] = self.\
                             inner_product(row_vecs[row_index -\
                             proc_row_tasks[0]], row_vecs[col_index -\
                             proc_row_tasks[0]])
@@ -448,7 +473,7 @@ class VecOperations(object):
                 # The current proc is "sender"
                 my_rank = self.parallel.get_rank()
                 my_row_indices = proc_row_tasks
-                mynum_rows = len(my_row_indices)
+                my_num_rows = len(my_row_indices)
                                        
                 # The proc to send to is "destination"                         
                 dest_rank = (my_rank + set_index + 1) % num_active_procs
@@ -462,43 +487,41 @@ class VecOperations(object):
                 max_num_to_send = int(N.ceil(1. * max([len(tasks) for \
                     tasks in proc_row_tasks_all]) /\
                     num_cols_per_proc_chunk))
-                
+                """
                 # Pad tasks with nan so that everyone has the same
-                # number of things to send.  Same for list of vecs with None.             
+                # number of things to send.  Same for list of vecs with None.
                 # The empty lists will not do anything when enumerated, so no 
                 # inner products will be taken.  nan is inserted into the 
                 # indices because then min/max of the indices can be taken.
-                """
-                if mynum_rows != len(row_vecs):
+                
+                if my_num_rows != len(row_vecs):
                     raise ValueError('Number of rows assigned does not ' +\
                         'match number of vecs in memory.')
-                if mynum_rows > 0 and mynum_rows < max_num_to_send:
-                    my_row_indices += [N.nan] * (max_num_to_send - mynum_rows) 
-                    row_vecs += [[]] * (max_num_to_send - mynum_rows)
+                if my_num_rows > 0 and my_num_rows < max_num_to_send:
+                    my_row_indices += [N.nan] * (max_num_to_send - my_num_rows) 
+                    row_vecs += [[]] * (max_num_to_send - my_num_rows)
                 """
                 for send_index in xrange(max_num_to_send):
                     # Only processors responsible for rows communicate
-                    if mynum_rows > 0:  
+                    if my_num_rows > 0:  
                         # Send row vecs, in groups of num_cols_per_proc_chunk
                         # These become columns in the ensuing computation
                         start_col_index = send_index * num_cols_per_proc_chunk
                         end_col_index = min(start_col_index + num_cols_per_proc_chunk, 
-                            mynum_rows)   
+                            my_num_rows)   
                         col_vecs_send = (row_vecs[start_col_index:end_col_index], 
                             my_row_indices[start_col_index:end_col_index])
                         
                         # Create unique tags based on ranks
-                        send_tag = my_rank * (self.parallel.get_num_procs() + 1) +\
-                            dest_rank
-                        recv_tag = source_rank * (self.parallel.get_num_procs() +\
-                            1) + my_rank
+                        send_tag = my_rank * (
+                            self.parallel.get_num_procs() + 1) + dest_rank
+                        recv_tag = source_rank * (
+                            self.parallel.get_num_procs() + 1) + my_rank
                         
-                        # Send and receieve data.  It is important that we put a
-                        # Wait() command after the receive.  In testing, when 
-                        # this was not done, we saw a race condition.  This was a
-                        # condition that could not be fixed by a sync(). It 
-                        # appears that the Wait() is very important for the non-
-                        # blocking send.
+                        # Send and receieve data.  The Wait() command after the
+                        # receive prevents a race condition not fixed by sync().
+                        # The Wait() is very important for the non-
+                        # blocking send (though we are unsure why).
                         request = self.parallel.comm.isend(col_vecs_send, 
                             dest=dest_rank, tag=send_tag)                        
                         col_vecs_recv = self.parallel.comm.recv(source=\
@@ -510,13 +533,13 @@ class VecOperations(object):
                         for row_index in xrange(my_row_indices[0], 
                             my_row_indices[-1] + 1):
                             for col_vec_index, col_vec in enumerate(col_vecs):
-                                IP_mat_chunk[row_index, my_col_indices[
+                                IP_mat[row_index, my_col_indices[
                                     col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - my_row_indices[0]],
                                     col_vec)
                                    
                     # Sync after send/receive   
-                    self.parallel.sync()  
+                    self.parallel.barrier()  
                 
             
             # Fill in the rectangular portion next to each triangle (if nec.).
@@ -569,18 +592,18 @@ class VecOperations(object):
                         col_vecs_recv = self.parallel.comm.recv(source=source, 
                             tag=recv_tag)
                         request.Wait()
-                        self.parallel.sync()
+                        self.parallel.barrier()
                         col_indices = col_vecs_recv[1]
                         col_vecs = col_vecs_recv[0]
                         
                     # Compute the IPs for this set of data col_indices stores
-                    # the indices of the IP_mat_chunk columns to be
+                    # the indices of the IP_mat columns to be
                     # filled in.
                     if len(proc_row_tasks) > 0:
                         for row_index in xrange(proc_row_tasks[0],
                             proc_row_tasks[-1]+1):
                             for col_vec_index, col_vec in enumerate(col_vecs):
-                                IP_mat_chunk[row_index, col_indices[
+                                IP_mat[row_index, col_indices[
                                     col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - proc_row_tasks[0]],
                                     col_vec)
@@ -597,10 +620,8 @@ class VecOperations(object):
         
         # Assign the triangular portion chunks into IP_mat.
         if self.parallel.is_distributed():
-            IP_mat = self.parallel.custom_comm.allreduce(IP_mat_chunk)
-        else:
-            IP_mat = IP_mat_chunk
-
+            IP_mat = self.parallel.custom_comm.allreduce(IP_mat)
+        
         # Create a mask for the repeated values
         mask = (IP_mat != IP_mat.T)
         
@@ -610,13 +631,20 @@ class VecOperations(object):
         # Symmetrize matrix
         IP_mat = N.triu(IP_mat) + N.triu(IP_mat, 1).T
 
-        self.parallel.sync() # ensure that all procs leave function at same time
+        self.parallel.barrier() # ensure that all procs leave function at same time
         return IP_mat
         
         
     def compute_symmetric_inner_product_mat_in_memory(self, vecs):
-        """See ``compute_symmetric_inner_product_mat``, but vecs instead of 
-        handles.
+        """Computes an upper-triangular symmetric matrix of inner products.
+        
+        Args:
+            vecs: list of vectors
+        
+        Returns:
+            IP_mat: numpy array of inner products
+        
+        See :py:meth:`compute_symmetric_inner_product_mat`.
         """
         self._check_inner_product()
         vecs = util.make_list(vecs)
@@ -626,28 +654,26 @@ class VecOperations(object):
         
     def compute_modes(self, mode_nums, mode_handles, vec_handles, vec_coeff_mat,
         index_from=0):
-        """Compute modes from vecs.
+        """Compute modes from vector handles.
         
         Args:
-          mode_nums: mode numbers to compute. 
+          mode_nums: list of mode numbers to compute. 
               Examples are: ``range(10)`` or ``[3,1,6,8]``. 
-              The mode numbers need not be sorted,
-              and sorting does not increase efficiency. 
+              The mode numbers need not be sorted. 
               
-          mode_handles: list of handles for modes (each requires ``put``)
+          mode_handles: list of handles for modes
           
-          vec_handles: list of handles for vectors (each requires ``get``)
+          vec_handles: list of handles for vectors
           
-          vec_coeff_mat: Matrix of coefficients for constructing modes. 
-              The kth column contains the coefficients for computing the kth 
-              index mode, 
-              i.e. index_from+k mode number. ith row contains coefficients to 
-              multiply corresponding to vec i.
+          vec_coeff_mat: matrix of coefficients for constructing modes. 
+              [mode0 mode1 ...] = [vec0 vec1 ...] * vec_coeff_mat
+              The row corresponds to the vec, the column to the mode.
+              The kth column corresponds to the ``index_from + k`` mode number. 
               
         Kwargs:
           index_from: integer from which to index modes, 0, 1, or other.
         
-        This method recasts computing modes as a linear combination of elements.
+        This method casts computing modes as a linear combination of elements.
         It rearranges the coeff matrix so that the first column corresponds to
         the first mode number in mode_nums.
         Calls ``lin_combine`` with sum_vecs as the modes and the
@@ -685,17 +711,33 @@ class VecOperations(object):
         vec_coeff_mat_reordered = vec_coeff_mat[:,mode_nums_from_zero]
         
         self.lin_combine(mode_handles, vec_handles, vec_coeff_mat_reordered)
-        self.parallel.sync() # ensure that all procs leave function at same time
+        self.parallel.barrier() # ensure that all procs leave function at same time
     
     
     def compute_modes_in_memory(self, mode_nums, vecs, vec_coeff_mat, 
         index_from=0):
-        """See ``compute_modes`` for details, but takes vecs instead of handles.
+        """Compute modes from vectors. 
         
+        Args:
+        mode_nums: list of mode numbers to compute. 
+            Examples are: ``range(10)`` or ``[3,1,6,8]``. 
+            The mode numbers need not be sorted. 
+          
+        vec_handles: list of vectors
+      
+        vec_coeff_mat: matrix of coefficients for constructing modes. 
+            [mode0 mode1 ...] = [vec0 vec1 ...] * vec_coeff_mat
+            The row corresponds to the vec, the column to the mode.
+            The kth column corresponds to the ``index_from + k`` mode number. 
+          
+        Kwargs:
+            index_from: integer from which to index modes, 0, 1, or other.
+
         Returns:
             a list of modes.
-        
-        In parallel, each MPI worker has the full list of outputs.
+
+        See :py:meth:`compute_modes`.      
+        In parallel, each MPI worker returns the full list of modes.
         """
         vecs = util.make_list(vecs)
         mode_handles = [V.InMemoryVecHandle() for i in mode_nums]
@@ -706,25 +748,23 @@ class VecOperations(object):
         modes = [mode_handle.get() for mode_handle in mode_handles]
         #print 'rank: %d, modes'%self.parallel.get_rank(),modes
         if self.parallel.is_distributed():
+            for i in range(modes.count(None)):
+                modes.remove(None)
             modes_list = self.parallel.comm.allgather(modes)
             # all_modes is a 1D list of all processors' modes.
             all_modes = util.flatten_list(modes_list)
-            for i in range(all_modes.count(None)):
-                all_modes.remove(None)
         else:
             all_modes = modes
-        return all_modes  
+        return all_modes
     
     
     def lin_combine(self, sum_vec_handles, basis_vec_handles, vec_coeff_mat):
         """Linearly combines the basis vecs and calls ``put`` on result.
         
         Args:
-            sum_vec_handles: list of handles of the sum vectors.
-                These handles need a ``get`` member function.
+            sum_vec_handles: list of handles for the sum vectors.
                 
-            basis_vec_handles: list of handles of the basis vecs.
-                These handles need a ``put`` member function.
+            basis_vec_handles: list of handles for the basis vecs.
                 
             vec_coeff_mat: matrix with rows corresponding to a basis vecs
                 and columns to sum (lin. comb.) vecs.
@@ -736,9 +776,7 @@ class VecOperations(object):
         outputs as a processor can have in memory at once. Each processor
         computes the "layers" from the basis it is resonsible for, and for
         as many modes as it can fit in memory. The layers from all procs are
-        then
-        summed together to form the full outputs. The output sum_vecs 
-        are then ``put`` ed.
+        summed together to form the sum_vecs and ``put`` ed.
         
         Scaling is:
         
@@ -756,19 +794,19 @@ class VecOperations(object):
         num_bases = len(basis_vec_handles)
         num_sums = len(sum_vec_handles)
         if num_bases > vec_coeff_mat.shape[0]:
-            raise ValueError(('Coeff mat has fewer rows %d than num of basis handles %d'\
-                %(vec_coeff_mat.shape[0],num_bases)))
+            raise ValueError(('Coeff mat has fewer rows %d than num of basis '
+                'handles %d'%(vec_coeff_mat.shape[0],num_bases)))
                 
         if num_sums > vec_coeff_mat.shape[1]:
-            raise ValueError(('Coeff matrix has fewer cols %d than num of ' +\
+            raise ValueError(('Coeff matrix has fewer cols %d than num of '
                 'output handles %d')%(vec_coeff_mat.shape[1],num_sums))
                                
         if num_bases < vec_coeff_mat.shape[0]:
             self.print_msg('Warning: fewer bases than cols in the coeff matrix'
-                '  some rows of coeff matrix will not be used')
+                ', some rows of coeff matrix will not be used')
         if num_sums < vec_coeff_mat.shape[1]:
             self.print_msg('Warning: fewer outputs than rows in the coeff matrix'
-                '  some cols of coeff matrix will not be used')
+                ', some cols of coeff matrix will not be used')
                 
         # convenience
         rank = self.parallel.get_rank()
@@ -854,7 +892,7 @@ class VecOperations(object):
                         basis_vecs_recv = self.parallel.comm.recv(
                             source=source, tag=recv_tag)
                         request.Wait()
-                        self.parallel.sync()
+                        self.parallel.barrier()
                         basis_indices = basis_vecs_recv[1]
                         basis_vecs = basis_vecs_recv[0]
                     
@@ -881,21 +919,34 @@ class VecOperations(object):
                 self.prev_print_time = T.time()
             
         # ensure that all workers leave function at same time
-        #self.parallel.sync() 
+        #self.parallel.barrier() 
         
     
     def lin_combine_in_memory(self, basis_vecs, vec_coeff_mat):
-        """See ``lin_combine``, but takes vecs instead of handles.
+        """Linearly combines the basis vecs and calls ``put`` on result.
+        
+        Args:
+            sum_vecs: list of sum vectors.
+                
+            basis_vecs: list of basis vecs.
+                
+            vec_coeff_mat: matrix with rows corresponding to a basis vecs
+                and columns to sum (lin. comb.) vecs.
+                The rows and columns correspond, by index,
+                to the lists basis_vec_handles and sum_vec_handles.
+                ``sums = basis * vec_coeff_mat``
         
         Returns:
             a list of linearly combined vectors.
+        
+        See :py:meth:`lin_combine`.
         """
         basis_vecs = util.make_list(basis_vecs)
         basis_vec_handles = [V.InMemoryVecHandle(vec=v) for v in basis_vecs]
         sum_vec_handles = [V.InMemoryVecHandle() 
             for i in range(vec_coeff_mat.shape[1])]
         self.lin_combine(sum_vec_handles, basis_vec_handles, vec_coeff_mat)
-        sum_vecs = [sum_vec_handle.get() for sum_vec_handle in sum_vec_handles]    
+        sum_vecs = [sum_vec_handle.get() for sum_vec_handle in sum_vec_handles]
         if self.parallel.is_distributed():
             sum_vecs_list = self.parallel.comm.allgather(sum_vecs)
             # all_sum_ves is a 1D list of all processors' sum_vecs.
@@ -912,6 +963,7 @@ class VecOperations(object):
             self.verbose == other.verbose)
         
     def __ne__(self, other):
-        return not (self.__eq__(other))
+        """Not equal?"""
+        return not self.__eq__(other)
 
 

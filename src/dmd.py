@@ -13,11 +13,11 @@ class DMD(object):
     Kwargs:        
         inner_product: Function to compute inner product.
         
-        put_mat: Function to put a matrix out of modred
+        put_mat: Function to put a matrix out of modred.
       	
-      	get_mat: Function to get a matrix into modred
+      	get_mat: Function to get a matrix into modred.
                
-        verbose: Print more information about progress and warnings
+        verbose: Print more information about progress and warnings.
         
         max_vecs_per_node: max number of vectors in memory per node.
     
@@ -50,8 +50,24 @@ class DMD(object):
 
 
     def sanity_check(self, test_vec_handle):
-        """See VecOperations documentation"""
+        """Check user-supplied vector handle.
+        
+        Args:
+            test_vec_handle: a vector handle.
+        
+        See :py:meth:`vecoperations.VecOperations.sanity_check`.
+        """
         self.vec_ops.sanity_check(test_vec_handle)
+
+    def sanity_check_in_memory(self, test_vec):
+        """Check user-supplied vector object.
+        
+        Args:
+            test_vec: a vector.
+        
+        See :py:meth:`vecoperations.VecOperations.sanity_check_in_memory`.
+        """
+        self.vec_ops.sanity_check_in_memory(test_vec_handle)
 
 
     def get_decomp(self, ritz_vals_source, mode_norms_source, 
@@ -84,7 +100,7 @@ class DMD(object):
             raise util.UndefinedError("put_mat is undefined, can't put")
         if self.parallel.is_rank_zero():
             self.put_mat(self.ritz_vals, dest)
-        self.parallel.sync()
+        self.parallel.barrier()
         
     def put_mode_norms(self, dest):
         """Puts the mode norms"""
@@ -92,7 +108,7 @@ class DMD(object):
             raise util.UndefinedError("put_mat is undefined, can't put")
         if self.parallel.is_rank_zero():
             self.put_mat(self.mode_norms, dest)
-        self.parallel.sync()
+        self.parallel.barrier()
         
     def put_build_coeffs(self, dest):
         """Puts the build coeffs"""
@@ -100,16 +116,16 @@ class DMD(object):
             raise util.UndefinedError("put_mat is undefined, can't put")
         if self.parallel.is_rank_zero():
             self.put_mat(self.build_coeffs, dest)
-        self.parallel.sync()
+        self.parallel.barrier()
             
     def compute_decomp(self, vec_handles):
         """Computes decomposition and returns SVD matrices.
         
         Args:
-            vec_handles: list of handles for the vecs
+            vec_handles: list of handles for the vecs.
                     
         Returns:
-            vec_handles, ritz_vals, mode_norms, build_coeffs
+            vec_handles, ritz_vals, mode_norms, build_coeffs.
         """
         if vec_handles is not None:
             self.vec_handles = util.make_list(vec_handles)
@@ -163,7 +179,7 @@ class DMD(object):
         return self.ritz_vals, self.mode_norms, self.build_coeffs
         
     def compute_decomp_in_memory(self, vecs):
-        """Same as ``compute_decomp`` but takes vecs instead of handles"""
+        """Same as ``compute_decomp`` but takes vecs instead of handles."""
         self.vecs = util.make_list(vecs)
         vec_handles = [V.InMemoryVecHandle(v) for v in self.vecs]
         return self.compute_decomp(vec_handles)
@@ -171,18 +187,18 @@ class DMD(object):
     
     def compute_modes(self, mode_nums, mode_handles, vec_handles=None, 
         index_from=0):
-        """Computes modes
+        """Computes modes and calls ``mode_handle.put`` on them.
         
         Args:
-            mode_nums: list of mode numbers, ``range(10)`` or ``[3, 2, 5]`` 
+            mode_nums: list of mode numbers, ``range(10)`` or ``[3, 2, 5]``.
             
-            mode_handle: list of handles for modes
+            mode_handles: list of handles for modes.
             
         Kwargs:
-            index_from: integer to start numbering modes from, 0, 1, or other.
-            
             vec_handles: list of handles for vecs, can omit if given in
-            ``compute_decomp``.
+            :py:meth:`compute_decomp`.
+
+            index_from: integer to start numbering modes from, 0, 1, or other.
         """
         if self.build_coeffs is None:
             raise util.UndefinedError('Must define self.build_coeffs')
@@ -194,12 +210,22 @@ class DMD(object):
         
     def compute_modes_in_memory(self, mode_nums, vecs=None, 
         index_from=0):
-        """Same as ``compute_modes``, but takes vecs instead of handles.
+        """Computes modes and returns them.
+        
+        Args:
+            mode_nums: list of mode numbers, ``range(10)`` or ``[3, 2, 5]``.
+            
+        Kwargs:
+            vecs: list of handles for vecs, can omit if given in
+            :py:meth:`compute_decomp`.
+
+            index_from: integer to start numbering modes from, 0, 1, or other.
         
         Returns:
             a list of all modes.
 
         In parallel, each MPI worker returns all modes.
+        See :py:meth:`compute_modes`.
         """
         if self.build_coeffs is None:
             raise util.UndefinedError('Must define self.build_coeffs')

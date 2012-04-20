@@ -27,7 +27,8 @@ class BPODROM(object):
     For a continuous time ROM, you have a few options.
     First, you can compute d(mode)/dt yourself.
     Or, you can advance the direct modes one time step and 
-    approximate a first-order time derivative with ``compute_derivs``.
+    approximate a first-order time derivative with method
+    :py:meth:`compute_derivs`.
         
     Usage::
 
@@ -78,13 +79,14 @@ class BPODROM(object):
         """Computes 1st-order time derivatives of vectors. 
         
         Args:
-			vec_handles: list of handles of vecs.
+            vec_handles: list of handles of vecs.
+            
+            adv_vec_handles: list of handles of vecs advanced ``dt`` in time.
+            
+            deriv_vec_handles: list of handles for time derivatives of vecs.
+            
+            dt: time step of ``adv_vec_handles``
 			
-			adv_vec_handles: list of handles of vecs advanced dt
-			in time
-			
-			deriv_vec_handles: list of handles for time derivatives of vecs.
-        
         Computes d(vec)/dt = (vec(t=dt) - vec(t=0)) / dt.
         """
         num_vecs = len(vec_handles)
@@ -101,10 +103,19 @@ class BPODROM(object):
             deriv_vec_handles[i].put((vec_dt - vec)*(1./dt))
     
     def compute_derivs_in_memory(self, vecs, adv_vecs, dt):
-        """Same as ``compute_derivs``, but takes vecs instead of handles.
+        """Computes 1st-order time derivatives of vectors. 
         
+        Args:
+			vecs: list of vecs.
+			
+			adv_vecs: list of vecs advanced ``dt`` in time.
+			
+			dt: time step of ``adv_vecs``.
+					
         Returns:
-            deriv_vecs: list of time-derivs of vectors
+            deriv_vecs: list of time-derivs of vectors.
+            
+        In parallel, each processor returns all derivatives.
         """
         vec_handles = [InMemoryVecHandle(v) for v in vecs]
         adv_vec_handles = [InMemoryVecHandle(v) for v in adv_vecs]
@@ -124,7 +135,7 @@ class BPODROM(object):
     
     def compute_A(self, A_times_direct_modes_handles, 
         adjoint_mode_handles, num_modes=None):
-        """Computes the continous or discrete time A matrix.
+        """Computes and returns the continous or discrete time A matrix.
         
         Args:
 			A_times_direct_modes_handles: list of handles to "A * direct modes"
@@ -134,7 +145,7 @@ class BPODROM(object):
                 time step.
                 For continuous time systems, these are the handles of the
                 time derivatives of the direct modes (see also 
-                ``compute_derivs``).
+                :py:meth:`compute_derivs`).
         
 			adjoint_mode_handles: list of handles to the adjoint modes
 			
@@ -159,12 +170,28 @@ class BPODROM(object):
         
     def compute_A_in_memory(self, A_times_direct_modes, 
         adjoint_modes, num_modes=None):
-        """Computes the continous or discrete time reduced A matrix
+        """Computes and returns the continous or discrete time A matrix.
         
-        Same as ``compute_A`` but takes vectors instead of handles.
-        
+        Args:
+			A_times_direct_modes: list of "A * direct modes"
+                That is, the direct modes operated on by the full A matrix. 
+                For a discrete time system, these are the 
+                handles of the direct modes that have been advanced one
+                time step.
+                For continuous time systems, these are the handles of the
+                time derivatives of the direct modes (see also 
+                :py:meth:`compute_derivs`).
+                
+			adjoint_modes: list of adjoint modes
+			
+        Kwargs:
+            num_modes: number of modes/states to keep in the ROM. 
+                Can omit if already given. Default is maximum possible.
+
         Returns:
             A: reduced A matrix
+
+        See :py:meth:`compute_A`.
         """
         A_times_direct_modes_handles = [InMemoryVecHandle(v) for v in 
             A_times_direct_modes]
@@ -177,21 +204,21 @@ class BPODROM(object):
 
     
     def compute_B(self, B_vec_handles, adjoint_mode_handles, num_modes=None):
-        """Computes the reduced B matrix.
+        """Computes and returns the reduced B matrix.
         
         Args:		
-			B_vec_handles: list of handles to B vecs.
+            B_vec_handles: list of handles to B vecs.
                 These are spatial representations of the B matrix in the 
                 full system.
                 
-			adjoint_mode_handles: list of handles to the adjoint modes.
+            adjoint_mode_handles: list of handles to the adjoint modes.
         		
         Kwargs:
-			num_modes: number of modes/states to keep in the ROM. 
-				Can omit if already given.
+            num_modes: number of modes/states to keep in the ROM. 
+                Can omit if already given.
 		
 		Returns:
-		    Reduced B matrix
+		    B: Reduced B matrix
 		    
         Computes inner products of adjoint modes with B vecs.
         
@@ -224,12 +251,23 @@ class BPODROM(object):
         return self.B
 
     def compute_B_in_memory(self, B_vecs, adjoint_modes, num_modes=None):
-        """Computes the reduced B matrix.
+        """Computes and returns the reduced B matrix.
         
-        Same as ``compute_B`` but takes vecs instead of handles.
-        
-        Returns:
-            Reduced B matrix
+        Args:		
+            B_vecs: list of B vecs.
+                These are spatial representations of the B matrix in the 
+                full system.
+                
+            adjoint_modes: list of adjoint modes.
+        		
+        Kwargs:
+            num_modes: number of modes/states to keep in the ROM. 
+                Can omit if already given.
+		
+		Returns:
+		    B: Reduced B matrix
+		
+		See :py:meth:`compute_B`.
         """
         B_vec_handles = [InMemoryVecHandle(v) for v in B_vecs]
         adjoint_mode_handles = [InMemoryVecHandle(v) for v in 
@@ -240,14 +278,14 @@ class BPODROM(object):
 
         
     def compute_C(self, C_vec_handles, direct_mode_handles, num_modes=None):
-        """Computes the reduced C matrix, either continuous or discrete.
+        """Computes and returns the reduced C matrix.
                
         Args: 
-			C_vec_handles: list of handles to C vecs.
-				These are spatial representations of the C matrix in the full 
-				system.
-        				
-          	direct_mode_handles: list of handles to the direct modes
+            C_vec_handles: list of handles to C vecs.
+                These are spatial representations of the C matrix in the full 
+                system.
+                        
+            direct_mode_handles: list of handles to the direct modes
         		
         Kwargs:
             num_modes: number of modes/states to keep in the ROM. 
@@ -267,12 +305,26 @@ class BPODROM(object):
         return self.C
 
     def compute_C_in_memory(self, C_vecs, direct_modes, num_modes=None):
-        """Computes the reduced C matrix.
-        
-        Same as ``compute_C`` but takes vecs instead of handles.
+        """Computes and returns the reduced C matrix.
+               
+        Args: 
+            C_vec_handles: list of handles to C vecs.
+                These are spatial representations of the C matrix in the full 
+                system.
+                        
+            direct_mode_handles: list of handles to the direct modes
+                
+        Kwargs:
+            num_modes: number of modes/states to keep in the ROM. 
+                Can omit if already given.
         
         Returns:
             Reduced C matrix
+        
+        Computes inner products of adjoint mode with C vecs.
+        
+        See :py:meth:`compute_C`.
+        
         """
         C_vec_handles = [InMemoryVecHandle(v) for v in C_vecs]
         direct_mode_handles = [InMemoryVecHandle(v) for v in 

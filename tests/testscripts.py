@@ -15,11 +15,11 @@ class TestExampleScripts(unittest.TestCase):
         self.examples_dir = join(join(cwd, '..'), 'examples')
     
     def test_main_bpod_disk(self):
-        """Runs main_bpod_disk. If runs without error, passes test"""
+        """Runs main_bpod_disk. If runs without error, passes test."""
         import main_bpod_disk as M
         M.main(make_plots=False, verbose=False)
 
-    @unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
+    #@unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
     def test_main_pod_in_memory(self):
         """Runs main_simple_pod. If runs without error, passes test"""
         import main_pod_in_memory as M

@@ -1,9 +1,8 @@
 """ Vectors, handles, and inner products.
 
-You should check if your case is provided.
-If it is, use the corresponding functions or class.
-If not, then you'll need to write your own vector class and/or vector handle.
-You can use these as examples of how to do so.
+We recommend using these functions and classes when possible.
+Otherwise, you can write your own vector class and/or vector handle,
+see documentation :ref:`sec_details`.
 """
 
 import cPickle
@@ -130,51 +129,3 @@ class Vector(object):
     def __sub__(self, other):
         return self + other*-1    
 
-"""
-def run_example():
-    b = CustomVector("base")
-    snapshots = [CustomVector("vec%d" % i, base_vector=b) for i in range(5)]
-    b2 = CustomVector("base2")
-    snapshots2 = [CustomVector("vec%d" % i, base_vector=b2) for i in range(5)]
-    for s in snapshots:
-        print s.get()
-    for s in snapshots2:
-        print s.get()
-    
-if __name__ == "__main__":
-    run_example()
-"""
-
-
-"""
-class Wrapper(Base):
-    #Wraps an existing vector class.
-
-    Args:
-        constructor: The method that creates an instance of your vector class.
-    
-    If you have your own vector class that has member functions:
-    1. ``my_vec.get_vec(vec_source)`` that gets a vector from ``vec_source`` 
-        and puts the data into ``my_vec`` instance, and returns nothing.
-    2. ``my_vec.put_vec(vec_dest)`` that puts ``my_vec`` in ``vec_dest`` and
-        returns nothing
-    3. ``my_vec.inner_product(other_vec)`` that returns the inner product of
-       ``my_vec`` and ``other_vec``,
-    
-    then this class serves as a general wrapper.
-    
-    def __init__(self, constructor):
-        self.constructor = constructor
-        
-    def get_vec(vec_source):
-        vec = constructor()
-        vec.get_vec(vec_source)
-        return vec
-    
-    def put_vec(vec, vec_dest):
-        vec.put_vec(vec_dest)
-    
-    def inner_product(vec1, vec2):
-        return vec1.inner_product(vec2)
-        
-"""

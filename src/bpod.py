@@ -21,7 +21,7 @@ class BPOD(object):
         max_vecs_per_node: max number of vectors in memory per node.
     
     Computes direct and adjoint modes from direct and adjoint vecs.
-    It uses VecOperations for low level functions.
+    It uses :py:class:`vecoperations.VecOperations` for low level functions.
     
     Usage::
     
@@ -30,8 +30,8 @@ class BPOD(object):
       myBPOD.compute_direct_modes(range(50), direct_mode_handles)
       myBPOD.compute_adjoint_modes(range(50), adjoint_mode_handles)
 
+    See also :mod:`vectors`.
     """
-    
     def __init__(self, inner_product=None, 
         put_mat=util.save_array_text, get_mat=util.load_array_text,
         max_vecs_per_node=None, verbose=True):
@@ -53,11 +53,27 @@ class BPOD(object):
         self.adjoint_vecs = None
         self.hankel_mat = None
         
-        
     def sanity_check(self, test_vec_handle):
-        """See VecOperations documentation"""
+        """Check user-supplied vector handle.
+        
+        Args:
+            test_vec_handle: a vector handle.
+        
+        See :py:meth:`vecoperations.VecOperations.sanity_check`.
+        """
         self.vec_ops.sanity_check(test_vec_handle)
 
+    def sanity_check_in_memory(self, test_vec):
+        """Check user-supplied vector object.
+        
+        Args:
+            test_vec: a vector.
+        
+        See :py:meth:`vecoperations.VecOperations.sanity_check_in_memory`.
+        """
+        self.vec_ops.sanity_check_in_memory(test_vec_handle)
+    
+    
     def get_decomp(self, L_sing_vecs_source, sing_vals_source, 
         R_sing_vecs_source):
         """Gets the decomposition matrices from elsewhere (memory or file)."""
@@ -86,7 +102,7 @@ class BPOD(object):
             raise util.UndefinedError('put_mat not specified')
         elif self.parallel.is_rank_zero():
             self.put_mat(self.hankel_mat, hankel_mat_dest)           
-        self.parallel.sync()
+        self.parallel.barrier()
     
     def put_L_sing_vecs(self, dest):
         """Put left singular vectors of SVD, V"""
@@ -94,7 +110,7 @@ class BPOD(object):
             raise util.UndefinedError("put_mat not specified")
         elif self.parallel.is_rank_zero():
             self.put_mat(self.L_sing_vecs, dest)
-        self.parallel.sync()
+        self.parallel.barrier()
         
     def put_R_sing_vecs(self, dest):
         """Put right singular vectors of SVD, U"""
@@ -102,7 +118,7 @@ class BPOD(object):
             raise util.UndefinedError("put_mat not specified")
         elif self.parallel.is_rank_zero():
             self.put_mat(self.R_sing_vecs, dest)
-        self.parallel.sync()
+        self.parallel.barrier()
         
     def put_sing_vals(self, dest):
         """Put singular values of SVD, E"""
@@ -110,7 +126,7 @@ class BPOD(object):
             raise util.UndefinedError("put_mat not specified")
         elif self.parallel.is_rank_zero():
             self.put_mat(self.sing_vals, dest)
-        self.parallel.sync()
+        self.parallel.barrier()
     
     def put_decomp(self, L_sing_vecs_dest, sing_vals_dest, R_sing_vecs_dest):
         """Save the decomposition matrices to file."""
@@ -120,7 +136,7 @@ class BPOD(object):
     
     
     def compute_decomp(self, direct_vec_handles, adjoint_vec_handles):
-        """Finds Hankel mat and its SVD.
+        """Finds Hankel matrix and its SVD.
         
         Args:
             direct_vec_handles: list of handles for direct vecs
@@ -142,7 +158,22 @@ class BPOD(object):
         return self.L_sing_vecs, self.sing_vals, self.R_sing_vecs
         
     def compute_decomp_in_memory(self, direct_vecs, adjoint_vecs):
-        """Same as ``compute_decomp`` but takes vecs instead of handles"""
+        """Finds Hankel matrix and its SVD.
+        
+        Args:
+            direct_vecs: list of direct vecs
+            
+            adjoint_vecs: list of adjoint vecs
+        
+        Returns:
+            L_sing_vecs: matrix of left singular vectors (U in UEV*=H)
+        
+            sing_vals: 1D array of singular values (E in UEV*=H)
+            
+            R_sing_vecs: matrix of right singular vectors (V in UEV*=H)
+        
+        See :py:meth:`compute_decomp`.
+        """
         self.direct_vecs = direct_vecs
         self.adjoint_vecs = adjoint_vecs
         self.hankel_mat = self.vec_ops.compute_inner_product_mat_in_memory(
@@ -155,7 +186,7 @@ class BPOD(object):
         """Takes the SVD of the Hankel matrix.
         
         Useful if you already have the Hankel mat and want to skip 
-        recomputing it. Intead, set ``self.hankel_mat``, and call this.
+        recomputing it. Instead, set ``self.hankel_mat``, and call this.
         """
         if self.parallel.is_rank_zero():
             self.L_sing_vecs, self.sing_vals, self.R_sing_vecs = \
@@ -187,14 +218,24 @@ class BPOD(object):
         
     def compute_direct_modes_in_memory(self, mode_nums, 
         direct_vecs=None, index_from=0):
-        """Computes direct modes and returns them in a list.
+        """Computes direct modes and returns them.
         
-        See ``compute_direct_modes`` for details.
-        
+        Args:
+          mode_nums: Mode numbers to compute. 
+              Examples are ``range(10)`` or ``[3, 1, 6, 8]``. 
+              
+        Kwargs:
+          direct_vecs: list of direct vecs. 
+              Optional if already given when calling 
+              :py:meth:`compute_decomp_in_memory`.
+
+          index_from: Index modes starting from 0, 1, or other.
+
         Returns:
-            a list of modes
+            list of modes
             
-        In parallel, each MPI worker is returned a complete list of modes
+        In parallel, each MPI worker is returned a complete list of modes.
+        See :py:meth:`compute_direct_modes`.
         """
         if direct_vecs is not None:
             self.direct_vecs = util.make_list(direct_vecs)
@@ -207,21 +248,19 @@ class BPOD(object):
             
     def compute_direct_modes(self, mode_nums, mode_handles,
         direct_vec_handles=None, index_from=0):
-        """Computes direct modes and calls ``self.put_vec`` on them.
+        """Computes direct modes and calls ``mode_handle.put`` on them.
         
         Args:
           mode_nums: Mode numbers to compute. 
-              Examples are ``range(10)`` or ``[3,1,6,8]``. 
-              The mode numbers need not be sorted,
-              and sorting does not increase efficiency. 
+              Examples are ``range(10)`` or ``[3, 1, 6, 8]``. 
               
           mode_handles: list of handles for modes.
           
         Kwargs:
-          index_from: Index modes starting from 0, 1, or other.
-          
           direct_vec_handles: list of handles for direct vecs. 
-              Optional if already given when calling ``self.compute_decomp``.
+              Optional if already given when calling :py:meth:`compute_decomp`.
+
+          index_from: Index modes starting from 0, 1, or other.
         """
         if direct_vec_handles is not None:
             self.direct_vec_handles = util.make_list(direct_vec_handles)
@@ -247,14 +286,24 @@ class BPOD(object):
     
     def compute_adjoint_modes_in_memory(self, mode_nums, 
         adjoint_vecs=None, index_from=0):
-        """Computes adjoint modes and returns them in a list.
+        """Computes adjoint modes, calls ``mode_handle.put`` on them.
         
-        See ``compute_adjoint_modes`` for details.
+        Args:
+          mode_nums: Mode numbers to compute. 
+              Examples are ``range(10)`` or ``[3, 1, 6, 8]``. 
+              
+        Kwargs:
+          adjoint_vecs: list of adjoint vecs. 
+              Optional if already given when calling 
+              :py:meth:`compute_decomp_in_memory`.
+
+          index_from: Index modes starting from 0, 1, or other.
         
         Returns:
-            a list of modes
+            list of modes
             
         In parallel, each MPI worker is returned a complete list of modes
+        See :py:meth:`compute_adjoint_modes` for details.
         """
         if adjoint_vecs is not None:
             self.adjoint_vecs = util.make_list(adjoint_vecs)
@@ -267,21 +316,19 @@ class BPOD(object):
             
     def compute_adjoint_modes(self, mode_nums, mode_handles,
         adjoint_vec_handles=None, index_from=0):
-        """Computes adjoint modes, calls ``put`` on them.
+        """Computes adjoint modes, calls ``mode_handle.put`` on them.
         
         Args:
           mode_nums: Mode numbers to compute. 
-              Examples are ``range(10)`` or ``[3,1,6,8]``. 
-              The mode numbers need not be sorted,
-              and sorting does not increase efficiency. 
+              Examples are ``range(10)`` or ``[3, 1, 6, 8]``. 
               
           mode_handles: list of handles for modes.
           
         Kwargs:
-          index_from: Index modes starting from 0, 1, or other.
-          
           adjoint_vec_handles: list of handles for adjoint vecs. 
-              Optional if already given when calling ``self.compute_decomp``.
+              Optional if already given when calling :py:meth:`compute_decomp`.
+
+          index_from: Index modes starting from 0, 1, or other.
         """
         if adjoint_vec_handles is not None:
             self.adjoint_vec_handles = util.make_list(adjoint_vec_handles)

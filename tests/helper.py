@@ -13,22 +13,6 @@ def add_to_path(directory):
     if sys.path[0] != dir_loc:
         sys.path.insert(0, dir_loc)
 
-"""
-def get_rank_distributed(): 
-     
-    #Returns rank and distributed boolean, needed for testing in
-    #parallel.
-    
-    try: 
-        from mpi4py import MPI
-        rank = MPI.COMM_WORLD.Get_rank()
-        distributed = MPI.COMM_WORLD.Get_size() > 1
-    except ImportError:
-        print 'Warning: without mpi4py module, only serial behavior is tested'
-        distributed = False
-        rank = 0
-    return rank, is_distributed
-""" 
 
 """
 if rank==0:

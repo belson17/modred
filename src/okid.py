@@ -6,17 +6,17 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
     """Approximates the Markov paramters from arbitrary inputs and outputs.
     
     Args:
-        inputs: array of input signals, with indices [input #, time sample #]
+        inputs: array of input signals, with indices [input #, time sample #].
         
-        outputs: array of output signals, with indices [output #, time sample #]
+        outputs: array of output signals, with indices [output #, time sample #].
         
         num_Markovs: integer number of Markov parameters to estimate.
             
     Kwargs:
-        cutoff: condition number used for the pseudo-inverse
+        cutoff: condition number used for the pseudo-inverse.
     
     Returns:
-        Markovs_est: array of estim. Markov params, indices [time, input, output]
+        Markovs_est: array of estim. Markov params, indices [time, input, output].
     
     OKID can be sensitive to the choice of parameters. A few tips:
 

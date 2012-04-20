@@ -49,10 +49,10 @@ class TestBPODROM(unittest.TestCase):
             self.num_outputs)
         
     def tearDown(self):
-        parallel.sync()
+        parallel.barrier()
         if parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
-        parallel.sync()
+        parallel.barrier()
         
     def test_init(self):
         """ """
@@ -117,7 +117,7 @@ class TestBPODROM(unittest.TestCase):
                 handle.put(self.B_array[:,i].squeeze())
             for i,handle in enumerate(self.C_vec_handles):
                 handle.put(self.C_array[:,i].squeeze())
-        parallel.sync()
+        parallel.barrier()
         
         self.A_true = N.dot(self.adjoint_mode_array.T, self.A_times_direct_mode_array)[
             :num_ROM_modes,:num_ROM_modes]
@@ -153,7 +153,7 @@ class TestBPODROM(unittest.TestCase):
         A_returned = self.myBPODROM.compute_A(self.A_times_direct_mode_handles,
             self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
         self.myBPODROM.put_A(A_path)
-        parallel.sync()
+        parallel.barrier()
         N.testing.assert_allclose(util.load_array_text(A_path), self.A_true)
         N.testing.assert_allclose(A_returned, self.A_true)
         N.testing.assert_allclose(A_returned_in_mem, self.A_true)
@@ -171,7 +171,7 @@ class TestBPODROM(unittest.TestCase):
         B_returned = self.myBPODROM.compute_B(self.B_vec_handles,
             self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
         self.myBPODROM.put_B(B_path)
-        parallel.sync()
+        parallel.barrier()
         N.testing.assert_allclose(util.load_array_text(B_path), self.B_true)
         N.testing.assert_allclose(B_returned, self.B_true)
         N.testing.assert_allclose(B_returned_in_mem, self.B_true)
@@ -187,7 +187,7 @@ class TestBPODROM(unittest.TestCase):
         C_returned = self.myBPODROM.compute_C(self.C_vec_handles,
             self.direct_mode_handles, num_modes=self.num_ROM_modes)
         self.myBPODROM.put_C(C_path)
-        parallel.sync()
+        parallel.barrier()
         N.testing.assert_allclose(util.load_array_text(C_path), self.C_true)
         N.testing.assert_allclose(C_returned, self.C_true)
         N.testing.assert_allclose(C_returned_in_mem, self.C_true)

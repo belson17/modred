@@ -22,7 +22,7 @@ def run():
 		#print 'discovering tests in path',os.path.dirname(__file__)
 		test_suites = test_loader.discover(os.path.dirname(__file__))#, top_level_dir='../')
 		unittest.TextTestRunner().run(test_suites)
-		parallel.sync()
+		parallel.barrier()
 
 if __name__ == '__main__':
     run()

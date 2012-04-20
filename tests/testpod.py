@@ -34,13 +34,13 @@ class TestPOD(unittest.TestCase):
         
         self.my_POD = POD(inner_product=N.vdot, verbose=False)
         self.generate_data_set()
-        parallel.sync()
+        parallel.barrier()
 
     def tearDown(self):
-        parallel.sync()
+        parallel.barrier()
         if parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
-        parallel.sync()
+        parallel.barrier()
 
     def generate_data_set(self):
         """Create data set (saved to file)"""

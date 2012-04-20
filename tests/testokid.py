@@ -38,7 +38,7 @@ class TestOKID(unittest.TestCase):
         self.test_dir = join(os.path.dirname(__file__), 'files_okid')        
     
     def tearDown(self):
-        parallel.sync()
+        parallel.barrier()
     
     def test_OKID(self):
         for case in ['SISO', 'SIMO', 'MISO', 'MIMO']:

@@ -39,14 +39,14 @@ class TestDMD(unittest.TestCase):
         self.my_DMD = DMD(inner_product=N.vdot, verbose=False)
         self.my_DMD_in_memory = DMD(inner_product=N.vdot, verbose=False)
         self.generate_data_set()
-        parallel.sync()
+        parallel.barrier()
         
     
     def tearDown(self):
-        parallel.sync()
+        parallel.barrier()
         if parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
-        parallel.sync()
+        parallel.barrier()
         
         
     def generate_data_set(self):
@@ -164,7 +164,7 @@ class TestDMD(unittest.TestCase):
         
         self.my_DMD.put_decomp(ritz_vals_path, mode_norms_path, 
             build_coeffs_path)
-        parallel.sync()
+        parallel.barrier()
         
         # Test that matrices were correctly computed
         N.testing.assert_allclose(self.my_DMD.ritz_vals, 

@@ -59,7 +59,7 @@ def generate_vecs(num_states, num_vecs, vec_dir, vec_name):
     """
     if not os.path.exists(vec_dir) and parallel.is_rank_zero():
         os.mkdir(vec_dir)
-    parallel.sync()
+    parallel.barrier()
     
     """
     # Parallelize saving of vecs (may slow down sequoia)
@@ -75,7 +75,7 @@ def generate_vecs(num_states, num_vecs, vec_dir, vec_name):
             vec = N.random.random(num_states)
             my_vec_defs.put_vec(vec, join(vec_dir, vec_name%vec_num))
     
-    parallel.sync()
+    parallel.barrier()
 
 
 def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node, 
@@ -173,14 +173,14 @@ def main():
         num_rows = 2000
         num_cols = 2000
         generate_vecs(num_states, num_vecs, data_dir, vec_name)
-        parallel.sync()
+        parallel.barrier()
         time_elapsed = inner_product_mat(
                 num_states, num_rows, num_cols, max_vecs_per_node)
     elif method_to_test == 'inner_product_mat':
         # symmetric_inner_product_mat test
         num_vecs = 2000
         generate_vecs(num_states, num_vecs, data_dir, vec_name)
-        parallel.sync()
+        parallel.barrier()
         time_elapsed = symmetric_inner_product_mat(
                 num_states, num_vecs, max_vecs_per_node)
     else:
@@ -188,7 +188,7 @@ def main():
         print 'lin_combine, inner_product_mat, and inner_product_mat'
     #print 'Time for %s is %f'%(method_to_test, time_elapsed)
     
-    parallel.sync()
+    parallel.barrier()
     clean_up()
     
 

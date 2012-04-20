@@ -19,7 +19,7 @@ def flatten_list(my_list):
     return [num for elem in my_list for num in elem]
     
 def save_array_text(array, filename, delimiter=' '):
-    """Writes a 1D or 2D array or matrix to a text file
+    """Saves a 1D or 2D array or matrix to a text file
     
     Args:
         mat: matrix or array to save to file (1D or 2D)
@@ -39,14 +39,14 @@ def save_array_text(array, filename, delimiter=' '):
        
     Complex data is saved in the following format (as floats)::
     
-      real00 imag00 real01 imag01 ...
-      real10 imag10 real11 imag11 ...
+      real[0,0] imag[0,0] real[0,1] imag[0,1] ...
+      real[1,0] imag[1,0] real[1,1] imag[1,1] ...
       ...
   
-    Files can be read in Matlab with the provided functions, or often
+    Files can be read in Matlab with the provided functions or often
     with Matlab's ``load``.
     """
-    # Must cast into an array. Also makes it memory C-contiguous.
+    # Cast into an array. Also makes it memory C-contiguous.
     array_save = N.array(array)
     
     # If one-dimensional array, then make a vector of many rows, 1 column
@@ -59,12 +59,15 @@ def save_array_text(array, filename, delimiter=' '):
     
     
 def load_array_text(file_name, delimiter=' ', is_complex=False):
-    """Reads a text file, returns an array.
+    """Loads a text file, returns an array.
     
-    See ``save_array_text`` for the format used by this function.
+    See :py:func:`save_array_text` for the format used by this function.
     
     Kwargs:
-        ``is_complex``: if the data saved is complex, then set  to ``True``.
+        is_complex: if the data saved is complex, then set  to ``True``.
+    
+    Returns:
+        array: a numpy array, always 2D.
     """
     # Check the version of numpy, requires version >= 1.6 for ndmin option
     if int(N.version.version[2]) < 6:
@@ -89,7 +92,7 @@ def inner_product(vec1, vec2):
     return N.vdot(vec1, vec2)
 
     
-def svd(mat, tol = 1e-13):
+def svd(mat, tol=1e-13):
     """An SVD that better meets our needs.
     
     Args:
@@ -303,6 +306,11 @@ def load_signals(signal_path, delimiter=' '):
     Args:
         signal_paths: list of paths to signals, strings
     
+    Returns:
+        time_values: 1D array of time values
+        
+        signals: array of signals with dimensions [time#, signal#]
+    
     Convenience function. Example file has format::
     
       0 0.1 0.2
@@ -330,7 +338,12 @@ def load_multiple_signals(signal_paths, delimiter=' '):
     Args:
         signal_paths: list of paths to signals, strings
     
-    See ``load_signals`` for details.
+    Returns:
+        time_values: 1D array of time values
+        
+        all_signals: array of signals with dimensions [path#, time#, signal#]
+    
+    See :py:func:`load_signals`.
     """
     num_signal_paths = len(signal_paths)
     # Read the first file to get parameters

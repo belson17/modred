@@ -4,8 +4,6 @@
 
 #### Important ####
 
-Make BPODLTIROM use vecoperations.
-
 
 If POD's sing_vals is a 1-element 1d array, then after squeezing it is not an array,
 just a float, which breaks other parts of the code. This should be fixed to make it

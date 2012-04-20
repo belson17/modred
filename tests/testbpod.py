@@ -35,13 +35,13 @@ class TestBPOD(unittest.TestCase):
         
         self.my_BPOD = BPOD(inner_product=N.vdot, verbose=False)
         self.generate_data_set()
-        parallel.sync()
+        parallel.barrier()
 
     def tearDown(self):
-        parallel.sync()
+        parallel.barrier()
         if parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
-        parallel.sync()
+        parallel.barrier()
     
     def generate_data_set(self):
         # create data set (saved to file)
@@ -168,7 +168,7 @@ class TestBPOD(unittest.TestCase):
             R_sing_vecs_path)        
         self.my_BPOD.put_hankel_mat(hankel_mat_path)
         
-        parallel.sync()
+        parallel.barrier()
         L_sing_vecs_loaded = util.load_array_text(L_sing_vecs_path)
         R_sing_vecs_loaded = util.load_array_text(R_sing_vecs_path)
         sing_vals_loaded = N.squeeze(N.array(util.load_array_text(
@@ -245,7 +245,7 @@ class TestBPOD(unittest.TestCase):
                 self.mode_nums, adjoint_vecs=self.adjoint_vecs, 
                 index_from=self.index_from)
 
-        parallel.sync()
+        parallel.barrier()
         for mode_index, mode_handle in enumerate(direct_mode_handles):
             mode = mode_handle.get()
             N.testing.assert_allclose(mode, 

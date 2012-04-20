@@ -54,7 +54,7 @@ class Parallel(object):
         return hash(hostname)
     
     def get_num_nodes(self):
-        """Return the number of nodes"""
+        """Return the number of nodes."""
         return self._num_nodes
     
     def print_from_rank_zero(self,msgs):
@@ -67,7 +67,7 @@ class Parallel(object):
             for msg in msgs:
                 print msg
     
-    def sync(self):
+    def barrier(self):
         """Forces all processors to synchronize. Wrapper for Barrier()."""
         if self.distributed:
             self.comm.Barrier()
@@ -84,15 +84,15 @@ class Parallel(object):
         return self.distributed
         
     def get_rank(self):
-        """Returns the rank of this processor"""
+        """Returns the rank of this processor."""
         return self._rank
     
     def get_num_MPI_workers(self):
-        """Returns the number of MPI workers, currently same as num_procs"""
+        """Returns the number of MPI workers, currently same as ``num_procs``."""
         return self._num_MPI_workers
     
     def get_num_procs(self):
-        """Returns the number of processors"""
+        """Returns the number of processors."""
         return self.get_num_MPI_workers()
 
     
@@ -101,11 +101,11 @@ class Parallel(object):
         
         Args:
             tasks: list of "tasks", which can be any object corresponding to
-                a task that needs to be completed, for example an index.
+            a task that needs to be completed, for example an index.
     
         Kwargs:
             task_weights: list of weights, numbers, that are used to
-                equally distribute the tasks among MPI workers.
+            equally distribute the tasks among MPI workers.
        
         Returns:
             task_assignments: 2D list of tasks, [rank][task_index] such that 
@@ -150,7 +150,7 @@ class Parallel(object):
         
 
     def check_for_empty_tasks(self, task_assignments):
-        """Convenience function that checks if empty worker assignments"""
+        """Convenience function that checks if empty worker assignments."""
         empty_tasks = False
         for assignment in task_assignments:
             if len(assignment) == 0 and not empty_tasks:
@@ -162,8 +162,9 @@ class Parallel(object):
         keywords={}):
         """Evaluates function with inputs and broadcasts outputs to workers.
         
-        CURRENTLY THIS FUNCTION DOESNT WORK
-    
+        CURRENTLY THIS FUNCTION DOESN'T WORK.
+        """
+        """
         Args:
             outputs: must be a list
     

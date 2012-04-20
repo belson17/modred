@@ -1,10 +1,9 @@
 """Functions and classes for ERA models. See paper by Ma et al. 2011, TCFD.
 
-
+Contains ERA function :py:func:`compute_ERA_model` and class :py:class:`ERA`.
 """
 import numpy as N
 import util
-
 
 def make_time_steps(num_steps, interval):
     """Helper function to find array of integer time steps.
@@ -27,7 +26,7 @@ def make_time_steps(num_steps, interval):
 
 
 def make_sampled_format(times, Markovs, dt_tol=1e-6):
-    """Converts equally spaced samples into format [0 1 1 2 2 3 ...].
+    """Converts samples at [0 1 2 ...] into samples at [0 1 1 2 2 3 ...].
         
     Args:
         times: an array of time values or time steps.
@@ -83,7 +82,8 @@ def compute_ERA_model(Markovs, num_states):
     Usage::
      
       # Obtain Markov parameters, array "Markovs" with dims [time, output, input]
-      A, B, C = compute_ROM(Markovs, 20)
+      num_states = 20
+      A, B, C = compute_ROM(Markovs, num_states)
         
     Markov params are defined as [CB, CAB, CA**PB, CA**(P+1)B, ...]
     """
@@ -126,6 +126,8 @@ class ERA(object):
     
     The special case where P=2 results in, 
     dt*[0, 1, 2, 3, ... ], see ``make_sampled_format`` docs.
+    
+    See convenience function :py:func:`compute_ERA_model`.
     """
     
     def __init__(self, put_mat=util.save_array_text, mc=None, mo=None,
@@ -220,7 +222,7 @@ class ERA(object):
       
     def put_decomp(self, Hankel_mat_dest, Hankel_mat2_dest, L_sing_vecs_dest, 
         sing_vals_dest, R_sing_vecs_dest):
-        """Saves the decomposition and Hankel matrices"""
+        """Puts the decomposition and Hankel matrices"""
         self.put_mat(self.Hankel_mat, Hankel_mat_dest)
         self.put_mat(self.Hankel_mat2, Hankel_mat2_dest)
         self.put_mat(self.L_sing_vecs, L_sing_vecs_dest)
@@ -228,12 +230,12 @@ class ERA(object):
         self.put_mat(self.R_sing_vecs, R_sing_vecs_dest)
         
     def put_sing_vals(self, sing_vals_dest):
-        """Saves just the singular values"""
+        """Puts the singular values"""
         self.put_mat(self.sing_vals, sing_vals_dest)
       
  
     def _set_Markovs(self, Markovs):
-        """Set the Markov params to self.Markovs.
+        """Sets the Markov params to self.Markovs and does error checking.
         
         Args:
             Markovs: array of Markov params w/indices [time, output, input].
