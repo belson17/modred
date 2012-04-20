@@ -13,9 +13,7 @@ available to be imported.
 import numpy as N
 import modred as MR
 
-make_plots = False
-
-def main(verbose=True, make_plots=True):
+def main(verbose=True, make_plots=False):
     num_states = 50
     num_vecs = 20
     x = N.linspace(0., 1., num_states)
@@ -47,5 +45,5 @@ def main(verbose=True, make_plots=True):
             print 'matplotlib not found'
             
 if __name__ == '__main__':
-    main()
+    main(make_plots=False)
     
