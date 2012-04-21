@@ -18,3 +18,6 @@ For POD, BPOD, and DMD, the library itself is lightweight; the majority of
 the computation time is spent calling functions you provide.
 The library is essentially a wrapper that calls the functions in an 
 efficient way. 
+
+Python's speed limitations can be bypassed by calling compiled code
+via tools like Cython, SWIG, and f2py. 

@@ -74,7 +74,7 @@ Instead, modred is designed to have only a subset of vectors in memory, loading
 and saving them as necessary.
 Therefore, rather than providing modred with a list of vectors, you can 
 provide it with a list of "vector handles". 
-These are lightweight class instances that in some sense point to a vector's
+These are **lightweight** class instances that in some sense point to a vector's
 location, like the filename of where it's saved.
 In general, vector handles must be able to get a vector from some location and
 return it, and also take a vector and put it to some location.
@@ -163,34 +163,32 @@ We used to call this the ``idiot_check`` as motivation to use it...
 keep that in mind!
 
 
------------------------------------
-Use in classes
------------------------------------
+--------------------------------------------------
+Vector objects and handles in classes
+--------------------------------------------------
 
-The classes POD, BPOD, and DMD have similar interfaces.
-First, they all have ``compute_decomp`` 
+The classes POD, BPOD, and DMD have similar interfaces which interact
+with vectors and vector handles.
+First, each has ``compute_decomp`` 
 functions that take lists of vector handles, ``vec_handles``, as arguments.
-They also all have member functions ``compute_decomp_in_memory`` for smaller
-data, and these functions directly take lists of vectors as 
-arguments.
-Within each class's ``compute_decomp`` functions, ``vec = vec_handle.get()``
+Within the ``compute_decomp`` functions, ``vec = vec_handle.get()``
 is called repeatedly to retrieve vectors as needed. 
+They also have member functions ``compute_decomp_in_memory`` that directly take
+lists of vectors as arguments since the use of vector handles is
+somewhat unnecessary.
 In fact, ``compute_decomp`` and ``compute_decomp_in_memory`` do not "know"
 or "care" what's inside the vector handles and vectors; only
-that they fulfill the requirements listed above.
+that they satisfy the requirements.
 
 Similarly, POD, BPOD, and DMD all have member functions resembling 
 ``compute_modes`` and ``compute_modes_in_memory``.
 Function ``compute_modes`` takes a list of vector handles for the modes and
 calls ``put(mode)``, and returns nothing.
 Function ``compute_modes_in_memory`` returns a list of modes directly, which
-is a simple option for small data where the use of handles is unnecessary.
+is a simple option for small data.
 
 More information about these methods is provided in the documentation
-for each class, (see :mod:`pod`, :mod:`bpod`, :mod:`dmd`, and for 
-lower-level operations, :mod:`vecoperations`).
-For more information, see the tutorial and the examples directory.
-
+for each class.
 
 ---------------------------------------
 Summary and next steps
@@ -203,16 +201,16 @@ Summarizing, to use modred on arbitrary data, define
   2. Scalar multiplication ("*", ``__mul__``)
   3. Inherits from MR.Vector (recommended but not required)
 2. A vector handle class that has:
-  1. ``get()`` member function
-  2. ``put(vec)`` member function
+  1. Member function ``get()``
+  2. Member function ``put(vec)``
   3. Inherits from MR.VecHandle, if so, requirements 1 and 2 change to:
-    1. ``_get()`` member function
-    2. ``_put(vec)`` member function
-3. ``inner_product(vec1, vec2)`` function
+    1. Member function ``_get()``
+    2. Member function ``_put(vec)``
+3. Function ``inner_product(vec1, vec2)``
 
 Then you can get started using any of the modal decomposition classes 
 (POD, BPOD, and DMD)!
 
 For large data, Python's speed limitations can be 
-bypassed by implementing functions in C/C++ via Cython and SWIG, 
-Fortran via f2py, etc. 
+bypassed by implementing functions in compiled languages such as C/C++ and 
+Fortran and accessing them within python with Cython, SWIG, f2py, etc. 

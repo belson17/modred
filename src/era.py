@@ -86,6 +86,10 @@ def compute_ERA_model(Markovs, num_states):
       A, B, C = compute_ROM(Markovs, num_states)
         
     Markov params are defined as [CB, CAB, CA**PB, CA**(P+1)B, ...]
+    
+    The functions :py:func:`util.load_signals` and 
+    :py:func:`util.load_multiple_signals`
+    are often useful.
     """
     my_ERA = ERA()
     return my_ERA.compute_model(Markovs, num_states)
@@ -108,7 +112,7 @@ class ERA(object):
       
       # Obtain Markov parameters, array "Markovs" with dims [time, output, input]
       myERA = ERA()
-      A, B, C = myERA.compute_ROM_and_return(Markovs, 50)
+      A, B, C = myERA.compute_ROM(Markovs, 50)
       sing_vals = myERA.sing_vals
       
     Another example::
@@ -125,9 +129,13 @@ class ERA(object):
     dt*[0, 1, P, P+1, 2P, 2P+1, ... ]
     
     The special case where P=2 results in, 
-    dt*[0, 1, 2, 3, ... ], see ``make_sampled_format`` docs.
+    dt*[0, 1, 2, 3, ... ], see :py:func:`make_sampled_format`.
     
     See convenience function :py:func:`compute_ERA_model`.
+    
+    The functions :py:func:`util.load_signals` and 
+    :py:func:`util.load_multiple_signals`
+    are often useful.
     """
     
     def __init__(self, put_mat=util.save_array_text, mc=None, mo=None,

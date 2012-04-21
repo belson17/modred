@@ -27,7 +27,18 @@ sys.path.insert(0, os.path.join(os.path.join(os.path.abspath('.'), '..'), 'examp
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.coverage', 'sphinx.ext.viewcode', 'sphinx.ext.autodoc']
+extensions = ['sphinx.ext.coverage', 'sphinx.ext.viewcode', 'sphinx.ext.autodoc',
+          'matplotlib.sphinxext.mathmpl',
+          'matplotlib.sphinxext.only_directives',
+          'matplotlib.sphinxext.plot_directive',
+          #'matplotlib.sphinxext.ipython_directive',
+          'sphinx.ext.autodoc',
+          'sphinx.ext.doctest',
+          #'ipython_console_highlighting',
+          #'inheritance_diagram',
+          'sphinx.ext.pngmath',
+          #'sphinx.ext.jsmath',
+          'numpydoc']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -112,7 +123,8 @@ html_theme = 'default'
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-#html_logo = None
+# html_logo = 'small_world_small.png'
+#http://www3.hku.hk/mech/research_details.php?ResearchCode=dyn
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32

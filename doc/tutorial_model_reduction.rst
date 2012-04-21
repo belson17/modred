@@ -1,5 +1,4 @@
 .. _sec_model_reduction:
-
 -------------------------------------------------
 Model reduction
 -------------------------------------------------
@@ -10,20 +9,24 @@ BPOD linear reduced-order models
 We provide a class to find BPOD linear models (continuous and discrete time)
 from BPOD modes.
 The governing equation of the full system is assumed to be either continuous
-or discrete time::
+time
 
-  # continuous, t >= 0
-  dx(t)/dt = A*x(t) + B*u(t)
-  y(t) = C*x(t)
-  
-  # discrete, k = 0, 1, 2, ...
-  x(k+1) = A*x(k) + B*u(k)
-  y(k) = C*x(k)
+.. math::
 
-where ``x`` is the state, and is a vector. 
-In this sense, we consider the columns of ``B`` and
-the rows of ``C`` as vectors.
-Then ``y`` is the inner product of rows of ``C`` with ``x``.
+  \partial x(t)/ \partial t &= A x(t) + B u(t) \\
+  y(t) &= C x(t) 
+
+where t >= 0 , or discrete time 
+
+.. math::
+
+  x(k+1) &= A x(k) + B u(k) \\
+  y(k) &= C x(k) 
+
+where k = 0,1,2,...
+Here x is the state, and is a vector. 
+In this sense, we consider the columns of B and the rows of C as vectors.
+Then, y is the inner product of rows of C with x.
 
 Projecting this equation onto the BPOD modes gives, very loosely speaking::
  
@@ -61,7 +64,7 @@ Here's an example::
   
 The list ``A_times_direct_modes`` are modes that have been operated on by the
 full matrix A, which can be either discrete or continuous time.
-The list ``B_vecs`` contains the vectors that compromise the columns
+The list ``B_vecs`` contains the vectors that comprise the columns
 of the full system's B matrix.
 Similarly, the list ``C_vecs`` contains the vectors that compromise the rows
 of the full system's C matrix.
@@ -110,5 +113,5 @@ instead for large vectors.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Eigensystem Realization Algorithm (ERA)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-a
-
+The documentation and examples provided in :py:func:`era.compute_ERA_model` 
+and :py:class:`era.ERA` should be sufficient.
