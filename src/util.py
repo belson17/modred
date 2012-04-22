@@ -70,14 +70,23 @@ def load_array_text(file_name, delimiter=' ', is_complex=False):
         array: a numpy array, always 2D.
     """
     # Check the version of numpy, requires version >= 1.6 for ndmin option
-    if int(N.version.version[2]) < 6:
-        print ('Warning: load_array_text requires numpy version >= 1.6 '
-            'but you are running version %s'%N.version.version)
+    #if int(N.version.version[2]) < 6:
+    #    print ('Warning: load_array_text requires numpy version >= 1.6 '
+    #        'but you are running version %s'%N.version.version)
     if is_complex:
         dtype = complex
     else:
         dtype = float
-    array = N.loadtxt(file_name, delimiter=delimiter, ndmin=2)
+    array = N.loadtxt(file_name, delimiter=delimiter) #, ndmin=2)
+    ## This section reproduces behavior of ndmin=2 option of N.loadtxt
+    if array.ndim == 1:
+        num_rows = sum(1 for line in open(file_name))
+        if num_rows > 1:
+            array = array.reshape((-1, 1))
+        else:
+            array = array.reshape((1, -1))
+    ## End work around for ndmin=2 option.
+    
     if is_complex and array.shape[1] % 2 != 0:
         raise ValueError(('Cannot load complex data, file %s '%file_name)+\
             'has an odd number of columns. Maybe it has real data.')

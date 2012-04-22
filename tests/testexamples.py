@@ -3,27 +3,40 @@
 import unittest
 import os
 from os.path import join
+from shutil import rmtree
 import helper
 helper.add_to_path('examples')
 helper.add_to_path('src')
 from parallel import default_instance
 parallel = default_instance
 
-class TestExampleScripts(unittest.TestCase):
+class TestExamples(unittest.TestCase):
     def setUp(self):
         cwd = os.path.dirname(__file__)
-        self.examples_dir = join(join(cwd, '..'), 'examples')
+        self.test_dir = 'DELETE_ME_test_tutorial_examples'
+        if not os.access('.', os.W_OK):
+            raise RuntimeError('Cannot write to current directory')
+        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():        
+            os.mkdir(self.test_dir)
+        parallel.barrier()
+        os.chdir(self.test_dir)
+        self.examples_dir = join(join('..', '..'), 'examples')
     
-    def test_main_bpod_disk(self):
-        """Runs main_bpod_disk. If runs without error, passes test."""
-        import main_bpod_disk as M
-        M.main(make_plots=False, verbose=False)
-
-    #@unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
-    def test_main_pod_in_memory(self):
-        """Runs main_simple_pod. If runs without error, passes test"""
-        import main_pod_in_memory as M
-        M.main(make_plots=False, verbose=False)
+    def tearDown(self):
+        os.chdir('..')
+        parallel.barrier()
+        if parallel.is_rank_zero():
+            rmtree(self.test_dir, ignore_errors=True)
+ 
+    def test_tutorial_examples(self):
+        """Runs all tutorial examples. If run without errors, passes test"""
+        example_module = 'tutorial_ex%d'
+        for example_num in range(1, 7):
+            # Example 3 isn't meant to work in parallel
+            if not (parallel.is_distributed() and example_num != 3):
+                exec('import %s as I'%(example_module%example_num))
+                I.main(verbose=False)
+            
         
     @unittest.skip('Unnecessary test for user')
     def test_benchmark(self):

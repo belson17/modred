@@ -24,11 +24,11 @@ class TestVectors(unittest.TestCase):
             raise RuntimeError('Cannot write to current directory')
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():        
             os.mkdir(self.test_dir)
+        parallel.barrier()
         self.mode_nums =[2, 4, 3, 6, 9, 8, 10, 11, 30]
         self.num_vecs = 40
         self.num_states = 100
         self.index_from = 2
-        #parallel.barrier()
 
     def tearDown(self):
         parallel.barrier()
@@ -66,6 +66,16 @@ class TestVectors(unittest.TestCase):
         vec_handle = V.InMemoryVecHandle()
         vec_handle.put(vec_true)
         N.testing.assert_equal(vec_handle.vec, vec_true)
+        
+        # Test __eq__ operator
+        vec_handle1 = V.InMemoryVecHandle(vec=N.ones(2))
+        vec_handle2 = V.InMemoryVecHandle(vec=N.ones(2))
+        vec_handle3 = V.InMemoryVecHandle(vec=N.ones(3))
+        vec_handle4 = V.InMemoryVecHandle(vec=N.zeros(2))
+        self.assertEqual(vec_handle1, vec_handle1)
+        self.assertEqual(vec_handle1, vec_handle2)
+        self.assertNotEqual(vec_handle1, vec_handle3)
+        self.assertNotEqual(vec_handle1, vec_handle4)
 
     def test_handles_which_save(self):
         """Test handles whose get/put load/save from file"""
@@ -89,6 +99,16 @@ class TestVectors(unittest.TestCase):
             vec_handle = VecHandle(vec_saved)
             vec_handle.put(vec_true)
             N.testing.assert_equal(vec_handle.get(), vec_true)
+            # Test __eq__ operator
+            vec_handle1 = VecHandle('a')
+            vec_handle2 = VecHandle('a')
+            vec_handle3 = VecHandle('aa')
+            vec_handle4 = VecHandle('b')
+            self.assertEqual(vec_handle1, vec_handle1)
+            self.assertEqual(vec_handle1, vec_handle2)
+            self.assertNotEqual(vec_handle1, vec_handle3)
+            self.assertNotEqual(vec_handle1, vec_handle4)
+            
         
         
     def test_IP_trapz(self):
@@ -99,13 +119,14 @@ class TestVectors(unittest.TestCase):
         ip_error = []
         num_points_list = [20, 100]
         for num_points in num_points_list:
-            angle = N.linspace(0, N.pi, num_points)
-            x_grid = N.cos(angle)[::-1]
-            y_grid = 2*N.cos(angle)[::-1]
-            X, Y = N.meshgrid(x_grid, y_grid)
+            x_grid = N.cos(N.linspace(0, N.pi, num_points))[::-1]
+            y_grid = 2*N.cos(N.linspace(0, N.pi, num_points+1))[::-1]
+            # Notice order is reversed. This gives dimensions [nx, ny]
+            # instead of [ny, nx]. See N.meshgrid documentation.
+            Y, X = N.meshgrid(y_grid, x_grid)
             v1 = X**2 + 1.2*Y**2
             v2 = X**2
-            ip_comp = V.InnerProductTrapz(x_grid, y_grid)(v1,v2)
+            ip_comp = V.InnerProductTrapz(x_grid, y_grid)(v1, v2)
             ip_error.append(N.abs(ip_comp-ip_true))
         convergence = (N.log(ip_error[1]) - N.log(ip_error[0]))/ \
             (N.log(num_points_list[1]) - N.log(num_points_list[0]))

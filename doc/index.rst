@@ -13,7 +13,7 @@ Contents:
    
    intro
    
-   requirements
+   installation
 
    tutorial 
    

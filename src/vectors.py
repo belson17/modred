@@ -53,9 +53,10 @@ class InMemoryVecHandle(VecHandle):
     def _put(self, vec):
         self.vec = vec
     def __eq__(self, other):
-        if other is not None:
+        try:
             return (self.vec == other.vec).all()
-        return False
+        except:
+            return False
         
 class ArrayTextVecHandle(VecHandle):
     """Gets and puts array vector objects to text files"""
@@ -67,9 +68,10 @@ class ArrayTextVecHandle(VecHandle):
     def _put(self, vec):
         util.save_array_text(vec, self.vec_path)
     def __eq__(self, other):
-        if other is not None:
-            return (self.vec_path == other.vec_path).all()
-        return False
+        try:
+            return self.vec_path == other.vec_path
+        except:
+            return False
         
 
 class PickleVecHandle(VecHandle):
@@ -82,9 +84,10 @@ class PickleVecHandle(VecHandle):
     def _put(self, vec):
         cPickle.dump(vec, open(self.vec_path, 'wb'))
     def __eq__(self, other):
-        if other is not None:
-            return (self.vec_path == other.vec_path).all()
-        return False
+        try:
+            return self.vec_path == other.vec_path
+        except:
+            return False
         
         
 def inner_product_array_uniform(self, vec1, vec2):
@@ -111,6 +114,9 @@ class InnerProductTrapz(object):
     def inner_product(self, v1, v2):
         IP = v1 * v2
         for grid in reversed(self.grids):
+            if not isinstance(grid, N.ndarray):
+                raise TypeError('Each grid must be a numpy array, not a '
+                    '%s'%str(type(grid)))
             IP = N.trapz(IP, x=grid)
         return IP
 

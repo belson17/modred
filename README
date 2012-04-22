@@ -17,9 +17,9 @@ To test the parallel components (requires mpi4py), do:
 Please report test failures to bbelson@princeton.edu with the following 
 information:
 
-1. Copying the entire output of the tests
-2. Python version (use python -V)
-3. Numpy version (use python -c 'import numpy; print numpy.__version__')
+1. Copy of the entire output of the tests
+2. Python version (use >> python -V)
+3. Numpy version (use >> python -c 'import numpy; print numpy.__version__')
 4. Your operating system
 
 
@@ -41,26 +41,9 @@ This is usually quite simple.
       http://sphinx.pocoo.org/    
       python setup.py build/install
     
--  Optional, install numpydoc 
-    Easier way:
-      >> easy_install numpydoc
-    
-    Harder way:
-      http://pypi.python.org/pypi/numpydoc 
-    
-
--  Build the documentation   
-     Easier way:
-       From the modred directory, run 
-       >> sphinx-build doc doc/_build
-       Open doc/_build/index.html in a browser to view the HTML documentation
-
-     Harder way:
-       In Makefile point to your own copy of sphinx-build, e.g.
-       SPHINXBUILD   = /Users/yourname/CODES/Sphinx-1.0.6/sphinx-build.py
-       From within doc/ directory 
-       >> make html  (or make latex)
-       Open doc/_build/index.html in a browser to view the HTML documentation
+-  Build the documentation. From the modred directory, run 
+   >> sphinx-build doc doc/_build
+   Open doc/_build/index.html in a browser to view the HTML documentation
 
 
 

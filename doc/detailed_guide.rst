@@ -199,17 +199,17 @@ Summarizing, to use modred on arbitrary data, define
 1. A vector object that has:
   1. Vector addition ("+", ``__add__``)
   2. Scalar multiplication ("*", ``__mul__``)
-  3. Inherits from MR.Vector (recommended but not required)
+  3. Inherits from ``MR.Vector`` (recommended but not required)
 2. A vector handle class that has:
   1. Member function ``get()``
   2. Member function ``put(vec)``
-  3. Inherits from MR.VecHandle, if so, requirements 1 and 2 change to:
+  3. Inherits from ``MR.VecHandle``, if so, requirements 1 and 2 change to:
     1. Member function ``_get()``
     2. Member function ``_put(vec)``
 3. Function ``inner_product(vec1, vec2)``
 
 Then you can get started using any of the modal decomposition classes 
-(POD, BPOD, and DMD)!
+(``POD``, ``BPOD``, ``DMD``, ``VecOperations``, and ``BPODROM``)!
 
 For large data, Python's speed limitations can be 
 bypassed by implementing functions in compiled languages such as C/C++ and 

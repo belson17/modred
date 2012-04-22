@@ -193,7 +193,7 @@ class testERA(unittest.TestCase):
                     for ti,tv in enumerate(time_steps):
                         Markovs_model[ti] = C*(A**tv)*B
                         #print 'computing ROM Markov param at time step %d'%tv
-                    
+                    """
                     import matplotlib.pyplot as PLT
                     for input_num in range(num_inputs):
                         PLT.figure()
@@ -205,7 +205,7 @@ class testERA(unittest.TestCase):
                             PLT.title('input %d to outputs'%input_num)
                             PLT.legend(['ROM','Plant','Dense plant'])
                         PLT.show()
-                    
+                    """
                     N.testing.assert_allclose(Markovs_model, Markovs, rtol=.1, atol=.05)
                     N.testing.assert_allclose(
                         util.load_array_text(A_path_computed), A)

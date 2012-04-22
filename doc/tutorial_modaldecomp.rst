@@ -6,27 +6,19 @@ Modal decompositions -- POD, BPOD, and DMD
 
 First, collect your data. 
 We call each piece of data a vector.
-**By vector, we don't mean a 1D array**, we mean an element of a vector space.
+**By vector, we don't mean a 1D array.**  Rather, we mean an element
+of a vector space.
+This could be a 1D, 2D, or 3D array, or any other
+object that satisfies the properties of a vector space.
 The examples below build on one another, each introducing one or more
 new functions or features.
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 1 -- Data in memory
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-A simple way to use modred to find POD modes is::
+A simple way to use modred to find POD modes is.
 
-  import numpy as N
-  import modred as MR
-  num_vecs = 30
-  
-  # We use arbitrary fake data as a placeholder
-  x = N.linspace(0, N.pi, 100)
-  vecs = [N.sin(x*0.1*i) for i in range(num_vecs)]
-  
-  my_POD = MR.POD(inner_product=N.vdot)
-  sing_vecs, sing_vals = my_POD.compute_decomp_in_memory(vecs)
-  num_modes = 10
-  modes = my_POD.compute_modes_in_memory(range(num_modes))
+.. literalinclude:: ../examples/tutorial_ex1.py
 
 Let's walk through the important steps.
 First, we created a list of arbitrary arrays; these are the vectors.
@@ -53,7 +45,8 @@ argument and returns the list of modes, ``modes``.
 The above example can be run in parallel with *no modifications*.
 At the end, each processor (MPI worker more generally) will have all of the
 modes in its list ``modes``.
-To do this, assuming the above script is saved as ``main_pod.py`:: 
+To do this, assuming the above script is saved as ``main_pod.py`, one
+would execute the following:: 
   
   mpiexec -n 8 python main_pod.py
 
@@ -67,27 +60,9 @@ definition (see :ref:`sec_details`).
 This example uses a provided trapezoidal rule for inner products on 
 an arbitrary n-dimensional cartesian grid 
 (:py:class:`vectors.InnerProductTrapz`).
-The vector objects are again numpy arrays::
+The vector objects are again numpy arrays.
 
-  import numpy as N
-  import modred as MR
-  
-  num_vecs = 30
-  nx = 100
-  ny = 45
-  x_grid = 1. - N.cos(N.linspace(0, N.pi, nx))
-  y_grid = N.linspace(0, 2., ny)**2
-
-  # We use arbitrary fake data as a placeholder
-  # Normally one doesn't need to do this because you have real data.
-  X, Y = N.meshgrid(x_grid, y_grid)
-  vecs = [N.sin(X*0.1*i) + N.cos(Y*0.15*i) for i in range(num_vecs)]
-  
-  my_IP_trapz = MR.InnerProductTrapz(x_grid, y_grid)
-  my_POD = MR.POD(inner_product=my_IP_trapz)
-  sing_vecs, sing_vals = my_POD.compute_decomp_in_memory(vecs)
-  num_modes = 10
-  modes = my_POD.compute_modes_in_memory(range(num_modes))
+.. literalinclude:: ../examples/tutorial_ex2.py
 
 The instance ``my_IP_trapz`` is a callable (that is, it has a special
 method ``__call__``) so it acts as the inner product the usual
@@ -104,37 +79,9 @@ This example again uses numpy arrays as the vectors, but this time
 we load and save them from and to text files with vector handles
 ``ArrayTextVecHandle``.
 This is a very important difference from the previous example because vector
-handles allow modred to efficiently interact with large data::
+handles allow modred to efficiently interact with large data.
 
-  import numpy as N
-  import modred as MR
-  
-  num_vecs = 30
-  
-  direct_snap_handles = [MR.ArrayTextVecHandle('direct_vec%d.txt'%i) 
-  for i in range(num_vecs)]
-  adjoint_snap_handles = [MR.ArrayTextVecHandle('adjoint_vec%d.txt'%i)
-  for i in range(num_vecs)]
-  
-  # Save arrays in text files
-  # We use arbitrary fake data as a placeholder
-  x = N.arange(0, N.pi, 10000)
-  for i, handle in enumerate(direct_snap_handles):
-      handle.put(N.sin(x*0.1*i) for i in range(num_vecs))
-  for i, handle in enumerate(adjoint_snap_handles):
-      handle.put(N.cos(x*0.1*i) for i in range(num_vecs))
-  
-  my_BPOD = MR.BPOD(inner_product=N.vdot, max_vecs_per_node=10)
-  L_sing_vecs, sing_vals, R_sing_vecs = \
-      my_BPOD.compute_decomp(direct_vec_handles, adjoint_vec_handles)
-
-  # The BPOD modes are saved to disk.
-  num_modes = 15
-  mode_nums = range(num_modes)  
-  direct_mode_handles = [MR.ArrayTextVecHandle('direct_mode%d'%i) for i in mode_nums]
-  adjoint_mode_handles = [MR.ArrayTextVecHandle('adjoint_mode%d'%i) for i in mode_nums]
-  my_BPOD.compute_direct_modes(mode_nums, direct_mode_handles )
-  my_BPOD.compute_adjoint_modes(mode_nums, adjoint_mode_handles)
+.. literalinclude:: ../examples/tutorial_ex3.py
 
 First, arrays are filled with arbitrary data to serve as the vectors.
 Then, we create lists of instances of vector handles, in particular 
@@ -204,31 +151,9 @@ Often vectors are saved with an offset (also called a "shift" or "translation")
 such as a mean or equilibrium state, but we want to do model 
 reduction with this known offset removed.
 We call this offset the "base vector", and it can be subtracted off by the
-vector handle class as shown below::
+vector handle class as shown below.
 
-  import modred as MR
-  parallel = MR.parallel.default_instance
-  
-  num_elements = 2000  
-  num_vecs = 100
-  base_vec_handle = MR.PickleVecHandle('base_vec.pkl')
-  vec_handles = [MR.PickleVecHandle('vec%d.pkl'%i, base_handle=base_vec_handle)
-      for i in range(num_vecs)]
-   
-  # Save fake data. Typically the data already exists from a previous
-  # simulation or experiment.
-  if parallel.is_rank_zero():
-      # A base vector to be subtracted off from each vector as it is loaded.
-      base_vec = N.random.random(num_elements)
-      for handle in vec_handles:
-          handle.put(N.random.random(num_elements))
-
-  my_DMD = MR.DMD(inner_product=N.vdot)
-  my_DMD.compute_decomp(vec_paths)
-  my_DMD.put_decomp('ritz_vals.txt', 'mode_norms.txt', 'build_coeffs.txt')
-  mode_nums = [1, 4, 5, 2, 10]
-  mode_handles = [MR.PickleVecHandle('mode%d.pkl'%i) for i in mode_nums]
-  my_DMD.compute_modes(mode_nums, mode_handles)
+.. literalinclude:: ../examples/tutorial_ex4.py
   
 Note that the ``handle.put`` function does not use the base vector; the base
 vector is only subtracted from the loaded vector with ``handle.get``. 
@@ -253,40 +178,9 @@ This example also shows how to load vectors in one format (pickle)
 and save modes in another (text).
 At the end of this example, we use the lower-level 
 :class:`vecoperations.VecOperations` class to check the POD modes are 
-orthonormal::
+orthonormal.
 
-  import numpy as N
-  import modred as MR
-  num_elements = 2000
-
-  num_vecs = 100
-  
-  # Sample times, used for quadrature weights in POD
-  quad_weights = N.logspace(1., 3., num=num_vecs)
-
-  vec_handles = [MR.PickleVecHandle('vec%d.pkl'%i, scale=quad_weights[i])
-      for i in range(num_vecs)]
-  
-  # Save fake data. Typically the data already exists from a previous
-  # simulation or experiment.
-  if parallel.is_rank_zero():
-      for i, handle in enumerate(vec_handles):
-          handle.put(N.random.random(num_elements))
-  
-  my_POD = MR.POD(inner_product=N.vdot)  
-  my_POD.compute_decomp(vec_handles)
-  my_POD.put_decomp('ritz_vals.txt', 'mode_norms.txt', 'build_coeffs.txt')
-  mode_nums = [1, 4, 5, 2, 10]
-  mode_handles = [MR.ArrayTextVecHandle('mode%d.txt'%i) for i in mode_nums]
-  my_POD.compute_modes(mode_nums, mode_handles)
-  
-  # Check that modes are orthonormal
-  my_vec_ops = MR.VecOperations(inner_product=N.vdot)
-  IP_mat = my_vec_ops.compute_symmetric_inner_product_mat(mode_handles)
-  if N.allclose(IP_mat, N.eye(len(mode_nums))):
-      print 'Modes are orthonormal'
-   else:
-      print 'Modes are not orthonormal'
+.. literalinclude:: ../examples/tutorial_ex5.py
       
 When using both base vector subtraction and scaling, the default order
 is first subtraction, then mulitplication: ``(vec - base_vec)*scale``.
@@ -320,8 +214,7 @@ There are two important new features of this example: a custom vector class
 ``__add__``, scalar multiplication ``__mul__``, and 
 compatibility with an inner product function such as
 ``inner_product(v1, v2)``.
-The other member functions (including ``save``, ``load``, ``inner_product``)
-are useful, but not required.
+The member function ``inner_product`` is useful, but not required.
 ``CustomVecHandle`` meets the requirements for a vector handle, defining 
 ``vec = get()`` and ``put(vec)`` (through inheritance of 
 ``MR.VecHandle``)
@@ -331,74 +224,9 @@ custom vector class's method, ``CustomVector.save``, which is called by
 ``CustomVecHandle.put``.
 
 This example also uses the trapezoidal rule for inner products to account for 
-an 3D arbitrary cartesian grid (:py:class:`vectors.InnerProductTrapz`)::
+an 3D arbitrary cartesian grid (:py:class:`vectors.InnerProductTrapz`).
 
-  import modred as MR
-  import numpy as N
-  import cPickle
-  
-  class CustomVector(MR.Vector):
-      def __init__(self, path=None):
-          if path is not None:
-              self.load(path)
-          self.my_trapz_IP = None
-      def load(self, path):
-          file_id = open(path, 'rb')
-          self.x, self.y, self.z = cPickle.load(file_id)
-          self.data_array = cPickle.load(file_id)
-          file_id.close()
-      def save(self, path):
-          file_id = open(path, 'wb')
-          cPickle.dump((self.x, self.y, self.z), file_id)
-          cPickle.dump(self.data_array, file_id)
-          file_id.close()
-      def copy(self):
-          """Returns a copy of self"""
-          from copy import deepcopy
-          return deepcopy(self)
-      def __add__(self, other):
-          ""Return a new object that is the sum of self and other"""
-          sum_vec = self.copy()
-          sum_vec.data_array = self.data_array + other.data_array
-          return sum_vec
-      def __mul__(self, scalar):
-          """Return a new object that is ``self * scalar`` """
-          mult_vec = self.copy()
-          mult_vec.data_array = mult_vec.data_array*scalar
-      def inner_product(self, other):
-          if self.my_trapz_IP is None:
-              self.my_trapz_IP = MR.InnerProductTrapz(self.x, self.y, self.z)
-          return self.my_trapz_IP(self.data_array, other.data_array)
-
-  class CustomVecHandle(MR.VecHandle):
-      def __init__(self, vec_path, base_handle=None, scale=None):
-          VecHandle.__init__(self, base_handle, scale)
-          self.vec_path = vec_path
-      def _get(self):
-          return CustomVector(self.vec_path)
-      def _put(self, vec):
-          vec.save(self.vec_path)
-  def inner_product(v1, v2):
-      return v1.inner_product(v2)
-      
-  # Set vec handles (assuming existing saved data)
-  direct_snap_handles = [CustomVecHandle(vec_path='direct_snap%d.pkl'%i,
-      scale=N.pi) for i in range(10)]
-  adjoint_snap_handles = [CustomVecHandle(vec_path='adjoint_snap%d.pkl'%i,
-      scale=N.pi) for i in range(10)]
-  
-  my_BPOD = MR.BPOD(inner_product=inner_product)
-  sing_vecs, sing_vals = my_BPOD.compute_decomp(direct_snap_handles, 
-      adjoint_snap_handles)
-  num_modes = 5
-  mode_nums = range(num_modes)  
-  direct_mode_handles = [CustomVecHandle('direct_mode%d.pkl'%i) 
-      for i in mode_nums] 
-  adjoint_mode_handles = [CustomVecHandle('adjoint_mode%d.pkl'%i) 
-      for i in mode_nums]
-  
-  my_BPOD.compute_direct_modes(mode_nums, direct_mode_handles)
-  my_BPOD.compute_adjoint_modes(mode_nums, adjoint_mode_handles)
+.. literalinclude:: ../examples/tutorial_ex6.py
 
 After execution, the modes are saved to ``direct_mode0.pkl``, 
 ``direct_mode1.pkl`` ... and ``adjoint_mode0.pkl``, 
@@ -430,6 +258,7 @@ modifications.
  
 
 .. _sec_matrices:
+
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Matrix input and output
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

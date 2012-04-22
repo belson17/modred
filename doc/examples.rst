@@ -4,9 +4,4 @@ More examples
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Modal decompositions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-.. literalinclude:: ../examples/main_pod_in_memory.py
-
-And another.
-
-.. literalinclude:: ../examples/main_bpod_disk.py
-
+Currently the only the examples are those in the tutorial.
