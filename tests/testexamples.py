@@ -27,6 +27,7 @@ class TestExamples(unittest.TestCase):
         parallel.barrier()
         if parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
+        parallel.barrier()
  
     def test_tutorial_examples(self):
         """Runs all tutorial examples. If run without errors, passes test"""

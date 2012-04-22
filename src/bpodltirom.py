@@ -101,6 +101,7 @@ class BPODROM(object):
             vec = vec_handles[i].get()
             vec_dt = adv_vec_handles[i].get()
             deriv_vec_handles[i].put((vec_dt - vec)*(1./dt))
+        self.parallel.barrier()
     
     def compute_derivs_in_memory(self, vecs, adv_vecs, dt):
         """Computes 1st-order time derivatives of vectors. 

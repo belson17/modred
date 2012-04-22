@@ -34,7 +34,7 @@ class TestVectors(unittest.TestCase):
         parallel.barrier()
         if parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
-    
+        parallel.barrier()
     
     def test_in_memory_handle(self):
         """Test in memory and base class vector handles"""

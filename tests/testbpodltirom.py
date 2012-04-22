@@ -27,6 +27,7 @@ class TestBPODROM(unittest.TestCase):
         self.test_dir ='DELETE_ME_test_files_bpodltirom'
         if parallel.is_rank_zero() and not os.path.exists(self.test_dir):
             os.mkdir(self.test_dir)
+        parallel.barrier()
 
         self.direct_mode_path = join(self.test_dir, 'direct_mode_%03d.txt')
         self.adjoint_mode_path = join(self.test_dir, 'adjoint_mode_%03d.txt')
