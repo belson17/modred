@@ -6,6 +6,10 @@ files_*/
 doc/_build
 doc/Makefile
 doc/user_guide/*.pdf
+examples/{adjoint,direct}_{mode,vec}*
+examples/base_vec.pkl
+examples/vec*.pkl
+examples/mode*.txt
 *.aux
 *.bbl
 *.blg
