@@ -14,6 +14,26 @@ parallel = parallel_mod.default_instance
 import era
 import util
 
+
+def make_time_steps(num_steps, interval):
+    """Helper function to find array of integer time steps.
+    
+    Args:
+        num_steps: integer number of time steps to create.
+        
+        interval: interval between pairs of time steps, as shown above.
+    
+    Returns:
+        time_steps: array of integers, time steps [0 1 interval interval+1 ...] 
+    """
+    if num_steps % 2 != 0:
+        raise ValueError('num_steps must be even, you gave %d'%num_steps)
+    interval = int(interval)
+    time_steps = N.zeros(num_steps, dtype=int)
+    time_steps[::2] = interval*N.arange(num_steps/2)
+    time_steps[1::2] = 1 + interval*N.arange(num_steps/2)
+    return time_steps
+
 @unittest.skipIf(parallel.is_distributed(), 'Only test ERA in serial')
 class testERA(unittest.TestCase):
     
@@ -46,14 +66,14 @@ class testERA(unittest.TestCase):
                     dt_system = N.random.random()
                     dt_sample = sample_interval*dt_system                
                     outputs = N.random.random((num_time_steps, num_outputs, num_inputs))
-                    time_steps = era.make_time_steps(num_time_steps, sample_interval)
+                    time_steps = make_time_steps(num_time_steps, sample_interval)
                     time_values = time_steps*dt_system
                     my_ERA = era.ERA()
-                    time_steps_computed, outputs_computed, dt_system_computed = \
+                    time_steps_computed, outputs_computed = \
                          era.make_sampled_format(time_values, outputs)
-                    self.assertEqual(dt_system_computed, dt_system)
+                    #self.assertEqual(dt_system_computed, dt_system)
                     num_time_steps_true = (num_time_steps - 1)*2
-                    time_steps_true = era.make_time_steps(num_time_steps_true, 1)
+                    time_steps_true = make_time_steps(num_time_steps_true, 1)
                     outputs_true = N.zeros((num_time_steps_true, num_outputs, num_inputs))
                     outputs_true[::2] = outputs[:-1]
                     outputs_true[1::2] = outputs[1:]
@@ -74,7 +94,7 @@ class testERA(unittest.TestCase):
                     num_time_steps = 50
                     num_states = 5
                     A,B,C = util.drss(num_states, num_inputs, num_outputs)
-                    time_steps = era.make_time_steps(num_time_steps, sample_interval)
+                    time_steps = make_time_steps(num_time_steps, sample_interval)
                     time_steps, Markovs = util.impulse(A, B, C, time_steps=time_steps)
                     myERA = era.ERA(verbose=False)
                     myERA._set_Markovs(Markovs)
@@ -128,10 +148,10 @@ class testERA(unittest.TestCase):
                 for sample_interval in [1,2,5]: 
                     myERA = era.ERA(verbose=False)
                     A,B,C = util.drss(num_states_plant, num_inputs, num_outputs)
-                    time_steps = era.make_time_steps(num_time_steps, sample_interval)
+                    time_steps = make_time_steps(num_time_steps, sample_interval)
                     time_steps, Markovs = util.impulse(A, B, C, time_steps=time_steps)
                     if sample_interval == 2:
-                        time_steps, Markovs, dt = \
+                        time_steps, Markovs = \
                             era.make_sampled_format(time_steps, Markovs)
                     num_time_steps = time_steps.shape[0]
                     time_steps_dense, outputs_dense = util.impulse(

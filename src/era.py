@@ -5,25 +5,6 @@ Contains ERA function :py:func:`compute_ERA_model` and class :py:class:`ERA`.
 import numpy as N
 import util
 
-def make_time_steps(num_steps, interval):
-    """Helper function to find array of integer time steps.
-    
-    Args:
-        num_steps: integer number of time steps to create.
-        
-        interval: interval between pairs of time steps, as shown above.
-    
-    Returns:
-        time_steps: array of integers, time steps [0 1 interval interval+1 ...] 
-    """
-    if num_steps % 2 != 0:
-        raise ValueError('num_steps must be even, you gave %d'%num_steps)
-    interval = int(interval)
-    time_steps = N.zeros(num_steps, dtype=int)
-    time_steps[::2] = interval*N.arange(num_steps/2)
-    time_steps[1::2] = 1 + interval*N.arange(num_steps/2)
-    return time_steps
-
 
 def make_sampled_format(times, Markovs, dt_tol=1e-6):
     """Converts samples at [0 1 2 ...] into samples at [0 1 1 2 2 3 ...].
@@ -64,7 +45,7 @@ def make_sampled_format(times, Markovs, dt_tol=1e-6):
     Markovs_corr[1::2] = Markovs[1:]
     time_steps_corr[::2] = time_steps[:-1]
     time_steps_corr[1::2] = time_steps[1:]
-    return time_steps_corr, Markovs_corr, dt
+    return time_steps_corr, Markovs_corr
 
 
 def compute_ERA_model(Markovs, num_states):
@@ -112,15 +93,15 @@ class ERA(object):
       
       # Obtain Markov parameters, array "Markovs" with dims [time, output, input]
       myERA = ERA()
-      A, B, C = myERA.compute_ROM(Markovs, 50)
+      A, B, C = myERA.compute_model(Markovs, 50)
       sing_vals = myERA.sing_vals
       
     Another example::
     
       # Obtain Markov parameters
-      # If loading from text files, see ``util.load_multiple_signals``.
       myERA = ERA()
-      myERA.compute_ROM(Markovs, 50, 'A.txt','B.txt','C.txt')
+      myERA.compute_model(Markovs, 50)
+      myERA.put_model('A.txt','B.txt','C.txt')
     
     Default values of ``mc`` and ``mo`` are equal and maximal
     for a balanced model.
