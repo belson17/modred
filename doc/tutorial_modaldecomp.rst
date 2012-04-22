@@ -6,7 +6,10 @@ Modal decompositions -- POD, BPOD, and DMD
 
 First, collect your data. 
 We call each piece of data a vector.
-**By vector, we don't mean a 1D array**, we mean an element of a vector space.
+**By vector, we don't mean a 1D array.**  Rather, we mean an element
+of a vector space.
+This could be a 1D, 2D, or 3D array, or any other
+object that satisfies the properties of a vector space.
 The examples below build on one another, each introducing one or more
 new functions or features.
 
@@ -53,7 +56,8 @@ argument and returns the list of modes, ``modes``.
 The above example can be run in parallel with *no modifications*.
 At the end, each processor (MPI worker more generally) will have all of the
 modes in its list ``modes``.
-To do this, assuming the above script is saved as ``main_pod.py`:: 
+To do this, assuming the above script is saved as ``main_pod.py`, one
+would execute the following:: 
   
   mpiexec -n 8 python main_pod.py
 
