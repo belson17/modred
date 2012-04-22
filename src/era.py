@@ -193,8 +193,9 @@ class ERA(object):
         
         self.C = Ur[:self.num_Markovs,:] * N.mat(N.diag(Er**.5))
         
-        if (N.linalg.eig(self.A)[0] >= 1.).any() and self.verbose:
+        if (N.abs(N.linalg.eigvals(self.A)) >= 1.).any() and self.verbose:
             print 'Warning: Unstable eigenvalues of reduced A matrix'
+            print 'eig vals are',N.linalg.eigvals(self.A)
         return self.A, self.B, self.C
           
  

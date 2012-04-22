@@ -154,7 +154,7 @@ class testERA(unittest.TestCase):
                         time_steps, Markovs = \
                             era.make_sampled_format(time_steps, Markovs)
                     num_time_steps = time_steps.shape[0]
-                    time_steps_dense, outputs_dense = util.impulse(
+                    time_steps_dense, Markovs_dense = util.impulse(
                         A,B,C,time_steps=N.arange(num_time_steps, dtype=int))
                     
                     A_path_computed = join(self.test_dir, 'A_computed.txt')
@@ -193,19 +193,19 @@ class testERA(unittest.TestCase):
                     for ti,tv in enumerate(time_steps):
                         Markovs_model[ti] = C*(A**tv)*B
                         #print 'computing ROM Markov param at time step %d'%tv
-                    """
+                    
                     import matplotlib.pyplot as PLT
                     for input_num in range(num_inputs):
                         PLT.figure()
                         PLT.hold(True)    
                         for output_num in range(num_outputs):
-                            PLT.plot(time_steps[:50], outputs_model[:50,output_num,input_num], 'ko')
-                            PLT.plot(time_steps[:50],outputs[:50, output_num, input_num],'rx')
-                            PLT.plot(time_steps_dense[:50],outputs_dense[:50, output_num, input_num],'b--')
+                            PLT.plot(time_steps[:50], Markovs_model[:50,output_num,input_num], 'ko')
+                            PLT.plot(time_steps[:50],Markovs[:50, output_num, input_num],'rx')
+                            PLT.plot(time_steps_dense[:50],Markovs_dense[:50, output_num, input_num],'b--')
                             PLT.title('input %d to outputs'%input_num)
                             PLT.legend(['ROM','Plant','Dense plant'])
                         PLT.show()
-                    """
+                    
                     N.testing.assert_allclose(Markovs_model, Markovs, rtol=.1, atol=.05)
                     N.testing.assert_allclose(
                         util.load_array_text(A_path_computed), A)
