@@ -6,10 +6,13 @@ files_*/
 doc/_build
 doc/Makefile
 doc/user_guide/*.pdf
-examples/{adjoint,direct}_{mode,vec}*
+examples/{adjoint,direct}_{mode,vec,snap}*
 examples/base_vec.pkl
 examples/vec*.pkl
 examples/mode*.txt
+examples/{ritz_vals,mode_norms,build_coeffs}.txt
+examples/correlation_mat.txt
+examples/sing_{vals,vecs}.txt
 *.aux
 *.bbl
 *.blg
