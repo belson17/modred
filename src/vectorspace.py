@@ -1,16 +1,20 @@
-"""Collection of parallelized functions of vectors and vector handles."""
+"""Parallelized addition and multiplication for vector spaces.
+
+The methods operate on both vectors and vector handles."""
 
 import sys  
 import copy
 import time as T
 import numpy as N
+
 import util
 import parallel as parallel_mod
+parallel = parallel_mod.parallel_default_instance
 import vectors as V
 
    
-class VecOperations(object):
-    """Responsible for low level operations on vecs.
+class VectorSpace(object):
+    """Responsible for performing addition and multiplication in parallel.
 
     Kwargs:
         inner_product: inner product function
@@ -22,8 +26,9 @@ class VecOperations(object):
         
         print_interval: max of how frequently progress is printed, in seconds.
 
-    The class is a collection of parallelized methods used in the 
-    high-level modred classes like POD, BPOD, and DMD. 
+    The class implements parallelized vector addition and scalar multiplication
+    and is used in the high-level modred classes like POD, BPOD, DMD, and 
+    BPODROM. 
 
     It is good to use all available processors, even if it lowers max.
 
@@ -39,7 +44,6 @@ class VecOperations(object):
         self.verbose = verbose 
         self.print_interval = print_interval
         self.prev_print_time = 0.
-        self.parallel = parallel_mod.default_instance
         
         if max_vecs_per_node is None:
             self.max_vecs_per_node = 10000 # different default?
@@ -50,7 +54,7 @@ class VecOperations(object):
             self.max_vecs_per_node = max_vecs_per_node
         
         if self.max_vecs_per_node < \
-            2 * self.parallel.get_num_procs() / self.parallel.get_num_nodes(): 
+            2 * parallel.get_num_procs() / parallel.get_num_nodes(): 
             self.max_vecs_per_proc = 2
             self.print_msg('Warning: max_vecs_per_node too small for given '
                 'number of nodes and procs. Assuming 2 vecs can be '
@@ -58,7 +62,7 @@ class VecOperations(object):
                 'max_vecs_per_node for a speedup.')
         else:
             self.max_vecs_per_proc = self.max_vecs_per_node * \
-                self.parallel.get_num_nodes()/self.parallel.get_num_procs()
+                parallel.get_num_nodes()/parallel.get_num_procs()
                 
     def _check_inner_product(self):
         """Check that inner_product is defined"""
@@ -68,7 +72,7 @@ class VecOperations(object):
     
     def print_msg(self, msg, output_channel=sys.stdout):
         """Print a message from rank 0 if verbose"""
-        if self.verbose and self.parallel.is_rank_zero():
+        if self.verbose and parallel.is_rank_zero():
             print >> output_channel, msg
 
     def sanity_check_in_memory(self, test_vec):
@@ -223,11 +227,11 @@ class VecOperations(object):
         duration = end_time - start_time
         self.print_msg('Computing the inner product matrix will take at least '
                     '%.1f minutes' % (num_rows * num_cols * duration / 
-                    (60. * self.parallel.get_num_procs())))
+                    (60. * parallel.get_num_procs())))
         del row_vec, col_vec
         
         # convenience
-        rank = self.parallel.get_rank()
+        rank = parallel.get_rank()
 
         # num_cols_per_proc_chunk is the number of cols each proc gets at once
         num_cols_per_proc_chunk = 1
@@ -235,8 +239,8 @@ class VecOperations(object):
             num_cols_per_proc_chunk         
         
         # Determine how the retrieving and inner products will be split up.
-        row_tasks = self.parallel.find_assignments(range(num_rows))
-        col_tasks = self.parallel.find_assignments(range(num_cols))
+        row_tasks = parallel.find_assignments(range(num_rows))
+        col_tasks = parallel.find_assignments(range(num_cols))
            
         # Find max number of col tasks among all processors
         max_num_row_tasks = max([len(tasks) for tasks in row_tasks])
@@ -290,7 +294,7 @@ class VecOperations(object):
                 # Must do this for each processor, until data makes a circle
                 col_vecs_recv = (None, None)
                 col_indices = range(start_col_index, end_col_index)
-                for pass_index in xrange(self.parallel.get_num_procs()):
+                for pass_index in xrange(parallel.get_num_procs()):
                     #if rank==0: print 'starting pass index=',pass_index
                     # If on the first pass, get the col vecs, no send/recv
                     # This is all that is called when in serial, loop iterates
@@ -301,23 +305,23 @@ class VecOperations(object):
                             end_col_index]]
                     else:
                         # Determine with whom to communicate
-                        dest = (rank + 1) % self.parallel.get_num_procs()
-                        source = (rank - 1)%self.parallel.get_num_procs()    
+                        dest = (rank + 1) % parallel.get_num_procs()
+                        source = (rank - 1)%parallel.get_num_procs()    
                             
                         # Create unique tag based on send/recv ranks
                         send_tag = rank * \
-                                (self.parallel.get_num_procs() + 1) + dest
+                                (parallel.get_num_procs() + 1) + dest
                         recv_tag = source * \
-                            (self.parallel.get_num_procs() + 1) + rank
+                            (parallel.get_num_procs() + 1) + rank
                         
                         # Collect data and send/receive
                         col_vecs_send = (col_vecs, col_indices)    
-                        request = self.parallel.comm.isend(
+                        request = parallel.comm.isend(
                             col_vecs_send, dest=dest, tag=send_tag)
-                        col_vecs_recv = self.parallel.comm.recv(
+                        col_vecs_recv = parallel.comm.recv(
                             source=source, tag=recv_tag)
                         request.Wait()
-                        self.parallel.barrier()
+                        parallel.barrier()
                         col_indices = col_vecs_recv[1]
                         col_vecs = col_vecs_recv[0]
                         
@@ -337,7 +341,7 @@ class VecOperations(object):
             # Completed a chunk of rows and all columns on all processors.
             del row_vecs
             if ((T.time() - self.prev_print_time > self.print_interval) and 
-                self.verbose and self.parallel.is_rank_zero()):
+                self.verbose and parallel.is_rank_zero()):
                 num_completed_IPs = end_row_index * num_cols
                 percent_completed_IPs = 100. * num_completed_IPs/(
                     num_cols*num_rows)
@@ -348,13 +352,13 @@ class VecOperations(object):
                 self.prev_print_time = T.time()
             
         # Assign these chunks into IP_mat.
-        if self.parallel.is_distributed():
-            IP_mat = self.parallel.custom_comm.allreduce(IP_mat)
+        if parallel.is_distributed():
+            IP_mat = parallel.custom_comm.allreduce(IP_mat)
 
         if transpose:
             IP_mat = IP_mat.T
 
-        self.parallel.barrier() # ensure that all procs leave function at same time
+        parallel.barrier() # ensure that all procs leave function at same time
         return IP_mat
 
 
@@ -409,12 +413,12 @@ class VecOperations(object):
         num_rows_per_proc_chunk = self.max_vecs_per_proc - num_cols_per_proc_chunk
  
         # <nprocs> chunks are computed simulaneously, making up a set.
-        num_cols_per_chunk = num_cols_per_proc_chunk * self.parallel.get_num_procs()
-        num_rows_per_chunk = num_rows_per_proc_chunk * self.parallel.get_num_procs()
+        num_cols_per_chunk = num_cols_per_proc_chunk * parallel.get_num_procs()
+        num_rows_per_chunk = num_rows_per_proc_chunk * parallel.get_num_procs()
 
         # <num_row_chunks> is the number of sets that must be computed.
         num_row_chunks = int(N.ceil(num_vecs * 1. / num_rows_per_chunk)) 
-        if self.parallel.is_rank_zero() and num_row_chunks > 1 and self.verbose:
+        if parallel.is_rank_zero() and num_row_chunks > 1 and self.verbose:
             print ('Warning: The column vecs will be read ~%d times each. ' +\
                 'Increase number of nodes or max_vecs_per_node to reduce ' +\
                 'redundant "get_vecs"s and get a big speedup.') % num_row_chunks
@@ -432,11 +436,11 @@ class VecOperations(object):
         IP_mat = N.mat(N.zeros((num_vecs, num_vecs), dtype=IP_type))
         for start_row_index in xrange(0, num_vecs, num_rows_per_chunk):
             end_row_index = min(num_vecs, start_row_index + num_rows_per_chunk)
-            proc_row_tasks_all = self.parallel.find_assignments(range(
+            proc_row_tasks_all = parallel.find_assignments(range(
                 start_row_index, end_row_index))
             num_active_procs = len([task for task in \
                 proc_row_tasks_all if task != []])
-            proc_row_tasks = proc_row_tasks_all[self.parallel.get_rank()]
+            proc_row_tasks = proc_row_tasks_all[parallel.get_rank()]
             if len(proc_row_tasks)!=0:
                 row_vecs = [vec_handle.get() for vec_handle in vec_handles[
                     proc_row_tasks[0]:proc_row_tasks[-1] + 1]]
@@ -471,7 +475,7 @@ class VecOperations(object):
             # iterations (round up).  
             for set_index in xrange(int(N.ceil((num_active_procs - 1.) / 2))):
                 # The current proc is "sender"
-                my_rank = self.parallel.get_rank()
+                my_rank = parallel.get_rank()
                 my_row_indices = proc_row_tasks
                 my_num_rows = len(my_row_indices)
                                        
@@ -514,17 +518,17 @@ class VecOperations(object):
                         
                         # Create unique tags based on ranks
                         send_tag = my_rank * (
-                            self.parallel.get_num_procs() + 1) + dest_rank
+                            parallel.get_num_procs() + 1) + dest_rank
                         recv_tag = source_rank * (
-                            self.parallel.get_num_procs() + 1) + my_rank
+                            parallel.get_num_procs() + 1) + my_rank
                         
                         # Send and receieve data.  The Wait() command after the
                         # receive prevents a race condition not fixed by sync().
                         # The Wait() is very important for the non-
                         # blocking send (though we are unsure why).
-                        request = self.parallel.comm.isend(col_vecs_send, 
+                        request = parallel.comm.isend(col_vecs_send, 
                             dest=dest_rank, tag=send_tag)                        
-                        col_vecs_recv = self.parallel.comm.recv(source=\
+                        col_vecs_recv = parallel.comm.recv(source=\
                             source_rank, tag=recv_tag)
                         request.Wait()
                         col_vecs = col_vecs_recv[0]
@@ -539,7 +543,7 @@ class VecOperations(object):
                                     col_vec)
                                    
                     # Sync after send/receive   
-                    self.parallel.barrier()  
+                    parallel.barrier()  
                 
             
             # Fill in the rectangular portion next to each triangle (if nec.).
@@ -549,8 +553,8 @@ class VecOperations(object):
             for start_col_index in xrange(end_row_index, num_vecs, 
                 num_cols_per_chunk):
                 end_col_index = min(start_col_index + num_cols_per_chunk, num_vecs)
-                proc_col_tasks = self.parallel.find_assignments(range(
-                    start_col_index, end_col_index))[self.parallel.get_rank()]
+                proc_col_tasks = parallel.find_assignments(range(
+                    start_col_index, end_col_index))[parallel.get_rank()]
                         
                 # Pass the col vecs to proc with rank -> mod(rank+1,numProcs) 
                 # Must do this for each processor, until data makes a circle
@@ -561,7 +565,7 @@ class VecOperations(object):
                 else:
                     col_indices = []
                     
-                for num_passes in xrange(self.parallel.get_num_procs()):
+                for num_passes in xrange(parallel.get_num_procs()):
                     # If on the first pass, get the col vecs, no send/recv
                     # This is all that is called when in serial, loop iterates
                     # once.
@@ -574,25 +578,25 @@ class VecOperations(object):
                             col_vecs = []
                     else: 
                         # Determine whom to communicate with
-                        dest = (self.parallel.get_rank() + 1) % self.parallel.\
+                        dest = (parallel.get_rank() + 1) % parallel.\
                             get_num_procs()
-                        source = (self.parallel.get_rank() - 1) % self.parallel.\
+                        source = (parallel.get_rank() - 1) % parallel.\
                             get_num_procs()    
                             
                         #Create unique tag based on ranks
-                        send_tag = self.parallel.get_rank() * (self.parallel.\
+                        send_tag = parallel.get_rank() * (parallel.\
                             get_num_procs() + 1) + dest
-                        recv_tag = source*(self.parallel.get_num_procs() + 1) +\
-                            self.parallel.get_rank()    
+                        recv_tag = source*(parallel.get_num_procs() + 1) +\
+                            parallel.get_rank()    
                         
                         # Collect data and send/receive
                         col_vecs_send = (col_vecs, col_indices)     
-                        request = self.parallel.comm.isend(col_vecs_send, dest=\
+                        request = parallel.comm.isend(col_vecs_send, dest=\
                             dest, tag=send_tag)
-                        col_vecs_recv = self.parallel.comm.recv(source=source, 
+                        col_vecs_recv = parallel.comm.recv(source=source, 
                             tag=recv_tag)
                         request.Wait()
-                        self.parallel.barrier()
+                        parallel.barrier()
                         col_indices = col_vecs_recv[1]
                         col_vecs = col_vecs_recv[0]
                         
@@ -619,8 +623,8 @@ class VecOperations(object):
             del row_vecs                     
         
         # Assign the triangular portion chunks into IP_mat.
-        if self.parallel.is_distributed():
-            IP_mat = self.parallel.custom_comm.allreduce(IP_mat)
+        if parallel.is_distributed():
+            IP_mat = parallel.custom_comm.allreduce(IP_mat)
         
         # Create a mask for the repeated values
         mask = (IP_mat != IP_mat.T)
@@ -631,7 +635,7 @@ class VecOperations(object):
         # Symmetrize matrix
         IP_mat = N.triu(IP_mat) + N.triu(IP_mat, 1).T
 
-        self.parallel.barrier() # ensure that all procs leave function at same time
+        parallel.barrier() # ensure that all procs leave function at same time
         return IP_mat
         
         
@@ -711,7 +715,7 @@ class VecOperations(object):
         vec_coeff_mat_reordered = vec_coeff_mat[:,mode_nums_from_zero]
         
         self.lin_combine(mode_handles, vec_handles, vec_coeff_mat_reordered)
-        self.parallel.barrier() # ensure that all procs leave function at same time
+        parallel.barrier() # ensure that all procs leave function at same time
     
     
     def compute_modes_in_memory(self, mode_nums, vecs, vec_coeff_mat, 
@@ -746,11 +750,11 @@ class VecOperations(object):
             vec_handles, vec_coeff_mat, index_from)
         #print 'mode handles',mode_handles
         modes = [mode_handle.get() for mode_handle in mode_handles]
-        #print 'rank: %d, modes'%self.parallel.get_rank(),modes
-        if self.parallel.is_distributed():
+        #print 'rank: %d, modes'%parallel.get_rank(),modes
+        if parallel.is_distributed():
             for i in range(modes.count(None)):
                 modes.remove(None)
-            modes_list = self.parallel.comm.allgather(modes)
+            modes_list = parallel.comm.allgather(modes)
             # all_modes is a 1D list of all processors' modes.
             all_modes = util.flatten_list(modes_list)
         else:
@@ -809,15 +813,15 @@ class VecOperations(object):
                 ', some cols of coeff matrix will not be used')
                 
         # convenience
-        rank = self.parallel.get_rank()
+        rank = parallel.get_rank()
 
         # num_bases_per_proc_chunk is the number of bases each proc gets at once        
         num_bases_per_proc_chunk = 1
         num_sums_per_proc_chunk = self.max_vecs_per_proc - \
             num_bases_per_proc_chunk
         
-        basis_tasks = self.parallel.find_assignments(range(num_bases))
-        sum_tasks = self.parallel.find_assignments(range(num_sums))
+        basis_tasks = parallel.find_assignments(range(num_bases))
+        sum_tasks = parallel.find_assignments(range(num_sums))
 
         # Find max number tasks among all processors
         max_num_basis_tasks = max([len(tasks) for tasks in basis_tasks])
@@ -862,7 +866,7 @@ class VecOperations(object):
                 # Must do this for each processor, until data makes a circle
                 basis_vecs_recv = (None, None)
 
-                for pass_index in xrange(self.parallel.get_num_procs()):
+                for pass_index in xrange(parallel.get_num_procs()):
                     # If on the first pass, retrieve the basis vecs, no send/recv
                     # This is all that is called when in serial, loop iterates once.
                     if pass_index == 0:
@@ -874,25 +878,25 @@ class VecOperations(object):
                             basis_vecs = []
                     else:
                         # Figure out with whom to communicate
-                        source = (self.parallel.get_rank()-1) % \
-                            self.parallel.get_num_procs()
-                        dest = (self.parallel.get_rank()+1) % \
-                            self.parallel.get_num_procs()
+                        source = (parallel.get_rank()-1) % \
+                            parallel.get_num_procs()
+                        dest = (parallel.get_rank()+1) % \
+                            parallel.get_num_procs()
                         
                         #Create unique tags based on ranks
-                        send_tag = self.parallel.get_rank() * \
-                            (self.parallel.get_num_procs()+1) + dest
-                        recv_tag = source*(self.parallel.get_num_procs()+1) + \
-                            self.parallel.get_rank()
+                        send_tag = parallel.get_rank() * \
+                            (parallel.get_num_procs()+1) + dest
+                        recv_tag = source*(parallel.get_num_procs()+1) + \
+                            parallel.get_rank()
                         
                         # Send/receive data
                         basis_vecs_send = (basis_vecs, basis_indices)
-                        request = self.parallel.comm.isend(basis_vecs_send,  
+                        request = parallel.comm.isend(basis_vecs_send,  
                             dest=dest, tag=send_tag)                       
-                        basis_vecs_recv = self.parallel.comm.recv(
+                        basis_vecs_recv = parallel.comm.recv(
                             source=source, tag=recv_tag)
                         request.Wait()
-                        self.parallel.barrier()
+                        parallel.barrier()
                         basis_indices = basis_vecs_recv[1]
                         basis_vecs = basis_vecs_recv[0]
                     
@@ -919,7 +923,7 @@ class VecOperations(object):
                 self.prev_print_time = T.time()
             
         # ensure that all workers leave function at same time
-        #self.parallel.barrier() 
+        #parallel.barrier() 
         
     
     def lin_combine_in_memory(self, basis_vecs, vec_coeff_mat):
@@ -947,8 +951,8 @@ class VecOperations(object):
             for i in range(vec_coeff_mat.shape[1])]
         self.lin_combine(sum_vec_handles, basis_vec_handles, vec_coeff_mat)
         sum_vecs = [sum_vec_handle.get() for sum_vec_handle in sum_vec_handles]
-        if self.parallel.is_distributed():
-            sum_vecs_list = self.parallel.comm.allgather(sum_vecs)
+        if parallel.is_distributed():
+            sum_vecs_list = parallel.comm.allgather(sum_vecs)
             # all_sum_ves is a 1D list of all processors' sum_vecs.
             all_sum_vecs = util.flatten_list(sum_vecs_list)
             for i in range(all_sum_vecs.count(None)):

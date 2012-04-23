@@ -10,10 +10,10 @@ import copy
 import helper
 helper.add_to_path('src')
 import parallel as parallel_mod
-parallel = parallel_mod.default_instance
+parallel = parallel_mod.parallel_default_instance
 
 from pod import POD
-from vecoperations import VecOperations
+from vectorspace import VectorSpace
 import vectors as V
 import util
 
@@ -32,7 +32,7 @@ class TestPOD(unittest.TestCase):
         self.num_states = 100
         self.index_from = 2
         
-        self.my_POD = POD(inner_product=N.vdot, verbose=False)
+        self.my_POD = POD(N.vdot, verbose=False)
         self.generate_data_set()
         parallel.barrier()
 
@@ -73,39 +73,41 @@ class TestPOD(unittest.TestCase):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
-        data_members_default = {'put_mat': util.save_array_text, 'get_mat': 
-            util.load_array_text, 'parallel': parallel_mod.default_instance,
-            'verbose': False, 'sing_vecs': None, 'sing_vals': None,
-            'correlation_mat': None, 'vec_handles': None, 'vecs': None,
-            'vec_ops': VecOperations(verbose=False)}
-        
-        self.assertEqual(util.get_data_members(POD(verbose=False)), 
-            data_members_default)
-        
         def my_load(): pass
         def my_save(): pass
-
-        my_POD = POD(verbose=False)
+        def my_IP(): pass
+        
+        data_members_default = {'put_mat': util.save_array_text, 'get_mat': 
+            util.load_array_text,
+            'verbose': False, 'sing_vecs': None, 'sing_vals': None,
+            'correlation_mat': None, 'vec_handles': None, 'vecs': None,
+            'vec_space': VectorSpace(inner_product=my_IP, verbose=False)}
+        
+        self.assertEqual(util.get_data_members(POD(my_IP, verbose=False)), 
+            data_members_default)
+        
+        my_POD = POD(my_IP, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_ops'] = VecOperations(verbose=False)
+        data_members_modified['vec_space'] = VectorSpace(inner_product=my_IP, 
+            verbose=False)
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
        
-        my_POD = POD(get_mat=my_load, verbose=False)
+        my_POD = POD(my_IP, get_mat=my_load, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['get_mat'] = my_load
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
  
-        my_POD = POD(put_mat=my_save, verbose=False)
+        my_POD = POD(my_IP, put_mat=my_save, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['put_mat'] = my_save
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
         
         max_vecs_per_node = 500
-        my_POD = POD(max_vecs_per_node=max_vecs_per_node, verbose=False)
+        my_POD = POD(my_IP, max_vecs_per_node=max_vecs_per_node, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_ops'].max_vecs_per_node =\
+        data_members_modified['vec_space'].max_vecs_per_node =\
             max_vecs_per_node
-        data_members_modified['vec_ops'].max_vecs_per_proc =\
+        data_members_modified['vec_space'].max_vecs_per_proc =\
             max_vecs_per_node * parallel.get_num_nodes() / parallel.\
             get_num_procs()
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
@@ -173,7 +175,7 @@ class TestPOD(unittest.TestCase):
         self.my_POD.sing_vecs = self.sing_vecs_true
         self.my_POD.sing_vals = self.sing_vals_true
         
-        my_POD_in_memory = POD(inner_product=N.vdot, verbose=False)
+        my_POD_in_memory = POD(N.vdot, verbose=False)
         my_POD_in_memory.sing_vecs = self.sing_vecs_true
         my_POD_in_memory.sing_vals = self.sing_vals_true
         
@@ -198,7 +200,7 @@ class TestPOD(unittest.TestCase):
             mode1 = handle1.get()
             for mode_index2, handle2 in enumerate(mode_handles):
                 mode2 = handle2.get()
-                IP = self.my_POD.vec_ops.inner_product(mode1, mode2)
+                IP = self.my_POD.vec_space.inner_product(mode1, mode2)
                 if self.mode_nums[mode_index1] != \
                     self.mode_nums[mode_index2]:
                     self.assertAlmostEqual(IP, 0.)

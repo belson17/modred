@@ -11,7 +11,7 @@ class Parallel(object):
     
     It ensures no failure in case mpi4py is not installed or when running in
     serial.    
-    It is best to use the given instance, parallel.default_instance.
+    It is best to use the given instance, parallel.parallel_default_instance.
     """
     # TODO: Could be extended for shared memory.
     def __init__(self):
@@ -225,7 +225,7 @@ class Parallel(object):
         return self
         
 # Default instance to be used everywhere, "singleton"
-default_instance = Parallel()
+parallel_default_instance = Parallel()
         
         
         

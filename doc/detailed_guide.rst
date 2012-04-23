@@ -154,7 +154,7 @@ Checking requirements automatically
 First off, we encourage you to write your own tests (see module unittest) to
 be sure
 your vector object and vector handle work as you expect.
-Classes ``BPOD, POD, DMD`` (and ``VecOperations``) provide a member function 
+Classes ``BPOD, POD, DMD`` (and ``VectorSpace``) provide a member function 
 ``sanity_check`` 
 that checks a few common mistakes in your vector object addition,
 scalar multiplication, and inner products.
@@ -220,7 +220,7 @@ Summarizing, to use modred on arbitrary data, define
 3. Function ``inner_product(vec1, vec2)``
 
 Then you can get started using any of the modal decomposition classes 
-(``POD``, ``BPOD``, ``DMD``, ``VecOperations``, and ``BPODROM``)!
+(``POD``, ``BPOD``, ``DMD``, ``VectorSpace``, and ``BPODROM``)!
 
 For large data, Python's speed limitations can be 
 bypassed by implementing functions in compiled languages such as C/C++ and 

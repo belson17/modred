@@ -2,7 +2,6 @@ import numpy as N
 import modred as MR
 from custom_vector import CustomVector, CustomVecHandle, inner_product
 
-parallel = MR.parallel.default_instance
 
 # Define snapshots to use
 direct_snapshots = [CustomVecHandle('direct_snap%d.pkl' % i, scale=N.pi)
@@ -11,6 +10,7 @@ adjoint_snapshots = [CustomVecHandle('adjoint_snap%d.pkl' % i, scale=N.pi)
                      for i in range(10)]
     
 # Generate fake random data (for example purposes only)
+parallel = MR.parallel_default_instance
 nx = 50
 ny = 30
 nz = 20
@@ -24,7 +24,7 @@ if parallel.is_rank_zero():
 parallel.barrier()
 
 # Compute balanced POD
-bpod = MR.BPOD(inner_product=inner_product)
+bpod = MR.BPOD(inner_product)
 bpod.sanity_check(direct_snapshots[0])
 L_sing_vecs, sing_vals, R_sing_vecs = \
     bpod.compute_decomp(direct_snapshots, adjoint_snapshots)

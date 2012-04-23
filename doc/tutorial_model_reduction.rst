@@ -48,7 +48,7 @@ modes and the resulting model is in continuous time.
 
 Here's an example::
 
-  # Given these lists:
+  # Given these lists of numpy arrays:
   # direct_modes
   # adjoint_modes
   # A_times_direct_modes
@@ -56,7 +56,7 @@ Here's an example::
   # C_vecs
   
   import modred as MR
-  my_BPODROM = MR.BPODROM(inner_product=N.vdot)
+  my_BPODROM = MR.BPODROM(N.vdot)
   A = my_BPODROM.compute_A_in_memory(A_times_direct_modes, adjoint_modes)
   B = my_BPODROM.compute_B_in_memory(B_vecs, adjoint_modes)
   C = my_BPODROM.compute_C_in_memory(C_vecs, direct_modes)
@@ -70,9 +70,11 @@ Similarly, the list ``C_vecs`` contains the vectors that compromise the rows
 of the full system's C matrix.
 This example works in parallel with no modifications.
 
-Here's an example that uses vector handles for large data::
+Here's an example that uses vector handles for large data. It also
+uses the function ``compute_model`` to find the A, B, and C matrices
+all at once::
 
-  # Given these lists:
+  # Given these lists of numpy arrays:
   # direct_mode_handles
   # adjoint_mode_handles
   # A_times_direct_mode_handles
@@ -80,13 +82,14 @@ Here's an example that uses vector handles for large data::
   # C_vec_handles
   
   import modred as MR
-  my_BPODROM = MR.BPODROM(inner_product=N.vdot)
-  A = my_BPODROM.compute_A(A_times_direct_mode_handles, adjoint_mode_handles)
-  B = my_BPODROM.compute_B(B_vec_handles, adjoint_mode_handles)
-  C = my_BPODROM.compute_C(C_vec_handles, direct_mode_handles)
+  my_BPODROM = MR.BPODROM(N.vdot)
+  A, B, C = my_BPODROM.compute_model(A_times_direct_mode_handles, B_vec_handles,
+    C_vec_handles, direct_mode_handles, adjoint_mode_handles)
   my_BPODROM.put_model('A_reduced.txt', 'B_reduced.txt', 'C_reduced.txt')
 
 This example works in parallel with no modifications.
+Note also that if you don't need the A, B, and C matrices, you can simply
+omit them as return arguments and still "put" them with ``put_model``.
 
 If you do not have direct access to the time-derivatives of the direct modes
 but want a continuous time model, modred provides a first-order time-derivative
@@ -100,8 +103,7 @@ Here is an example::
   # direct_modes
   # A_times_direct_modes
   import modred as MR
-  my_BPODROM = MR.BPODROM()
-  deriv_modes = my_BPODROM.compute_derivs_in_memory(A_times_direct_modes,
+  deriv_modes = MR.compute_derivs_in_memory(A_times_direct_modes,
       direct_modes)
 
 Where ``A_times_direct_modes`` are assumed to be the modes advanced ``dt``

@@ -1,10 +1,11 @@
 """POD class"""
 import numpy as N
 
-from vecoperations import VecOperations
+from vectorspace import VectorSpace
 import util
 import vectors as V
-import parallel
+import parallel as parallel_mod
+parallel = parallel_mod.parallel_default_instance
 
 class POD(object):
     """Proper Orthogonal Decomposition.
@@ -19,27 +20,28 @@ class POD(object):
         verbose: print more information about progress and warnings
         
         max_vecs_per_node: max number of vectors in memory per node.
+        
+        print_interval: max of how frequently progress is printed, in seconds.
 
     Computes orthonormal POD modes from vecs.  
-    It uses :py:class:`vecoperations.VecOperations` for low level functions.
+    It uses :py:class:`vectorspace.VectorSpace` for low level functions.
 
     Usage::
       
-      myPOD = POD(inner_product=my_inner_product)
+      myPOD = POD(my_inner_product)
       myPOD.compute_decomp(vec_handles)
       myPOD.compute_modes(range(10), mode_handles)
     
     See also :mod:`vectors`.
     """
-    def __init__(self, inner_product=None, 
+    def __init__(self, inner_product, 
         get_mat=util.load_array_text, put_mat=util.save_array_text, 
         max_vecs_per_node=None, verbose=True, 
         print_interval=10):
         """Constructor """
-        self.vec_ops = VecOperations(inner_product=inner_product, 
+        self.vec_space = VectorSpace(inner_product=inner_product, 
             max_vecs_per_node=max_vecs_per_node, 
             verbose=verbose, print_interval=print_interval)
-        self.parallel = parallel.default_instance
         self.get_mat = get_mat
         self.put_mat = put_mat
         self.verbose = verbose
@@ -56,9 +58,9 @@ class POD(object):
         Args:
             test_vec_handle: a vector handle.
         
-        See :py:meth:`vecoperations.VecOperations.sanity_check`.
+        See :py:meth:`vectorspace.VectorSpace.sanity_check`.
         """
-        self.vec_ops.sanity_check(test_vec_handle)
+        self.vec_space.sanity_check(test_vec_handle)
 
     def sanity_check_in_memory(self, test_vec):
         """Check user-supplied vector object.
@@ -66,24 +68,24 @@ class POD(object):
         Args:
             test_vec: a vector.
         
-        See :py:meth:`vecoperations.VecOperations.sanity_check_in_memory`.
+        See :py:meth:`vectorspace.VectorSpace.sanity_check_in_memory`.
         """
-        self.vec_ops.sanity_check_in_memory(test_vec_handle)
+        self.vec_space.sanity_check_in_memory(test_vec_handle)
 
      
     def get_decomp(self, sing_vecs_source, sing_vals_source):
         """Gets the decomposition matrices from sources (memory or file)"""
         if self.get_mat is None:
             raise util.UndefinedError('Must specify a get_mat function')
-        if self.parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.sing_vecs = self.get_mat(sing_vecs_source)
             self.sing_vals = N.squeeze(N.array(self.get_mat(sing_vals_source)))
         else:
             self.sing_vecs = None
             self.sing_vals = None
-        if self.parallel.is_distributed():
-            self.sing_vecs = self.parallel.comm.bcast(self.sing_vecs, root=0)
-            self.sing_vals = self.parallel.comm.bcast(self.sing_vals, root=0)
+        if parallel.is_distributed():
+            self.sing_vecs = parallel.comm.bcast(self.sing_vecs, root=0)
+            self.sing_vals = parallel.comm.bcast(self.sing_vals, root=0)
         
         
     def put_decomp(self, sing_vecs_dest, sing_vals_dest):
@@ -93,29 +95,29 @@ class POD(object):
         
     def put_sing_vecs(self, dest):
         """Put singular vectors, U (==V)"""
-        if self.put_mat is None and self.parallel.is_rank_zero():
+        if self.put_mat is None and parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined")
             
-        if self.parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.sing_vecs, dest)
-        self.parallel.barrier()
+        parallel.barrier()
 
     def put_sing_vals(self, dest):
         """Put singular values, E"""
-        if self.put_mat is None and self.parallel.is_rank_zero():
+        if self.put_mat is None and parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined")
             
-        if self.parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.sing_vals, dest)
-        self.parallel.barrier()
+        parallel.barrier()
 
     def put_correlation_mat(self, correlation_mat_dest):
         """Put correlation matrix"""
-        if self.put_mat is None and self.parallel.is_rank_zero():
+        if self.put_mat is None and parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined")
-        if self.parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.correlation_mat, correlation_mat_dest)
-        self.parallel.barrier()
+        parallel.barrier()
 
 
     def compute_decomp(self, vec_handles):
@@ -130,9 +132,9 @@ class POD(object):
             sing_vals: 1D array of singular values (E in UEV*=H) 
         """
         self.vec_handles = vec_handles
-        self.correlation_mat = self.vec_ops.\
+        self.correlation_mat = self.vec_space.\
             compute_symmetric_inner_product_mat(self.vec_handles)
-        #self.correlation_mat = self.vec_ops.\
+        #self.correlation_mat = self.vec_space.\
         #    compute_inner_product_mat(self.vec_handles, self.vec_handles)
         self.compute_SVD()        
         return self.sing_vecs, self.sing_vals
@@ -140,24 +142,24 @@ class POD(object):
     def compute_decomp_in_memory(self, vecs):
         """Same as ``compute_decomp`` but takes vecs instead of handles"""
         self.vecs = vecs
-        self.correlation_mat = self.vec_ops.\
+        self.correlation_mat = self.vec_space.\
             compute_symmetric_inner_product_mat_in_memory(self.vecs)
-        #self.correlation_mat = self.vec_ops.\
+        #self.correlation_mat = self.vec_space.\
         #    compute_inner_product_mat(self.vec_handles, self.vec_handles)
         self.compute_SVD()
         return self.sing_vecs, self.sing_vals    
         
     def compute_SVD(self):
         """Compute SVD, UEV*=correlation_mat"""
-        if self.parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.sing_vecs, self.sing_vals, dummy = \
                 util.svd(self.correlation_mat)
         else:
             self.sing_vecs = None
             self.sing_vals = None
-        if self.parallel.is_distributed():
-            self.sing_vecs = self.parallel.comm.bcast(self.sing_vecs, root=0)
-            self.sing_vals = self.parallel.comm.bcast(self.sing_vals, root=0)
+        if parallel.is_distributed():
+            self.sing_vecs = parallel.comm.bcast(self.sing_vecs, root=0)
+            self.sing_vals = parallel.comm.bcast(self.sing_vals, root=0)
             
             
             
@@ -191,7 +193,7 @@ class POD(object):
         if vec_handles is not None:
             self.vec_handles = util.make_list(vec_handles)
         build_coeff_mat = self._compute_build_coeff_mat()
-        self.vec_ops.compute_modes(mode_nums, mode_handles,
+        self.vec_space.compute_modes(mode_nums, mode_handles,
              self.vec_handles, build_coeff_mat, index_from=index_from)
     
     def compute_modes_in_memory(self, mode_nums, vecs=None, index_from=0):
@@ -216,6 +218,6 @@ class POD(object):
         if vecs is not None:
             self.vecs = util.make_list(vecs)
         build_coeff_mat = self._compute_build_coeff_mat()
-        return self.vec_ops.compute_modes_in_memory(mode_nums,
+        return self.vec_space.compute_modes_in_memory(mode_nums,
              self.vecs, build_coeff_mat, index_from=index_from)
     

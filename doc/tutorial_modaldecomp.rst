@@ -138,7 +138,7 @@ The only complication is the data must be saved by only one processor
 (MPI worker).
 Moving a few lines inside the following if block solves this::
   
-  parallel = MR.parallel.default_instance
+  parallel = MR.parallel_default_instance
   if parallel.is_rank_zero():
       # Loops that call handles.put
       pass
@@ -189,7 +189,7 @@ in a different way, for instance to a different file format.
 See :ref:`sec_matrices`.
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Example 5 -- Scaling vectors and using ``VecOperations``
+Example 5 -- Scaling vectors and using ``VectorSpace``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You might want to scale all of your vectors by factors, and this can be done
@@ -199,7 +199,7 @@ is weighted.
 This example also shows how to load vectors in one format (pickle) 
 and save modes in another (text).
 At the end of this example, we use the lower-level 
-:class:`vecoperations.VecOperations` class to check that the POD modes are 
+:class:`vectorspace.VectorSpace` class to check that the POD modes are 
 orthonormal.
 
 .. literalinclude:: ../examples/tutorial_ex5.py
@@ -210,11 +210,11 @@ is first subtraction, then multiplication: ``(vec - base_vec)*scale``.
 The input vectors are saved in pickle format (``MR.PickleVecHandle``) 
 and the modes are saved in text format (``MR.ArrayTextVecHandle``).
 
-The last section uses the ``VecOperations`` class, 
+The last section uses the ``VectorSpace`` class, 
 which contains most of the parallelization and "heavy lifting" and is
 used by ``POD``, ``BPOD``, and ``DMD``.
 It is a good idea to use this class whenever possible since it is tested
-and parallelized (see :mod:`vecoperations`).
+and parallelized (see :mod:`vectorspace`).
 
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

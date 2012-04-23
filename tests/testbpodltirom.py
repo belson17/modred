@@ -9,7 +9,7 @@ import numpy as N
 import helper
 helper.add_to_path('src')
 import parallel as parallel_mod
-parallel = parallel_mod.default_instance
+parallel = parallel_mod.parallel_default_instance
 
 import bpodltirom as BPR
 import util
@@ -36,7 +36,7 @@ class TestBPODROM(unittest.TestCase):
         self.B_vec_path = join(self.test_dir, 'B_vec_%03d.txt')
         self.C_vec_path = join(self.test_dir, 'C_vec_%03d.txt')
         
-        self.myBPODROM = BPR.BPODROM(inner_product=N.vdot, verbose=False)
+        self.myBPODROM = BPR.BPODROM(N.vdot, verbose=False)
             
         self.num_direct_modes = 10
         self.num_adjoint_modes = 8
@@ -135,10 +135,10 @@ class TestBPODROM(unittest.TestCase):
                 self.direct_mode_handles[i].get()).squeeze()/dt)
         deriv_handles = [V.ArrayTextVecHandle(join(self.test_dir, 'deriv_test%d'%i))
             for i in range(num_vecs)]
-        self.myBPODROM.compute_derivs(self.direct_mode_handles, 
+        BPR.compute_derivs(self.direct_mode_handles, 
             self.A_times_direct_mode_handles, deriv_handles, dt)
         derivs_loaded = [v.get() for v in deriv_handles]
-        derivs_returned = self.myBPODROM.compute_derivs_in_memory(
+        derivs_returned = BPR.compute_derivs_in_memory(
             self.direct_modes, self.A_times_direct_modes, dt)
         derivs_loaded = map(N.squeeze, derivs_loaded)
         map(N.testing.assert_allclose, derivs_loaded, true_derivs)
@@ -154,11 +154,21 @@ class TestBPODROM(unittest.TestCase):
         A_returned = self.myBPODROM.compute_A(self.A_times_direct_mode_handles,
             self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
         self.myBPODROM.put_A(A_path)
+        A_returned_model, dum1, dum2 = self.myBPODROM.compute_model(
+            self.A_times_direct_mode_handles, self.B_vec_handles,
+            self.C_vec_handles, self.direct_mode_handles, 
+            self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
+        A_returned_model_in_mem, dum1, dum2 = \
+            self.myBPODROM.compute_model_in_memory(
+            self.A_times_direct_modes, self.B_vecs,
+            self.C_vecs, self.direct_modes, 
+            self.adjoint_modes, num_modes=self.num_ROM_modes)
         parallel.barrier()
         N.testing.assert_allclose(util.load_array_text(A_path), self.A_true)
         N.testing.assert_allclose(A_returned, self.A_true)
         N.testing.assert_allclose(A_returned_in_mem, self.A_true)
-
+        N.testing.assert_allclose(A_returned_model, self.A_true)
+        N.testing.assert_allclose(A_returned_model_in_mem, self.A_true)
 
 
 
@@ -172,10 +182,21 @@ class TestBPODROM(unittest.TestCase):
         B_returned = self.myBPODROM.compute_B(self.B_vec_handles,
             self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
         self.myBPODROM.put_B(B_path)
+        dum1, B_returned_model, dum2 = self.myBPODROM.compute_model(
+            self.A_times_direct_mode_handles, self.B_vec_handles,
+            self.C_vec_handles, self.direct_mode_handles, 
+            self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
+        dum1, B_returned_model_in_mem, dum2 = \
+            self.myBPODROM.compute_model_in_memory(
+            self.A_times_direct_modes, self.B_vecs,
+            self.C_vecs, self.direct_modes, 
+            self.adjoint_modes, num_modes=self.num_ROM_modes)
         parallel.barrier()
         N.testing.assert_allclose(util.load_array_text(B_path), self.B_true)
         N.testing.assert_allclose(B_returned, self.B_true)
         N.testing.assert_allclose(B_returned_in_mem, self.B_true)
+        N.testing.assert_allclose(B_returned_model, self.B_true)
+        N.testing.assert_allclose(B_returned_model_in_mem, self.B_true)
 
 
     def test_compute_C(self):
@@ -188,10 +209,21 @@ class TestBPODROM(unittest.TestCase):
         C_returned = self.myBPODROM.compute_C(self.C_vec_handles,
             self.direct_mode_handles, num_modes=self.num_ROM_modes)
         self.myBPODROM.put_C(C_path)
+        dum1, dum2, C_returned_model = self.myBPODROM.compute_model(
+            self.A_times_direct_mode_handles, self.B_vec_handles,
+            self.C_vec_handles, self.direct_mode_handles, 
+            self.adjoint_mode_handles, num_modes=self.num_ROM_modes)
+        dum1, dum2, C_returned_model_in_mem = \
+            self.myBPODROM.compute_model_in_memory(
+            self.A_times_direct_modes, self.B_vecs,
+            self.C_vecs, self.direct_modes, 
+            self.adjoint_modes, num_modes=self.num_ROM_modes)
         parallel.barrier()
         N.testing.assert_allclose(util.load_array_text(C_path), self.C_true)
         N.testing.assert_allclose(C_returned, self.C_true)
         N.testing.assert_allclose(C_returned_in_mem, self.C_true)
+        N.testing.assert_allclose(C_returned_model, self.C_true)
+        N.testing.assert_allclose(C_returned_model_in_mem, self.C_true)
 
 
 

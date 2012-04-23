@@ -35,7 +35,7 @@ Contents:
 
    vectors
    
-   vecoperations
+   vectorspace
 
    parallel
    

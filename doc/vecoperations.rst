@@ -1,6 +1,6 @@
-VecOperations 
+VectorSpace 
 ********************* 
 
-.. automodule:: vecoperations
+.. automodule:: vectorspace
    :members:
 

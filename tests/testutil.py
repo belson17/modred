@@ -11,7 +11,7 @@ import helper
 helper.add_to_path('src')
 
 import parallel as parallel_mod
-parallel = parallel_mod.default_instance
+parallel = parallel_mod.parallel_default_instance
 import util
 
 

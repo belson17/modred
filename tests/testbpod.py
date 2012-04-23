@@ -10,10 +10,10 @@ import numpy as N
 import helper
 helper.add_to_path('src')
 import parallel as parallel_mod
-parallel = parallel_mod.default_instance
+parallel = parallel_mod.parallel_default_instance
 
 from bpod import BPOD
-from vecoperations import VecOperations
+from vectorspace import VectorSpace
 import util
 import vectors as V
 
@@ -33,7 +33,7 @@ class TestBPOD(unittest.TestCase):
         self.num_states = 100
         self.index_from = 2
         
-        self.my_BPOD = BPOD(inner_product=N.vdot, verbose=False)
+        self.my_BPOD = BPOD(N.vdot, verbose=False)
         self.generate_data_set()
         parallel.barrier()
 
@@ -97,44 +97,47 @@ class TestBPOD(unittest.TestCase):
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         
+        def my_load(fname): pass
+        def my_save(data, fname): pass 
+        def my_IP(v1, v2): pass
+        
         data_members_default = {'put_mat': util.save_array_text, 'get_mat':
-             util.load_array_text, 'parallel': parallel_mod.default_instance,
+             util.load_array_text,
             'verbose': False, 'L_sing_vecs': None, 'R_sing_vecs': None,
             'sing_vals': None, 'direct_vec_handles': None,
             'adjoint_vec_handles': None, 
             'direct_vecs': None, 'adjoint_vecs': None, 'hankel_mat': None,
-            'vec_ops': VecOperations(verbose=False)}
+            'vec_space': VectorSpace(inner_product=my_IP, verbose=False)}
         
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
         self.maxDiff = None
-        self.assertEqual(util.get_data_members(BPOD(verbose=False)),
+        self.assertEqual(util.get_data_members(BPOD(my_IP, verbose=False)),
             data_members_default)
         
-        def my_load(fname): pass
-        def my_save(data, fname): pass 
         
-        my_BPOD = BPOD(verbose=False)
+        my_BPOD = BPOD(my_IP, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_ops'] = VecOperations(verbose=False)
+        data_members_modified['vec_space'] = VectorSpace(inner_product=my_IP,
+            verbose=False)
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
        
-        my_BPOD = BPOD(get_mat=my_load, verbose=False)
+        my_BPOD = BPOD(my_IP, get_mat=my_load, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['get_mat'] = my_load
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
  
-        my_BPOD = BPOD(put_mat=my_save, verbose=False)
+        my_BPOD = BPOD(my_IP, put_mat=my_save, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['put_mat'] = my_save
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
         
         max_vecs_per_node = 500
-        my_BPOD = BPOD(max_vecs_per_node=max_vecs_per_node, verbose=False)
+        my_BPOD = BPOD(my_IP, max_vecs_per_node=max_vecs_per_node, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_ops'].max_vecs_per_node =\
+        data_members_modified['vec_space'].max_vecs_per_node =\
             max_vecs_per_node
-        data_members_modified['vec_ops'].max_vecs_per_proc =\
+        data_members_modified['vec_space'].max_vecs_per_proc =\
             max_vecs_per_node * parallel.get_num_nodes() / parallel.\
             get_num_procs()
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
@@ -268,7 +271,7 @@ class TestBPOD(unittest.TestCase):
             for adjoint_mode_index, adjoint_handle in \
                 enumerate(adjoint_mode_handles):
                 adjoint_mode = adjoint_handle.get()
-                IP = self.my_BPOD.vec_ops.inner_product(direct_mode, adjoint_mode)
+                IP = self.my_BPOD.vec_space.inner_product(direct_mode, adjoint_mode)
                 if self.mode_nums[direct_mode_index] != \
                     self.mode_nums[adjoint_mode_index]:
                     self.assertAlmostEqual(IP, 0.)

@@ -12,14 +12,14 @@ import numpy as N
 import helper
 helper.add_to_path('src')
 import parallel as parallel_mod
-parallel = parallel_mod.default_instance
+parallel = parallel_mod.parallel_default_instance
 
-from vecoperations import VecOperations
+from vectorspace import VectorSpace
 import vectors as V
 import util
 
-class TestVecOperations(unittest.TestCase):
-    """ Tests of the VecOperations class """
+class TestVectorSpace(unittest.TestCase):
+    """ Tests of the VectorSpace class """
     
     def setUp(self):
     
@@ -33,8 +33,8 @@ class TestVecOperations(unittest.TestCase):
         self.max_vecs_per_proc = 10
         self.total_num_vecs_in_mem = parallel.get_num_procs() * self.max_vecs_per_proc
 
-        # VecOperations object for running tests
-        self.my_vec_ops = VecOperations(inner_product=N.vdot, verbose=False)
+        # VectorSpace object for running tests
+        self.my_vec_ops = VectorSpace(inner_product=N.vdot, verbose=False)
         self.my_vec_ops.max_vecs_per_proc = self.max_vecs_per_proc
 
         # Default data members, verbose set to false even though default is true
@@ -43,7 +43,6 @@ class TestVecOperations(unittest.TestCase):
             'max_vecs_per_node': int(1e4),
             'max_vecs_per_proc': int(1e4) * parallel.get_num_nodes() / \
                 parallel.get_num_procs(),
-            'parallel':parallel_mod.default_instance,
             'verbose': False, 'print_interval': 10, 'prev_print_time': 0.}        
         parallel.barrier()
 
@@ -61,17 +60,17 @@ class TestVecOperations(unittest.TestCase):
         Test arguments passed to the constructor are assigned properly.
         """
         data_members_original = util.get_data_members(
-            VecOperations(inner_product=N.vdot, verbose=False))
+            VectorSpace(inner_product=N.vdot, verbose=False))
         self.assertEqual(data_members_original, self.default_data_members)
                 
         max_vecs_per_node = 500
-        my_VO = VecOperations(inner_product=N.vdot, 
+        my_VS = VectorSpace(inner_product=N.vdot, 
             max_vecs_per_node=max_vecs_per_node, verbose=False)
         data_members = copy.deepcopy(data_members_original)
         data_members['max_vecs_per_node'] = max_vecs_per_node
         data_members['max_vecs_per_proc'] = max_vecs_per_node * \
-            my_VO.parallel.get_num_nodes()/ my_VO.parallel.get_num_procs()
-        self.assertEqual(util.get_data_members(my_VO), data_members)
+            parallel.get_num_nodes()/ parallel.get_num_procs()
+        self.assertEqual(util.get_data_members(my_VS), data_members)
 
         
 
@@ -84,13 +83,13 @@ class TestVecOperations(unittest.TestCase):
         ny = 15
         test_array = N.random.random((nx,ny))
             
-        my_VO = VecOperations(inner_product=N.vdot, verbose=False)
+        my_VS = VectorSpace(inner_product=N.vdot, verbose=False)
         in_mem_handle = V.InMemoryVecHandle(test_array)
         # Currently not testing this, there is a problem with max recursion
         # depth
-        #self.assertRaises(RuntimeError, my_VO.sanity_check, in_mem_handle,
+        #self.assertRaises(RuntimeError, my_VS.sanity_check, in_mem_handle,
         #    max_handle_size=0)       
-        my_VO.sanity_check(in_mem_handle)
+        my_VS.sanity_check(in_mem_handle)
         
         # An sanity's vector that redefines multiplication to modify its data
         class sanityMultVec(V.Vector):
@@ -117,12 +116,12 @@ class TestVecOperations(unittest.TestCase):
         
         def my_IP(vec1, vec2):
             return N.vdot(vec1.arr, vec2.arr)
-        my_VO.inner_product = my_IP
+        my_VS.inner_product = my_IP
         my_sanity_mult_vec = sanityMultVec(test_array)
-        self.assertRaises(ValueError, my_VO.sanity_check, 
+        self.assertRaises(ValueError, my_VS.sanity_check, 
             V.InMemoryVecHandle(my_sanity_mult_vec))
         my_sanity_add_vec = sanityAddVec(test_array)
-        self.assertRaises(ValueError, my_VO.sanity_check, 
+        self.assertRaises(ValueError, my_VS.sanity_check, 
             V.InMemoryVecHandle(my_sanity_add_vec))
                 
         
@@ -268,7 +267,7 @@ class TestVecOperations(unittest.TestCase):
         num_modes_list = [1, 5, 22]
         num_vecs = 30
         index_from = 1
-        my_vec_ops = VecOperations(inner_product=N.vdot, verbose=False)
+        my_vec_ops = VectorSpace(inner_product=N.vdot, verbose=False)
         for num_modes in num_modes_list:
             # Generate data on all procs
             vec_array, mode_nums, build_coeff_mat, true_modes = \

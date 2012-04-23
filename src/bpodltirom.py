@@ -2,8 +2,68 @@
 
 import util
 from vectors import InMemoryVecHandle
-from vecoperations import VecOperations
+from vectorspace import VectorSpace
 import parallel as parallel_mod
+parallel = parallel_mod.parallel_default_instance
+
+def compute_derivs(vec_handles, adv_vec_handles, deriv_vec_handles, dt):
+    """Computes 1st-order time derivatives of vectors. 
+    
+    Args:
+        vec_handles: list of handles of vecs.
+        
+        adv_vec_handles: list of handles of vecs advanced ``dt`` in time.
+        
+        deriv_vec_handles: list of handles for time derivatives of vecs.
+        
+        dt: time step of ``adv_vec_handles``
+        
+    Computes d(vec)/dt = (vec(t=dt) - vec(t=0)) / dt.
+    """
+    num_vecs = len(vec_handles)
+    if num_vecs != len(adv_vec_handles) or \
+        num_vecs != len(deriv_vec_handles):
+        raise RuntimeError('Number of vectors not equal')
+    
+    vec_index_tasks = parallel.find_assignments(range(num_vecs))[
+        parallel.get_rank()]
+    
+    for i in vec_index_tasks:
+        vec = vec_handles[i].get()
+        vec_dt = adv_vec_handles[i].get()
+        deriv_vec_handles[i].put((vec_dt - vec)*(1./dt))
+    parallel.barrier()
+
+def compute_derivs_in_memory(vecs, adv_vecs, dt):
+    """Computes 1st-order time derivatives of vectors. 
+    
+    Args:
+        vecs: list of vecs.
+        
+        adv_vecs: list of vecs advanced ``dt`` in time.
+        
+        dt: time step of ``adv_vecs``.
+                
+    Returns:
+        deriv_vecs: list of time-derivs of vectors.
+        
+    In parallel, each processor returns all derivatives.
+    """
+    vec_handles = [InMemoryVecHandle(v) for v in vecs]
+    adv_vec_handles = [InMemoryVecHandle(v) for v in adv_vecs]
+    deriv_vec_handles = [InMemoryVecHandle() for i in xrange(len(adv_vecs))]
+    compute_derivs(vec_handles, adv_vec_handles, deriv_vec_handles, dt)
+    deriv_vecs = [v.get() for v in deriv_vec_handles]
+    if parallel.is_distributed():
+        # Remove empty entries            
+        for i in range(deriv_vecs.count(None)):
+            deriv_vecs.remove(None)
+        all_deriv_vecs = util.flatten_list(
+            parallel.comm.allgather(deriv_vecs))
+        return all_deriv_vecs
+    else:
+        return deriv_vecs
+    
 
 class BPODROM(object):
     """Computes the ROM matrices from BPOD modes for an LTI plant.
@@ -39,14 +99,14 @@ class BPODROM(object):
 
     """
 
-    def __init__(self, inner_product=None, put_mat=util.save_array_text,
+    def __init__(self, inner_product, put_mat=util.save_array_text,
         verbose=True, max_vecs_per_node=10000):
         """Constructor"""
         self.inner_product = inner_product
         self.put_mat = put_mat
-        self.vec_ops = VecOperations(inner_product=inner_product,
+        self.vec_space = VectorSpace(inner_product=inner_product,
             max_vecs_per_node=max_vecs_per_node, verbose=verbose)
-        self.parallel = parallel_mod.default_instance
+        parallel = parallel_mod.parallel_default_instance
         self.num_modes = None
         self.verbose = verbose
         self.A = None
@@ -55,15 +115,15 @@ class BPODROM(object):
 
     def put_A(self, A_dest):
         """Put reduced A matrix to ``A_dest``"""
-        if self.parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.A, A_dest)
     def put_B(self, B_dest):
         """Put reduced B matrix to ``B_dest``"""
-        if self.parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.B, B_dest)
     def put_C(self, C_dest):
         """Put reduced C matrix to ``C_dest``"""
-        if self.parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.C, C_dest)
             
     def put_model(self, A_dest, B_dest, C_dest):
@@ -73,69 +133,58 @@ class BPODROM(object):
         self.put_B(B_dest)
         self.put_C(C_dest)
         
-      
-    def compute_derivs(self, vec_handles, adv_vec_handles, 
-        deriv_vec_handles, dt):
-        """Computes 1st-order time derivatives of vectors. 
+    def compute_model(self, A_times_direct_modes_handles, B_vec_handles, 
+        C_vec_handles, direct_mode_handles, adjoint_mode_handles, 
+        num_modes=None):
+        """Computes and returns the reduced-order model matrices.
         
-        Args:
-            vec_handles: list of handles of vecs.
+            A_times_direct_modes_handles: list of handles to "A * direct modes"
+                That is, the direct modes operated on by the full A matrix. 
+                For a discrete time system, these are the 
+                handles of the direct modes that have been advanced one
+                time step.
+                For continuous time systems, these are the handles of the
+                time derivatives of the direct modes (see also 
+                :py:meth:`compute_derivs`).
             
-            adv_vec_handles: list of handles of vecs advanced ``dt`` in time.
+            B_vec_handles: list of handles to B vecs.
+                These are spatial representations of the B matrix in the 
+                full system.
             
-            deriv_vec_handles: list of handles for time derivatives of vecs.
+            C_vec_handles: list of handles to C vecs.
+                These are spatial representations of the C matrix in the full 
+                system.
             
-            dt: time step of ``adv_vec_handles``
-			
-        Computes d(vec)/dt = (vec(t=dt) - vec(t=0)) / dt.
+            direct_mode_handles: list of handles to the direct modes
+            
+            adjoint_mode_handles: list of handles to the adjoint modes
+            
+        Kwargs:
+            num_modes: number of modes/states to keep in the ROM. 
+                Can omit if already given. Default is maximum possible.
         """
-        num_vecs = len(vec_handles)
-        if num_vecs != len(adv_vec_handles) or \
-            num_vecs != len(deriv_vec_handles):
-            raise RuntimeError('Number of vectors not equal')
+        self.compute_A(A_times_direct_modes_handles, adjoint_mode_handles,
+            num_modes=num_modes)
+        self.compute_B(B_vec_handles, adjoint_mode_handles, 
+            num_modes=num_modes)
+        self.compute_C(C_vec_handles, direct_mode_handles, 
+            num_modes=num_modes)
+        return self.A, self.B, self.C
         
-        vec_index_tasks = self.parallel.find_assignments(range(num_vecs))[
-            self.parallel.get_rank()]
+    def compute_model_in_memory(self, A_times_direct_modes, 
+        B_vecs, C_vecs, direct_modes, adjoint_modes, 
+        num_modes=None):
+        """See :py:meth:`compute_model`, but takes vecs instead of handles."""
         
-        for i in vec_index_tasks:
-            vec = vec_handles[i].get()
-            vec_dt = adv_vec_handles[i].get()
-            deriv_vec_handles[i].put((vec_dt - vec)*(1./dt))
-        self.parallel.barrier()
+        self.compute_A_in_memory(A_times_direct_modes, adjoint_modes,
+            num_modes=num_modes)
+        self.compute_B_in_memory(B_vecs, adjoint_modes, num_modes=num_modes)
+        self.compute_C_in_memory(C_vecs, direct_modes, num_modes=num_modes)
+        return self.A, self.B, self.C
+        
     
-    def compute_derivs_in_memory(self, vecs, adv_vecs, dt):
-        """Computes 1st-order time derivatives of vectors. 
-        
-        Args:
-			vecs: list of vecs.
-			
-			adv_vecs: list of vecs advanced ``dt`` in time.
-			
-			dt: time step of ``adv_vecs``.
-					
-        Returns:
-            deriv_vecs: list of time-derivs of vectors.
-            
-        In parallel, each processor returns all derivatives.
-        """
-        vec_handles = [InMemoryVecHandle(v) for v in vecs]
-        adv_vec_handles = [InMemoryVecHandle(v) for v in adv_vecs]
-        deriv_vec_handles = [InMemoryVecHandle() for i in xrange(len(adv_vecs))]
-        self.compute_derivs(vec_handles, adv_vec_handles, deriv_vec_handles,
-            dt)
-        deriv_vecs = [v.get() for v in deriv_vec_handles]
-        if self.parallel.is_distributed():
-            # Remove empty entries            
-            for i in range(deriv_vecs.count(None)):
-                deriv_vecs.remove(None)
-            all_deriv_vecs = util.flatten_list(
-                self.parallel.comm.allgather(deriv_vecs))
-            return all_deriv_vecs
-        else:
-            return deriv_vecs
-    
-    def compute_A(self, A_times_direct_modes_handles, 
-        adjoint_mode_handles, num_modes=None):
+    def compute_A(self, A_times_direct_modes_handles, adjoint_mode_handles, 
+        num_modes=None):
         """Computes and returns the continous or discrete time A matrix.
         
         Args:
@@ -162,7 +211,7 @@ class BPODROM(object):
         if self.num_modes is None:
             self.num_modes = min(len(A_times_direct_modes_handles),
                 len(adjoint_mode_handles))
-        self.A = self.vec_ops.compute_inner_product_mat(
+        self.A = self.vec_space.compute_inner_product_mat(
             adjoint_mode_handles[:self.num_modes],
             A_times_direct_modes_handles[:self.num_modes])
         return self.A
@@ -247,7 +296,7 @@ class BPODROM(object):
         if self.num_modes is None:
             self.num_modes = len(adjoint_mode_handles)
         num_inputs = len(B_vec_handles)
-        self.B = self.vec_ops.compute_inner_product_mat(
+        self.B = self.vec_space.compute_inner_product_mat(
             adjoint_mode_handles[:self.num_modes], B_vec_handles)
         return self.B
 
@@ -301,7 +350,7 @@ class BPODROM(object):
             self.num_modes = num_modes
         if self.num_modes is None:
             self.num_modes = len(direct_mode_handles)
-        self.C = self.vec_ops.compute_inner_product_mat(
+        self.C = self.vec_space.compute_inner_product_mat(
             C_vec_handles, direct_mode_handles[:self.num_modes])
         return self.C
 

@@ -10,11 +10,11 @@ import numpy as N
 import helper
 helper.add_to_path('src')
 import parallel as parallel_mod
-parallel = parallel_mod.default_instance
+parallel = parallel_mod.parallel_default_instance
 
 from dmd import DMD
 from pod import POD
-from vecoperations import VecOperations
+from vectorspace import VectorSpace
 import vectors as V
 import util
 
@@ -36,8 +36,8 @@ class TestDMD(unittest.TestCase):
         self.num_states = 12
         self.index_from = 2
 
-        self.my_DMD = DMD(inner_product=N.vdot, verbose=False)
-        self.my_DMD_in_memory = DMD(inner_product=N.vdot, verbose=False)
+        self.my_DMD = DMD(N.vdot, verbose=False)
+        self.my_DMD_in_memory = DMD(N.vdot, verbose=False)
         self.generate_data_set()
         parallel.barrier()
         
@@ -84,7 +84,7 @@ class TestDMD(unittest.TestCase):
         self.build_coeffs_true = W * (Sigma_mat ** -1) * eig_vecs * scaling
         self.mode_norms_true = N.zeros(self.ritz_vecs_true.shape[1])
         for i in xrange(self.ritz_vecs_true.shape[1]):
-            self.mode_norms_true[i] = self.my_DMD.vec_ops.inner_product(
+            self.mode_norms_true[i] = self.my_DMD.vec_space.inner_product(
                 N.array(self.ritz_vecs_true[:,i]), 
                 N.array(self.ritz_vecs_true[:,i])).real
 
@@ -101,42 +101,45 @@ class TestDMD(unittest.TestCase):
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
         
+        def my_load(fname): pass
+        def my_save(data, fname): pass
+        def my_IP(v1, v2): pass
+        
         data_members_default = {'put_mat': util.save_array_text, 'get_mat':
-             util.load_array_text, 'parallel': parallel_mod.default_instance,
+             util.load_array_text,
             'verbose': False, 'ritz_vals': None, 'build_coeffs': None,
             'mode_norms': None, 'vec_handles': None, 'vecs': None, 
             'POD': None,
-            'vec_ops': VecOperations(verbose=False)}
+            'vec_space': VectorSpace(my_IP, verbose=False)}
         
         # Get default data member values
         # Set verbose to false, to avoid printing warnings during tests
-        self.assertEqual(util.get_data_members(DMD(verbose=False)), 
-            data_members_default)
+        self.assertEqual(util.get_data_members(DMD(inner_product=my_IP, 
+            verbose=False)), data_members_default)
         
-        def my_load(fname): pass
-        def my_save(data, fname): pass 
         
-        my_DMD = DMD(verbose=False)
+        my_DMD = DMD(my_IP, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_ops'] = VecOperations(verbose=False)
+        data_members_modified['vec_space'] = VectorSpace(inner_product=my_IP, 
+            verbose=False)
         self.assertEqual(util.get_data_members(my_DMD), data_members_modified)
        
-        my_DMD = DMD(get_mat=my_load, verbose=False)
+        my_DMD = DMD(my_IP, get_mat=my_load, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['get_mat'] = my_load
         self.assertEqual(util.get_data_members(my_DMD), data_members_modified)
  
-        my_DMD = DMD(put_mat=my_save, verbose=False)
+        my_DMD = DMD(my_IP, put_mat=my_save, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['put_mat'] = my_save
         self.assertEqual(util.get_data_members(my_DMD), data_members_modified)
         
         max_vecs_per_node = 500
-        my_DMD = DMD(max_vecs_per_node=max_vecs_per_node, verbose=False)
+        my_DMD = DMD(my_IP, max_vecs_per_node=max_vecs_per_node, verbose=False)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_ops'].max_vecs_per_node =\
+        data_members_modified['vec_space'].max_vecs_per_node =\
             max_vecs_per_node
-        data_members_modified['vec_ops'].max_vecs_per_proc =\
+        data_members_modified['vec_space'].max_vecs_per_proc =\
             max_vecs_per_node * parallel.get_num_nodes() / parallel.\
             get_num_procs()
         self.assertEqual(util.get_data_members(my_DMD), data_members_modified)

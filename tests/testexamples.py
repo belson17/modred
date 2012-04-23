@@ -7,8 +7,8 @@ from shutil import rmtree
 import helper
 helper.add_to_path('examples')
 helper.add_to_path('src')
-from parallel import default_instance
-parallel = default_instance
+import parallel as parallel_mod
+parallel = parallel_mod.parallel_default_instance
 
 class TestExamples(unittest.TestCase):
     def setUp(self):
@@ -31,11 +31,11 @@ class TestExamples(unittest.TestCase):
  
     def test_tutorial_examples(self):
         """Runs all tutorial examples. If run without errors, passes test"""
-        example_module = 'tutorial_ex%d'
+        example_script = 'tutorial_ex%d.py'
         for example_num in range(1, 7):
             # Example 3 isn't meant to work in parallel
             if not (parallel.is_distributed() and example_num != 3):
-                exec('import %s' % (example_module%example_num))
+                execfile(join(self.examples_dir, example_script%example_num))
             
         
     @unittest.skip('Unnecessary test for user')
@@ -63,4 +63,4 @@ class TestExamples(unittest.TestCase):
         
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(buffer=True)

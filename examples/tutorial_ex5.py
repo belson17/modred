@@ -13,14 +13,14 @@ snapshots = [MR.PickleVecHandle('vec%d.pkl' % i, scale=quad_weights[i])
 
 # Save fake data. Typically the data already exists from a previous
 # simulation or experiment.
-parallel = MR.parallel.default_instance
+parallel = MR.parallel_default_instance
 if parallel.is_rank_zero():
     for i, snap in enumerate(snapshots):
         snap.put(N.random.random(num_elements))
 parallel.barrier()
 
 # Compute POD modes
-pod = MR.POD(inner_product=N.vdot)
+pod = MR.POD(N.vdot)
 pod.compute_decomp(snapshots)
 pod.put_decomp('sing_vecs.txt', 'sing_vals.txt')
 pod.put_correlation_mat('correlation_mat.txt')
@@ -29,7 +29,7 @@ modes = [MR.ArrayTextVecHandle('mode%d.txt'%i) for i in mode_nums]
 pod.compute_modes(mode_nums, modes)
 
 # Check that modes are orthonormal
-vec_ops = MR.VecOperations(inner_product=N.vdot)
+vec_ops = MR.VectorSpace(inner_product=N.vdot)
 IP_mat = vec_ops.compute_symmetric_inner_product_mat(modes)
 if not N.allclose(IP_mat, N.eye(len(mode_nums))):
     print 'Warning: modes are not orthonormal'

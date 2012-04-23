@@ -1,10 +1,11 @@
 """DMD class"""
 
 import numpy as N
-from vecoperations import VecOperations
+from vectorspace import VectorSpace
 import pod
 import util
-import parallel
+import parallel as parallel_mod
+parallel = parallel_mod.parallel_default_instance
 import vectors as V
 
 class DMD(object):
@@ -17,26 +18,29 @@ class DMD(object):
       	
       	get_mat: Function to get a matrix into modred.
                
+        max_vecs_per_node: max number of vectors in memory per node.
+
         verbose: Print more information about progress and warnings.
         
-        max_vecs_per_node: max number of vectors in memory per node.
-    
+        print_interval: max of how frequently progress is printed, in seconds.
+
+        POD: POD object to use for computations.
+        
     Computes Ritz vectors from vecs.
     
     Usage::
     
-      myDMD = DMD(inner_product=my_inner_product)
+      myDMD = DMD(my_inner_product)
       myDMD.compute_decomp(vec_handles)
       myDMD.compute_modes(range(50), mode_handles)
     
     """
-    def __init__(self, inner_product=None, 
+    def __init__(self, inner_product, 
         get_mat=util.load_array_text, put_mat=util.save_array_text,
         max_vecs_per_node=None, POD=None, verbose=True):
         """Constructor"""
-        self.vec_ops = VecOperations(inner_product=inner_product, 
+        self.vec_space = VectorSpace(inner_product=inner_product, 
             max_vecs_per_node=max_vecs_per_node, verbose=verbose)
-        self.parallel = parallel.default_instance
         self.get_mat = get_mat
         self.put_mat = put_mat
         self.POD = POD
@@ -55,9 +59,9 @@ class DMD(object):
         Args:
             test_vec_handle: a vector handle.
         
-        See :py:meth:`vecoperations.VecOperations.sanity_check`.
+        See :py:meth:`vectorspace.VectorSpace.sanity_check`.
         """
-        self.vec_ops.sanity_check(test_vec_handle)
+        self.vec_space.sanity_check(test_vec_handle)
 
     def sanity_check_in_memory(self, test_vec):
         """Check user-supplied vector object.
@@ -65,9 +69,9 @@ class DMD(object):
         Args:
             test_vec: a vector.
         
-        See :py:meth:`vecoperations.VecOperations.sanity_check_in_memory`.
+        See :py:meth:`vectorspace.VectorSpace.sanity_check_in_memory`.
         """
-        self.vec_ops.sanity_check_in_memory(test_vec_handle)
+        self.vec_space.sanity_check_in_memory(test_vec_handle)
 
 
     def get_decomp(self, ritz_vals_source, mode_norms_source, 
@@ -75,7 +79,7 @@ class DMD(object):
         """Retrieves the decomposition matrices from a source. """
         if self.get_mat is None:
             raise util.UndefinedError('Must specify a get_mat function')
-        if self.parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.ritz_vals = N.squeeze(N.array(self.get_mat(ritz_vals_source)))
             self.mode_norms = N.squeeze(N.array(self.get_mat(mode_norms_source)))
             self.build_coeffs = self.get_mat(build_coeffs_source)
@@ -83,10 +87,10 @@ class DMD(object):
             self.ritz_vals = None
             self.mode_norms = None
             self.build_coeffs = None
-        if self.parallel.is_distributed():
-            self.ritz_vals = self.parallel.comm.bcast(self.ritz_vals, root=0)
-            self.mode_norms = self.parallel.comm.bcast(self.mode_norms, root=0)
-            self.build_coeffs = self.parallel.comm.bcast(self.build_coeffs, root=0)
+        if parallel.is_distributed():
+            self.ritz_vals = parallel.comm.bcast(self.ritz_vals, root=0)
+            self.mode_norms = parallel.comm.bcast(self.mode_norms, root=0)
+            self.build_coeffs = parallel.comm.bcast(self.build_coeffs, root=0)
             
     def put_decomp(self, ritz_vals_dest, mode_norms_dest, build_coeffs_dest):
         """Puts the decomposition matrices in dest."""
@@ -96,27 +100,27 @@ class DMD(object):
         
     def put_ritz_vals(self, dest):
         """Puts the Ritz values"""
-        if self.put_mat is None and self.parallel.is_rank_zero():
+        if self.put_mat is None and parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined, can't put")
-        if self.parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.ritz_vals, dest)
-        self.parallel.barrier()
+        parallel.barrier()
         
     def put_mode_norms(self, dest):
         """Puts the mode norms"""
-        if self.put_mat is None and self.parallel.is_rank_zero():
+        if self.put_mat is None and parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined, can't put")
-        if self.parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.mode_norms, dest)
-        self.parallel.barrier()
+        parallel.barrier()
         
     def put_build_coeffs(self, dest):
         """Puts the build coeffs"""
-        if self.put_mat is None and self.parallel.is_rank_zero():
+        if self.put_mat is None and parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined, can't put")
-        if self.parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.build_coeffs, dest)
-        self.parallel.barrier()
+        parallel.barrier()
             
     def compute_decomp(self, vec_handles):
         """Computes decomposition and returns SVD matrices.
@@ -134,8 +138,8 @@ class DMD(object):
 
         # Compute POD from vecs (excluding last vec)
         if self.POD is None:
-            self.POD = pod.POD(inner_product=self.vec_ops.inner_product, 
-                max_vecs_per_node=self.vec_ops.max_vecs_per_node, 
+            self.POD = pod.POD(inner_product=self.vec_space.inner_product, 
+                max_vecs_per_node=self.vec_space.max_vecs_per_node, 
                 verbose=self.verbose)
             # Don't use the returned mats, get them later from POD instance.
             dum, dum = self.POD.compute_decomp(
@@ -154,7 +158,7 @@ class DMD(object):
         pod_modes_star_times_vecs = N.mat(N.empty((num_vecs-1, num_vecs-1)))
         pod_modes_star_times_vecs[:,:-1] = self.POD.correlation_mat[:,1:]  
         pod_modes_star_times_vecs[:,-1] = \
-            self.vec_ops.compute_inner_product_mat(self.vec_handles[:-1], 
+            self.vec_space.compute_inner_product_mat(self.vec_handles[:-1], 
                 self.vec_handles[-1])
         pod_modes_star_times_vecs = _pod_sing_vals_sqrt_mat * pod_sing_vecs.H *\
             pod_modes_star_times_vecs
@@ -205,7 +209,7 @@ class DMD(object):
         # User should specify ALL vecs, even though all but last are used
         if vec_handles is not None:
             self.vec_handles = util.make_list(vec_handles)
-        self.vec_ops.compute_modes(mode_nums, mode_handles, 
+        self.vec_space.compute_modes(mode_nums, mode_handles, 
             self.vec_handles[:-1], self.build_coeffs, index_from=index_from)
         
     def compute_modes_in_memory(self, mode_nums, vecs=None, 
@@ -232,7 +236,7 @@ class DMD(object):
         # User should specify ALL vecs, even though all but last are used
         if vecs is not None:
             self.vecs = util.make_list(vecs)
-        return self.vec_ops.compute_modes_in_memory(mode_nums, 
+        return self.vec_space.compute_modes_in_memory(mode_nums, 
             self.vecs[:-1], self.build_coeffs, index_from=index_from)
  
  

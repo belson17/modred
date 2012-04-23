@@ -28,7 +28,7 @@ import cProfile
 
 import modred as MR
 
-parallel = MR.parallel.default_instance
+parallel = MR.parallel.parallel_default_instance
 my_vec_defs = MR.vecdefs.ArrayPickleUniform()
 
 import argparse
@@ -90,7 +90,7 @@ def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node,
     generate_vecs(num_states, num_cols, data_dir, col_vec_name)
     
     row_vec_paths = [join(data_dir, row_vec_name%row_num) for row_num in range(num_rows)]   
-    my_VO = MR.VecOperations(my_vec_defs, max_vecs_per_node=max_vecs_per_node,
+    my_VO = MR.VectorSpace(my_vec_defs, max_vecs_per_node=max_vecs_per_node,
         verbose=verbose) 
     
     start_time = T.time()
@@ -109,7 +109,7 @@ def symmetric_inner_product_mat(num_states, num_vecs, max_vecs_per_node,
     vec_paths = [join(data_dir, vec_name % vec_num) for vec_num in range(
         num_vecs)]
     
-    my_VO = MR.VecOperations(my_vec_defs, max_vecs_per_node=max_vecs_per_node,
+    my_VO = MR.VectorSpace(my_vec_defs, max_vecs_per_node=max_vecs_per_node,
         verbose=verbose) 
     
     start_time = T.time()
@@ -127,7 +127,7 @@ def lin_combine(num_states, num_bases, num_products, max_vecs_per_node,
     num_products is the resulting number of vecs
     """
 
-    my_VO = MR.VecOperations(my_vec_defs, max_vecs_per_node=max_vecs_per_node,
+    my_VO = MR.VectorSpace(my_vec_defs, max_vecs_per_node=max_vecs_per_node,
         verbose=verbose)
     coeff_mat = N.random.random((num_bases, num_products))
     
