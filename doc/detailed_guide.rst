@@ -190,6 +190,17 @@ is a simple option for small data.
 More information about these methods is provided in the documentation
 for each class.
 
+----------
+Example
+----------
+
+An example of a custom class for vectors and vector handles is shown
+below:
+
+.. literalinclude:: ../examples/custom_vector.py
+
+For an example using this class, see the tutorial in :ref:`sec_modaldecomp`.
+
 ---------------------------------------
 Summary and next steps
 ---------------------------------------
