@@ -35,8 +35,7 @@ class TestExamples(unittest.TestCase):
         for example_num in range(1, 7):
             # Example 3 isn't meant to work in parallel
             if not (parallel.is_distributed() and example_num != 3):
-                exec('import %s as I'%(example_module%example_num))
-                I.main(verbose=False)
+                exec('import %s' % (example_module%example_num))
             
         
     @unittest.skip('Unnecessary test for user')
