@@ -34,16 +34,16 @@ class TestVectorSpace(unittest.TestCase):
         self.total_num_vecs_in_mem = parallel.get_num_procs() * self.max_vecs_per_proc
 
         # VectorSpace object for running tests
-        self.my_vec_ops = VectorSpace(inner_product=N.vdot, verbose=False)
+        self.my_vec_ops = VectorSpace(inner_product=N.vdot, verbosity=0)
         self.my_vec_ops.max_vecs_per_proc = self.max_vecs_per_proc
 
-        # Default data members, verbose set to false even though default is true
+        # Default data members, verbosity set to false even though default is true
         # so messages won't print during tests
         self.default_data_members = {'inner_product': N.vdot,
             'max_vecs_per_node': int(1e4),
             'max_vecs_per_proc': int(1e4) * parallel.get_num_nodes() / \
                 parallel.get_num_procs(),
-            'verbose': False, 'print_interval': 10, 'prev_print_time': 0.}        
+            'verbosity': 0, 'print_interval': 10, 'prev_print_time': 0.}        
         parallel.barrier()
 
 
@@ -60,12 +60,12 @@ class TestVectorSpace(unittest.TestCase):
         Test arguments passed to the constructor are assigned properly.
         """
         data_members_original = util.get_data_members(
-            VectorSpace(inner_product=N.vdot, verbose=False))
+            VectorSpace(inner_product=N.vdot, verbosity=0))
         self.assertEqual(data_members_original, self.default_data_members)
                 
         max_vecs_per_node = 500
         my_VS = VectorSpace(inner_product=N.vdot, 
-            max_vecs_per_node=max_vecs_per_node, verbose=False)
+            max_vecs_per_node=max_vecs_per_node, verbosity=0)
         data_members = copy.deepcopy(data_members_original)
         data_members['max_vecs_per_node'] = max_vecs_per_node
         data_members['max_vecs_per_proc'] = max_vecs_per_node * \
@@ -83,7 +83,7 @@ class TestVectorSpace(unittest.TestCase):
         ny = 15
         test_array = N.random.random((nx,ny))
             
-        my_VS = VectorSpace(inner_product=N.vdot, verbose=False)
+        my_VS = VectorSpace(inner_product=N.vdot, verbosity=0)
         in_mem_handle = V.InMemoryVecHandle(test_array)
         # Currently not testing this, there is a problem with max recursion
         # depth
@@ -267,7 +267,7 @@ class TestVectorSpace(unittest.TestCase):
         num_modes_list = [1, 5, 22]
         num_vecs = 30
         index_from = 1
-        my_vec_ops = VectorSpace(inner_product=N.vdot, verbose=False)
+        my_vec_ops = VectorSpace(inner_product=N.vdot, verbosity=False)
         for num_modes in num_modes_list:
             # Generate data on all procs
             vec_array, mode_nums, build_coeff_mat, true_modes = \

@@ -19,9 +19,7 @@ class BPOD(object):
 
         max_vecs_per_node: max number of vectors in memory per node.
 
-        verbose: print more information about progress and warnings
-
-        print_interval: max of how frequently progress is printed, in seconds.
+        verbosity: 0 prints almost nothing, 1 prints progress and warnings
    
     Computes direct and adjoint modes from direct and adjoint vecs.
     It uses :py:class:`vectorspace.VectorSpace` for low level functions.
@@ -37,15 +35,15 @@ class BPOD(object):
     """
     def __init__(self, inner_product, 
         put_mat=util.save_array_text, get_mat=util.load_array_text,
-        max_vecs_per_node=None, verbose=True):
+        max_vecs_per_node=None, verbosity=1):
         """Constructor """
         # Class that contains all of the low-level vec operations
         # and parallelizes them.
         self.vec_space = VectorSpace(inner_product=inner_product, 
-            max_vecs_per_node=max_vecs_per_node, verbose=verbose)
+            max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
         self.get_mat = get_mat
         self.put_mat = put_mat
-        self.verbose = verbose
+        self.verbosity = verbosity
         self.L_sing_vecs = None
         self.R_sing_vecs = None
         self.sing_vals = None
@@ -339,3 +337,4 @@ class BPOD(object):
         build_coeff_mat = self._compute_adjoint_build_coeff_mat()
         self.vec_space.compute_modes(mode_nums, mode_handles, 
             self.adjoint_vec_handles, build_coeff_mat, index_from=index_from)
+    

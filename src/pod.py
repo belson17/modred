@@ -17,12 +17,10 @@ class POD(object):
       	
       	get_mat: Function to get a matrix into modred
       	
-        verbose: print more information about progress and warnings
+        verbosity: 0 prints almost nothing, 1 prints progress and warnings
         
         max_vecs_per_node: max number of vectors in memory per node.
         
-        print_interval: max of how frequently progress is printed, in seconds.
-
     Computes orthonormal POD modes from vecs.  
     It uses :py:class:`vectorspace.VectorSpace` for low level functions.
 
@@ -36,15 +34,14 @@ class POD(object):
     """
     def __init__(self, inner_product, 
         get_mat=util.load_array_text, put_mat=util.save_array_text, 
-        max_vecs_per_node=None, verbose=True, 
-        print_interval=10):
+        max_vecs_per_node=None, verbosity=0):
         """Constructor """
         self.vec_space = VectorSpace(inner_product=inner_product, 
             max_vecs_per_node=max_vecs_per_node, 
-            verbose=verbose, print_interval=print_interval)
+            verbosity=verbosity)
         self.get_mat = get_mat
         self.put_mat = put_mat
-        self.verbose = verbose
+        self.verbosity = verbosity
         self.sing_vecs = None
         self.sing_vals = None
         self.correlation_mat = None

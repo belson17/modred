@@ -36,7 +36,7 @@ class TestBPODROM(unittest.TestCase):
         self.B_vec_path = join(self.test_dir, 'B_vec_%03d.txt')
         self.C_vec_path = join(self.test_dir, 'C_vec_%03d.txt')
         
-        self.myBPODROM = BPR.BPODROM(N.vdot, verbose=False)
+        self.myBPODROM = BPR.BPODROM(N.vdot, verbosity=0)
             
         self.num_direct_modes = 10
         self.num_adjoint_modes = 8

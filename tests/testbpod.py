@@ -33,7 +33,7 @@ class TestBPOD(unittest.TestCase):
         self.num_states = 100
         self.index_from = 2
         
-        self.my_BPOD = BPOD(N.vdot, verbose=False)
+        self.my_BPOD = BPOD(N.vdot, verbosity=0)
         self.generate_data_set()
         parallel.barrier()
 
@@ -103,37 +103,37 @@ class TestBPOD(unittest.TestCase):
         
         data_members_default = {'put_mat': util.save_array_text, 'get_mat':
              util.load_array_text,
-            'verbose': False, 'L_sing_vecs': None, 'R_sing_vecs': None,
+            'verbosity': 0, 'L_sing_vecs': None, 'R_sing_vecs': None,
             'sing_vals': None, 'direct_vec_handles': None,
             'adjoint_vec_handles': None, 
             'direct_vecs': None, 'adjoint_vecs': None, 'hankel_mat': None,
-            'vec_space': VectorSpace(inner_product=my_IP, verbose=False)}
+            'vec_space': VectorSpace(inner_product=my_IP, verbosity=False)}
         
         # Get default data member values
-        # Set verbose to false, to avoid printing warnings during tests
+        # Set verbosity to false, to avoid printing warnings during tests
         self.maxDiff = None
-        self.assertEqual(util.get_data_members(BPOD(my_IP, verbose=False)),
+        self.assertEqual(util.get_data_members(BPOD(my_IP, verbosity=False)),
             data_members_default)
         
         
-        my_BPOD = BPOD(my_IP, verbose=False)
+        my_BPOD = BPOD(my_IP, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_space'] = VectorSpace(inner_product=my_IP,
-            verbose=False)
+            verbosity=False)
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
        
-        my_BPOD = BPOD(my_IP, get_mat=my_load, verbose=False)
+        my_BPOD = BPOD(my_IP, get_mat=my_load, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['get_mat'] = my_load
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
  
-        my_BPOD = BPOD(my_IP, put_mat=my_save, verbose=False)
+        my_BPOD = BPOD(my_IP, put_mat=my_save, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['put_mat'] = my_save
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
         
         max_vecs_per_node = 500
-        my_BPOD = BPOD(my_IP, max_vecs_per_node=max_vecs_per_node, verbose=False)
+        my_BPOD = BPOD(my_IP, max_vecs_per_node=max_vecs_per_node, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_space'].max_vecs_per_node =\
             max_vecs_per_node
@@ -232,7 +232,7 @@ class TestBPOD(unittest.TestCase):
         self.my_BPOD.compute_adjoint_modes(self.mode_nums, adjoint_mode_handles,
             index_from=self.index_from, adjoint_vec_handles=self.adjoint_vec_handles)
         
-        my_BPOD_in_memory = BPOD(inner_product=N.vdot, verbose=False)
+        my_BPOD_in_memory = BPOD(inner_product=N.vdot, verbosity=0)
 
         # start with the CORRECT decomposition.
         my_BPOD_in_memory.R_sing_vecs = self.R_sing_vecs_true

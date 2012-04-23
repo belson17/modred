@@ -87,7 +87,7 @@ class ERA(object):
             
         mo: number of Markov parameters for observable dimension of Hankel mat.
             
-        verbose: print non-essential warnings and statuses
+        verbosity: 0 prints almost nothing, 1 prints progress and warnings
 
     Simple usage::
       
@@ -120,13 +120,13 @@ class ERA(object):
     """
     
     def __init__(self, put_mat=util.save_array_text, mc=None, mo=None,
-        verbose=True):
+        verbosity=1):
         """Constructor """
         self.put_mat = put_mat
         self.mc = mc
         self.mo = mo
         self.outputs = None
-        self.verbose = verbose
+        self.verbosity = verbosity
         self.A = None
         self.B = None
         self.C = None
@@ -193,7 +193,7 @@ class ERA(object):
         
         self.C = Ur[:self.num_Markovs,:] * N.mat(N.diag(Er**.5))
         
-        if (N.abs(N.linalg.eigvals(self.A)) >= 1.).any() and self.verbose:
+        if (N.abs(N.linalg.eigvals(self.A)) >= 1.).any() and self.verbosity:
             print 'Warning: Unstable eigenvalues of reduced A matrix'
             print 'eig vals are',N.linalg.eigvals(self.A)
         return self.A, self.B, self.C
@@ -204,7 +204,7 @@ class ERA(object):
         self.put_mat(self.A, A_dest)
         self.put_mat(self.B, B_dest)
         self.put_mat(self.C, C_dest)
-        if self.verbose:
+        if self.verbosity:
             print 'Put ROM matrices to:'
             print A_dest
             print B_dest

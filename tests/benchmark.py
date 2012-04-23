@@ -15,6 +15,8 @@ Then in python, do this to view the results::
   import pstats
   pstats.Stats(<path_to_output_file>).strip_dirs().sort_stats('cumulative').\
       print_stats(<number_significant_lines_to_print>)
+
+Also see load_prof_parallel.py
       
 benchmark.py is to be used after installing modred.
 """
@@ -28,8 +30,7 @@ import cProfile
 
 import modred as MR
 
-parallel = MR.parallel.parallel_default_instance
-my_vec_defs = MR.vecdefs.ArrayPickleUniform()
+parallel = MR.parallel_default_instance
 
 import argparse
 parser = argparse.ArgumentParser(description='Get directory in which to ' +\
@@ -79,7 +80,7 @@ def generate_vecs(num_states, num_vecs, vec_dir, vec_name):
 
 
 def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node, 
-    verbose=True):
+    verbosity=1):
     """
     Computes inner products from known vecs.
     
@@ -90,18 +91,18 @@ def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node,
     generate_vecs(num_states, num_cols, data_dir, col_vec_name)
     
     row_vec_paths = [join(data_dir, row_vec_name%row_num) for row_num in range(num_rows)]   
-    my_VO = MR.VectorSpace(my_vec_defs, max_vecs_per_node=max_vecs_per_node,
-        verbose=verbose) 
+    my_VS = MR.VectorSpace(my_vec_defs, max_vecs_per_node=max_vecs_per_node,
+        verbosity=verbosity) 
     
     start_time = T.time()
-    inner_product_mat = my_VO.compute_inner_product_mat(col_vec_paths, 
+    inner_product_mat = my_VS.compute_inner_product_mat(col_vec_paths, 
         row_vec_paths)
     total_time = T.time() - start_time
     return total_time
     
     
 def symmetric_inner_product_mat(num_states, num_vecs, max_vecs_per_node, 
-    verbose=True):
+    verbosity=1):
     """
     Computes symmetric inner product matrix from known vecs (as in POD).
     """    
@@ -109,17 +110,17 @@ def symmetric_inner_product_mat(num_states, num_vecs, max_vecs_per_node,
     vec_paths = [join(data_dir, vec_name % vec_num) for vec_num in range(
         num_vecs)]
     
-    my_VO = MR.VectorSpace(my_vec_defs, max_vecs_per_node=max_vecs_per_node,
-        verbose=verbose) 
+    my_VS = MR.VectorSpace(my_vec_defs, max_vecs_per_node=max_vecs_per_node,
+        verbosity=verbosity) 
     
     start_time = T.time()
-    inner_product_mat = my_VO.compute_symmetric_inner_product_mat(vec_paths)
+    inner_product_mat = my_VS.compute_symmetric_inner_product_mat(vec_paths)
     total_time = T.time() - start_time
     return total_time
 
 
 def lin_combine(num_states, num_bases, num_products, max_vecs_per_node,
-    verbose=True):
+    verbosity=1):
     """
     Computes linear combination of vecs from saved vecs and random coeffs
     
@@ -127,8 +128,8 @@ def lin_combine(num_states, num_bases, num_products, max_vecs_per_node,
     num_products is the resulting number of vecs
     """
 
-    my_VO = MR.VectorSpace(my_vec_defs, max_vecs_per_node=max_vecs_per_node,
-        verbose=verbose)
+    my_VS = MR.VectorSpace(my_vec_defs, max_vecs_per_node=max_vecs_per_node,
+        verbosity=verbosity)
     coeff_mat = N.random.random((num_bases, num_products))
     
     basis_paths = [join(data_dir, basis_name%basis_num) for basis_num in range(num_bases)]
@@ -136,7 +137,7 @@ def lin_combine(num_states, num_bases, num_products, max_vecs_per_node,
         (num_products)]
     
     start_time = T.time()
-    my_VO.lin_combine(product_paths, basis_paths, coeff_mat)
+    my_VS.lin_combine(product_paths, basis_paths, coeff_mat)
     total_time = T.time() - start_time
     return total_time
     

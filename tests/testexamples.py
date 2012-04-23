@@ -46,17 +46,17 @@ class TestExamples(unittest.TestCase):
         num_sums = 5
         max_vecs_per_node = 4
         time = B.lin_combine(num_states, num_bases, num_sums, 
-            max_vecs_per_node, verbose=False)
+            max_vecs_per_node, verbosity=0)
         self.assertEqual(type(time), float)
         
         num_rows = 10
         num_cols = 12
         time = B.inner_product_mat(num_states, num_rows, num_cols, 
-            max_vecs_per_node, verbose=False)
+            max_vecs_per_node, verbosity=0)
         self.assertEqual(type(time), float)
         
         time = B.symmetric_inner_product_mat(num_states, num_rows, 
-            max_vecs_per_node, verbose=False)
+            max_vecs_per_node, verbosity=0)
         self.assertEqual(type(time), float)
         
         

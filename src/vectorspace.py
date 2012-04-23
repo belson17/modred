@@ -22,7 +22,7 @@ class VectorSpace(object):
         max_vecs_per_node: max number of vecs that can be in memory
         simultaneously per node.
         
-        verbose: print non-essential statuses and warnings, boolean.
+        verbosity: print non-essential statuses and warnings, boolean.
         
         print_interval: max of how frequently progress is printed, in seconds.
 
@@ -38,10 +38,10 @@ class VectorSpace(object):
     supplied, and sometimes loading from file is slower with more processors.
     """
     def __init__(self, inner_product=None, 
-        max_vecs_per_node=None, verbose=True, print_interval=10):
+        max_vecs_per_node=None, verbosity=1, print_interval=10):
         """Constructor. """
         self.inner_product = inner_product
-        self.verbose = verbose 
+        self.verbosity = verbosity 
         self.print_interval = print_interval
         self.prev_print_time = 0.
         
@@ -71,8 +71,8 @@ class VectorSpace(object):
         
     
     def print_msg(self, msg, output_channel=sys.stdout):
-        """Print a message from rank 0 if verbose"""
-        if self.verbose and parallel.is_rank_zero():
+        """Print a message from rank 0 if verbosity"""
+        if self.verbosity>0 and parallel.is_rank_zero():
             print >> output_channel, msg
 
     def sanity_check_in_memory(self, test_vec):
@@ -341,7 +341,7 @@ class VectorSpace(object):
             # Completed a chunk of rows and all columns on all processors.
             del row_vecs
             if ((T.time() - self.prev_print_time > self.print_interval) and 
-                self.verbose and parallel.is_rank_zero()):
+                self.verbosity>0 and parallel.is_rank_zero()):
                 num_completed_IPs = end_row_index * num_cols
                 percent_completed_IPs = 100. * num_completed_IPs/(
                     num_cols*num_rows)
@@ -418,7 +418,7 @@ class VectorSpace(object):
 
         # <num_row_chunks> is the number of sets that must be computed.
         num_row_chunks = int(N.ceil(num_vecs * 1. / num_rows_per_chunk)) 
-        if parallel.is_rank_zero() and num_row_chunks > 1 and self.verbose:
+        if parallel.is_rank_zero() and num_row_chunks > 1 and self.verbosity>0:
             print ('Warning: The column vecs will be read ~%d times each. ' +\
                 'Increase number of nodes or max_vecs_per_node to reduce ' +\
                 'redundant "get_vecs"s and get a big speedup.') % num_row_chunks
@@ -964,7 +964,7 @@ class VectorSpace(object):
     def __eq__(self, other):
         """Equal?"""
         return (self.inner_product == other.inner_product and 
-            self.verbose == other.verbose)
+            self.verbosity == other.verbosity)
         
     def __ne__(self, other):
         """Not equal?"""

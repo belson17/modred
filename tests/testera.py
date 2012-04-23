@@ -96,7 +96,7 @@ class testERA(unittest.TestCase):
                     A,B,C = util.drss(num_states, num_inputs, num_outputs)
                     time_steps = make_time_steps(num_time_steps, sample_interval)
                     time_steps, Markovs = util.impulse(A, B, C, time_steps=time_steps)
-                    myERA = era.ERA(verbose=False)
+                    myERA = era.ERA(verbosity=0)
                     myERA._set_Markovs(Markovs)
                     myERA._assemble_Hankel()
                     H = myERA.Hankel_mat
@@ -146,7 +146,7 @@ class testERA(unittest.TestCase):
         for num_inputs in [3]:
             for num_outputs in [2]:
                 for sample_interval in [1,2,5]: 
-                    myERA = era.ERA(verbose=False)
+                    myERA = era.ERA(verbosity=0)
                     A,B,C = util.drss(num_states_plant, num_inputs, num_outputs)
                     time_steps = make_time_steps(num_time_steps, sample_interval)
                     time_steps, Markovs = util.impulse(A, B, C, time_steps=time_steps)

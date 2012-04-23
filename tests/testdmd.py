@@ -36,8 +36,8 @@ class TestDMD(unittest.TestCase):
         self.num_states = 12
         self.index_from = 2
 
-        self.my_DMD = DMD(N.vdot, verbose=False)
-        self.my_DMD_in_memory = DMD(N.vdot, verbose=False)
+        self.my_DMD = DMD(N.vdot, verbosity=0)
+        self.my_DMD_in_memory = DMD(N.vdot, verbosity=0)
         self.generate_data_set()
         parallel.barrier()
         
@@ -99,7 +99,7 @@ class TestDMD(unittest.TestCase):
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
-        # Set verbose to false, to avoid printing warnings during tests
+        # Set verbosity to false, to avoid printing warnings during tests
         
         def my_load(fname): pass
         def my_save(data, fname): pass
@@ -107,35 +107,35 @@ class TestDMD(unittest.TestCase):
         
         data_members_default = {'put_mat': util.save_array_text, 'get_mat':
              util.load_array_text,
-            'verbose': False, 'ritz_vals': None, 'build_coeffs': None,
+            'verbosity': 0, 'ritz_vals': None, 'build_coeffs': None,
             'mode_norms': None, 'vec_handles': None, 'vecs': None, 
             'POD': None,
-            'vec_space': VectorSpace(my_IP, verbose=False)}
+            'vec_space': VectorSpace(my_IP, verbosity=False)}
         
         # Get default data member values
-        # Set verbose to false, to avoid printing warnings during tests
+        # Set verbosity to false, to avoid printing warnings during tests
         self.assertEqual(util.get_data_members(DMD(inner_product=my_IP, 
-            verbose=False)), data_members_default)
+            verbosity=0)), data_members_default)
         
         
-        my_DMD = DMD(my_IP, verbose=False)
+        my_DMD = DMD(my_IP, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_space'] = VectorSpace(inner_product=my_IP, 
-            verbose=False)
+            verbosity=0)
         self.assertEqual(util.get_data_members(my_DMD), data_members_modified)
        
-        my_DMD = DMD(my_IP, get_mat=my_load, verbose=False)
+        my_DMD = DMD(my_IP, get_mat=my_load, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['get_mat'] = my_load
         self.assertEqual(util.get_data_members(my_DMD), data_members_modified)
  
-        my_DMD = DMD(my_IP, put_mat=my_save, verbose=False)
+        my_DMD = DMD(my_IP, put_mat=my_save, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['put_mat'] = my_save
         self.assertEqual(util.get_data_members(my_DMD), data_members_modified)
         
         max_vecs_per_node = 500
-        my_DMD = DMD(my_IP, max_vecs_per_node=max_vecs_per_node, verbose=False)
+        my_DMD = DMD(my_IP, max_vecs_per_node=max_vecs_per_node, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_space'].max_vecs_per_node =\
             max_vecs_per_node

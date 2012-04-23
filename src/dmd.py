@@ -20,10 +20,8 @@ class DMD(object):
                
         max_vecs_per_node: max number of vectors in memory per node.
 
-        verbose: Print more information about progress and warnings.
+        verbosity: 0 prints almost nothing, 1 prints progress and warnings
         
-        print_interval: max of how frequently progress is printed, in seconds.
-
         POD: POD object to use for computations.
         
     Computes Ritz vectors from vecs.
@@ -37,14 +35,14 @@ class DMD(object):
     """
     def __init__(self, inner_product, 
         get_mat=util.load_array_text, put_mat=util.save_array_text,
-        max_vecs_per_node=None, POD=None, verbose=True):
+        max_vecs_per_node=None, POD=None, verbosity=1):
         """Constructor"""
         self.vec_space = VectorSpace(inner_product=inner_product, 
-            max_vecs_per_node=max_vecs_per_node, verbose=verbose)
+            max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
         self.get_mat = get_mat
         self.put_mat = put_mat
         self.POD = POD
-        self.verbose = verbose
+        self.verbosity = verbosity
         self.ritz_vals = None
         self.build_coeffs = None
         self.mode_norms = None
@@ -140,7 +138,7 @@ class DMD(object):
         if self.POD is None:
             self.POD = pod.POD(inner_product=self.vec_space.inner_product, 
                 max_vecs_per_node=self.vec_space.max_vecs_per_node, 
-                verbose=self.verbose)
+                verbosity=self.verbosity)
             # Don't use the returned mats, get them later from POD instance.
             dum, dum = self.POD.compute_decomp(
                 vec_handles=self.vec_handles[:-1])

@@ -73,7 +73,7 @@ class BPODROM(object):
         
         put_mat: Function to put a matrix elsewhere (memory or file).
         
-        verbose: print more information about progress and warnings
+        verbosity: 0 prints almost nothing, 1 prints progress and warnings
         
         max_vecs_per_node: max number of vectors in memory per node.
     
@@ -100,15 +100,15 @@ class BPODROM(object):
     """
 
     def __init__(self, inner_product, put_mat=util.save_array_text,
-        verbose=True, max_vecs_per_node=10000):
+        verbosity=1, max_vecs_per_node=10000):
         """Constructor"""
         self.inner_product = inner_product
         self.put_mat = put_mat
         self.vec_space = VectorSpace(inner_product=inner_product,
-            max_vecs_per_node=max_vecs_per_node, verbose=verbose)
+            max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
         parallel = parallel_mod.parallel_default_instance
         self.num_modes = None
-        self.verbose = verbose
+        self.verbosity = verbosity
         self.A = None
         self.B = None
         self.C = None
