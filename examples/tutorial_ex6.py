@@ -4,13 +4,13 @@ from custom_vector import CustomVector, CustomVecHandle, inner_product
 
 parallel = MR.parallel.default_instance
 
-# define snapshots to use
-direct_snapshots = [CustomVecHandle('direct_snap%d.pkl'%i,
-    scale=N.pi) for i in range(10)]
-adjoint_snapshots = [CustomVecHandle('adjoint_snap%d.pkl'%i,
-    scale=N.pi) for i in range(10)]
+# Define snapshots to use
+direct_snapshots = [CustomVecHandle('direct_snap%d.pkl' % i, scale=N.pi)
+                    for i in range(10)]
+adjoint_snapshots = [CustomVecHandle('adjoint_snap%d.pkl' % i, scale=N.pi)
+                     for i in range(10)]
     
-# generate fake random data (for example purposes only)
+# Generate fake random data (for example purposes only)
 nx = 50
 ny = 30
 nz = 20
@@ -23,7 +23,7 @@ if parallel.is_rank_zero():
                               N.random.random((nx, ny, nz))))
 parallel.barrier()
 
-# compute balanced POD
+# Compute balanced POD
 bpod = MR.BPOD(inner_product=inner_product)
 bpod.sanity_check(direct_snapshots[0])
 L_sing_vecs, sing_vals, R_sing_vecs = \

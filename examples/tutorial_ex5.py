@@ -7,6 +7,7 @@ num_vecs = 100
 # Sample times, used for quadrature weights in POD
 quad_weights = N.logspace(1., 3., num=num_vecs)
 
+# Define the snapshots to be used
 snapshots = [MR.PickleVecHandle('vec%d.pkl' % i, scale=quad_weights[i])
              for i in range(num_vecs)]
 
@@ -18,6 +19,7 @@ if parallel.is_rank_zero():
         snap.put(N.random.random(num_elements))
 parallel.barrier()
 
+# Compute POD modes
 pod = MR.POD(inner_product=N.vdot)
 pod.compute_decomp(snapshots)
 pod.put_decomp('sing_vecs.txt', 'sing_vals.txt')
