@@ -1,0 +1,5 @@
+include README
+include todo.txt
+include LICENSE.txt
+recursive-include matlab *.m
+recursive-include doc *.rst *.py
