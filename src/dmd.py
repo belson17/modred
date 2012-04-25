@@ -148,8 +148,8 @@ class DMD(object):
                 'objects.')
         pod_sing_vecs = self.POD.sing_vecs
         pod_sing_vals = self.POD.sing_vals
-        _pod_sing_vals_sqrt_mat = N.mat(
-            N.diag(N.array(pod_sing_vals).squeeze() ** -0.5))
+        _pod_sing_vals_sqrt_mat = N.mat(N.diag(pod_sing_vals** -0.5))
+
 
         # Inner product of vecs w/POD modes
         num_vecs = len(self.vec_handles)
@@ -171,7 +171,9 @@ class DMD(object):
             pod_sing_vecs.H * self.POD.correlation_mat[:,0]
         ritz_vec_scaling = N.linalg.inv(low_order_eig_vecs.H * low_order_eig_vecs) *\
             ritz_vecs_star_times_init_vec
-        ritz_vec_scaling = N.mat(N.diag(N.array(ritz_vec_scaling).squeeze()))
+        
+        ritz_vec_scaling = N.mat(N.diag(N.array(N.array(
+            ritz_vec_scaling).squeeze(),ndmin=1)))
 
         # Compute mode energies
         self.build_coeffs = pod_sing_vecs * _pod_sing_vals_sqrt_mat *\

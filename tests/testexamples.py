@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
-import os
+import os, sys
 from os.path import join
 from shutil import rmtree
 import helper
@@ -10,34 +10,72 @@ helper.add_to_path('src')
 import parallel as parallel_mod
 parallel = parallel_mod.parallel_default_instance
 
+# Directory we start from, absolute path.
+running_dir = os.getcwd()
+# Directory of this test file, abs path.
+this_file_dir = os.path.dirname(os.path.abspath(__file__))
+# Directory containing example files, abs path.
+examples_dir = join(join(this_file_dir, '..'), 'examples')
+
+"""
+# Redefine stdout and stderr to suppress output from the examples in the tests.
+class NoPrintingStream(object):
+    def write(self,data): pass
+    #def read(self,data): pass
+    def flush(self): pass
+    def close(self): pass
+
+old_printers = [sys.stdout,sys.stderr,sys.stdin,sys.__stdout__,
+    sys.__stderr__,sys.__stdin__][:]
+    
+def printing(on):
+    #Takes True or False
+    if not on:
+        sys.stdout = NoPrintingStream()
+        sys.stderr = NoPrintingStream()
+        #sys.stdin = NoPrintingStream()
+        sys.__stdout__ = NoPrintingStream()
+        sys.__stderr__ = NoPrintingStream()
+        #sys.__stdin__ = NoPrintingStream()
+        
+    else:
+        (sys.stdout,sys.stderr,sys.stdin,sys.__stdout__,sys.__stderr__, \
+        sys.__stdin__) = old_printers
+"""     
+
 class TestExamples(unittest.TestCase):
     def setUp(self):
-        cwd = os.path.dirname(__file__)
-        self.test_dir = 'DELETE_ME_test_tutorial_examples'
+        parallel.barrier()
+        self.test_dir = join(running_dir, 'DELETE_ME_test_tutorial_examples')
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():        
             os.mkdir(self.test_dir)
         parallel.barrier()
+        
         os.chdir(self.test_dir)
-        self.examples_dir = join(join('..', '..'), 'examples')
-    
+        
     def tearDown(self):
-        os.chdir('..')
+        os.chdir(running_dir)
         parallel.barrier()
         if parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
         parallel.barrier()
  
+    @unittest.skip('Test with Makefile in examples directory instead')
     def test_tutorial_examples(self):
         """Runs all tutorial examples. If run without errors, passes test"""
+        import subprocess as SP
         example_script = 'tutorial_ex%d.py'
         for example_num in range(1, 7):
             # Example 3 isn't meant to work in parallel
             if not (parallel.is_distributed() and example_num != 3):
-                execfile(join(self.examples_dir, example_script%example_num))
-            
-        
+                printing(False)
+                parallel.barrier()
+                execfile(join(examples_dir, example_script%example_num))
+                parallel.barrier()
+                printing(True)
+                
     @unittest.skip('Unnecessary test for user')
     def test_benchmark(self):
         import benchmark as B
@@ -63,4 +101,4 @@ class TestExamples(unittest.TestCase):
         
 
 if __name__ == '__main__':
-    unittest.main(buffer=True)
+    unittest.main()

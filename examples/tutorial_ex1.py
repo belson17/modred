@@ -2,7 +2,6 @@ import numpy as N
 import modred as MR
 
 num_vecs = 30
-    
 # We use arbitrary fake data as a placeholder
 x = N.linspace(0, N.pi, 100)
 vecs = [N.sin(x*0.1*i) for i in range(num_vecs)]

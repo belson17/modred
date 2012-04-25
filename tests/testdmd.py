@@ -32,7 +32,7 @@ class TestDMD(unittest.TestCase):
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
             os.mkdir(self.test_dir)
         
-        self.num_vecs = 6 
+        self.num_vecs = 6
         self.num_states = 12
         self.index_from = 2
 
