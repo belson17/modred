@@ -16,6 +16,13 @@ To install::
 
   [sudo] python setup.py install
 
+If you get permissions errors, you may need to change the permissions of the
+modred directory. On Posix, the bash command::
+ 
+  chmod 777 modred-*.* 
+
+solves the problem.
+
 To run the unit tests and be sure it's working, run the following from
 a directory to which you have read and write permissions::
 
@@ -25,12 +32,11 @@ To test the parallel components (requires mpi4py), do::
   
   mpiexec -n 3 python -c 'import modred.tests; modred.tests.run()'
 
-Please report test failures to bbelson@princeton.edu with the following 
-information:
+Please report test failures or installation problems to bbelson@princeton.edu 
+with the following information:
 
-1. Copy of the entire output of the tests
+1. Copy of the entire output of the installation/tests
 2. Python version (use: python -V)
 3. Numpy version (use: python -c 'import numpy; print numpy.__version__')
 4. Your operating system
-
 
