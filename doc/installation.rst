@@ -24,14 +24,12 @@ modred directory. On Posix, the bash command::
 solves the problem.
 
 To run the unit tests and be sure it's working, run the following from
-a directory to which you have read and write permissions::
+a directory to which you have read and write permissions. The
+parallel tests require mpi4py to be installed::
 
   python -c 'import modred.tests; modred.tests.run()'
-
-To test the parallel components (requires mpi4py), do::
-  
   mpiexec -n 3 python -c 'import modred.tests; modred.tests.run()'
-
+  
 Please report test failures or installation problems to bbelson@princeton.edu 
 with the following information:
 
@@ -39,4 +37,14 @@ with the following information:
 2. Python version (use: python -V)
 3. Numpy version (use: python -c 'import numpy; print numpy.__version__')
 4. Your operating system
+
+
+The documentation is available at: http://packages.python.org/modred
+
+You can also build it yourself with Sphinx.
+
+-  Get Sphinx via ``easy_install sphinx`` or from http://sphinx.pocoo.org/    
+ 
+-  From the modred directory, run ``sphinx-build doc doc/_build``. Then
+   open doc/_build/index.html in a browser to view the HTML documentation
 
