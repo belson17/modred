@@ -7,8 +7,12 @@ Installation
 To install:
 >> [sudo] python setup.py install
 
-To run the unit tests and be sure it's working, run the following from
-a directory to which you have read/write access:
+You may need to change the permissions on the modred folder, on Posix systems,
+use the bash command:
+>> chmod 777 modred-*.*
+
+To be sure it's working, run the unit tests from a directory to which you 
+have read/write access:
 >> python -c 'import modred.tests; modred.tests.run()'
 
 To test the parallel components (requires mpi4py), do:
