@@ -1,7 +1,13 @@
-all_examples := $(wildcard tutorial_ex*.py)
+#all_examples := $(wildcard tutorial_ex*.py)
 
-check: $(all_examples)
-	for f in $^; do echo $$f; python $$f; done
+all: test clean test_parallel
+
+test: 
+	python runall.py
+
+test_parallel: $(all_examples)
+	mpiexec -n 3 python runall.py
+
 
 clean:
 	-rm -f adjoint_mode*
@@ -15,4 +21,4 @@ clean:
 	-rm -f mode*.txt
 	-rm -f {adjoint,direct}_snap*.pkl
 
-.PHONY: check clean
+.PHONY: test test_parallel clean

@@ -27,11 +27,14 @@ information:
 Sphinx Documentation
 --------------------
 
+The sphinx-generated HTML documentation is available at
+http://packages.python.org/modred
+
+You can also build it yourself.
+This is usually quite simple.
 The code is primarily documented with reStructuredText docstrings which
 Sphinx reads and makes pretty.
 
-To see the documentation, currently you must build it yourself.
-This is usually quite simple.
 
 -  Get Sphinx 
     Easier way:
@@ -44,14 +47,4 @@ This is usually quite simple.
 -  Build the documentation. From the modred directory, run 
    >> sphinx-build doc doc/_build
    Open doc/_build/index.html in a browser to view the HTML documentation
-
-
-
-(Old) Users Guide
-------------------
-
-There is currently a user's guide in the doc directory. 
-You can take a look at it for some more discussion.
-However, it is out of date, may contain errors, and will eventually be
-replaced by a SIAM JSC publication (in preparation).
 
