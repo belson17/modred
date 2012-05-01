@@ -14,8 +14,8 @@ def lin():
     cases = []
     
     s = Scaling()
-    s.total = 2711.155
-    s.loads = 2616.031
+    s.total = 69840.919
+    s.loads = 68547.300
     s.addmult = 0.
     s.sends = 0
     s.recvs = 0.
@@ -24,12 +24,12 @@ def lin():
     cases.append(s)
        
     s = Scaling()
-    s.total = 492.035
-    s.loads = 249.827
+    s.total = 71956.340
+    s.loads = 54121.326
     s.addmult = 0
-    s.sends = 14.359
-    s.recvs = 134.804
-    s.barriers = 57.284
+    s.sends = 1868.101
+    s.recvs = 8130.131
+    s.barriers = 2711.582
     s.workers = 6
     cases.append(s)
     
@@ -175,8 +175,9 @@ def lin():
     PLT.plot(workers, [cases[0].total/c.total for c in cases],'ro-')
     PLT.xlabel('Workers')
     PLT.ylabel('Speedup')
-    PLT.legend(['Linear','Measured'])
-    #PLT.savefig('lin_combine_speedup_n1.eps')
+    PLT.grid(True)
+    PLT.legend(['Linear','Measured'], loc='upper left')
+    PLT.savefig('lin_combine_speedup.eps')
     
     # Table of time spent in each operation for diff num of workers
     print 'Workers |   Total Wall   |        Loads       |' +\
