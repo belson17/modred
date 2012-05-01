@@ -160,14 +160,14 @@ def main():
                 num_states, num_bases, num_products, max_vecs_per_node)
     elif method_to_test == 'inner_product_mat':
         # inner_product_mat test
-        num_rows = 3000
-        num_cols = 3000
+        num_rows = 12000
+        num_cols = 12000
         time_elapsed = inner_product_mat(num_states, num_rows, num_cols, 
             max_vecs_per_node)
 
     elif method_to_test == 'symmetric_inner_product_mat':
         # symmetric_inner_product_mat test
-        num_vecs = 1000
+        num_vecs = 12000
         time_elapsed = symmetric_inner_product_mat(
                 num_states, num_vecs, max_vecs_per_node)
     else:
