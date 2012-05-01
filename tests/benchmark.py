@@ -148,7 +148,7 @@ def main():
     method_to_test = args.function
     
     # Common parameters
-    max_vecs_per_node = 5
+    max_vecs_per_node = 60
     num_states = 900
     
     # Run test of choice
@@ -160,8 +160,8 @@ def main():
                 num_states, num_bases, num_products, max_vecs_per_node)
     elif method_to_test == 'inner_product_mat':
         # inner_product_mat test
-        num_rows = 1000
-        num_cols = 1000
+        num_rows = 3000
+        num_cols = 3000
         time_elapsed = inner_product_mat(num_states, num_rows, num_cols, 
             max_vecs_per_node)
 
