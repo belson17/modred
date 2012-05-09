@@ -336,7 +336,7 @@ class VectorSpace(object):
                                     row_vecs[row_index - start_row_index],
                                     col_vec)
                     
-                # Clear the retrieved column vecs after done this chunk
+                # Clear the retrieved column vecs after done this pass cycle
                 del col_vecs
             # Completed a chunk of rows and all columns on all processors.
             del row_vecs

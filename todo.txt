@@ -4,10 +4,13 @@
 
 #### Important ####
 
-
-If POD's sing_vals is a 1-element 1d array, then after squeezing it is not an array,
-just a float, which breaks other parts of the code. This should be fixed to make it
-a 1d array always and can be done with numpy 1.7's squeeze function.
+Fix the allreduce of the IP matrix in VectorSpace, for large matrices this
+causes and out of memory on some computers. The allreduce should get each
+matrix one by one, not all at once, so that there are only ever two IP matrices
+at once. If this is not possible with allreduce, could implement it with send/recvs.
+Another option is to have each worker only have the portion of IPmat it is
+computing, but this is harder to implement. I saw 12000x12000 IPmat w/24 procs
+cause an out of memory error on the allreduce step.
 
 add an option for svd thresholding in DMD.  when the svd singular values are
 ill-conditioned, then the resulting computation results can be invalid.  for
