@@ -58,7 +58,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'modred'
-copyright = u'2012, Brandt Belson and Jonathan Tu'
+copyright = u'2012, Brandt Belson, Jonathan Tu, and Clarence W. Rowley'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -202,7 +202,7 @@ latex_elements = {
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   ('index', 'modred.tex', u'modred Documentation',
-   u'Brandt Belson and Jonathan Tu', 'manual'),
+   u'Brandt Belson, Jonathan Tu, and Clarence W. Rowley', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -232,7 +232,7 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'modred', u'modred Documentation',
-     [u'Brandt Belson and Jonathan Tu'], 1)
+     [u'Brandt Belson, Jonathan Tu, and Clarence W. Rowley'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -246,7 +246,8 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   ('index', 'modred', u'modred Documentation',
-   u'Brandt Belson and Jonathan Tu', 'modred', 'One line description of project.',
+   u'Brandt Belson, Jonathan Tu, and Clarence W. Rowley', 'modred',
+   'One line description of project.',
    'Miscellaneous'),
 ]
 
