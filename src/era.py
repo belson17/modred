@@ -64,7 +64,7 @@ def compute_ERA_model(Markovs, num_states):
      
       # Obtain Markov parameters, array "Markovs" with dims [time, output, input]
       num_states = 20
-      A, B, C = compute_ROM(Markovs, num_states)
+      A, B, C = compute_ERA_model(Markovs, num_states)
         
     Markov params are defined as [CB, CAB, CA**PB, CA**(P+1)B, ...]
     

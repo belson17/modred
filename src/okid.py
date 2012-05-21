@@ -16,7 +16,8 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
         cutoff: condition number used for the pseudo-inverse.
     
     Returns:
-        Markovs_est: array of estim. Markov params, indices [time, input, output].
+        Markovs_est: array of estim. Markov params, indices [time, output, input].
+        Thus, Markovs_est[ti] is the Markov param at time index ti.
     
     OKID can be sensitive to the choice of parameters. A few tips:
 
@@ -28,8 +29,7 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
     - Typically use at most num_Markovs = 1/3 to 1/2 of the number of samples.
       Estimating too many Markov params can result in spurious oscillations. 
       If using the estimated Markov parameters for ERA, use
-      approximately 5x number of ROM states.
-      
+      approximately 5x number of ROM states.      
     - Data with more than one input tends to be more sensitive and harder to 
       work with. 
       
@@ -80,16 +80,16 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
                 Markov_num*num_inouts+num_inouts])
     
     # Estimate the Markov parameters of the system
-    Markov_est = N.empty((num_outputs, num_inputs, num_Markovs))
-    Markov_est[:,:,0] = D
+    Markov_est = N.empty((num_Markovs, num_outputs, num_inputs))
+    Markov_est[0] = D
     
     for Markov_num in range(1, num_Markovs):
         summation_term = N.zeros((num_outputs, num_inputs))
         for i in range(1, Markov_num+1):
             summation_term += N.dot(Markov_aug_output[i], 
-                Markov_est[:,:,Markov_num-i])
+                Markov_est[Markov_num-i,:,:])
             #print 'k=%d, i=%d'%(Markov_num,i)
-        Markov_est[:,:,Markov_num] = Markov_aug_input[Markov_num] - \
+        Markov_est[Markov_num] = Markov_aug_input[Markov_num] - \
             summation_term
    
     return Markov_est

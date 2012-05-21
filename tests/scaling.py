@@ -12,7 +12,7 @@ class Scaling(object):
 def lin():
     """Scaling of lin_combine on lonestar, max procs/node (12)"""
     cases = []
-    
+    """
     s = Scaling()
     s.total = 69840.919
     s.loads = 68547.300
@@ -32,7 +32,7 @@ def lin():
     s.barriers = 2711.582
     s.workers = 6
     cases.append(s)
-    
+    """
     s = Scaling()
     s.total = 65101.676
     s.loads = 37823.560
@@ -54,7 +54,7 @@ def lin():
     cases.append(s)
     
     s = Scaling()
-    s.total = 28519.787
+    s.total = 42727.516
     s.loads = 10257.985
     s.addmult = 0
     s.sends = 2856.050
@@ -168,11 +168,11 @@ def lin():
         s.barriers /= s.workers
     
     # Speedup plot
-    PLT.figure()
+    PLT.figure(figsize=(5.5,4))
     width = .4
     PLT.hold(True)
     #PLT.plot(workers, workers,'k-')
-    PLT.plot(workers, [cases[0].total/c.total for c in cases],'ro-')
+    PLT.plot(workers, [cases[0].total*cases[0].workers/c.total for c in cases],'ro-')
     PLT.xlabel('Workers')
     PLT.ylabel('Speedup')
     PLT.grid(True)
@@ -181,9 +181,9 @@ def lin():
     
     # Table of time spent in each operation for diff num of workers
     print 'Workers |   Total Wall   |        Loads       |' +\
-        '      sends-recvs     |   barriers'
+        '      Send-recvs     |   Barriers'
     for s in cases:
-        print '  %d    |  %f   | %f (%f) | %f (%f) | %f (%f)'%(
+        print '  %d    |  %.1f   | %.1f (%f) | %.1f (%f) | %.1f (%f)'%(
             s.workers, s.total, s.loads, s.loads/s.total, (s.sends+s.recvs), 
             (s.sends+s.recvs)/s.total, s.barriers, s.barriers/s.total)
     
@@ -221,22 +221,22 @@ def ips():
     profiling data for IP mats
     """
     cases = []
-    
+    """
     s = Scaling()
-    s.total = 0
-    s.loads = 0
-    s.ips = 0
-    s.sendrecvs = 4586.795 + 3946.941
-    s.barriers = 2382.156
+    s.total = 15194.852
+    s.loads = 12486.497
+    s.ips = 2687.022
+    s.sendrecvs = 0
+    s.barriers = 0
     s.workers = 1
     cases.append(s)
-    
+    """
     s = Scaling()
-    s.total = 45525.3
-    s.loads = 16184.630
-    s.ips = 16979.955
-    s.sendrecvs = 4734.127 + 3743.201
-    s.barriers = 3230.428
+    s.total = 46272.404
+    s.loads = 16311.796
+    s.ips = 17312.300
+    s.sendrecvs = 4993.506 + 3889.390
+    s.barriers = 3123.360
     s.workers = 12
     cases.append(s)
     
@@ -304,16 +304,6 @@ def ips():
     s.workers = 288
     cases.append(s)
     
-    """
-    s = Scaling()
-    s.total = 18.326
-    s.loads = 3.180
-    s.ips = 6.019
-    s.sendrecvs = 7.242+0.668
-    s.barriers = 2382.156
-    s.workers = 288
-    cases.append(s)
-    """
     
     workers = N.array([c.workers for c in cases])
     
@@ -327,11 +317,11 @@ def ips():
         s.barriers /= s.workers
     
     # Speedup plot
-    PLT.figure()
+    PLT.figure(figsize=(5,4))
     width = .4
     PLT.hold(True)
     #PLT.plot(workers, workers,'k-')
-    PLT.plot(workers, [cases[0].total/c.total for c in cases],'ro-')
+    PLT.plot(workers, [cases[0].total*cases[0].workers/c.total for c in cases],'ro-')
     PLT.xlabel('Workers')
     PLT.ylabel('Speedup')
     PLT.grid(True)
@@ -342,7 +332,7 @@ def ips():
     print 'Workers |   Total Wall   |        Loads       |' +\
         '     IPs     |      sends+recvs     |   barriers'
     for s in cases:
-        print '  %d    |  %.2f   | %.2f (%.2f) | %.2f (%.2f) | %.2f (%.2f) | %.2f (%.2f)'%(
+        print '  %d    |  %.1f   | %.1f (%.2f) | %.1f (%.2f) | %.1f (%.2f) | %.1f (%.2f)'%(
             s.workers, s.total, s.loads, s.loads/s.total, s.ips, s.ips/s.total, s.sendrecvs, 
             s.sendrecvs/s.total, s.barriers, s.barriers/s.total)
     
