@@ -923,7 +923,7 @@ class VectorSpace(object):
                 self.prev_print_time = T.time()
             
         # ensure that all workers leave function at same time
-        #parallel.barrier() 
+        parallel.barrier() 
         
     
     def lin_combine_in_memory(self, basis_vecs, vec_coeff_mat):

@@ -10,8 +10,10 @@ parallel = parallel_mod.parallel_default_instance
 class POD(object):
     """Proper Orthogonal Decomposition.
     
+    Args:
+        inner_product: Function to find inner product of two vector objects.
+    
     Kwargs:
-        inner_product: Fucntion to find inner product of two vector objects.
         
         put_mat: Function to put a matrix out of modred
       	
