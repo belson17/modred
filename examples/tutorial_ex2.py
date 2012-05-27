@@ -12,8 +12,8 @@ y_grid = N.linspace(0, 2., ny)**2
 Y, X = N.meshgrid(y_grid, x_grid)
 vecs = [N.sin(X*0.1*i) + N.cos(Y*0.15*i) for i in range(num_vecs)]
 
-weighted_ip = MR.InnerProductTrapz(x_grid, y_grid)
-pod = MR.POD(weighted_ip)
-sing_vecs, sing_vals = pod.compute_decomp_in_memory(vecs)
+weighted_IP = MR.InnerProductTrapz(x_grid, y_grid)
+my_POD = MR.POD(weighted_IP)
+sing_vecs, sing_vals = my_POD.compute_decomp_in_memory(vecs)
 num_modes = 10
-modes = pod.compute_modes_in_memory(range(num_modes))
+modes = my_POD.compute_modes_in_memory(range(num_modes))
