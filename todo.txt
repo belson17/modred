@@ -20,6 +20,8 @@ coefficients rather than the modes themselves).
 
 #### Less important ####
 
+Fix the util.make_list function.  It should be more flexible for iterable containers.  Right now, if a numpy array is passed in, it returns a single element list with the array as the element.  Instead, it should do something like list(my_array), which will return a list with as many elements as the array.
+
 Make the formatting at line breaks better, do not break at '.'s. Talk to Clancy
 about possible solutions to our many line breaks.
 Find a better, more natural, way to deal with line continuation/breaks. As it is,
