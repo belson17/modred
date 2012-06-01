@@ -20,6 +20,10 @@ class VecHandle(object):
         self.scale = scale
     
     def get(self):
+        """Get a vector, using the private ``_get`` function.  If available,
+        the base vector will be subtracted from the specified vector.  Then, if
+        a scale factor is specified, the base-subtracted vector will be scaled.
+        The scaled, base-subtracted vector is then returned."""
         vec = self._get()
         if self.__base_vec_handle is None:
             return self.__scale_vec(vec)
@@ -32,6 +36,8 @@ class VecHandle(object):
         return self.__scale_vec(vec - base_vec)
         
     def put(self, vec):
+        """Put a vector to file or memory, using the private ``_put`` function.
+        """ 
         return self._put(vec)
     def _get(self):
         raise NotImplementedError("must be implemented by subclasses")
