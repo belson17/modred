@@ -127,7 +127,7 @@ class DMD(object):
             vec_handles: list of handles for the vecs.
                     
         Returns:
-            vec_handles, ritz_vals, mode_norms, build_coeffs.
+            ritz_vals, mode_norms, build_coeffs.
         """
         if vec_handles is not None:
             self.vec_handles = util.make_list(vec_handles)
