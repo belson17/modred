@@ -337,9 +337,9 @@ class TestVectorSpace(unittest.TestCase):
         Test computation of matrix of inner products in memory-efficient
         chunks, both in parallel (compute_inner_product_mat).
         """ 
-        num_row_vecs_list =[1, int(round(self.total_num_vecs_in_mem / 2.)), self.\
-            total_num_vecs_in_mem, self.total_num_vecs_in_mem *2,
-            parallel.get_num_procs()+1]
+        num_row_vecs_list =[1, int(round(self.total_num_vecs_in_mem / 2.)), 
+            self.total_num_vecs_in_mem, self.total_num_vecs_in_mem * 2,
+            parallel.get_num_procs() + 1]
         num_col_vecs_list = num_row_vecs_list
         num_states = 6
 
