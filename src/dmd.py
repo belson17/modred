@@ -138,7 +138,7 @@ class DMD(object):
         if self.POD is None:
             self.POD = pod.POD(inner_product=self.vec_space.inner_product, 
                 max_vecs_per_node=self.vec_space.max_vecs_per_node, 
-                verbosity=self.verbosity)
+                put_mat=self.put_mat, verbosity=self.verbosity)
             # Don't use the returned mats, get them later from POD instance.
             dum, dum = self.POD.compute_decomp(
                 vec_handles=self.vec_handles[:-1])

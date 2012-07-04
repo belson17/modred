@@ -405,12 +405,14 @@ class VectorSpace(object):
  
         num_vecs = len(vec_handles)        
         
-        # num_cols_per_chunk is the number of cols each proc gets at once.  
-        # Columns are retrieved if the matrix must be broken up into sets of 
+        # num_cols_per_chunk is the number of cols each proc gets at once.
+        # Columns are retrieved if the matrix must be broken up into sets of
         # chunks.  Then symmetric upper triangular portions will be computed,
-        # followed by a rectangular piece that uses columns not already in memory.
+        # followed by a rectangular piece that uses columns not already in
+        # memory.
         num_cols_per_proc_chunk = 1
-        num_rows_per_proc_chunk = self.max_vecs_per_proc - num_cols_per_proc_chunk
+        num_rows_per_proc_chunk = self.max_vecs_per_proc -\
+            num_cols_per_proc_chunk
  
         # <nprocs> chunks are computed simulaneously, making up a set.
         num_cols_per_chunk = num_cols_per_proc_chunk * parallel.get_num_procs()
@@ -625,16 +627,25 @@ class VectorSpace(object):
         # Assign the triangular portion chunks into IP_mat.
         if parallel.is_distributed():
             IP_mat = parallel.custom_comm.allreduce(IP_mat)
-        
-        # Create a mask for the repeated values
-        mask = (IP_mat != IP_mat.T)
+       
+        import h5io
+        if parallel.is_rank_zero():
+            h5io.save_array('/home/jhtu/tmp/dmdTest_symm/IP_mat_raw.h5', IP_mat,
+                'mat', 'IP_mat right after all reduce')
+
+        # Create a mask for the repeated values.  Select values that are zero
+        # in the upper triangular portion (not computed there) but nonzero in
+        # the lower triangular portion (computed there).  For the case where
+        # the inner product is not perfectly symmetric, this will select the
+        # computation done in the upper triangular portion.
+        mask = N.multiply(IP_mat == 0, IP_mat.T != 0)
         
         # Collect values below diagonal
         IP_mat += N.multiply(N.triu(IP_mat.T, 1), mask)
         
         # Symmetrize matrix
         IP_mat = N.triu(IP_mat) + N.triu(IP_mat, 1).T
-
+        
         parallel.barrier() # ensure that all procs leave function at same time
         return IP_mat
         
