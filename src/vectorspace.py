@@ -628,11 +628,6 @@ class VectorSpace(object):
         if parallel.is_distributed():
             IP_mat = parallel.custom_comm.allreduce(IP_mat)
        
-        import h5io
-        if parallel.is_rank_zero():
-            h5io.save_array('/home/jhtu/tmp/dmdTest_symm/IP_mat_raw.h5', IP_mat,
-                'mat', 'IP_mat right after all reduce')
-
         # Create a mask for the repeated values.  Select values that are zero
         # in the upper triangular portion (not computed there) but nonzero in
         # the lower triangular portion (computed there).  For the case where
