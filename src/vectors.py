@@ -47,6 +47,7 @@ class VecHandle(object):
         if self.scale is not None:
             return vec*self.scale
         return vec
+    
 
 
 class InMemoryVecHandle(VecHandle):
@@ -59,10 +60,8 @@ class InMemoryVecHandle(VecHandle):
     def _put(self, vec):
         self.vec = vec
     def __eq__(self, other):
-        try:
-            return (self.vec == other.vec).all()
-        except:
-            return False
+        return util.smart_eq(self.vec, other.vec)
+        
         
 class ArrayTextVecHandle(VecHandle):
     """Gets and puts array vector objects to text files"""
@@ -74,10 +73,7 @@ class ArrayTextVecHandle(VecHandle):
     def _put(self, vec):
         util.save_array_text(vec, self.vec_path)
     def __eq__(self, other):
-        try:
-            return self.vec_path == other.vec_path
-        except:
-            return False
+        return self.vec_path == other.vec_path
         
 
 class PickleVecHandle(VecHandle):
@@ -90,10 +86,7 @@ class PickleVecHandle(VecHandle):
     def _put(self, vec):
         cPickle.dump(vec, open(self.vec_path, 'wb'))
     def __eq__(self, other):
-        try:
-            return self.vec_path == other.vec_path
-        except:
-            return False
+        return self.vec_path == other.vec_path
         
         
 def inner_product_array_uniform(self, vec1, vec2):

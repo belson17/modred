@@ -146,9 +146,9 @@ class DMD(object):
             len(vec_handles) != len(self.POD.vec_handles)+1:
             raise RuntimeError('vec mismatch between POD and DMD '+\
                 'objects.')
-        pod_sing_vecs = self.POD.sing_vecs
-        pod_sing_vals = self.POD.sing_vals
-        _pod_sing_vals_sqrt_mat = N.mat(N.diag(pod_sing_vals** -0.5))
+        pod_eigen_vecs = self.POD.eigen_vecs
+        pod_eigen_vals = self.POD.eigen_vals
+        _pod_eigen_vals_sqrt_mat = N.mat(N.diag(pod_eigen_vals** -0.5))
 
 
         # Inner product of vecs w/POD modes
@@ -158,17 +158,17 @@ class DMD(object):
         pod_modes_star_times_vecs[:,-1] = \
             self.vec_space.compute_inner_product_mat(self.vec_handles[:-1], 
                 self.vec_handles[-1])
-        pod_modes_star_times_vecs = _pod_sing_vals_sqrt_mat * pod_sing_vecs.H *\
+        pod_modes_star_times_vecs = _pod_eigen_vals_sqrt_mat * pod_eigen_vecs.H *\
             pod_modes_star_times_vecs
             
         # Reduced order linear system
-        low_order_linear_map = pod_modes_star_times_vecs * pod_sing_vecs * \
-            _pod_sing_vals_sqrt_mat
+        low_order_linear_map = pod_modes_star_times_vecs * pod_eigen_vecs * \
+            _pod_eigen_vals_sqrt_mat
         self.ritz_vals, low_order_eig_vecs = N.linalg.eig(low_order_linear_map)
         
         # Scale Ritz vectors
-        ritz_vecs_star_times_init_vec = low_order_eig_vecs.H * _pod_sing_vals_sqrt_mat * \
-            pod_sing_vecs.H * self.POD.correlation_mat[:,0]
+        ritz_vecs_star_times_init_vec = low_order_eig_vecs.H * _pod_eigen_vals_sqrt_mat * \
+            pod_eigen_vecs.H * self.POD.correlation_mat[:,0]
         ritz_vec_scaling = N.linalg.inv(low_order_eig_vecs.H * low_order_eig_vecs) *\
             ritz_vecs_star_times_init_vec
         
@@ -176,7 +176,7 @@ class DMD(object):
             ritz_vec_scaling).squeeze(),ndmin=1)))
 
         # Compute mode energies
-        self.build_coeffs = pod_sing_vecs * _pod_sing_vals_sqrt_mat *\
+        self.build_coeffs = pod_eigen_vecs * _pod_eigen_vals_sqrt_mat *\
             low_order_eig_vecs * ritz_vec_scaling
         self.mode_norms = N.diag(self.build_coeffs.H * 
             self.POD.correlation_mat * self.build_coeffs).real

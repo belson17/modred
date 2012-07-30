@@ -44,8 +44,8 @@ class POD(object):
         self.get_mat = get_mat
         self.put_mat = put_mat
         self.verbosity = verbosity
-        self.sing_vecs = None
-        self.sing_vals = None
+        self.eigen_vecs = None
+        self.eigen_vals = None
         self.correlation_mat = None
         self.vec_handles = None
         self.vecs = None
@@ -72,42 +72,42 @@ class POD(object):
         self.vec_space.sanity_check_in_memory(test_vec_handle)
 
      
-    def get_decomp(self, sing_vecs_source, sing_vals_source):
+    def get_decomp(self, eigen_vecs_source, eigen_vals_source):
         """Gets the decomposition matrices from sources (memory or file)"""
         if self.get_mat is None:
             raise util.UndefinedError('Must specify a get_mat function')
         if parallel.is_rank_zero():
-            self.sing_vecs = self.get_mat(sing_vecs_source)
-            self.sing_vals = N.squeeze(N.array(self.get_mat(sing_vals_source)))
+            self.eigen_vecs = self.get_mat(eigen_vecs_source)
+            self.eigen_vals = N.squeeze(N.array(self.get_mat(eigen_vals_source)))
         else:
-            self.sing_vecs = None
-            self.sing_vals = None
+            self.eigen_vecs = None
+            self.eigen_vals = None
         if parallel.is_distributed():
-            self.sing_vecs = parallel.comm.bcast(self.sing_vecs, root=0)
-            self.sing_vals = parallel.comm.bcast(self.sing_vals, root=0)
+            self.eigen_vecs = parallel.comm.bcast(self.eigen_vecs, root=0)
+            self.eigen_vals = parallel.comm.bcast(self.eigen_vals, root=0)
         
         
-    def put_decomp(self, sing_vecs_dest, sing_vals_dest):
+    def put_decomp(self, eigen_vecs_dest, eigen_vals_dest):
         """Put the decomposition matrices to file or memory."""
-        self.put_sing_vecs(sing_vecs_dest)
-        self.put_sing_vals(sing_vals_dest)
+        self.put_eigen_vecs(eigen_vecs_dest)
+        self.put_eigen_vals(eigen_vals_dest)
         
-    def put_sing_vecs(self, dest):
+    def put_eigen_vecs(self, dest):
         """Put singular vectors, U (==V)"""
         if self.put_mat is None and parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined")
             
         if parallel.is_rank_zero():
-            self.put_mat(self.sing_vecs, dest)
+            self.put_mat(self.eigen_vecs, dest)
         parallel.barrier()
 
-    def put_sing_vals(self, dest):
+    def put_eigen_vals(self, dest):
         """Put singular values, E"""
         if self.put_mat is None and parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined")
             
         if parallel.is_rank_zero():
-            self.put_mat(self.sing_vals, dest)
+            self.put_mat(self.eigen_vals, dest)
         parallel.barrier()
 
     def put_correlation_mat(self, correlation_mat_dest):
@@ -120,23 +120,23 @@ class POD(object):
 
 
     def compute_decomp(self, vec_handles):
-        """Computes correlation mat X*X, then the SVD of this matrix.
+        """Computes correlation mat X*X, then the eigen decomp of this matrix.
         
         Args:
             vec_handles: list of handles for vecs
             
         Returns:
-            sing_vecs: matrix of singular vectors (U, ==V, in UEV*=H)
+            eigen_vecs: matrix of singular vectors (U, ==V, in UEV*=H)
         
-            sing_vals: 1D array of singular values (E in UEV*=H) 
+            eigen_vals: 1D array of singular values (E in UEV*=H) 
         """
         self.vec_handles = vec_handles
         self.correlation_mat = self.vec_space.\
             compute_symmetric_inner_product_mat(self.vec_handles)
         #self.correlation_mat = self.vec_space.\
         #    compute_inner_product_mat(self.vec_handles, self.vec_handles)
-        self.compute_SVD()        
-        return self.sing_vecs, self.sing_vals
+        self.compute_eigen_decomp()        
+        return self.eigen_vecs, self.eigen_vals
        
     def compute_decomp_in_memory(self, vecs):
         """Same as ``compute_decomp`` but takes vecs instead of handles"""
@@ -145,32 +145,31 @@ class POD(object):
             compute_symmetric_inner_product_mat_in_memory(self.vecs)
         #self.correlation_mat = self.vec_space.\
         #    compute_inner_product_mat(self.vec_handles, self.vec_handles)
-        self.compute_SVD()
-        return self.sing_vecs, self.sing_vals    
+        self.compute_eigen_decomp()
+        return self.eigen_vecs, self.eigen_vals    
         
-    def compute_SVD(self):
-        """Compute SVD, UEV*=correlation_mat"""
+    def compute_eigen_decomp(self):
+        """Compute eigen decmop, UE=correlation_mat*U"""
         if parallel.is_rank_zero():
-            self.sing_vecs, self.sing_vals, dummy = \
-                util.svd(self.correlation_mat)
+            self.eigen_vals, self.eigen_vecs = util.eigh(self.correlation_mat)
         else:
-            self.sing_vecs = None
-            self.sing_vals = None
+            self.eigen_vecs = None
+            self.eigen_vals = None
         if parallel.is_distributed():
-            self.sing_vecs = parallel.comm.bcast(self.sing_vecs, root=0)
-            self.sing_vals = parallel.comm.bcast(self.sing_vals, root=0)
+            self.eigen_vecs = parallel.comm.bcast(self.eigen_vecs, root=0)
+            self.eigen_vals = parallel.comm.bcast(self.eigen_vals, root=0)
             
             
             
             
     def _compute_build_coeff_mat(self):
         """Helper for ``compute_modes`` and ``compute_modes_and_return``."""
-        #self.sing_vecs, self.sing_vals must exist or an UndefinedError.
-        if self.sing_vecs is None:
-            raise util.UndefinedError('Must define self.sing_vecs')
-        if self.sing_vals is None:
-            raise util.UndefinedError('Must define self.sing_vals')
-        build_coeff_mat = N.dot(self.sing_vecs, N.diag(self.sing_vals**-0.5))
+        #self.eigen_vecs, self.eigen_vals must exist or an UndefinedError.
+        if self.eigen_vecs is None:
+            raise util.UndefinedError('Must define self.eigen_vecs')
+        if self.eigen_vals is None:
+            raise util.UndefinedError('Must define self.eigen_vals')
+        build_coeff_mat = N.dot(self.eigen_vecs, N.diag(self.eigen_vals**-0.5))
         return build_coeff_mat
     
     def compute_modes(self, mode_nums, mode_handles,

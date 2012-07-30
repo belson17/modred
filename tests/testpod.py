@@ -62,11 +62,11 @@ class TestPOD(unittest.TestCase):
         self.correlation_mat_true = N.dot(self.vec_array.T, self.vec_array)
         
         #Do the SVD on all procs.
-        self.sing_vecs_true, self.sing_vals_true, dummy = util.svd(
+        self.eigen_vals_true, self.eigen_vecs_true = util.eigh(
             self.correlation_mat_true)
 
-        self.mode_array = N.dot(self.vec_array, N.dot(self.sing_vecs_true, N.diag(
-            self.sing_vals_true**-0.5)))
+        self.mode_array = N.dot(self.vec_array, N.dot(self.eigen_vecs_true, N.diag(
+            self.eigen_vals_true**-0.5)))
 
      
     def test_init(self):
@@ -79,7 +79,7 @@ class TestPOD(unittest.TestCase):
         
         data_members_default = {'put_mat': util.save_array_text, 'get_mat': 
             util.load_array_text,
-            'verbosity': 0, 'sing_vecs': None, 'sing_vals': None,
+            'verbosity': 0, 'eigen_vecs': None, 'eigen_vals': None,
             'correlation_mat': None, 'vec_handles': None, 'vecs': None,
             'vec_space': VectorSpace(inner_product=my_IP, verbosity=0)}
         
@@ -122,42 +122,42 @@ class TestPOD(unittest.TestCase):
         loaded and compared to the true matrices. 
         """
         tol = 1e-6
-        sing_vecs_path = join(self.test_dir, 'sing_vecs.txt')
-        sing_vals_path = join(self.test_dir, 'sing_vals.txt')
+        eigen_vecs_path = join(self.test_dir, 'eigen_vecs.txt')
+        eigen_vals_path = join(self.test_dir, 'eigen_vals.txt')
         correlation_mat_path = join(self.test_dir, 'correlation.txt')
         
-        sing_vecs_returned, sing_vals_returned = \
+        eigen_vecs_returned, eigen_vals_returned = \
             self.my_POD.compute_decomp(self.vec_handles)
-        sing_vecs_returned2, sing_vals_returned2 = \
+        eigen_vecs_returned2, eigen_vals_returned2 = \
             self.my_POD.compute_decomp_in_memory(self.vecs)
-        N.testing.assert_equal(sing_vecs_returned, sing_vecs_returned2)
-        N.testing.assert_equal(sing_vals_returned, sing_vals_returned2)
+        N.testing.assert_equal(eigen_vecs_returned, eigen_vecs_returned2)
+        N.testing.assert_equal(eigen_vals_returned, eigen_vals_returned2)
         
-        self.my_POD.put_decomp(sing_vecs_path, sing_vals_path)
+        self.my_POD.put_decomp(eigen_vecs_path, eigen_vals_path)
         self.my_POD.put_correlation_mat(correlation_mat_path)
         
-        sing_vecs_loaded = util.load_array_text(sing_vecs_path)
-        sing_vals_loaded = N.squeeze(N.array(util.load_array_text(
-            sing_vals_path)))
+        eigen_vecs_loaded = util.load_array_text(eigen_vecs_path)
+        eigen_vals_loaded = N.squeeze(N.array(util.load_array_text(
+            eigen_vals_path)))
         correlation_mat_loaded = util.load_array_text(correlation_mat_path)
         
         N.testing.assert_allclose(self.my_POD.correlation_mat, 
             self.correlation_mat_true, rtol=tol)
-        N.testing.assert_allclose(self.my_POD.sing_vecs, 
-            self.sing_vecs_true, rtol=tol)
-        N.testing.assert_allclose(self.my_POD.sing_vals, 
-            self.sing_vals_true, rtol=tol)
+        N.testing.assert_allclose(self.my_POD.eigen_vecs, 
+            self.eigen_vecs_true, rtol=tol)
+        N.testing.assert_allclose(self.my_POD.eigen_vals, 
+            self.eigen_vals_true, rtol=tol)
           
-        N.testing.assert_allclose(sing_vecs_returned, 
-            self.sing_vecs_true, rtol=tol)
-        N.testing.assert_allclose(sing_vals_returned, 
-            self.sing_vals_true, rtol=tol)
+        N.testing.assert_allclose(eigen_vecs_returned, 
+            self.eigen_vecs_true, rtol=tol)
+        N.testing.assert_allclose(eigen_vals_returned, 
+            self.eigen_vals_true, rtol=tol)
           
         N.testing.assert_allclose(correlation_mat_loaded, 
             self.correlation_mat_true, rtol=tol)
-        N.testing.assert_allclose(sing_vecs_loaded, self.sing_vecs_true,
+        N.testing.assert_allclose(eigen_vecs_loaded, self.eigen_vecs_true,
             rtol=tol)
-        N.testing.assert_allclose(sing_vals_loaded, self.sing_vals_true,
+        N.testing.assert_allclose(eigen_vals_loaded, self.eigen_vals_true,
             rtol=tol)
         
 
@@ -172,12 +172,12 @@ class TestPOD(unittest.TestCase):
         mode_path = join(self.test_dir, 'mode_%03d.txt')
         mode_handles = [V.ArrayTextVecHandle(mode_path%i) for i in self.mode_nums]
         # starts with the CORRECT decomposition.
-        self.my_POD.sing_vecs = self.sing_vecs_true
-        self.my_POD.sing_vals = self.sing_vals_true
+        self.my_POD.eigen_vecs = self.eigen_vecs_true
+        self.my_POD.eigen_vals = self.eigen_vals_true
         
         my_POD_in_memory = POD(N.vdot, verbosity=False)
-        my_POD_in_memory.sing_vecs = self.sing_vecs_true
-        my_POD_in_memory.sing_vals = self.sing_vals_true
+        my_POD_in_memory.eigen_vecs = self.eigen_vecs_true
+        my_POD_in_memory.eigen_vals = self.eigen_vals_true
         
         self.my_POD.compute_modes(self.mode_nums, mode_handles, 
             index_from=self.index_from, vec_handles=self.vec_handles)
@@ -188,7 +188,7 @@ class TestPOD(unittest.TestCase):
         
         for mode_index, mode_handle in enumerate(mode_handles):
             mode = mode_handle.get()
-            N.testing.assert_allclose(mode, 
+            N.testing.assert_allclose(mode.squeeze(), 
                 self.mode_array[:,self.mode_nums[mode_index]-self.index_from])
             N.testing.assert_allclose(
                 modes_returned[mode_index].squeeze(), 

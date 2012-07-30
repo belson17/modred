@@ -125,6 +125,25 @@ def svd(mat, tol=1e-13):
 
     return U, E, V
 
+def eigh(mat):
+    """Computes the eigenvalues and vecs of Hermitian matrix/array.
+    
+    Returns:
+        evals: eigenvalues in a 1D array, sorted in descending order.
+        
+        evecs: eigenvectors, columns of matrix/array, sorted by evals.
+    """
+    evals, evecs = N.linalg.eigh(mat)
+    for i,eval in enumerate(evals):
+        if eval < 0:
+            evecs[:,i] *= -1
+            evals[i] *= -1
+    # Sort the vecs and vals by eval magnitude
+    sort_indices = N.argsort(evals)[::-1]
+    evals = evals[sort_indices]
+    evecs = evecs[:,sort_indices]
+    return evals, evecs
+
 
 def get_file_list(directory, file_extension=None):
     """Returns list of files in directory with file_extension"""
@@ -377,3 +396,14 @@ def load_multiple_signals(signal_paths, delimiter=' '):
 
     return time_values, all_signals
 
+def smart_eq(a, b):
+    """Checks if equal, accounting for numpy's == not returning a bool"""
+    eq = (a==b)
+    if isinstance(eq, bool):
+        return eq
+    elif isinstance(eq, N.ndarray):
+        return eq.all()
+    else:
+        raise RuntimeError('Unexpected type returned by == operator')
+
+    
