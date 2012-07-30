@@ -41,8 +41,8 @@ class TestLTIGalerkinProjection(unittest.TestCase):
         self.num_adjoint_modes = 8
         self.model_dim = 7
         self.num_states = 11
-        self.num_inputs = 2
-        self.num_outputs = 1
+        self.num_inputs = 3
+        self.num_outputs = 2
         
         self.generate_data_set(self.num_direct_modes, self.num_adjoint_modes,
             self.model_dim, self.num_states, self.num_inputs, 

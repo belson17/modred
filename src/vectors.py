@@ -60,6 +60,8 @@ class InMemoryVecHandle(VecHandle):
     def _put(self, vec):
         self.vec = vec
     def __eq__(self, other):
+        if type(other) != type(self):
+            return False
         return util.smart_eq(self.vec, other.vec)
         
         
@@ -73,6 +75,8 @@ class ArrayTextVecHandle(VecHandle):
     def _put(self, vec):
         util.save_array_text(vec, self.vec_path)
     def __eq__(self, other):
+        if type(other) != type(self):
+            return False
         return self.vec_path == other.vec_path
         
 
@@ -86,6 +90,8 @@ class PickleVecHandle(VecHandle):
     def _put(self, vec):
         cPickle.dump(vec, open(self.vec_path, 'wb'))
     def __eq__(self, other):
+        if type(other) != type(self):
+            return False
         return self.vec_path == other.vec_path
         
         

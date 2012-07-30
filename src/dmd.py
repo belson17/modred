@@ -21,9 +21,7 @@ class DMD(object):
         max_vecs_per_node: max number of vectors in memory per node.
 
         verbosity: 0 prints almost nothing, 1 prints progress and warnings
-        
-        POD: POD object to use for computations.
-        
+               
     Computes Ritz vectors from vecs.
     
     Usage::
@@ -41,7 +39,6 @@ class DMD(object):
             max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
         self.get_mat = get_mat
         self.put_mat = put_mat
-        self.POD = POD
         self.verbosity = verbosity
         self.ritz_vals = None
         self.build_coeffs = None
@@ -121,7 +118,7 @@ class DMD(object):
         parallel.barrier()
             
     def compute_decomp(self, vec_handles):
-        """Computes decomposition and returns SVD matrices.
+        """Computes decomposition and returns eigen decomposition matrices.
         
         Args:
             vec_handles: list of handles for the vecs.
@@ -134,6 +131,22 @@ class DMD(object):
         if self.vec_handles is None:
             raise util.UndefinedError('vec_handles is not given')
 
+        H = self.vec_space.compute_symmetric_inner_product_mat(
+            self.vec_handles)
+        evals, evecs = util.eigh(H[:-1,:-1])
+        evals_sqrt = N.mat(N.diag(evals**-0.5))
+        A = evals_sqrt * evecs.H * H[:-1,1:] * evecs * evals_sqrt
+        self.ritz_vals, low_order_eigen_vecs = N.linalg.eig(A)
+        V_term = N.linalg.inv(low_order_eigen_vecs.H * low_order_eigen_vecs) * \
+            low_order_eigen_vecs.H
+        D = N.diag(N.array(N.array(
+            V_term * evals_sqrt * evecs.H * H[:-1,0]).squeeze(),ndmin=1))
+        self.build_coeffs = evecs * evals_sqrt * low_order_eigen_vecs * D
+        self.mode_norms = N.diag(self.build_coeffs.H * H[:-1,:-1]* 
+            self.build_coeffs).real
+        return self.ritz_vals, self.mode_norms, self.build_coeffs
+        
+        """
         # Compute POD from vecs (excluding last vec)
         if self.POD is None:
             self.POD = pod.POD(inner_product=self.vec_space.inner_product, 
@@ -181,6 +194,7 @@ class DMD(object):
         self.mode_norms = N.diag(self.build_coeffs.H * 
             self.POD.correlation_mat * self.build_coeffs).real
         return self.ritz_vals, self.mode_norms, self.build_coeffs
+        """
         
     def compute_decomp_in_memory(self, vecs):
         """Same as ``compute_decomp`` but takes vecs instead of handles."""

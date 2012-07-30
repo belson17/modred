@@ -109,7 +109,6 @@ class TestDMD(unittest.TestCase):
              util.load_array_text,
             'verbosity': 0, 'ritz_vals': None, 'build_coeffs': None,
             'mode_norms': None, 'vec_handles': None, 'vecs': None, 
-            'POD': None,
             'vec_space': VectorSpace(my_IP, verbosity=False)}
         
         # Get default data member values
@@ -236,7 +235,4 @@ class TestDMD(unittest.TestCase):
 
 if __name__=='__main__':
     unittest.main()
-
-
-
 
