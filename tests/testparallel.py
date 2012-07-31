@@ -4,6 +4,7 @@
 import unittest
 import copy
 import os
+from os.path import join
 
 import helper
 helper.add_to_path(join(join(os.path.dirname(os.path.abspath(__file__)), 
