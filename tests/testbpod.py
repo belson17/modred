@@ -19,7 +19,7 @@ import util
 import vectors as V
 
 class TestBPOD(unittest.TestCase):
-    """ Test the BPOD class methods """
+    """Test the BPOD class methods """
     def setUp(self):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
@@ -78,12 +78,12 @@ class TestBPOD(unittest.TestCase):
         self.adjoint_vecs = [self.adjoint_vec_array[:, i] 
             for i in range(self.num_adjoint_vecs)]
         
-        self.hankel_mat_true = N.dot(self.adjoint_vec_array.T, 
+        self.Hankel_mat_true = N.dot(self.adjoint_vec_array.T, 
             self.direct_vec_array)
         
         # Do the SVD on all procs.
         self.L_sing_vecs_true, self.sing_vals_true, self.R_sing_vecs_true = \
-            util.svd(self.hankel_mat_true)
+            util.svd(self.Hankel_mat_true)
         self.direct_mode_array = self.direct_vec_array * \
             N.mat(self.R_sing_vecs_true) * \
             N.mat(N.diag(self.sing_vals_true ** -0.5))
@@ -108,7 +108,7 @@ class TestBPOD(unittest.TestCase):
             'verbosity': 0, 'L_sing_vecs': None, 'R_sing_vecs': None,
             'sing_vals': None, 'direct_vec_handles': None,
             'adjoint_vec_handles': None, 
-            'direct_vecs': None, 'adjoint_vecs': None, 'hankel_mat': None,
+            'direct_vecs': None, 'adjoint_vecs': None, 'Hankel_mat': None,
             'vec_space': VectorSpace(inner_product=my_IP, verbosity=False)}
         
         # Get default data member values
@@ -157,7 +157,7 @@ class TestBPOD(unittest.TestCase):
         L_sing_vecs_path = join(self.test_dir, 'L_sing_vecs.txt')
         R_sing_vecs_path = join(self.test_dir, 'R_sing_vecs.txt')
         sing_vals_path = join(self.test_dir, 'sing_vals.txt')
-        hankel_mat_path = join(self.test_dir, 'hankel.txt')
+        Hankel_mat_path = join(self.test_dir, 'hankel.txt')
         
         L_sing_vecs_return, sing_vals_return, R_sing_vecs_return = \
             self.my_BPOD.compute_decomp(self.direct_vec_handles, 
@@ -171,17 +171,17 @@ class TestBPOD(unittest.TestCase):
         
         self.my_BPOD.put_decomp(L_sing_vecs_path, sing_vals_path, 
             R_sing_vecs_path)        
-        self.my_BPOD.put_hankel_mat(hankel_mat_path)
+        self.my_BPOD.put_Hankel_mat(Hankel_mat_path)
         
         parallel.barrier()
         L_sing_vecs_loaded = util.load_array_text(L_sing_vecs_path)
         R_sing_vecs_loaded = util.load_array_text(R_sing_vecs_path)
         sing_vals_loaded = N.squeeze(N.array(util.load_array_text(
             sing_vals_path)))
-        hankel_mat_loaded = util.load_array_text(hankel_mat_path)
+        Hankel_mat_loaded = util.load_array_text(Hankel_mat_path)
         
-        N.testing.assert_allclose(self.my_BPOD.hankel_mat,
-            self.hankel_mat_true, rtol=tol)
+        N.testing.assert_allclose(self.my_BPOD.Hankel_mat,
+            self.Hankel_mat_true, rtol=tol)
         N.testing.assert_allclose(self.my_BPOD.L_sing_vecs,
             self.L_sing_vecs_true, rtol=tol)
         N.testing.assert_allclose(self.my_BPOD.R_sing_vecs,
@@ -196,8 +196,8 @@ class TestBPOD(unittest.TestCase):
         N.testing.assert_allclose(sing_vals_return,
             self.sing_vals_true, rtol=tol)
         
-        N.testing.assert_allclose(hankel_mat_loaded,
-            self.hankel_mat_true, rtol=tol)
+        N.testing.assert_allclose(Hankel_mat_loaded,
+            self.Hankel_mat_true, rtol=tol)
         N.testing.assert_allclose(L_sing_vecs_loaded,
             self.L_sing_vecs_true, rtol=tol)
         N.testing.assert_allclose(R_sing_vecs_loaded,

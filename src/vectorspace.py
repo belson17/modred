@@ -1,6 +1,7 @@
 """Parallelized addition and multiplication for vector spaces.
 
-The methods operate on both vectors and vector handles."""
+There are separate methods to operate on vectors and vector handles.
+"""
 
 import sys  
 import copy
@@ -17,18 +18,17 @@ class VectorSpace(object):
     """Responsible for performing addition and multiplication in parallel.
 
     Kwargs:
-        inner_product: inner product function
+        ``inner_product``: Inner product function.
         
-        max_vecs_per_node: max number of vecs that can be in memory
-        simultaneously per node.
+        ``max_vecs_per_node``: Max number of vecs in memory per node.
         
-        verbosity: print non-essential statuses and warnings, boolean.
+        ``verbosity``: 1 prints progress and warnings, 0 prints almost nothing
         
-        print_interval: max of how frequently progress is printed, in seconds.
+        ``print_interval``: Min interval between progress messages, seconds.
 
     The class implements parallelized vector addition and scalar multiplication
-    and is used in the high-level modred classes like POD, BPOD, DMD, and 
-    BPODROM. 
+    and is used in the high-level modred classes like ``POD``, ``BPOD``, ``DMD``
+    and ``LTIGalerkinProjection``. 
 
     Note: It is generally best to use all available processors, even if this
     lowers ``max_vecs_per_node`` proportionally. 
@@ -77,7 +77,7 @@ class VectorSpace(object):
         """Check user-supplied vector object. See :py:meth:`sanity_check`.
         
         Args:
-            test_vec: a vector.
+            ``test_vec``: A vector.
         """
         self.sanity_check(V.InMemoryVecHandle(test_vec))
 
@@ -85,14 +85,14 @@ class VectorSpace(object):
         """Check user-supplied vec handle and vec objects.
         
         Args:
-            test_vec_handle: a vector handle.
+            ``test_vec_handle``: A vector handle.
         
         The add and mult functions are tested for the vector object.  
         This is not a complete testing, but catches some common mistakes.
         Raises an error if a check fails.
         
         TODO: Other things which could be tested:
-            get/put doesn't effect other vecs (memory problems)
+            ``get``/``put`` doesn't effect other vecs (memory problems)
         """
         self._check_inner_product()
         tol = 1e-10
@@ -137,12 +137,14 @@ class VectorSpace(object):
         """Computes a matrix of inner products and returns it.
         
         Args:
-            row_vec_handles: list of row vec handles (e.g. BPOD adjoints, "Y")
+            ``row_vec_handles``: List of row vec handles.
+                For example BPOD adjoints, "Y".
           
-            col_vec_handles: list of column vec handles (e.g. BPOD directs, "X")
+            ``col_vec_handles``: List of column vec handles.
+                For example BPOD directs, "X".
         
         Returns:
-            IP_mat: array of inner products
+            ``IP_mat``: Array of inner products.
 
         The vecs are retrieved in memory-efficient
         chunks and are not all in memory at once.
@@ -365,12 +367,14 @@ class VectorSpace(object):
         """Computes a matrix of inner products and returns it.
         
         Args:
-            row_vecs: list of row vecs (e.g. BPOD adjoints, "Y")
+            ``row_vecs``: List of row vecs.
+                For example BPOD adjoints, "Y".
           
-            col_vecs: list of column vecs (e.g. BPOD directs, "X")
+            ``col_vecs``: List of column vecs.
+                For example BPOD directs, "X".
         
         Returns:
-            IP_mat: array of inner products
+            ``IP_mat``: Array of inner products.
         
         See :py:meth:`compute_inner_product_mat`.
         """
@@ -388,10 +392,10 @@ class VectorSpace(object):
         """Computes an upper-triangular symmetric matrix of inner products.
         
         Args:
-            vec_handles: list of vector handles
+            ``vec_handles``: List of vector handles.
         
         Returns:
-            IP_mat: numpy array of inner products
+            ``IP_mat``: Numpy array of inner products.
 
         See the documentation for :py:meth:`compute_inner_product_mat` for an
         idea how this works.
@@ -652,10 +656,10 @@ class VectorSpace(object):
         """Computes an upper-triangular symmetric matrix of inner products.
         
         Args:
-            vecs: list of vectors
+            ``vecs``: List of vectors.
         
         Returns:
-            IP_mat: numpy array of inner products
+            ``IP_mat``: Numpy array of inner products.
         
         See :py:meth:`compute_symmetric_inner_product_mat`.
         """
@@ -670,27 +674,27 @@ class VectorSpace(object):
         """Compute modes from vector handles.
         
         Args:
-          mode_nums: list of mode numbers to compute. 
+          ``mode_nums``: List of mode numbers to compute. 
               Examples are: ``range(10)`` or ``[3,1,6,8]``. 
               The mode numbers need not be sorted. 
               
-          mode_handles: list of handles for modes
+          ``mode_handles``: List of handles for modes.
           
-          vec_handles: list of handles for vectors
+          ``vec_handles``: List of handles for vectors.
           
-          vec_coeff_mat: matrix of coefficients for constructing modes. 
+          ``vec_coeff_mat``: Matrix of coefficients for constructing modes. 
               [mode0 mode1 ...] = [vec0 vec1 ...] * vec_coeff_mat
               The row corresponds to the vec, the column to the mode.
               The kth column corresponds to the ``index_from + k`` mode number. 
               
         Kwargs:
-          index_from: integer from which to index modes, 0, 1, or other.
+          ``index_from``: Integer from which to index modes, 0, 1, or other.
         
         This method casts computing modes as a linear combination of elements.
         It rearranges the coeff matrix so that the first column corresponds to
         the first mode number in mode_nums.
-        Calls ``lin_combine`` with sum_vecs as the modes and the
-        basis_vecs as the vecs.
+        Calls ``lin_combine`` with ``sum_vecs`` as the modes and the
+        ``basis_vecs`` as the vecs.
         """                   
         mode_nums = util.make_list(mode_nums)
         mode_handles = util.make_list(mode_handles)
@@ -733,22 +737,22 @@ class VectorSpace(object):
         """Compute modes from vectors. 
         
         Args:
-        mode_nums: list of mode numbers to compute. 
-            Examples are: ``range(10)`` or ``[3,1,6,8]``. 
-            The mode numbers need not be sorted. 
+            ``mode_nums``: List of mode numbers to compute. 
+                Examples are: ``range(10)`` or ``[3,1,6,8]``. 
+                The mode numbers need not be sorted. 
+              
+            ``vec_handles``: List of vectors.
           
-        vec_handles: list of vectors
-      
-        vec_coeff_mat: matrix of coefficients for constructing modes. 
-            [mode0 mode1 ...] = [vec0 vec1 ...] * vec_coeff_mat
-            The row corresponds to the vec, the column to the mode.
-            The kth column corresponds to the ``index_from + k`` mode number. 
-          
+            ``vec_coeff_mat``: Matrix of coefficients for constructing modes. 
+                [mode0 mode1 ...] = [vec0 vec1 ...] * vec_coeff_mat
+                The row corresponds to the vec, the column to the mode.
+                The kth column corresponds to the ``index_from + k`` mode number. 
+              
         Kwargs:
-            index_from: integer from which to index modes, 0, 1, or other.
+            ``index_from``: Integer from which to index modes, 0, 1, or other.
 
         Returns:
-            a list of modes.
+            ``modes``: List of modes.
 
         See :py:meth:`compute_modes`.      
         In parallel, each MPI worker returns the full list of modes.
@@ -776,11 +780,11 @@ class VectorSpace(object):
         """Linearly combines the basis vecs and calls ``put`` on result.
         
         Args:
-            sum_vec_handles: list of handles for the sum vectors.
+            ``sum_vec_handles``: List of handles for the sum vectors.
                 
-            basis_vec_handles: list of handles for the basis vecs.
+            ``basis_vec_handles``: List of handles for the basis vecs.
                 
-            vec_coeff_mat: matrix with rows corresponding to a basis vecs
+            ``vec_coeff_mat``: Matrix with rows corresponding to a basis vecs
                 and columns to sum (lin. comb.) vecs.
                 The rows and columns correspond, by index,
                 to the lists basis_vec_handles and sum_vec_handles.
@@ -946,21 +950,21 @@ class VectorSpace(object):
         
     
     def lin_combine_in_memory(self, basis_vecs, vec_coeff_mat):
-        """Linearly combines the basis vecs and calls ``put`` on result.
+        """Linearly combines the basis vecs and returns resulting vecs.
         
         Args:
-            sum_vecs: list of sum vectors.
+            ``sum_vecs``: List of sum vectors.
                 
-            basis_vecs: list of basis vecs.
+            ``basis_vecs``: List of basis vecs.
                 
-            vec_coeff_mat: matrix with rows corresponding to a basis vecs
+            ``vec_coeff_mat``: Matrix with rows corresponding to a basis vecs
                 and columns to sum (lin. comb.) vecs.
                 The rows and columns correspond, by index,
                 to the lists basis_vec_handles and sum_vec_handles.
                 ``sums = basis * vec_coeff_mat``
         
         Returns:
-            a list of linearly combined vectors.
+            List of linearly combined vectors.
         
         See :py:meth:`lin_combine`.
         """

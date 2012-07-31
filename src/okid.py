@@ -6,18 +6,18 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
     """Approximates the Markov paramters from arbitrary inputs and outputs.
     
     Args:
-        inputs: array of input signals, with indices [input #, time sample #].
+        ``inputs``: Array of input signals, with indices [input, time].
         
-        outputs: array of output signals, with indices [output #, time sample #].
+        ``outputs``: Array of output signals, with indices [output, time].
         
-        num_Markovs: integer number of Markov parameters to estimate.
+        ``num_Markovs``: Integer number of Markov parameters to estimate.
             
     Kwargs:
-        cutoff: condition number used for the pseudo-inverse.
+        ``cutoff``: Condition number used for the pseudo-inverse.
     
     Returns:
-        Markovs_est: array of estim. Markov params, indices [time, output, input].
-        Thus, Markovs_est[ti] is the Markov param at time index ti.
+        ``Markovs_est``: Array of Markov params, indices [time, output, input].
+        Thus, ``Markovs_est[ti]`` is the Markov param at time index ``ti``.
     
     OKID can be sensitive to the choice of parameters. A few tips:
 
@@ -26,14 +26,15 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
     - In the tail, have input = 0.
     - If necessary, artificially append your data with zero input and 
       exponentially decaying output.
-    - Typically use at most num_Markovs = 1/3 to 1/2 of the number of samples.
+    - Typically estimate at most ``num_Markovs`` = 1/3 to 1/2 of the number
+      of samples.
       Estimating too many Markov params can result in spurious oscillations. 
       If using the estimated Markov parameters for ERA, use
       approximately 5x number of ROM states.      
     - Data with more than one input tends to be more sensitive and harder to 
       work with. 
       
-    Some comments and variables refer to textbook.
+    Some comments and variables refer to textbook (J.-N. Juang 1994).
     """    
     # Force arrays to be 2 dimensional
     if inputs.ndim == 1:

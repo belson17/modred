@@ -10,19 +10,20 @@ def make_sampled_format(times, Markovs, dt_tol=1e-6):
     """Converts samples at [0 1 2 ...] into samples at [0 1 1 2 2 3 ...].
         
     Args:
-        times: an array of time values or time steps.
+        ``times``: an array of time values or time steps.
         
-        Markovs: array of Markov params at "times" w/indices [time, output, input].
+        ``Markovs``: Array of Markov params w/indices [time, output, input].
+            ``Markovs[i]`` is the Markov parameter C A**i B.
     
     Kwargs:
-        dt_tol: allowable deviation from uniform time steps.
+        ``dt_tol``: Allowable deviation from uniform time steps.
     
     Returns:
-        time_steps: array of integer time steps, [0 1 1 2 2 3 ...]
+        ``time_steps``: Array of integer time steps, [0 1 1 2 2 3 ...].
         
-        Markovs: output array at the time steps.
+        ``Markovs``: Output array at the time steps.
         
-        dt: the time interval between each time step
+        ``dt``: The time interval between each time step.
     
     Takes a series of data at times dt*[0 1 2 3 ...] and duplicates entries
     so that the result is sampled at dt*[0 1 1 2 2 3 ...]. 
@@ -52,25 +53,26 @@ def compute_ERA_model(Markovs, num_states):
     """Convenience function to find ERA A, B, and C matrices w/default settings.
     
     Args:
-        Markovs: array of Markov params w/indices [time_step, output, input],
-            so that "Markovs[i]" is the Markov parameter C A**i B.
+        ``Markovs``: Array of Markov params w/indices [time, output, input].
+            ``Markovs[i]`` is the Markov parameter C A**i B.
             
-        num_states: number of states of model
+        ``num_states``: Number of states of model.
     
     Returns:
-        A, B, and C reduced matrices.
+        ``A``: Reduced array/matrix.
+        ``B``: Reduced array/matrix.
+        ``C``: Reduced array/matrix.
     
     Usage::
      
-      # Obtain Markov parameters, array "Markovs" with dims [time, output, input]
+      # Obtain ``Markovs`` array w/indicies [time, output, input]
       num_states = 20
       A, B, C = compute_ERA_model(Markovs, num_states)
         
     Markov params are defined as [CB, CAB, CA**PB, CA**(P+1)B, ...]
     
     The functions :py:func:`util.load_signals` and 
-    :py:func:`util.load_multiple_signals`
-    are often useful.
+    :py:func:`util.load_multiple_signals` are often useful.
     """
     my_ERA = ERA()
     return my_ERA.compute_model(Markovs, num_states)
@@ -81,17 +83,17 @@ class ERA(object):
     """Forms ERA ROM for discrete-time system from impulse output data. 
     
     Kwargs:
-        put_mat: put matrix function. Default is save to text file.
+        ``put_mat``: Put matrix function. Default is save to text file.
     
-        mc: number of Markov parameters for controllable dimension of Hankel mat.
+        ``mc``: Number of Markov parameters for controllable dim of Hankel mat.
             
-        mo: number of Markov parameters for observable dimension of Hankel mat.
+        ``mo``: Number of Markov parameters for observable dim of Hankel mat.
             
-        verbosity: 0 prints almost nothing, 1 prints progress and warnings
+        ``verbosity``: 0 prints almost nothing, 1 prints progress and warnings
 
     Simple usage::
       
-      # Obtain Markov parameters, array "Markovs" with dims [time, output, input]
+      # Obtain array "Markovs" with dims [time, output, input]
       myERA = ERA()
       A, B, C = myERA.compute_model(Markovs, 50)
       sing_vals = myERA.sing_vals
@@ -101,7 +103,7 @@ class ERA(object):
       # Obtain Markov parameters
       myERA = ERA()
       myERA.compute_model(Markovs, 50)
-      myERA.put_model('A.txt','B.txt','C.txt')
+      myERA.put_model('A.txt', 'B.txt', 'C.txt')
     
     Default values of ``mc`` and ``mo`` are equal and maximal
     for a balanced model.
@@ -147,21 +149,16 @@ class ERA(object):
         """Computes the A, B, and C LTI ROM matrices.
 
         Args:
-            Markovs: array of Markov params w/indices [time#, output#, input#] 
+            ``Markovs``: Array of Markov params w/indices [time, output, input] 
                 ``Markovs[i]`` is the Markov parameter C A**i B.
                 
-            num_states: number of states to be found for the model.
+            ``num_states``: Number of states to be found for the model.
             
-            A_dest: destination of A matrix, arg for ``put_mat``
-            
-            B_dest: destination of B matrix, arg for ``put_mat``
-            
-            C_dest: destination of C matrix, arg for ``put_mat``
             
         Kwargs:
-            mc: number of Markov parameters for controllable dimension.
+            ``mc``: Number of Markov parameters for controllable dimension.
             		
-            mo: number of Markov parameters for observable dimension.
+            ``mo``: Number of Markov parameters for observable dimension.
             		Default is mc and mo equal and maximal for a balanced model.
         
         Assembles the Hankel matrices from self.Markovs and takes SVD.
@@ -204,7 +201,15 @@ class ERA(object):
           
  
     def put_model(self, A_dest, B_dest, C_dest):
-        """Puts the A, B, and C LTI matrices to destination"""  
+        """Puts the A, B, and C LTI matrices to destinations.
+
+        Args:        
+            ``A_dest``: Destination of A matrix, arg for ``put_mat``.
+            
+            ``B_dest``: Destination of B matrix, arg for ``put_mat``.
+            
+            ``C_dest``: Destination of C matrix, arg for ``put_mat``.
+        """  
         self.put_mat(self.A, A_dest)
         self.put_mat(self.B, B_dest)
         self.put_mat(self.C, C_dest)
@@ -216,7 +221,7 @@ class ERA(object):
       
     def put_decomp(self, Hankel_mat_dest, Hankel_mat2_dest, L_sing_vecs_dest, 
         sing_vals_dest, R_sing_vecs_dest):
-        """Puts the decomposition and Hankel matrices"""
+        """Puts the decomposition and Hankel matrices to destinations."""
         self.put_mat(self.Hankel_mat, Hankel_mat_dest)
         self.put_mat(self.Hankel_mat2, Hankel_mat2_dest)
         self.put_mat(self.L_sing_vecs, L_sing_vecs_dest)
@@ -224,17 +229,17 @@ class ERA(object):
         self.put_mat(self.R_sing_vecs, R_sing_vecs_dest)
         
     def put_sing_vals(self, sing_vals_dest):
-        """Puts the singular values"""
+        """Puts the singular values to ``sing_vals_dest``."""
         self.put_mat(self.sing_vals, sing_vals_dest)
       
  
     def _set_Markovs(self, Markovs):
-        """Sets the Markov params to self.Markovs and does error checking.
+        """Sets the Markov params to ``self.Markovs`` and error checks.
         
         Args:
-            Markovs: array of Markov params w/indices [time, output, input].
+            ``Markovs``: Array of Markov params w/indices [time, output, input].
         
-        Markovs[i] is the Markov parameter C A**i B.
+        ``Markovs[i]`` is the Markov parameter C*A**i*B.
         """
         self.Markovs = Markovs
         ndims = self.Markovs.ndim
@@ -257,9 +262,9 @@ class ERA(object):
  
  
     def _assemble_Hankel(self):
-        """Assembles and sets self.Hankel_mat and self.Hankel_mat2 
+        """Assembles and sets ``self.Hankel_mat`` and ``self.Hankel_mat2``
         
-        H and H' in Ma 2011.        
+        See variables H and H' in Ma 2011.        
         """
         # To understand the default choice of mc and mo, 
         # consider (let sample_interval=P=1 w.l.o.g.)

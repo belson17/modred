@@ -21,7 +21,7 @@ import util
 
 
 class TestDMD(unittest.TestCase):
-    """ Test all the DMD class methods 
+    """Test all the DMD class methods 
     
     Since most of the computations of DMD are done by POD methods
     currently, there should be less to test here"""

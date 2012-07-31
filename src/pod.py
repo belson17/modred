@@ -10,17 +10,16 @@ class POD(object):
     """Proper Orthogonal Decomposition.
     
     Args:
-        inner_product: Function to find inner product of two vector objects.
+        ``inner_product``: Function to find inner product of two vector objects.
     
     Kwargs:
-        
-        put_mat: Function to put a matrix out of modred
+        ``put_mat``: Function to put a matrix out of modred.
       	
-      	get_mat: Function to get a matrix into modred
+      	``get_mat``: Function to get a matrix into modred.
       	
-        verbosity: 0 prints almost nothing, 1 prints progress and warnings
+        ``verbosity``: 0 prints almost nothing, 1 prints progress and warnings.
         
-        max_vecs_per_node: max number of vectors in memory per node.
+        ``max_vecs_per_node``: Max number of vectors in memory per node.
         
     Computes orthonormal POD modes from vecs.  
     It uses :py:class:`vectorspace.VectorSpace` for low level functions.
@@ -54,7 +53,7 @@ class POD(object):
         """Check user-supplied vector handle.
         
         Args:
-            test_vec_handle: a vector handle.
+            ``test_vec_handle``: A vector handle.
         
         See :py:meth:`vectorspace.VectorSpace.sanity_check`.
         """
@@ -64,7 +63,7 @@ class POD(object):
         """Check user-supplied vector object.
         
         Args:
-            test_vec: a vector.
+            ``test_vec``: A vector.
         
         See :py:meth:`vectorspace.VectorSpace.sanity_check_in_memory`.
         """
@@ -72,7 +71,7 @@ class POD(object):
 
      
     def get_decomp(self, eigen_vecs_source, eigen_vals_source):
-        """Gets the decomposition matrices from sources (memory or file)"""
+        """Gets the decomposition matrices from sources (memory or file)."""
         if self.get_mat is None:
             raise util.UndefinedError('Must specify a get_mat function')
         if _parallel.is_rank_zero():
@@ -93,7 +92,7 @@ class POD(object):
         self.put_eigen_vals(eigen_vals_dest)
         
     def put_eigen_vecs(self, dest):
-        """Put singular vectors, U (==V)"""
+        """Put eigenvectors to ``dest``."""
         if self.put_mat is None and _parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined")
             
@@ -102,7 +101,7 @@ class POD(object):
         _parallel.barrier()
 
     def put_eigen_vals(self, dest):
-        """Put singular values, E"""
+        """Put eigenvalues to ``dest``."""
         if self.put_mat is None and _parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined")
             
@@ -111,7 +110,7 @@ class POD(object):
         _parallel.barrier()
 
     def put_correlation_mat(self, correlation_mat_dest):
-        """Put correlation matrix"""
+        """Put correlation matrix to ``correlation_mat_dest``."""
         if self.put_mat is None and _parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined")
         if _parallel.is_rank_zero():
@@ -120,15 +119,15 @@ class POD(object):
 
 
     def compute_decomp(self, vec_handles):
-        """Computes correlation mat X*X, then the eigen decomp of this matrix.
+        """Computes correlation mat (X*X), then the eigen decomp of this matrix.
         
         Args:
-            vec_handles: list of handles for vecs
+            ``vec_handles``: List of vector handles.
             
         Returns:
-            eigen_vecs: matrix of singular vectors (U, ==V, in UEV*=H)
+            ``eigen_vecs``: Matrix with eigen vectors as columns.
         
-            eigen_vals: 1D array of singular values (E in UEV*=H) 
+            ``eigen_vals``: 1D array of eigen values.
         """
         self.vec_handles = vec_handles
         self.correlation_mat = self.vec_space.\
@@ -139,7 +138,7 @@ class POD(object):
         return self.eigen_vecs, self.eigen_vals
        
     def compute_decomp_in_memory(self, vecs):
-        """Same as ``compute_decomp`` but takes vecs instead of handles"""
+        """Same as ``compute_decomp`` but takes vecs instead of handles."""
         self.vecs = vecs
         self.correlation_mat = self.vec_space.\
             compute_symmetric_inner_product_mat_in_memory(self.vecs)
@@ -149,7 +148,7 @@ class POD(object):
         return self.eigen_vecs, self.eigen_vals    
         
     def compute_eigen_decomp(self):
-        """Compute eigen decmop, UE=correlation_mat*U"""
+        """Compute eigen decomp of ``correlation_mat."""
         if _parallel.is_rank_zero():
             self.eigen_vals, self.eigen_vecs = util.eigh(self.correlation_mat)
         else:
@@ -174,19 +173,19 @@ class POD(object):
     
     def compute_modes(self, mode_nums, mode_handles,
         vec_handles=None, index_from=0):
-        """Computes the modes and calls ``put`` on them.
+        """Computes the modes and calls ``put`` on the mode handles.
         
         Args:
-            mode_nums: Mode numbers to compute. 
-              Examples are ``range(10)`` or ``[3, 1, 6, 8]``. 
+            ``mode_nums``: List of mode numbers to compute. 
+                Examples are ``range(10)`` or ``[3, 1, 6, 8]``. 
               
-            mode_handles: list of handles for modes
+            ``mode_handles``: List of handles for modes
             
         Kwargs:
-            vec_handles: list of handles for vectors. 
-	            Optional if already given when calling ``compute_decomp``.
+            ``vec_handles``: List of handles for vectors. 
+	            Optional if given when calling ``compute_decomp``.
 
-            index_from: Index modes starting from 0, 1, or other.
+            ``index_from``: Index modes starting from 0, 1, or other.
         """
         if vec_handles is not None:
             self.vec_handles = util.make_list(vec_handles)
@@ -195,20 +194,20 @@ class POD(object):
              self.vec_handles, build_coeff_mat, index_from=index_from)
     
     def compute_modes_in_memory(self, mode_nums, vecs=None, index_from=0):
-        """Computes the modes and calls ``put`` on them.
+        """Computes the modes and returns them.
         
         Args:
-            mode_nums: Mode numbers to compute. 
-              Examples are ``range(10)`` or ``[3, 1, 6, 8]``. 
+            ``mode_nums``: List of mode numbers to compute. 
+                Examples are ``range(10)`` or ``[3, 1, 6, 8]``. 
               
         Kwargs:
-            vecs: list of handles for vectors. 
-	            Optional if already given when calling ``compute_decomp``.
+            ``vecs``: List of vectors. 
+	            Optional if given when calling ``compute_decomp_in_memory``.
 
-            index_from: Index modes starting from 0, 1, or other.
+            ``index_from``: Index modes starting from 0, 1, or other.
         
         Returns:
-            modes: list of all modes with numbers in ``mode_nums``.
+            ``modes``: List of all modes with numbers in ``mode_nums``.
         
         See :py:meth:`compute_modes`.
         In parallel, each processor returns all modes.

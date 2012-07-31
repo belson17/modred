@@ -12,10 +12,11 @@ def standard_basis(num_dims):
     """Returns list of standard basis vecs of space R^n.
     
     Args:
-        ``num_dims``: integer number of dimensions.
+        ``num_dims``: Integer number of dimensions.
     
     Returns:
-        Basis, list of 1D arrays: ``[array([1,0,...]), array([0,1,...]), ...]``.
+        ``basis``: The standard basis as a list of 1D arrays.
+            ``[array([1,0,...]), array([0,1,...]), ...]``.
     """
     return list(N.identity(num_dims))
 
@@ -24,13 +25,13 @@ def compute_derivs(vec_handles, adv_vec_handles, deriv_vec_handles, dt):
     """Computes 1st-order time derivatives of vectors. 
     
     Args:
-        ``vec_handles``: list of vec handles.
+        ``vec_handles``: List of vec handles.
         
-        ``adv_vec_handles``: list of vec handles for vecs advanced ``dt`` in time.
+        ``adv_vec_handles``: List of vec handles for vecs advanced ``dt`` in time.
         
-        ``deriv_vec_handles``: list of vec handles for time derivatives of vecs.
+        ``deriv_vec_handles``: List of vec handles for time derivatives of vecs.
         
-        ``dt``: time step of ``adv_vec_handles``
+        ``dt``: Time step of ``adv_vec_handles``
         
     Computes d(``vec``)/dt = (``vec``(t=dt) - ``vec``(t=0)) / dt.
     """
@@ -53,14 +54,14 @@ def compute_derivs_in_memory(vecs, adv_vecs, dt):
     """Computes 1st-order time derivatives of vectors. 
     
     Args:
-        ``vecs``: list of vecs.
+        ``vecs``: List of vecs.
         
-        ``adv_vecs``: list of vecs advanced ``dt`` in time.
+        ``adv_vecs``: List of vecs advanced ``dt`` in time.
         
-        ``dt``: time step of ``adv_vecs``.
+        ``dt``: Time step of ``adv_vecs``.
                 
     Returns:
-        ``deriv_vecs``: list of time-derivs of vectors.
+        ``deriv_vecs``: List of time-derivs of vectors.
         
     In parallel, each processor returns all derivatives.
     """
@@ -81,7 +82,12 @@ def compute_derivs_in_memory(vecs, adv_vecs, dt):
 
 
 class LookUpOperator(object):
-    """Looks up precomputed operation on vecs or vec handles.
+    """Looks up precomputed operation on vectors or vector handles.
+    
+    Args:
+        ``vecs``: List of vecs or handles on which operator acted.
+        
+        ``operated_on_vecs``: List of vecs or handles resulting from operation.
     
     Useful when the action of an operator on a set of vectors (e.g. A on the
     direct modes) is computed outside of python and modred.
@@ -106,10 +112,21 @@ class LookUpOperator(object):
 
        
 class MatrixOperator(object):
-    """Operates on numpy 1D arrays via matrix multiplication."""
+    """Callable class that operates on 1D arrays via matrix multiplication.
+    
+    Args:
+        ``mat``: A numpy matrix/array.
+    
+    Usage::
+    
+      my_mat_op = MatrixOperator(N.random.random((3, 3)))
+      product = my_mat_op(N.random.random(3))
+      
+    """
     def __init__(self, mat):
         self.mat = mat
     def __call__(self, vec):
+        """Does matrix multiplication on vec, a numpy array or matrix"""
         return N.dot(self.mat, vec)
    
 
@@ -119,25 +136,29 @@ class LTIGalerkinProjection(object):
     Args:
         ``inner_product``: Function to take inner product of vectors.
         
-        ``direct_modes``: List of direct modes (vecs or vec handles)      
+        ``direct_modes``: List of direct modes (vecs or vec handles). 
     
     Kwargs:
-        ``adjoint_modes``: List of adjoint modes (vecs or vec handles)
+        ``adjoint_modes``: List of adjoint modes (vecs or vec handles).
             If not given, then ``direct_modes`` are used.
     
-        ``are_modes_orthonormal``: bool for the bi-orthonormality of the modes.
-            That is, ``True`` if inner product of adjoint_mode[i] and 
-                direct_mode[j] is 1 if i==j and 0 otherwise.
-        
+        ``are_modes_orthonormal``: Bool for the bi-orthonormality of the modes.
+            ``True`` if the modes are orthonormal.
+            
         ``put_mat``: Function to put a matrix elsewhere (memory or file).
         
-        ``verbosity``: 1 prints progress and warnings, 0 only essential messages.
+        ``verbosity``: 1 prints progress and warnings, 0 almost nothing.
         
-        ``max_vecs_per_node``: max number of vectors in memory per node.
+        ``max_vecs_per_node``: Max number of vectors in memory per node.
     
     This class creates either discrete or continuous time models from
     modes (could obtain modes from :py:class:`POD` and :py:class:`BPOD`).
-        
+    
+    If the ``direct_modes`` (and optionally the ``adjoint_modes``) are given
+    as vectors rather than vector handles, then use the ``*_in_memory`` 
+    member functions when there is a distinction. 
+    For vector handles, use the regular functions.
+    
     Usage::
         
       LTI_proj = LTIGalerkinProjection(inner_product, direct_modes,
@@ -188,11 +209,11 @@ class LTIGalerkinProjection(object):
         """Put reduced A, B, and C mats (numpy arrays) to destinations.
         
         Args:
-            ``A_reduced_dest``: destination for ``A_reduced``
+            ``A_reduced_dest``: Destination for ``A_reduced``.
             
-            ``B_reduced_dest``: destination for ``B_reduced``
+            ``B_reduced_dest``: Destination for ``B_reduced``.
             
-            ``C_reduced_dest``: destination for ``C_reduced``
+            ``C_reduced_dest``: Destination for ``C_reduced``.
         """
         self.put_A_reduced(A_reduced_dest)
         self.put_B_reduced(B_reduced_dest)
@@ -200,10 +221,10 @@ class LTIGalerkinProjection(object):
         
         
     def compute_model(self, A, B, C, num_inputs, model_dim=None):
-        """Computes and returns the reduced matrices.
+        """Computes and returns the reduced matrices. For use with vec handles.
         
         Args:
-            ``A``: callable which takes a mode handle, returns "A*mode".
+            ``A``: Callable which takes a mode handle, returns "A*mode".
                 There are two primary flavors of ``A``.
                 First, it can compute the action of A on the mode.
                 Second, if the action of A on all of the modes is computed 
@@ -259,10 +280,10 @@ class LTIGalerkinProjection(object):
         """Computes and returns the continous or discrete time A matrix.
         
         Args:
-            ``A``: callable which takes a mode handle, returns handle "A*mode".
+            ``A``: Callable which takes a mode handle, returns handle "A*mode".
             
         Kwargs:
-            ``model_dim``: number of modes/states to keep in the model. 
+            ``model_dim``: Number of modes/states to keep in the model. 
                 Can omit if already given. Default is maximum possible.
         
         Returns:
@@ -285,12 +306,13 @@ class LTIGalerkinProjection(object):
         """Computes and returns the reduced B matrix.
         
         Args:		
-            ``B``: callable which takes standard basis vecs, returns handle "B*e_j".
+            ``B``: Callable which takes a standard basis element (array),
+            returns handle "B*e_j".
             
-            ``num_inputs``: number of inputs to the system. 
+            ``num_inputs``: Number of inputs to the system. 
                 
         Kwargs:
-            ``model_dim``: number of modes/states to keep in the model. 
+            ``model_dim``: Number of modes/states to keep in the model. 
                 Can omit if already given.
 		
 		Returns:
@@ -349,10 +371,10 @@ class LTIGalerkinProjection(object):
         """Computes and returns the reduced C matrix.
                
         Args: 
-            ``C``: callable that takes mode (or handle), returns 1D array "C*mode".
+            ``C``: Callable that takes mode handle, returns 1D array "C*mode".
         		
         Kwargs:
-            ``model_dim``: number of modes/states to keep in the model. 
+            ``model_dim``: Number of modes/states to keep in the model. 
                 Can omit if already given.
         
         Returns:
@@ -383,14 +405,14 @@ class LTIGalerkinProjection(object):
         """Gets the projection mat, i.e. inv(Psi^* Phi).
         
         Kwargs:
-           ``direct_modes``: direct mode handles, default ``self.direct_modes``.
+           ``direct_modes``: Direct mode handles, default ``self.direct_modes``.
 
-           ``adjoint_modes``: adjoint mode handles, default ``self.adjoint_modes``.
+           ``adjoint_modes``: Adjoint mode handles, default ``self.adjoint_modes``.
 
-           ``are_modes_orthonormal``: bool, default ``self.are_modes_orthonormal``.
+           ``are_modes_orthonormal``: Bool, default ``self.are_modes_orthonormal``.
                 
         There are only arguments to avoid repeating code for an "in_memory" 
-        version.
+        version. Otherwise one could just use the class self variables.
         """            
         if self._proj_mat is None:
             if direct_modes is None: 

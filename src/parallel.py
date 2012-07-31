@@ -59,7 +59,11 @@ class Parallel(object):
         return self._num_nodes
     
     def print_from_rank_zero(self, msgs):
-        """Prints the elements of the list given from rank=0 only."""
+        """Prints the elements of the list given from rank=0 only.
+        
+        Args:
+            ``msgs``: List of strings to print.
+        """
         # If not a list, convert to list
         if not isinstance(msgs, list):
             msgs = [msgs]
@@ -101,16 +105,18 @@ class Parallel(object):
         """Evenly distributes the tasks by task weights among all MPI workers.
         
         Args:
-            tasks: list of "tasks", which can be any object corresponding to
+            ``tasks``: List of "tasks".
+            Tasks can be any object that corresponds to
             a task that needs to be completed, for example an index.
     
         Kwargs:
-            task_weights: list of weights, numbers, that are used to
-            equally distribute the tasks among MPI workers.
+            ``task_weights``: List of weights for each task. 
+            These are used to equally distribute the work load among MPI 
+            workers.
        
         Returns:
-            task_assignments: 2D list of tasks, [rank][task_index] such that 
-            MPI worker n is responsible for tasks in task_assignments[n]
+            ``task_assignments``: 2D list of tasks, indices [rank][task_index].
+            Each MPI worker is responsible for tasks ``task_assignments[rank]``
         """
         task_assignments = []
         
@@ -151,7 +157,14 @@ class Parallel(object):
         
 
     def check_for_empty_tasks(self, task_assignments):
-        """Convenience function that checks if empty worker assignments."""
+        """Convenience function that checks if empty worker assignments.
+        
+        Args:
+            ``task_assignments``: List of task assignments.
+        
+        Returns:
+            ``empty_tasks``: ``True`` if no tasks, else ``False``.
+        """
         empty_tasks = False
         for assignment in task_assignments:
             if len(assignment) == 0 and not empty_tasks:

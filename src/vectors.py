@@ -10,7 +10,7 @@ import numpy as N
 import util
 
 class VecHandle(object):
-    """Recommended base class for vector handles (not required)"""
+    """Recommended base class for vector handles (not required)."""
     cached_base_vec_handle = None
     cached_base_vec = None
 
@@ -52,7 +52,7 @@ class VecHandle(object):
 
 
 class InMemoryVecHandle(VecHandle):
-    """Gets and puts vectors in memory"""
+    """Gets and puts vectors in memory."""
     def __init__(self, vec=None, base_vec_handle=None, scale=None):
         VecHandle.__init__(self, base_vec_handle, scale)
         self.vec = vec
@@ -69,7 +69,7 @@ class InMemoryVecHandle(VecHandle):
         
         
 class ArrayTextVecHandle(VecHandle):
-    """Gets and puts array vector objects to text files"""
+    """Gets and puts array vector objects to text files."""
     def __init__(self, vec_path, base_vec_handle=None, scale=None):
         VecHandle.__init__(self, base_vec_handle, scale)
         self.vec_path = vec_path
@@ -86,7 +86,7 @@ class ArrayTextVecHandle(VecHandle):
         
 
 class PickleVecHandle(VecHandle):
-    """Gets and puts any vector object to pickle files"""
+    """Gets and puts any vector object to pickle files."""
     def __init__(self, vec_path, base_vec_handle=None, scale=None):
         VecHandle.__init__(self, base_vec_handle, scale)
         self.vec_path = vec_path

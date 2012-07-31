@@ -22,12 +22,12 @@ def save_array_text(array, filename, delimiter=' '):
     """Saves a 1D or 2D array or matrix to a text file
     
     Args:
-        mat: matrix or array to save to file (1D or 2D)
+        ``mat``: Matrix or array to save to file (1D or 2D)
         
-        filename: path to save to, string.
+        ``filename``: Path to save to, string.
         
     Kwargs:   
-        delimeter: delimeter in file, default is a whitespace.
+        ``delimeter``: Delimeter in file, default is a whitespace.
     
     Format of saved files is::
       
@@ -64,10 +64,10 @@ def load_array_text(file_name, delimiter=' ', is_complex=False):
     See :py:func:`save_array_text` for the format used by this function.
     
     Kwargs:
-        is_complex: if the data saved is complex, then set  to ``True``.
+        ``is_complex``: Bool, if the data saved is complex then use ``True``.
     
     Returns:
-        array: a numpy array, always 2D.
+        ``array``: a numpy array, always 2D.
     """
     # Check the version of numpy, requires version >= 1.6 for ndmin option
     #if int(N.version.version[2]) < 6:
@@ -96,21 +96,26 @@ def load_array_text(file_name, delimiter=' ', is_complex=False):
 
 
 def inner_product(vec1, vec2):
-    """ A default inner product for n-dimensional numpy arrays """
+    """A default inner product for n-dimensional numpy arrays. """
     #return (vec1 * vec2.conj()).sum()
     return N.vdot(vec1, vec2)
 
     
 def svd(mat, tol=1e-13):
-    """An SVD that better meets our needs.
+    """An SVD that better meets our needs. U E V* = mat. 
     
     Args:
-        mat: array or matrix to take SVD of.
+        ``mat``: Array or matrix to take SVD of.
+    
+    Kwargs:
+        ``tol``: Level at which singular values are truncated.
     
     Returns:
-        U, E, V: U.E.V* = mat. U and V are matrices, E is a 1D array.
+        ``U``: matrix of left singular vectors.
+        ``E``: 1D array of singular values.
+        ``V``: matrix of right singular vectors.
     
-    Truncates the U, E, and V such that there are no ~0 singular values.
+    Truncates U, E, and V such that there are no ~0 singular values.
     """
     U, E, V_comp_conj = N.linalg.svd(N.mat(mat), full_matrices=0)
     V = N.mat(V_comp_conj).H
@@ -129,24 +134,20 @@ def eigh(mat):
     """Computes the eigenvalues and vecs of Hermitian matrix/array.
     
     Returns:
-        evals: eigenvalues in a 1D array, sorted in descending order.
+        ``evals``: eigenvalues in a 1D array, sorted in descending order.
         
-        evecs: eigenvectors, columns of matrix/array, sorted by evals.
+        ``evecs``: eigenvectors, columns of matrix/array, sorted by evals.
     """
     evals, evecs = N.linalg.eigh(mat)
-    for i, val in enumerate(evals):
-        if val < 0:
-            evecs[:, i] *= -1
-            evals[i] *= -1
     # Sort the vecs and vals by eval magnitude
-    sort_indices = N.argsort(evals)[::-1]
+    sort_indices = N.argsort(N.abs(evals))[::-1]
     evals = evals[sort_indices]
     evecs = evecs[:, sort_indices]
     return evals, evecs
 
 
 def get_file_list(directory, file_extension=None):
-    """Returns list of files in directory with file_extension"""
+    """Returns list of files in ``directory`` with ``file_extension``."""
     files = os.listdir(directory)
     if file_extension is not None:
         if len(file_extension) == 0:
@@ -158,10 +159,10 @@ def get_file_list(directory, file_extension=None):
         return filtered_files
     else:
         return files
-        
+
 
 def get_data_members(obj):
-    """Returns a dictionary containing data members of an object"""
+    """Returns a dictionary containing data members of an ``obj``."""
     data_members = {}
     for name in dir(obj):
         value = getattr(obj, name)
@@ -171,7 +172,7 @@ def get_data_members(obj):
 
 
 def sum_arrays(arr1, arr2):
-    """Used for allreduce command"""
+    """Used for allreduce command."""
     return arr1 + arr2
 
     
@@ -179,13 +180,13 @@ def sum_lists(list1, list2):
     """Sum the elements of each list, return a new list.
     
     This function is used in MPI reduce commands, but could be used
-    elsewhere too"""
+    elsewhere too."""
     assert len(list1) == len(list2)
     return [list1[i] + list2[i] for i in xrange(len(list1))]
 
 
 def solve_Lyapunov(A, Q):
-    """Solves equation of form AXA' - X + Q = 0 for X given A and Q
+    """Solves equation of form AXA' - X + Q = 0 for X given A and Q.
     
     See http://en.wikipedia.org/wiki/Lyapunov_equation
     """
@@ -202,7 +203,7 @@ def solve_Lyapunov(A, Q):
 
 
 def drss(num_states, num_inputs, num_outputs):
-    """Generates a discrete-time random state space system
+    """Generates a discrete-time random state space system.
     
     Args:
         number of states, inputs, and outputs.
@@ -221,15 +222,17 @@ def drss(num_states, num_inputs, num_outputs):
     return A, B, C
 
 def rss(num_states, num_inputs, num_outputs):
-    """Generates a continuous-time random state space systme.
+    """Generates a continuous-time random state space system.
 
     Args:
-        number of states, inputs, and outputs.
+        ``num_states``: number of states.
+        ``num_inputs``: number of inputs.
+        ``num_outputs``: number of outputs.
     
     Returns:
-        A, B, and C matrices of system.
+        ``A``, ``B``, and ``C`` matrices of system.
         
-    All e-vals are real.
+    All eigenvalues are real.
     """
     e_vals = -N.random.random(num_states)
     transformation = N.random.random((num_states, num_states))
@@ -244,10 +247,10 @@ def lsim(A, B, C, inputs):
     """Simulates a discrete time system with arbitrary inputs. 
     
     Args:
-        inputs: array with indices [num_time_steps, num_inputs]
+        ``inputs``: array with indices [num_time_steps, num_inputs].
     
     Returns:
-        outputs: array with indicies [num_time_steps, num_outputs]
+        ``outputs``: array with indicies [num_time_steps, num_outputs].
     
     Currently D matrix is not used, assumed to be zero.
     """
@@ -295,9 +298,9 @@ def impulse(A, B, C, time_steps=None):
     """Generates impulse response outputs for a discrete-time system.
     
     Args:
-        A, B, C: state-space system matrices
+        ``A, B, C``: State-space system matrices
         
-        time_steps: 1D array of integers specifying the time steps
+        ``time_steps``: 1D array of integers specifying the time steps
         
     No D matrix is included, but can simply be prepended to the output if it is
     non-zero. 
@@ -329,7 +332,7 @@ def impulse(A, B, C, time_steps=None):
 
 
 def load_signals(signal_path, delimiter=' '):
-    """Loads signals with columns [t signal1 signal2 ...].
+    """Loads signals from text files with columns [t signal1 signal2 ...].
     
     Args:
         signal_paths: list of paths to signals, strings
@@ -364,12 +367,12 @@ def load_multiple_signals(signal_paths, delimiter=' '):
     """Loads multiple signal files w/columns [t channel1 channel2 ...].
     
     Args:
-        signal_paths: list of paths to signals, strings
+        ``signal_paths``: List of paths to signals, strings.
     
     Returns:
-        time_values: 1D array of time values
+        ``time_values``: 1D array of time values.
         
-        all_signals: array of signals with dimensions [path#, time#, signal#]
+        ``all_signals``: Array of signals with indices [path, time, signal].
     
     See :py:func:`load_signals`.
     """
@@ -398,7 +401,7 @@ def load_multiple_signals(signal_paths, delimiter=' '):
     return time_values, all_signals
 
 def smart_eq(arg1, arg2):
-    """Checks if equal, accounting for numpy's == not returning a bool"""
+    """Checks if equal, accounting for numpy's ``==`` not returning a bool."""
     eq = (arg1 == arg2)
     if isinstance(eq, bool):
         return eq
