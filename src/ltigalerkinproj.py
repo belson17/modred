@@ -1,6 +1,4 @@
-""" ** IN DEVELOPMENT **
-
-Class for finding models for LTI plants via Galerkin Projection onto modes."""
+"""Module for Galerkin projection of LTI systems."""
 
 import numpy as N
 
@@ -83,7 +81,7 @@ def compute_derivs_in_memory(vecs, adv_vecs, dt):
 
 
 class LookUpOperator(object):
-    """Operates on any representation of vecs, given precomputed operation on vecs.
+    """Looks up precomputed operation on vecs or vec handles.
     
     Useful when the action of an operator on a set of vectors (e.g. A on the
     direct modes) is computed outside of python and modred.
@@ -92,7 +90,8 @@ class LookUpOperator(object):
       
       # Compute action of operator A on direct_modes outside of python.
       A = LookUpOperator(direct_modes, A_on_modes)
-      A_reduced = LTIGalerkinProjection(inner_product).reduce_A(A, direct_modes, adjoint_modes)    
+      A_reduced = LTIGalerkinProjection(inner_product).reduce_A(
+        A, direct_modes, adjoint_modes)
     
     """
     def __init__(self, vecs, operated_on_vecs):
@@ -100,7 +99,7 @@ class LookUpOperator(object):
         self.operated_on_vecs = operated_on_vecs
     def __call__(self, vec):
         """Given vec, finds and returns corresponding operated_on_vec."""
-        for v,ov in zip(self.vecs, self.operated_on_vecs):
+        for v, ov in zip(self.vecs, self.operated_on_vecs):
             if util.smart_eq(v, vec):
                 return ov
         raise RuntimeError('Vector was not previously operated on')
@@ -142,7 +141,7 @@ class LTIGalerkinProjection(object):
     Usage::
         
       LTI_proj = LTIGalerkinProjection(inner_product, direct_modes,
-        adjoint_modes, are_modes_orthonormal=True)
+        adjoint_modes=adjoint_modes, are_modes_orthonormal=True)
       A, B, C = LTI_proj.compute_model(A, B, C, num_inputs)
         
     """
@@ -160,7 +159,6 @@ class LTIGalerkinProjection(object):
         self.put_mat = put_mat
         self.vec_space = VectorSpace(inner_product=inner_product,
             max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
-        parallel = parallel_mod.parallel_default_instance
         self.model_dim = None
         self.verbosity = verbosity
         self._proj_mat = None
@@ -241,11 +239,12 @@ class LTIGalerkinProjection(object):
     def reduce_A_in_memory(self, A, model_dim=None):
         """Computes and returns the continous or discrete time A matrix.
         
-        See py:meth:`reduce_A`, but use when modes are vecs not vec handles."""
+        See :py:meth:`reduce_A`, but use when modes are vecs not vec handles."""
         if model_dim is not None:
             self.model_dim = model_dim
         if self.model_dim is None:
-            self.model_dim = min(len(self.direct_modes), len(self.adjoint_modes))
+            self.model_dim = min(len(self.direct_modes), 
+                len(self.adjoint_modes))
         A_on_direct_modes = map(A, self.direct_modes[:self.model_dim])
         self.A_reduced = self.vec_space.compute_inner_product_mat(
             map(InMemoryVecHandle, self.adjoint_modes[:self.model_dim]),
@@ -272,7 +271,8 @@ class LTIGalerkinProjection(object):
         if model_dim is not None:
             self.model_dim = model_dim
         if self.model_dim is None:
-            self.model_dim = min(len(direct_mode_handles), len(adjoint_mode_handles))
+            self.model_dim = min(len(self.direct_modes), 
+                len(self.adjoint_modes))
         A_on_direct_modes = map(A, self.direct_modes[:self.model_dim])
         self.A_reduced = self.vec_space.compute_inner_product_mat(
             self.adjoint_modes[:self.model_dim], A_on_direct_modes)
@@ -333,7 +333,7 @@ class LTIGalerkinProjection(object):
         if model_dim is not None:
             self.model_dim = model_dim
         if self.model_dim is None:
-            self.model_dim = len(adjoint_modes)
+            self.model_dim = len(self.adjoint_modes)
         B_on_basis = map(B, standard_basis(num_inputs))
         self.B_reduced = self.vec_space.compute_inner_product_mat(
             map(InMemoryVecHandle, self.adjoint_modes[:self.model_dim]), 
@@ -371,7 +371,7 @@ class LTIGalerkinProjection(object):
     
     
     def reduce_C_in_memory(self, C, model_dim=None):
-        """Same as :py:meth:`reduce_C`, but use when modes are vecs not vec handles.
+        """Same as :py:meth:`reduce_C`, but modes are vecs not vec handles.
         
         Only for convenience and consistency, since it doesn't matter if 
         the modes are vecs or vec handles for :py:meth:`reduce_C`."""
@@ -393,13 +393,16 @@ class LTIGalerkinProjection(object):
         version.
         """            
         if self._proj_mat is None:
-            if direct_modes is None: direct_modes = self.direct_modes
-            if adjoint_modes is None: adjoint_modes = self.adjoint_modes
-            if are_modes_orthonormal is None: are_modes_orthonormal = self.are_modes_orthonormal
+            if direct_modes is None: 
+                direct_modes = self.direct_modes
+            if adjoint_modes is None: 
+                adjoint_modes = self.adjoint_modes
+            if are_modes_orthonormal is None: 
+                are_modes_orthonormal = self.are_modes_orthonormal
             
             # Check if direct and adjoint modes are equal
             symmetric = True
-            for d_mode,a_mode in zip(self.direct_modes[:self.model_dim], 
+            for d_mode, a_mode in zip(self.direct_modes[:self.model_dim], 
                 self.adjoint_modes[:self.model_dim]):
                 if not util.smart_eq(d_mode, a_mode):
                     symmetric = False

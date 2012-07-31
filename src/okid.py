@@ -55,16 +55,16 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
     
     inputs_outputs = N.concatenate((inputs, outputs), axis=0)
     for i in xrange(1, num_Markovs+1):
-        V[num_inputs+(i-1)*num_inouts:num_inputs+i*num_inouts,i:] = \
+        V[num_inputs + (i-1)*num_inouts:num_inputs + i*num_inouts, i:] = \
             inputs_outputs[:, :num_samples-i]
     
     # Ybar in book
     Markov_aug = N.dot(outputs, N.array(N.linalg.pinv(V, cutoff)))
 
-    D = Markov_aug[:,:num_inputs]
+    D = Markov_aug[:, :num_inputs]
     
     # Convenience variable
-    Markov_aug_noD = Markov_aug[:,num_inputs:]
+    Markov_aug_noD = Markov_aug[:, num_inputs:]
     
     # Break the augmented system Markov parameters into manageable lists
     # Ybar1 and Ybar2 in book:

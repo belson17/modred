@@ -1,5 +1,0 @@
-BPODROM
-************* 
-
-.. automodule:: bpodltirom
-   :members:

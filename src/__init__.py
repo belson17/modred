@@ -18,6 +18,7 @@ from dmd import *
 from era import *
 from vectorspace import *
 from okid import *
+from ltigalerkinproj import *
 from parallel import *
 from util import *
 from vectors import *

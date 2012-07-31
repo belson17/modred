@@ -138,6 +138,8 @@ class ERA(object):
         self.num_time_steps = None
         self.Hankel_mat = None
         self.Hankel_mat2 = None
+        self.num_Markovs = None
+        self.Markovs = None
      
             
     
@@ -172,7 +174,8 @@ class ERA(object):
         This means the reduced B matrix is "off" by a factor of dt. 
         You can account for this by multiplying B by dt.
         """
-        #SVD is ``L_sing_vecs*N.mat(N.diag(sing_vals))*R_sing_vecs.H = Hankel_mat``
+        #SVD is ``L_sing_vecs*N.mat(N.diag(sing_vals))*\
+        #    R_sing_vecs.H = Hankel_mat``
         self._set_Markovs(Markovs)       
         self.mc = mc
         self.mo = mo
@@ -182,20 +185,21 @@ class ERA(object):
             util.svd(self.Hankel_mat) 
 
         # Truncate matrices
-        Ur = N.mat(self.L_sing_vecs[:,:num_states])
+        Ur = N.mat(self.L_sing_vecs[:, :num_states])
         Er = N.squeeze(self.sing_vals[:num_states])
-        Vr = N.mat(self.R_sing_vecs[:,:num_states])
+        Vr = N.mat(self.R_sing_vecs[:, :num_states])
         
         self.A = N.mat(N.diag(Er**-.5)) * Ur.H * self.Hankel_mat2 * Vr * \
             N.mat(N.diag(Er**-.5))
-        self.B = (N.mat(N.diag(Er**.5)) * (Vr.H)[:,:self.num_inputs]) #* self.dt 
-        # !! dt above is removed, user must do this themself. In docs.
+        self.B = (N.mat(N.diag(Er**.5)) * (Vr.H)[:, :self.num_inputs]) 
+        # *dt above is removed, users must do this themselves.
+        # It is explained in the docs.
         
-        self.C = Ur[:self.num_Markovs,:] * N.mat(N.diag(Er**.5))
+        self.C = Ur[:self.num_Markovs] * N.mat(N.diag(Er**.5))
         
         if (N.abs(N.linalg.eigvals(self.A)) >= 1.).any() and self.verbosity:
             print 'Warning: Unstable eigenvalues of reduced A matrix'
-            print 'eig vals are',N.linalg.eigvals(self.A)
+            print 'eig vals are', N.linalg.eigvals(self.A)
         return self.A, self.B, self.C
           
  

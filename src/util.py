@@ -119,8 +119,8 @@ def svd(mat, tol=1e-13):
     # Only return sing vals above the tolerance
     num_nonzeros = (abs(E) > tol).sum()
     if num_nonzeros > 0:
-        U = U[:,:num_nonzeros]
-        V = V[:,:num_nonzeros]
+        U = U[:, :num_nonzeros]
+        V = V[:, :num_nonzeros]
         E = E[:num_nonzeros]
 
     return U, E, V
@@ -134,14 +134,14 @@ def eigh(mat):
         evecs: eigenvectors, columns of matrix/array, sorted by evals.
     """
     evals, evecs = N.linalg.eigh(mat)
-    for i,eval in enumerate(evals):
-        if eval < 0:
-            evecs[:,i] *= -1
+    for i, val in enumerate(evals):
+        if val < 0:
+            evecs[:, i] *= -1
             evals[i] *= -1
     # Sort the vecs and vals by eval magnitude
     sort_indices = N.argsort(evals)[::-1]
     evals = evals[sort_indices]
-    evecs = evecs[:,sort_indices]
+    evecs = evecs[:, sort_indices]
     return evals, evecs
 
 
@@ -162,12 +162,12 @@ def get_file_list(directory, file_extension=None):
 
 def get_data_members(obj):
     """Returns a dictionary containing data members of an object"""
-    pr = {}
+    data_members = {}
     for name in dir(obj):
         value = getattr(obj, name)
         if not name.startswith('__') and not inspect.ismethod(value):
-            pr[name] = value
-    return pr
+            data_members[name] = value
+    return data_members
 
 
 def sum_arrays(arr1, arr2):
@@ -251,7 +251,7 @@ def lsim(A, B, C, inputs):
     
     Currently D matrix is not used, assumed to be zero.
     """
-    D = 0
+    #D = 0
     if inputs.ndim == 1:
         inputs = inputs.reshape((len(inputs), 1))
     num_steps, num_inputs = inputs.shape
@@ -264,10 +264,10 @@ def lsim(A, B, C, inputs):
         raise ValueError('A has the wrong shape ', A.shape)
     if C.shape != (num_outputs, num_states):
         raise ValueError('C has the wrong shape ', C.shape)
-    if D == 0:
-        D = N.zeros((num_outputs, num_inputs))
-    if D.shape != (num_outputs, num_inputs):
-        raise ValueError('D has the wrong shape, D=', D)
+    #if D == 0:
+    #    D = N.zeros((num_outputs, num_inputs))
+    #if D.shape != (num_outputs, num_inputs):
+    #    raise ValueError('D has the wrong shape, D=', D)
     
     outputs = [] 
     state = N.mat(N.zeros((num_states, 1)))
@@ -352,7 +352,7 @@ def load_signals(signal_path, delimiter=' '):
     if num_signals == 0:
         raise ValueError('Data must have at least two columns')
     time_values = raw_data[:, 0]
-    signals = raw_data[:,1:]
+    signals = raw_data[:, 1:]
     # Guarantee that signals is 2D
     if signals.ndim == 1:
         signals = signals.reshape((signals.shape[0], 1))
@@ -388,7 +388,8 @@ def load_multiple_signals(signal_paths, delimiter=' '):
     
     # Load all remaining files
     for path_num, signal_path in enumerate(signal_paths):
-        time_values_read, signals = load_signals(signal_path, delimiter=delimiter)
+        time_values_read, signals = load_signals(signal_path, 
+            delimiter=delimiter)
         if not N.allclose(time_values_read, time_values):
             raise ValueError('Time values in %s are inconsistent with '
                 'other files')
@@ -396,9 +397,9 @@ def load_multiple_signals(signal_paths, delimiter=' '):
 
     return time_values, all_signals
 
-def smart_eq(a, b):
+def smart_eq(arg1, arg2):
     """Checks if equal, accounting for numpy's == not returning a bool"""
-    eq = (a==b)
+    eq = (arg1 == arg2)
     if isinstance(eq, bool):
         return eq
     elif isinstance(eq, N.ndarray):

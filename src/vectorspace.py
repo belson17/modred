@@ -72,7 +72,7 @@ class VectorSpace(object):
     
     def print_msg(self, msg, output_channel=sys.stdout):
         """Print a message from rank 0 if verbosity"""
-        if self.verbosity>0 and parallel.is_rank_zero():
+        if self.verbosity > 0 and parallel.is_rank_zero():
             print >> output_channel, msg
 
     def sanity_check_in_memory(self, test_vec):
@@ -272,7 +272,8 @@ class VectorSpace(object):
         for row_get_index in xrange(num_row_get_loops):
             if len(row_tasks[rank]) > 0:
                 start_row_index = min(row_tasks[rank][0] + 
-                    row_get_index*num_rows_per_proc_chunk, row_tasks[rank][-1]+1)
+                    row_get_index*num_rows_per_proc_chunk, 
+                    row_tasks[rank][-1]+1)
                 end_row_index = min(row_tasks[rank][-1]+1, 
                     start_row_index + num_rows_per_proc_chunk)
                 row_vecs = [row_vec_handle.get() for row_vec_handle in 
@@ -394,7 +395,7 @@ class VectorSpace(object):
         Returns:
             IP_mat: numpy array of inner products
 
-        See the documentation for compute_inner_product_mat for a general
+        See the documentation for :py:meth:`compute_inner_product_mat` for an
         idea how this works.
         
         TODO: JON, write detailed documentation similar to 
@@ -433,8 +434,9 @@ class VectorSpace(object):
         
         # Use the same trick as in compute_IP_mat, having each proc
         # fill in elements of a num_rows x num_rows sized matrix, rather than
-        # assembling small chunks. This is done for the triangular portions. For
-        # the rectangular portions, the inner product mat is filled in directly.
+        # assembling small chunks. This is done for the triangular portions. 
+        # For the rectangular portions, the inner product mat is filled 
+        # in directly.
         IP_mat = N.mat(N.zeros((num_vecs, num_vecs), dtype=IP_type))
         for start_row_index in xrange(0, num_vecs, num_rows_per_chunk):
             end_row_index = min(num_vecs, start_row_index + num_rows_per_chunk)
@@ -513,9 +515,10 @@ class VectorSpace(object):
                         # Send row vecs, in groups of num_cols_per_proc_chunk
                         # These become columns in the ensuing computation
                         start_col_index = send_index * num_cols_per_proc_chunk
-                        end_col_index = min(start_col_index + num_cols_per_proc_chunk, 
-                            my_num_rows)   
-                        col_vecs_send = (row_vecs[start_col_index:end_col_index], 
+                        end_col_index = min(start_col_index + 
+                            num_cols_per_proc_chunk, my_num_rows)   
+                        col_vecs_send = (
+                            row_vecs[start_col_index:end_col_index], 
                             my_row_indices[start_col_index:end_col_index])
                         
                         # Create unique tags based on ranks
@@ -530,7 +533,7 @@ class VectorSpace(object):
                         # blocking send (though we are unsure why).
                         request = parallel.comm.isend(col_vecs_send, 
                             dest=dest_rank, tag=send_tag)                        
-                        col_vecs_recv = parallel.comm.recv(source=\
+                        col_vecs_recv = parallel.comm.recv(source = 
                             source_rank, tag=recv_tag)
                         request.Wait()
                         col_vecs = col_vecs_recv[0]
@@ -554,7 +557,8 @@ class VectorSpace(object):
             # revision 141.  
             for start_col_index in xrange(end_row_index, num_vecs, 
                 num_cols_per_chunk):
-                end_col_index = min(start_col_index + num_cols_per_chunk, num_vecs)
+                end_col_index = min(start_col_index + num_cols_per_chunk, 
+                    num_vecs)
                 proc_col_tasks = parallel.find_assignments(range(
                     start_col_index, end_col_index))[parallel.get_rank()]
                         
@@ -615,8 +619,9 @@ class VectorSpace(object):
                                     col_vec)
             # Completed a chunk of rows and all columns on all processors.
             if T.time() - self.prev_print_time > self.print_interval:
-                num_completed_IPs = end_row_index*num_vecs- end_row_index**2 *.5
-                percent_completed_IPs = 100. * num_completed_IPs/(.5 *\
+                num_completed_IPs = end_row_index*num_vecs - \
+                    end_row_index**2 * 0.5
+                percent_completed_IPs = 100. * num_completed_IPs/(0.5 *
                     num_vecs **2)           
                 self.print_msg('Completed %.1f%% of inner products' %
                     percent_completed_IPs, output_channel=sys.stderr)
@@ -702,7 +707,8 @@ class VectorSpace(object):
         if num_modes > len(mode_handles):
             raise ValueError('More mode numbers than mode destinations')
         elif num_modes < len(mode_handles):
-            print ('Warning: Fewer mode numbers (%d) than mode destinations(%d),'
+            print ('Warning: Fewer mode numbers (%d) than mode ' 
+                'destinations(%d),'
                 ' some mode destinations will not be used')%(
                     num_modes, len(mode_handles))
             mode_handles = mode_handles[:num_modes] # deepcopy?
@@ -718,7 +724,7 @@ class VectorSpace(object):
         
         # Construct vec_coeff_mat and outputPaths for lin_combine_vecs
         mode_nums_from_zero = [mode_num-index_from for mode_num in mode_nums]
-        vec_coeff_mat_reordered = vec_coeff_mat[:,mode_nums_from_zero]
+        vec_coeff_mat_reordered = vec_coeff_mat[:, mode_nums_from_zero]
         
         self.lin_combine(mode_handles, vec_handles, vec_coeff_mat_reordered)
         parallel.barrier() # ensure that all procs leave function at same time
@@ -815,13 +821,13 @@ class VectorSpace(object):
             self.print_msg('Warning: fewer bases than cols in the coeff matrix'
                 ', some rows of coeff matrix will not be used')
         if num_sums < vec_coeff_mat.shape[1]:
-            self.print_msg('Warning: fewer outputs than rows in the coeff matrix'
-                ', some cols of coeff matrix will not be used')
+            self.print_msg('Warning: fewer outputs than rows in the coeff '
+                'matrix, some cols of coeff matrix will not be used')
                 
         # convenience
         rank = parallel.get_rank()
 
-        # num_bases_per_proc_chunk is the number of bases each proc gets at once        
+        # num_bases_per_proc_chunk is the num of bases each proc gets at once.
         num_bases_per_proc_chunk = 1
         num_sums_per_proc_chunk = self.max_vecs_per_proc - \
             num_bases_per_proc_chunk
@@ -836,8 +842,10 @@ class VectorSpace(object):
         # These variables are the number of iters through loops that retrieve 
         # ("get")
         # and "put" basis and sum vecs.
-        num_basis_get_iters = int(N.ceil(max_num_basis_tasks*1./num_bases_per_proc_chunk))
-        num_sum_put_iters = int(N.ceil(max_num_sum_tasks*1./num_sums_per_proc_chunk))
+        num_basis_get_iters = int(N.ceil(
+            max_num_basis_tasks*1./num_bases_per_proc_chunk))
+        num_sum_put_iters = int(N.ceil(
+            max_num_sum_tasks*1./num_sums_per_proc_chunk))
         if num_sum_put_iters > 1:
             self.print_msg('Warning: The basis vecs, ' 
                 'of which there are %d, will be retrieved %d times each. '
@@ -848,7 +856,8 @@ class VectorSpace(object):
         for sum_put_index in xrange(num_sum_put_iters):
             if len(sum_tasks[rank]) > 0:
                 start_sum_index = min(sum_tasks[rank][0] + 
-                    sum_put_index*num_sums_per_proc_chunk, sum_tasks[rank][-1]+1)
+                    sum_put_index*num_sums_per_proc_chunk, 
+                    sum_tasks[rank][-1]+1)
                 end_sum_index = min(start_sum_index+num_sums_per_proc_chunk,
                     sum_tasks[rank][-1]+1)
                 # Create empty list on each processor
@@ -861,9 +870,10 @@ class VectorSpace(object):
             for basis_get_index in xrange(num_basis_get_iters):
                 if len(basis_tasks[rank]) > 0:    
                     start_basis_index = min(basis_tasks[rank][0] + 
-                        basis_get_index*num_bases_per_proc_chunk, basis_tasks[rank][-1]+1)
-                    end_basis_index = min(start_basis_index+num_bases_per_proc_chunk,
+                        basis_get_index*num_bases_per_proc_chunk, 
                         basis_tasks[rank][-1]+1)
+                    end_basis_index = min(start_basis_index + 
+                        num_bases_per_proc_chunk, basis_tasks[rank][-1]+1)
                     basis_indices = range(start_basis_index, end_basis_index)
                 else:
                     basis_indices = []
@@ -873,8 +883,10 @@ class VectorSpace(object):
                 basis_vecs_recv = (None, None)
 
                 for pass_index in xrange(parallel.get_num_procs()):
-                    # If on the first pass, retrieve the basis vecs, no send/recv
-                    # This is all that is called when in serial, loop iterates once.
+                    # If on the first pass, retrieve the basis vecs, 
+                    # no send/recv.
+                    # This is all that is called when in serial, 
+                    # loop iterates once.
                     if pass_index == 0:
                         if len(basis_indices) > 0:
                             basis_vecs = [basis_handle.get() \
@@ -906,17 +918,20 @@ class VectorSpace(object):
                         basis_indices = basis_vecs_recv[1]
                         basis_vecs = basis_vecs_recv[0]
                     
-                    # Compute the scalar multiplications for this set of data
-                    # basis_indices stores the indices of the vec_coeff_mat to use.
+                    # Compute the scalar multiplications for this set of data.
+                    # basis_indices stores the indices of the vec_coeff_mat to
+                    # use.
                     for sum_index in xrange(start_sum_index, end_sum_index):
                         for basis_index, basis_vec in enumerate(basis_vecs):
-                            sum_layer = basis_vec*\
+                            sum_layer = basis_vec * \
                                 vec_coeff_mat[basis_indices[basis_index],\
                                 sum_index]
                             if sum_layers[sum_index-start_sum_index] is None:
-                                sum_layers[sum_index-start_sum_index] = sum_layer
+                                sum_layers[sum_index-start_sum_index] = \
+                                    sum_layer
                             else:
-                                sum_layers[sum_index-start_sum_index] += sum_layer
+                                sum_layers[sum_index-start_sum_index] += \
+                                    sum_layer
 
             # Completed this set of sum vecs, puts them to memory or file
             for sum_index in xrange(start_sum_index, end_sum_index):

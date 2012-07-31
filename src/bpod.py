@@ -5,7 +5,6 @@ from vectorspace import VectorSpace
 import util
 import parallel as parallel_mod
 parallel = parallel_mod.parallel_default_instance
-import vectors as V
 
 class BPOD(object):
     """Balanced Proper Orthogonal Decomposition
@@ -71,7 +70,7 @@ class BPOD(object):
         
         See :py:meth:`vectorspace.VectorSpace.sanity_check_in_memory`.
         """
-        self.vec_space.sanity_check_in_memory(test_vec_handle)
+        self.vec_space.sanity_check_in_memory(test_vec)
     
     
     def get_decomp(self, L_sing_vecs_source, sing_vals_source, 
@@ -239,7 +238,6 @@ class BPOD(object):
         """
         if direct_vecs is not None:
             self.direct_vecs = util.make_list(direct_vecs)
-            direct_vec_handles = [V.InMemoryVecHandle(v) for v in direct_vecs]
         if self.direct_vecs is None:
             raise util.UndefinedError('direct_vecs not specified')
         build_coeff_mat = self._compute_direct_build_coeff_mat()
@@ -307,7 +305,6 @@ class BPOD(object):
         """
         if adjoint_vecs is not None:
             self.adjoint_vecs = util.make_list(adjoint_vecs)
-            adjoint_vec_handles = [V.InMemoryVecHandle(v) for v in adjoint_vecs]
         if self.adjoint_vecs is None:
             raise util.UndefinedError('adjoint_vecs not specified')
         build_coeff_mat = self._compute_adjoint_build_coeff_mat()

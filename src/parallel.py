@@ -48,7 +48,8 @@ class Parallel(object):
             self.comm = None
             self.distributed = False
     
-    def find_node_ID(self):
+    @staticmethod
+    def find_node_ID():
         """Finds a unique ID number for each node."""
         hostname = os.uname()[1]
         return hash(hostname)
@@ -57,7 +58,7 @@ class Parallel(object):
         """Return the number of nodes."""
         return self._num_nodes
     
-    def print_from_rank_zero(self,msgs):
+    def print_from_rank_zero(self, msgs):
         """Prints the elements of the list given from rank=0 only."""
         # If not a list, convert to list
         if not isinstance(msgs, list):
@@ -88,7 +89,7 @@ class Parallel(object):
         return self._rank
     
     def get_num_MPI_workers(self):
-        """Returns the number of MPI workers, currently same as ``num_procs``."""
+        """Returns number of MPI workers, currently same as ``num_procs``."""
         return self._num_MPI_workers
     
     def get_num_procs(self):
@@ -111,7 +112,7 @@ class Parallel(object):
             task_assignments: 2D list of tasks, [rank][task_index] such that 
             MPI worker n is responsible for tasks in task_assignments[n]
         """
-        task_assignments= []
+        task_assignments = []
         
         # If no weights are given, assume each task has uniform weight
         if task_weights is None:
@@ -157,14 +158,13 @@ class Parallel(object):
                 empty_tasks = True
         return empty_tasks
 
-
-    def evaluate_and_bcast(self, outputs, function, arguments=[], 
-        keywords={}):
+    
+    #def evaluate_and_bcast(self, outputs, function, arguments=None, 
+    #    keywords=None):
         """Evaluates function with inputs and broadcasts outputs to workers.
         
         CURRENTLY THIS FUNCTION DOESN'T WORK.
-        """
-        """
+        
         Args:
             outputs: must be a list
     
@@ -181,12 +181,12 @@ class Parallel(object):
         http://docs.python.org/tutorial/controlflow.html
         The result is then broadcast to all processors if in parallel.
         """
-        raise RuntimeError('function isnt completed')
+        #raise RuntimeError('function isnt completed')
         
-        print 'outputs are ', outputs
-        print 'function is', function
-        print 'arguments are', arguments
-        print 'keywords are', keywords
+        #print 'outputs are ', outputs
+        #print 'function is', function
+        #print 'arguments are', arguments
+        #print 'keywords are', keywords
         #if self.isRankZero():
         #    print function(*arguments, **keywords)
         #    output_list = function(*arguments, **keywords)
@@ -208,7 +208,7 @@ class Parallel(object):
         #    for outputNum in range(len(outputs)):
         #        outputs[outputNum] = self.comm.bcast(outputs[outputNum],
         #            root=0)
-        print 'Done broadcasting'
+        #print 'Done broadcasting'
         
         
     def __eq__(self, other):

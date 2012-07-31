@@ -3,7 +3,6 @@ import numpy as N
 
 from vectorspace import VectorSpace
 import util
-import vectors as V
 import parallel as parallel_mod
 parallel = parallel_mod.parallel_default_instance
 
@@ -69,7 +68,7 @@ class POD(object):
         
         See :py:meth:`vectorspace.VectorSpace.sanity_check_in_memory`.
         """
-        self.vec_space.sanity_check_in_memory(test_vec_handle)
+        self.vec_space.sanity_check_in_memory(test_vec)
 
      
     def get_decomp(self, eigen_vecs_source, eigen_vals_source):
@@ -78,7 +77,8 @@ class POD(object):
             raise util.UndefinedError('Must specify a get_mat function')
         if parallel.is_rank_zero():
             self.eigen_vecs = self.get_mat(eigen_vecs_source)
-            self.eigen_vals = N.squeeze(N.array(self.get_mat(eigen_vals_source)))
+            self.eigen_vals = N.squeeze(N.array(
+                self.get_mat(eigen_vals_source)))
         else:
             self.eigen_vecs = None
             self.eigen_vals = None

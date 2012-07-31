@@ -2,11 +2,10 @@
 
 import numpy as N
 from vectorspace import VectorSpace
-import pod
 import util
+import vectors as V
 import parallel as parallel_mod
 parallel = parallel_mod.parallel_default_instance
-import vectors as V
 
 class DMD(object):
     """Dynamic Mode Decomposition/Koopman Mode Decomposition.
@@ -33,7 +32,7 @@ class DMD(object):
     """
     def __init__(self, inner_product, 
         get_mat=util.load_array_text, put_mat=util.save_array_text,
-        max_vecs_per_node=None, POD=None, verbosity=1):
+        max_vecs_per_node=None, verbosity=1):
         """Constructor"""
         self.vec_space = VectorSpace(inner_product=inner_product, 
             max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
@@ -66,7 +65,7 @@ class DMD(object):
         
         See :py:meth:`vectorspace.VectorSpace.sanity_check_in_memory`.
         """
-        self.vec_space.sanity_check_in_memory(test_vec_handle)
+        self.vec_space.sanity_check_in_memory(test_vec)
 
 
     def get_decomp(self, ritz_vals_source, mode_norms_source, 
@@ -76,7 +75,8 @@ class DMD(object):
             raise util.UndefinedError('Must specify a get_mat function')
         if parallel.is_rank_zero():
             self.ritz_vals = N.squeeze(N.array(self.get_mat(ritz_vals_source)))
-            self.mode_norms = N.squeeze(N.array(self.get_mat(mode_norms_source)))
+            self.mode_norms = N.squeeze(
+                N.array(self.get_mat(mode_norms_source)))
             self.build_coeffs = self.get_mat(build_coeffs_source)
         else:
             self.ritz_vals = None
@@ -133,16 +133,16 @@ class DMD(object):
 
         H = self.vec_space.compute_symmetric_inner_product_mat(
             self.vec_handles)
-        evals, evecs = util.eigh(H[:-1,:-1])
+        evals, evecs = util.eigh(H[:-1, :-1])
         evals_sqrt = N.mat(N.diag(evals**-0.5))
-        A = evals_sqrt * evecs.H * H[:-1,1:] * evecs * evals_sqrt
+        A = evals_sqrt * evecs.H * H[:-1, 1:] * evecs * evals_sqrt
         self.ritz_vals, low_order_eigen_vecs = N.linalg.eig(A)
         V_term = N.linalg.inv(low_order_eigen_vecs.H * low_order_eigen_vecs) * \
             low_order_eigen_vecs.H
         D = N.diag(N.array(N.array(
-            V_term * evals_sqrt * evecs.H * H[:-1,0]).squeeze(),ndmin=1))
+            V_term * evals_sqrt * evecs.H * H[:-1, 0]).squeeze(),ndmin=1))
         self.build_coeffs = evecs * evals_sqrt * low_order_eigen_vecs * D
-        self.mode_norms = N.diag(self.build_coeffs.H * H[:-1,:-1]* 
+        self.mode_norms = N.diag(self.build_coeffs.H * H[:-1, :-1]* 
             self.build_coeffs).real
         return self.ritz_vals, self.mode_norms, self.build_coeffs
         
@@ -171,7 +171,8 @@ class DMD(object):
         pod_modes_star_times_vecs[:,-1] = \
             self.vec_space.compute_inner_product_mat(self.vec_handles[:-1], 
                 self.vec_handles[-1])
-        pod_modes_star_times_vecs = _pod_eigen_vals_sqrt_mat * pod_eigen_vecs.H *\
+        pod_modes_star_times_vecs = _pod_eigen_vals_sqrt_mat * \
+            pod_eigen_vecs.H *\
             pod_modes_star_times_vecs
             
         # Reduced order linear system
@@ -180,9 +181,11 @@ class DMD(object):
         self.ritz_vals, low_order_eig_vecs = N.linalg.eig(low_order_linear_map)
         
         # Scale Ritz vectors
-        ritz_vecs_star_times_init_vec = low_order_eig_vecs.H * _pod_eigen_vals_sqrt_mat * \
+        ritz_vecs_star_times_init_vec = low_order_eig_vecs.H * \
+            _pod_eigen_vals_sqrt_mat * \
             pod_eigen_vecs.H * self.POD.correlation_mat[:,0]
-        ritz_vec_scaling = N.linalg.inv(low_order_eig_vecs.H * low_order_eig_vecs) *\
+        ritz_vec_scaling = N.linalg.inv(low_order_eig_vecs.H * 
+            low_order_eig_vecs) *\
             ritz_vecs_star_times_init_vec
         
         ritz_vec_scaling = N.mat(N.diag(N.array(N.array(

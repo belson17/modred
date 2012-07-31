@@ -25,9 +25,9 @@ Contents:
    
    bpod
    
-   bpodltirom
-   
    dmd
+
+   ltigalerkinproj
 
    era
      
