@@ -6,8 +6,8 @@ import copy
 import os
 
 import helper
-helper.add_to_path(os.path.join('..', 'src'))
-    
+helper.add_to_path(join(join(os.path.abspath(__file__), '..', 'src')))
+
 import parallel as parallel_mod
 parallel = parallel_mod.parallel_default_instance
 
