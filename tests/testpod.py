@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""Test POD module"""
 
 import unittest
 import os
@@ -22,12 +23,12 @@ class TestPOD(unittest.TestCase):
     """ Test all the POD class methods """
     
     def setUp(self):
-        self.test_dir ='DELETE_ME_test_files_pod'
+        self.test_dir = 'DELETE_ME_test_files_pod'
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():        
             os.mkdir(self.test_dir)
-        self.mode_nums =[2, 4, 3, 6, 9, 8, 10, 11, 30]
+        self.mode_nums = [2, 4, 3, 6, 9, 8, 10, 11, 30]
         self.num_vecs = 40
         self.num_states = 100
         self.index_from = 2
@@ -56,7 +57,7 @@ class TestPOD(unittest.TestCase):
         else:
             self.vec_array = None
         if parallel.is_distributed():
-            self.vec_array = parallel.comm.bcast(self.vec_array,root=0)
+            self.vec_array = parallel.comm.bcast(self.vec_array, root=0)
             
         self.vecs = [self.vec_array[:,i] for i in range(self.num_vecs)]
         self.correlation_mat_true = N.dot(self.vec_array.T, self.vec_array)
@@ -105,11 +106,11 @@ class TestPOD(unittest.TestCase):
         max_vecs_per_node = 500
         my_POD = POD(my_IP, max_vecs_per_node=max_vecs_per_node, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_space'].max_vecs_per_node =\
+        data_members_modified['vec_space'].max_vecs_per_node = \
             max_vecs_per_node
-        data_members_modified['vec_space'].max_vecs_per_proc =\
-            max_vecs_per_node * parallel.get_num_nodes() / parallel.\
-            get_num_procs()
+        data_members_modified['vec_space'].max_vecs_per_proc = \
+            max_vecs_per_node * parallel.get_num_nodes() / \
+            parallel.get_num_procs()
         self.assertEqual(util.get_data_members(my_POD), data_members_modified)
           
         
@@ -170,7 +171,8 @@ class TestPOD(unittest.TestCase):
         compares them to the known solution.
         """
         mode_path = join(self.test_dir, 'mode_%03d.txt')
-        mode_handles = [V.ArrayTextVecHandle(mode_path%i) for i in self.mode_nums]
+        mode_handles = [V.ArrayTextVecHandle(mode_path%i) 
+            for i in self.mode_nums]
         # starts with the CORRECT decomposition.
         self.my_POD.eigen_vecs = self.eigen_vecs_true
         self.my_POD.eigen_vals = self.eigen_vals_true
@@ -208,5 +210,5 @@ class TestPOD(unittest.TestCase):
                     self.assertAlmostEqual(IP, 1.)
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     unittest.main()

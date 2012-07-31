@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""Test util module"""
 
 import unittest
 # For deleting directories and their contents
@@ -38,38 +39,38 @@ class TestUtil(unittest.TestCase):
     @unittest.skipIf(parallel.is_distributed(), 'Only save/load matrices in serial')
     def test_load_save_array_text(self):
         """Test that can read/write text matrices"""
-        tol = 1e-8
+        #tol = 1e-8
         rows = [1, 5, 20]
         cols = [1, 4, 5, 23]
-        matPath = join(self.test_dir, 'test_matrix.txt')
-        delimiters = [',',' ',';']
+        mat_path = join(self.test_dir, 'test_matrix.txt')
+        delimiters = [',', ' ', ';']
         for delimiter in delimiters:
             for is_complex in [False, True]:
                 for squeeze in [False, True]:
-                    for numRows in rows:
-                        for numCols in cols:
-                            mat_real = N.random.random((numRows,numCols))
+                    for num_rows in rows:
+                        for num_cols in cols:
+                            mat_real = N.random.random((num_rows, num_cols))
                             if is_complex:
-                                mat_imag = N.random.random((numRows,numCols))
+                                mat_imag = N.random.random((num_rows, num_cols))
                                 mat = mat_real + 1J*mat_imag
                             else:
                                 mat = mat_real
                             # Check row and column vectors, no squeeze (1,1)
-                            if squeeze and (numRows > 1 or numCols > 1):
+                            if squeeze and (num_rows > 1 or num_cols > 1):
                                 mat = N.squeeze(mat)
-                            util.save_array_text(mat, matPath, delimiter=delimiter)
-                            matRead = util.load_array_text(matPath, delimiter=delimiter,
+                            util.save_array_text(mat, mat_path, delimiter=delimiter)
+                            mat_read = util.load_array_text(mat_path, delimiter=delimiter,
                                 is_complex=is_complex)
                             if squeeze:
-                                matRead = N.squeeze(matRead)
-                            N.testing.assert_allclose(matRead, mat)#,rtol=tol)
+                                mat_read = N.squeeze(mat_read)
+                            N.testing.assert_allclose(mat_read, mat)#,rtol=tol)
                           
                           
     @unittest.skipIf(parallel.is_distributed(), 'Only load matrices in serial')
     def test_svd(self):
-        num_internals_list = [10,50]
-        num_rows_list = [3,5,40]
-        num_cols_list = [1,9,70]
+        num_internals_list = [10, 50]
+        num_rows_list = [3, 5, 40]
+        num_cols_list = [1, 9, 70]
         for num_rows in num_rows_list:
             for num_cols in num_cols_list:
                 for num_internals in num_internals_list:
@@ -80,7 +81,7 @@ class TestUtil(unittest.TestCase):
                     
                     U, E, V_comp_conj = N.linalg.svd(full_mat, full_matrices=0)
                     V = N.mat(V_comp_conj).H
-                    if num_internals < num_rows or num_internals <num_cols:
+                    if num_internals < num_rows or num_internals < num_cols:
                         U = U[:,:num_internals]
                         V = V[:,:num_internals]
                         E = E[:num_internals]
@@ -113,7 +114,7 @@ class TestUtil(unittest.TestCase):
                     for path_num in range(num_paths):
                         signal_paths.append(signal_path%path_num)
                         data_to_save = N.concatenate( \
-                          (time_values_true.reshape(len(time_values_true),1),
+                          (time_values_true.reshape(len(time_values_true), 1),
                           all_signals_true[path_num]), axis=1)
                         util.save_array_text(data_to_save, signal_path%path_num)
                     
@@ -126,10 +127,11 @@ class TestUtil(unittest.TestCase):
     
     def test_solve_Lyapunov(self):
         """Test solution of Lyapunov w/known solution from Matlab's dlyap"""
-        A = N.array([[1., 2.],[3., 4.]])
+        A = N.array([[1., 2.], [3., 4.]])
         Q = N.array([[4., 3.], [1., 2.]])
-        X_true = N.array([[2.2777777777, -0.5],[-1.166666666666, -0.1666666666]])
-        X_computed = util.solve_Lyapunov(A,Q)
+        X_true = N.array([[2.2777777777, -0.5], 
+            [-1.166666666666, -0.1666666666]])
+        X_computed = util.solve_Lyapunov(A, Q)
         N.testing.assert_allclose(X_computed, X_true)
         X_computed_mats = util.solve_Lyapunov(N.mat(A), N.mat(Q))
         N.testing.assert_allclose(X_computed_mats, X_true)    
@@ -153,7 +155,7 @@ class TestUtil(unittest.TestCase):
             for num_inputs in [1, 2, 4]:
                 for num_outputs in [1, 2, 3, 5]:
                     #print 'num_states %d, num_inputs %d, num_outputs %d'%(num_states, num_inputs, num_outputs)
-                    A,B,C = util.drss(num_states, num_inputs, num_outputs)
+                    A, B, C = util.drss(num_states, num_inputs, num_outputs)
                     #print 'Shape of C is',C.shape
                     nt = 5
                     inputs = N.random.random((nt, num_inputs))
@@ -175,7 +177,7 @@ class TestUtil(unittest.TestCase):
                     N.testing.assert_array_equal(time_steps, time_steps_true)
                     outputs_true = N.zeros((num_time_steps, num_outputs, num_inputs))
                     for ti,tv in enumerate(time_steps):
-                        outputs_true[ti] = C*(A**tv)*B
+                        outputs_true[ti] = C * (A**tv) * B
                     N.testing.assert_array_equal(outputs, outputs_true)
                     
                     # Check can give time_steps
@@ -184,15 +186,16 @@ class TestUtil(unittest.TestCase):
                     N.testing.assert_array_equal(outputs, outputs_true)
                     
                     # Check can give arbitrary time steps (even out of order)
-                    time_steps = N.zeros(num_time_steps,dtype=int)
+                    time_steps = N.zeros(num_time_steps, dtype=int)
                     for i in range(num_time_steps):
                         time_steps[i] = int((N.random.random()*10000)%100)
-                    time_steps, outputs = util.impulse(A,B,C,time_steps=time_steps)
+                    time_steps, outputs = util.impulse(A, B, C, 
+                        time_steps=time_steps)
                     outputs_true = N.zeros((num_time_steps, num_outputs, num_inputs))
                     for ti,tv in enumerate(time_steps):
-                        outputs_true[ti] = C*(A**tv)*B
+                        outputs_true[ti] = C * (A**tv) * B
                     N.testing.assert_array_equal(outputs, outputs_true)
       
     
-if __name__=='__main__':
+if __name__ == '__main__':
     unittest.main()

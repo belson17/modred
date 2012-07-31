@@ -26,7 +26,7 @@ for rank in range(1, num_procs):
     stats.add(prof_path%rank)   
     
 print '\n----- Sum of all processors stats -----'
-stats.strip_dirs().sort_stats('cum').print_stats(num_stats)
+stats.strip_dirs().sort_stats('cumulative').print_stats(num_stats)
 
 
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+""" Test examples using the Makefile"""
 
 import unittest
 import os, sys
@@ -65,16 +66,15 @@ class TestExamples(unittest.TestCase):
     @unittest.skip('Test with Makefile in examples directory instead')
     def test_tutorial_examples(self):
         """Runs all tutorial examples. If run without errors, passes test"""
-        import subprocess as SP
         example_script = 'tutorial_ex%d.py'
         for example_num in range(1, 7):
             # Example 3 isn't meant to work in parallel
             if not (parallel.is_distributed() and example_num != 3):
-                printing(False)
+                #printing(False)
                 parallel.barrier()
                 execfile(join(examples_dir, example_script%example_num))
                 parallel.barrier()
-                printing(True)
+                #printing(True)
                 
     @unittest.skip('Unnecessary test for user')
     def test_benchmark(self):

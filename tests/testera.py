@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""Test era module"""
 
 import unittest
 import os
@@ -58,15 +59,17 @@ class testERA(unittest.TestCase):
         First tests format [0, 1, P, P+1, ...] and if there is a wrong time value.
         Then tests [0, 1, 2, 3, ...] format.
         """
-        for num_inputs in [1,3]:
-            for num_outputs in [1, 2,4]:
+        for num_inputs in [1, 3]:
+            for num_outputs in [1, 2, 4]:
                 for num_time_steps in [4, 10, 12]:
                     sample_interval = 2
                     # P=2 format [0, 1, 2, 3, ...]
                     dt_system = N.random.random()
                     dt_sample = sample_interval*dt_system                
-                    outputs = N.random.random((num_time_steps, num_outputs, num_inputs))
-                    time_steps = make_time_steps(num_time_steps, sample_interval)
+                    outputs = N.random.random((num_time_steps, num_outputs, 
+                        num_inputs))
+                    time_steps = make_time_steps(num_time_steps, 
+                        sample_interval)
                     time_values = time_steps*dt_system
                     my_ERA = era.ERA()
                     time_steps_computed, outputs_computed = \
@@ -74,15 +77,18 @@ class testERA(unittest.TestCase):
                     #self.assertEqual(dt_system_computed, dt_system)
                     num_time_steps_true = (num_time_steps - 1)*2
                     time_steps_true = make_time_steps(num_time_steps_true, 1)
-                    outputs_true = N.zeros((num_time_steps_true, num_outputs, num_inputs))
+                    outputs_true = N.zeros((num_time_steps_true, num_outputs, 
+                        num_inputs))
                     outputs_true[::2] = outputs[:-1]
                     outputs_true[1::2] = outputs[1:]
-                    N.testing.assert_allclose(time_steps_computed, time_steps_true)
+                    N.testing.assert_allclose(time_steps_computed, 
+                        time_steps_true)
                     N.testing.assert_allclose(outputs_computed, outputs_true)
                     
                     # Test that if there is a wrong time value, get an error
                     time_values[num_time_steps/2] = -1
-                    self.assertRaises(ValueError, era.make_sampled_format, time_values, outputs)
+                    self.assertRaises(ValueError, era.make_sampled_format, 
+                        time_values, outputs)
     
                         
     #@unittest.skip("testing others")
@@ -94,8 +100,10 @@ class testERA(unittest.TestCase):
                     num_time_steps = 50
                     num_states = 5
                     A,B,C = util.drss(num_states, num_inputs, num_outputs)
-                    time_steps = make_time_steps(num_time_steps, sample_interval)
-                    time_steps, Markovs = util.impulse(A, B, C, time_steps=time_steps)
+                    time_steps = make_time_steps(num_time_steps, 
+                        sample_interval)
+                    time_steps, Markovs = util.impulse(A, B, C, 
+                        time_steps=time_steps)
                     myERA = era.ERA(verbosity=0)
                     myERA._set_Markovs(Markovs)
                     myERA._assemble_Hankel()
@@ -103,8 +111,8 @@ class testERA(unittest.TestCase):
                     Hp = myERA.Hankel_mat2
                     
                     for row in range(myERA.mc):
-                        row_start = row*num_outputs
-                        row_end = row_start + num_outputs
+                        #row_start = row*num_outputs
+                        #row_end = row_start + num_outputs
                         for col in range(myERA.mo):
                             col_start = col*num_inputs
                             col_end = col_start + num_inputs
@@ -147,9 +155,12 @@ class testERA(unittest.TestCase):
             for num_outputs in [2]:
                 for sample_interval in [1,2,5]: 
                     myERA = era.ERA(verbosity=0)
-                    A,B,C = util.drss(num_states_plant, num_inputs, num_outputs)
-                    time_steps = make_time_steps(num_time_steps, sample_interval)
-                    time_steps, Markovs = util.impulse(A, B, C, time_steps=time_steps)
+                    A, B, C = util.drss(num_states_plant, num_inputs, 
+                        num_outputs)
+                    time_steps = make_time_steps(num_time_steps, 
+                        sample_interval)
+                    time_steps, Markovs = util.impulse(A, B, C, 
+                        time_steps=time_steps)
                     if sample_interval == 2:
                         time_steps, Markovs = \
                             era.make_sampled_format(time_steps, Markovs)
@@ -175,11 +186,15 @@ class testERA(unittest.TestCase):
                     #gram_obs = util.solve_Lyapunov(A.H, C.H*C)
                     #print N.sort(N.linalg.eig(gram_cont)[0])[::-1]
                     #print sing_vals
-                    #N.testing.assert_allclose(gram_cont.diagonal(), sing_vals, atol=.1, rtol=.1)
-                    #N.testing.assert_allclose(gram_obs.diagonal(), sing_vals, atol=.1, rtol=.1)
-                    #N.testing.assert_allclose(N.sort(N.linalg.eig(gram_cont)[0])[::-1], sing_vals,
+                    #N.testing.assert_allclose(gram_cont.diagonal(), 
+                    #    sing_vals, atol=.1, rtol=.1)
+                    #N.testing.assert_allclose(gram_obs.diagonal(), 
+                    #   sing_vals, atol=.1, rtol=.1)
+                    #N.testing.assert_allclose(N.sort(N.linalg.eig(
+                    #   gram_cont)[0])[::-1], sing_vals,
                     #    atol=.1, rtol=.1)
-                    #N.testing.assert_allclose(N.sort(N.linalg.eig(gram_obs)[0])[::-1], sing_vals,
+                    #N.testing.assert_allclose(N.sort(N.linalg.eig(
+                    #   gram_obs)[0])[::-1], sing_vals,
                     #    atol=.1, rtol=.1)
                     
                     # Check that the diagonals are largest entry on each row
@@ -190,8 +205,8 @@ class testERA(unittest.TestCase):
                     
                     # Check the ROM Markov params match the full plant's
                     Markovs_model = N.zeros(Markovs.shape)
-                    for ti,tv in enumerate(time_steps):
-                        Markovs_model[ti] = C*(A**tv)*B
+                    for ti, tv in enumerate(time_steps):
+                        Markovs_model[ti] = C * (A**tv) * B
                         #print 'computing ROM Markov param at time step %d'%tv
                     """
                     import matplotlib.pyplot as PLT
@@ -199,14 +214,18 @@ class testERA(unittest.TestCase):
                         PLT.figure()
                         PLT.hold(True)    
                         for output_num in range(num_outputs):
-                            PLT.plot(time_steps[:50], Markovs_model[:50,output_num,input_num], 'ko')
-                            PLT.plot(time_steps[:50],Markovs[:50, output_num, input_num],'rx')
-                            PLT.plot(time_steps_dense[:50],Markovs_dense[:50, output_num, input_num],'b--')
+                            PLT.plot(time_steps[:50], 
+                            #   Markovs_model[:50, output_num,input_num], 'ko')
+                            PLT.plot(time_steps[:50],Markovs[:50, 
+                            #   output_num, input_num],'rx')
+                            PLT.plot(time_steps_dense[:50],
+                            #   Markovs_dense[:50, output_num, input_num],'b--')
                             PLT.title('input %d to outputs'%input_num)
                             PLT.legend(['ROM','Plant','Dense plant'])
                         PLT.show()
                     """
-                    N.testing.assert_allclose(Markovs_model, Markovs, rtol=.1, atol=.05)
+                    N.testing.assert_allclose(Markovs_model, Markovs, rtol=0.1, 
+                        atol=0.05)
                     N.testing.assert_allclose(
                         util.load_array_text(A_path_computed), A)
                     N.testing.assert_allclose(
@@ -214,6 +233,6 @@ class testERA(unittest.TestCase):
                     N.testing.assert_allclose(
                         util.load_array_text(C_path_computed), C)
         
-if __name__ =='__main__':
+if __name__ == '__main__':
     unittest.main()
         

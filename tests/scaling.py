@@ -1,13 +1,22 @@
+"""Makes plots of parallel scaling. 
 
-"""Scrcasest which makes plots of scaling. To use this, must copy in the
+To use this, must copy in the
 scaling times from profiling benchmark.py with cProfile."""
 
 import numpy as N
 import matplotlib.pyplot as PLT
 
 class Scaling(object):
+    """Struct for each case"""
     def __init__(self):
-        pass
+        self.total = 0
+        self.total = 0
+        self.loads = 0
+        self.addmult = 0
+        self.sends = 0
+        self.recvs = 0
+        self.barriers = 0
+        self.workers = 0
 
 def lin():
     """Scaling of lin_combine on lonestar, max procs/node (12)"""
@@ -168,11 +177,12 @@ def lin():
         s.barriers /= s.workers
     
     # Speedup plot
-    PLT.figure(figsize=(5.5,4))
+    PLT.figure(figsize=(5.5, 4))
     width = .4
     PLT.hold(True)
     #PLT.plot(workers, workers,'k-')
-    PLT.plot(workers, [cases[0].total*cases[0].workers/c.total for c in cases],'ro-')
+    PLT.plot(workers, [cases[0].total*cases[0].workers/c.total for c in cases], 
+        'ro-')
     PLT.xlabel('Workers')
     PLT.ylabel('Speedup')
     PLT.grid(True)
@@ -197,16 +207,19 @@ def lin():
     for c in cases:
         bottom = 0
         top = c.sends + c.recvs + c.barriers
-        PLT.bar(c.workers-width/2, top-bottom, width=width,bottom=bottom,color='r')
+        PLT.bar(c.workers-width/2, top-bottom, width=width, 
+            bottom=bottom,color='r')
         
         bottom = top
         top += c.loads
-        PLT.bar(c.workers-width/2, top-bottom, width=width,bottom=bottom,color='g')
+        PLT.bar(c.workers-width/2, top-bottom, width=width, 
+            bottom=bottom,color='g')
         
         bottom = top
         top = c.total
-        PLT.bar(c.workers-width/2, top-bottom, width=width,bottom=bottom,color='k')
-    PLT.legend(['Linear','Measured','Send/Recvs','Loads','Other'])
+        PLT.bar(c.workers-width/2, top-bottom, width=width, 
+            bottom=bottom,color='k')
+    PLT.legend(['Linear', 'Measured', 'Send/Recvs', 'Loads', 'Other'])
     PLT.xlabel('Workers')
     PLT.ylabel('Time [s]')
     PLT.savefig('lin_combine_time_n1.eps')
@@ -332,9 +345,10 @@ def ips():
     print 'Workers |   Total Wall   |        Loads       |' +\
         '     IPs     |      sends+recvs     |   barriers'
     for s in cases:
-        print '  %d    |  %.1f   | %.1f (%.2f) | %.1f (%.2f) | %.1f (%.2f) | %.1f (%.2f)'%(
-            s.workers, s.total, s.loads, s.loads/s.total, s.ips, s.ips/s.total, s.sendrecvs, 
-            s.sendrecvs/s.total, s.barriers, s.barriers/s.total)
+        print ('  %d    |  %.1f   | %.1f (%.2f) | %.1f (%.2f) | %.1f (%.2f) |'+
+            '%.1f (%.2f)'%(
+            s.workers, s.total, s.loads, s.loads/s.total, s.ips, s.ips/s.total,
+            s.sendrecvs, s.sendrecvs/s.total, s.barriers, s.barriers/s.total)
     
     
     # Time spent breakdown
@@ -365,7 +379,7 @@ def ips():
     
     
     
-if __name__=='__main__':
+if __name__ == '__main__':
     #ips_n1p_rainier()
     #ips_np1_della()
     lin()

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
+""" Test the parallel module"""
 
 import unittest
 import copy
-import numpy as N
 import os
 
 import helper
@@ -109,23 +109,23 @@ class TestParallel(unittest.TestCase):
         self.assertEqual(task_weights, copy_task_weights)
 
 
-    @unittest.skip('Currently function isnt completed or used')
+    @unittest.skip('Currently function isnt implemented')
     def test_evaluate_and_bcast(self):
         """Test that can evaluate a function and broadcast to all procs"""
-        def myAdd(a,b):
-            return a,b
+        def myAdd(arg1, arg2):
+            return arg1, arg2
         class ThisClass(object):
             def __init__(self):
-                self.a=0
-                self.b=0
+                self.arg1 = 0
+                self.arg2 = 0
         
         myClass = ThisClass()
-        d = (myClass.a,myClass.b)
-        self.my_parallel.evaluate_and_bcast(d, myAdd, arguments=[1,2])
-        print myClass.a,myClass.b
-        self.assertEqual((1,2),(myClass.a,myClass.b))
+        d = (myClass.arg1, myClass.arg2)
+        self.my_parallel.evaluate_and_bcast(d, myAdd, arguments=[1, 2])
+        print myClass.arg1, myClass.arg2
+        self.assertEqual((1, 2), (myClass.arg1, myClass.arg2))
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     unittest.main()
 

@@ -9,23 +9,22 @@ benchmark.py is to be used after installing modred.
 import os
 from os.path import join
 from shutil import rmtree
+import argparse
 import cPickle
 import time as T
 import numpy as N
 import cProfile
-
 import modred as MR
 
 parallel = MR.parallel_default_instance
 
-import argparse
 parser = argparse.ArgumentParser(description='Get directory in which to ' +\
     'save data.')
-parser.add_argument('--outdir', default='files_benchmark', help='Directory in ' +\
-    'which to save data.')
+parser.add_argument('--outdir', default='files_benchmark', 
+    help='Directory in which to save data.')
 parser.add_argument('--function', choices=['lin_combine',
-    'inner_product_mat', 'symmetric_inner_product_mat'], help='Function to ' +\
-    'benchmark.')
+    'inner_product_mat', 'symmetric_inner_product_mat'], 
+    help='Function to benchmark.')
 args = parser.parse_args()
 data_dir = args.outdir
 
@@ -118,7 +117,8 @@ def lin_combine(num_states, num_bases, num_products, max_vecs_per_node,
 
     basis_handles = [MR.PickleVecHandle(join(data_dir, basis_name%basis_num))
         for basis_num in range(num_bases)]
-    product_handles = [MR.PickleVecHandle(join(data_dir, product_name%product_num))
+    product_handles = [MR.PickleVecHandle(join(data_dir, 
+        product_name%product_num))
         for product_num in range(num_products)]
 
     generate_vecs(data_dir, num_states, basis_handles)
@@ -137,6 +137,7 @@ def lin_combine(num_states, num_bases, num_products, max_vecs_per_node,
     
     
 def clean_up():
+    parallel.barrier()
     if parallel.is_rank_zero():
         rmtree(data_dir)
 

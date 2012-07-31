@@ -1,10 +1,10 @@
 #!/usr/bin/env python
+"""Test vectors module"""
 
 import unittest
 import os
 from os.path import join
 from shutil import rmtree
-import cPickle
 import numpy as N
 
 import helper
@@ -12,7 +12,6 @@ helper.add_to_path('src')
 import parallel as parallel_mod
 parallel = parallel_mod.parallel_default_instance
 
-import util
 import vectors as V
 
 @unittest.skipIf(parallel.is_distributed(), 'No need to test in parallel')
@@ -25,7 +24,7 @@ class TestVectors(unittest.TestCase):
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():        
             os.mkdir(self.test_dir)
         parallel.barrier()
-        self.mode_nums =[2, 4, 3, 6, 9, 8, 10, 11, 30]
+        self.mode_nums = [2, 4, 3, 6, 9, 8, 10, 11, 30]
         self.num_vecs = 40
         self.num_states = 100
         self.index_from = 2
@@ -38,9 +37,9 @@ class TestVectors(unittest.TestCase):
     
     def test_in_memory_handle(self):
         """Test in memory and base class vector handles"""
-        base_vec1 = N.random.random((3,4))
-        base_vec2 = N.random.random((3,4))
-        vec_true = N.random.random((3,4))
+        base_vec1 = N.random.random((3, 4))
+        base_vec2 = N.random.random((3, 4))
+        vec_true = N.random.random((3, 4))
         scale = N.random.random()
         
         # Test base class functionality
@@ -85,7 +84,7 @@ class TestVectors(unittest.TestCase):
         base_vec1 = N.random.random((3,4))
         base_vec2 = N.random.random((3,4))
         vec_true = N.random.random((3,4))
-        scale = N.random.random()
+        #scale = N.random.random()
         vec_true_path = join(self.test_dir, 'test_vec')
         vec_saved = join(self.test_dir, 'put_vec')
         base_path1 = join(self.test_dir, 'base_vec1')
@@ -137,7 +136,7 @@ class TestVectors(unittest.TestCase):
                 
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     unittest.main()    
 
         

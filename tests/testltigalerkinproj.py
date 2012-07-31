@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""Test ltigalerkinproj module"""
 
 import unittest
 import os
@@ -18,9 +19,7 @@ import vectors as V
 
 #@unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
 class TestLTIGalerkinProjection(unittest.TestCase):
-    """
-    Tests that can find the correct A, B, and C matrices from modes
-    """   
+    """Tests that can find the correct A, B, and C matrices from modes."""   
     def setUp(self):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
@@ -32,7 +31,7 @@ class TestLTIGalerkinProjection(unittest.TestCase):
 
         self.direct_mode_path = join(self.test_dir, 'direct_mode_%02d.txt')
         self.adjoint_mode_path = join(self.test_dir, 'adjoint_mode_%02d.txt')
-        self.A_on_direct_mode_path =join(self.test_dir,
+        self.A_on_direct_mode_path = join(self.test_dir,
             'A_on_mode_%02d.txt')
         self.B_on_basis_path = join(self.test_dir, 'B_on_basis_%02d.txt')
         self.C_on_direct_mode_path = join(self.test_dir, 'C_on_mode_%02d.txt')
@@ -48,7 +47,8 @@ class TestLTIGalerkinProjection(unittest.TestCase):
             self.model_dim, self.num_states, self.num_inputs, 
             self.num_outputs)
         
-        self.LTI_proj = LGP.LTIGalerkinProjection(N.vdot, self.direct_mode_handles,
+        self.LTI_proj = LGP.LTIGalerkinProjection(N.vdot, 
+            self.direct_mode_handles,
             self.adjoint_mode_handles, are_modes_orthonormal=True, verbosity=0)
             
         self.LTI_proj_in_memory = LGP.LTIGalerkinProjection(N.vdot, 
@@ -69,20 +69,25 @@ class TestLTIGalerkinProjection(unittest.TestCase):
     def generate_data_set(self, num_direct_modes, num_adjoint_modes,
         model_dim, num_states, num_inputs, num_outputs):
         """Generates random data, saves, and computes true reduced A,B,C."""
-        self.direct_mode_handles = [V.ArrayTextVecHandle(self.direct_mode_path%i)
+        self.direct_mode_handles = [
+            V.ArrayTextVecHandle(self.direct_mode_path%i)
             for i in range(self.num_direct_modes)]
-        self.adjoint_mode_handles = [V.ArrayTextVecHandle(self.adjoint_mode_path%i)
+        self.adjoint_mode_handles = [
+            V.ArrayTextVecHandle(self.adjoint_mode_path%i)
             for i in range(self.num_adjoint_modes)]
         self.A_on_direct_mode_handles = \
             [V.ArrayTextVecHandle(self.A_on_direct_mode_path%i) 
                 for i in range(self.num_direct_modes)]
         self.B_on_basis_handles = [V.ArrayTextVecHandle(self.B_on_basis_path%i)
             for i in range(self.num_inputs)]
-        self.C_on_direct_mode_handles = [V.ArrayTextVecHandle(self.C_on_direct_mode_path%i)
+        self.C_on_direct_mode_handles = [
+            V.ArrayTextVecHandle(self.C_on_direct_mode_path%i)
             for i in range(self.num_direct_modes)]
         if parallel.is_rank_zero():
-            self.direct_mode_array = N.random.random((num_states, num_direct_modes))
-            self.adjoint_mode_array = N.random.random((num_states, num_adjoint_modes))
+            self.direct_mode_array = N.random.random((num_states, 
+                num_direct_modes))
+            self.adjoint_mode_array = N.random.random((num_states, 
+                num_adjoint_modes))
             self.A_array = N.random.random((num_states, num_states))
             self.B_array = N.random.random((num_states, num_inputs))
             self.C_array = N.random.random((num_outputs, num_states))
@@ -93,19 +98,21 @@ class TestLTIGalerkinProjection(unittest.TestCase):
             self.B_array = None
             self.C_array = None
         if parallel.is_distributed():
-            self.direct_mode_array = parallel.comm.bcast(self.direct_mode_array, root=0)
-            self.adjoint_mode_array = parallel.comm.bcast(self.adjoint_mode_array, root=0)
+            self.direct_mode_array = parallel.comm.bcast(self.direct_mode_array, 
+                root=0)
+            self.adjoint_mode_array = parallel.comm.bcast(
+                self.adjoint_mode_array, root=0)
             self.A_array = parallel.comm.bcast(self.A_array, root=0)
             self.B_array = parallel.comm.bcast(self.B_array, root=0)
             self.C_array = parallel.comm.bcast(self.C_array, root=0)
             
-        self.direct_modes = [self.direct_mode_array[:,i].squeeze()
+        self.direct_modes = [self.direct_mode_array[:, i].squeeze()
             for i in range(num_direct_modes)]
-        self.adjoint_modes = [self.adjoint_mode_array[:,i].squeeze()
+        self.adjoint_modes = [self.adjoint_mode_array[:, i].squeeze()
             for i in range(num_adjoint_modes)]
         self.A_on_direct_modes = [N.dot(self.A_array, direct_mode).squeeze() 
             for direct_mode in self.direct_modes]
-        self.B_on_basis = [self.B_array[:,i].squeeze()
+        self.B_on_basis = [self.B_array[:, i].squeeze()
             for i in range(self.num_inputs)]
         self.C_on_direct_modes = [N.array(
             N.dot(self.C_array, direct_mode).squeeze(), ndmin=1)
@@ -116,11 +123,13 @@ class TestLTIGalerkinProjection(unittest.TestCase):
                 handle.put(vec)
             for handle,vec in zip(self.adjoint_mode_handles, self.adjoint_modes):
                 handle.put(vec)
-            for handle,vec in zip(self.A_on_direct_mode_handles, self.A_on_direct_modes):
+            for handle,vec in zip(self.A_on_direct_mode_handles,
+                self.A_on_direct_modes):
                 handle.put(vec)
             for handle,vec in zip(self.B_on_basis_handles, self.B_on_basis):
                 handle.put(vec)
-            for handle,vec in zip(self.C_on_direct_mode_handles, self.C_on_direct_modes):
+            for handle,vec in zip(self.C_on_direct_mode_handles,
+                self.C_on_direct_modes):
                 handle.put(vec)
         parallel.barrier()
         
@@ -128,10 +137,12 @@ class TestLTIGalerkinProjection(unittest.TestCase):
             self.adjoint_mode_array.T, 
             N.dot(self.A_array, self.direct_mode_array)
             )[:model_dim,:model_dim]
-        self.B_true = N.dot(self.adjoint_mode_array.T, self.B_array)[:model_dim,:]
-        self.C_true = N.dot(self.C_array, self.direct_mode_array)[:,:model_dim]
+        self.B_true = N.dot(self.adjoint_mode_array.T, 
+            self.B_array)[:model_dim, :]
+        self.C_true = N.dot(self.C_array, 
+            self.direct_mode_array)[:,:model_dim]
         self.proj_mat = N.linalg.inv(N.dot(self.adjoint_mode_array.T,
-            self.direct_mode_array)[:self.model_dim,:self.model_dim])
+            self.direct_mode_array)[:self.model_dim, :self.model_dim])
         self.A_true_nonorth = N.dot(self.proj_mat, self.A_true)
         self.B_true_nonorth = N.dot(self.proj_mat, self.B_true)
         
@@ -145,7 +156,8 @@ class TestLTIGalerkinProjection(unittest.TestCase):
         for i in range(num_vecs):
             true_derivs.append((self.A_on_direct_mode_handles[i].get() - 
                 self.direct_mode_handles[i].get()).squeeze()/dt)
-        deriv_handles = [V.ArrayTextVecHandle(join(self.test_dir, 'deriv_test%d'%i))
+        deriv_handles = [V.ArrayTextVecHandle(join(self.test_dir, 
+            'deriv_test%d'%i))
             for i in range(num_vecs)]
         LGP.compute_derivs(self.direct_mode_handles, 
             self.A_on_direct_mode_handles, deriv_handles, dt)
@@ -231,8 +243,6 @@ class TestLTIGalerkinProjection(unittest.TestCase):
     #@unittest.skip('testing others')
     def test_reduce_C(self):
         """Test that, given modes, can find correct C matrix"""
-        C_reduced_path = join(self.test_dir, 'C_reduced.txt')
-        
         # Matrix multiplication operator C with vecs  
         C = LGP.MatrixOperator(self.C_array) 
         C_returned = self.LTI_proj_in_memory.reduce_C(C,

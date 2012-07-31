@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""Test the bpod module"""
 
 import unittest
 import copy
@@ -27,7 +28,7 @@ class TestBPOD(unittest.TestCase):
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():        
             os.mkdir(self.test_dir)
         
-        self.mode_nums =[2, 4, 3, 6, 9, 8, 10, 11, 30]
+        self.mode_nums = [2, 4, 3, 6, 9, 8, 10, 11, 30]
         self.num_direct_vecs = 40
         self.num_adjoint_vecs = 45
         self.num_states = 100
@@ -50,7 +51,8 @@ class TestBPOD(unittest.TestCase):
 
         self.direct_vec_handles = [V.ArrayTextVecHandle(self.direct_vec_path%i) 
             for i in range(self.num_direct_vecs)]
-        self.adjoint_vec_handles = [V.ArrayTextVecHandle(self.adjoint_vec_path%i) 
+        self.adjoint_vec_handles = [
+            V.ArrayTextVecHandle(self.adjoint_vec_path%i) 
             for i in range(self.num_adjoint_vecs)]
         
         if parallel.is_rank_zero():
@@ -59,9 +61,9 @@ class TestBPOD(unittest.TestCase):
             self.adjoint_vec_array = N.random.random((self.num_states,
                 self.num_adjoint_vecs)) 
             for i, handle in enumerate(self.direct_vec_handles):
-                handle.put(self.direct_vec_array[:,i])
+                handle.put(self.direct_vec_array[:, i])
             for i, handle in enumerate(self.adjoint_vec_handles):
-                handle.put(self.adjoint_vec_array[:,i])
+                handle.put(self.adjoint_vec_array[:, i])
             
         else:
             self.direct_vec_array = None
@@ -71,9 +73,9 @@ class TestBPOD(unittest.TestCase):
                 self.direct_vec_array, root=0)
             self.adjoint_vec_array = parallel.comm.bcast(
                 self.adjoint_vec_array, root=0)
-        self.direct_vecs = [self.direct_vec_array[:,i] 
+        self.direct_vecs = [self.direct_vec_array[:, i] 
             for i in range(self.num_direct_vecs)]
-        self.adjoint_vecs = [self.adjoint_vec_array[:,i] 
+        self.adjoint_vecs = [self.adjoint_vec_array[:, i] 
             for i in range(self.num_adjoint_vecs)]
         
         self.hankel_mat_true = N.dot(self.adjoint_vec_array.T, 
@@ -99,7 +101,7 @@ class TestBPOD(unittest.TestCase):
         
         def my_load(fname): pass
         def my_save(data, fname): pass 
-        def my_IP(v1, v2): pass
+        def my_IP(vec1, vec2): pass
         
         data_members_default = {'put_mat': util.save_array_text, 'get_mat':
              util.load_array_text,
@@ -111,7 +113,7 @@ class TestBPOD(unittest.TestCase):
         
         # Get default data member values
         # Set verbosity to false, to avoid printing warnings during tests
-        self.maxDiff = None
+        #self.max_diff = None
         self.assertEqual(util.get_data_members(BPOD(my_IP, verbosity=False)),
             data_members_default)
         
@@ -135,9 +137,9 @@ class TestBPOD(unittest.TestCase):
         max_vecs_per_node = 500
         my_BPOD = BPOD(my_IP, max_vecs_per_node=max_vecs_per_node, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_space'].max_vecs_per_node =\
+        data_members_modified['vec_space'].max_vecs_per_node = \
             max_vecs_per_node
-        data_members_modified['vec_space'].max_vecs_per_proc =\
+        data_members_modified['vec_space'].max_vecs_per_proc = \
             max_vecs_per_node * parallel.get_num_nodes() / parallel.\
             get_num_procs()
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
@@ -228,9 +230,12 @@ class TestBPOD(unittest.TestCase):
             for i in self.mode_nums]
 
         self.my_BPOD.compute_direct_modes(self.mode_nums, direct_mode_handles,
-            index_from=self.index_from, direct_vec_handles=self.direct_vec_handles)
-        self.my_BPOD.compute_adjoint_modes(self.mode_nums, adjoint_mode_handles,
-            index_from=self.index_from, adjoint_vec_handles=self.adjoint_vec_handles)
+            index_from=self.index_from, 
+            direct_vec_handles=self.direct_vec_handles)
+        self.my_BPOD.compute_adjoint_modes(self.mode_nums, 
+            adjoint_mode_handles,
+            index_from=self.index_from, 
+            adjoint_vec_handles=self.adjoint_vec_handles)
         
         my_BPOD_in_memory = BPOD(inner_product=N.vdot, verbosity=0)
 
@@ -252,18 +257,22 @@ class TestBPOD(unittest.TestCase):
         for mode_index, mode_handle in enumerate(direct_mode_handles):
             mode = mode_handle.get()
             N.testing.assert_allclose(mode, 
-                self.direct_mode_array[:,self.mode_nums[mode_index]-self.index_from])
+                self.direct_mode_array[:,self.mode_nums[mode_index] - 
+                self.index_from])
             N.testing.assert_allclose(
                 direct_modes_returned[mode_index].squeeze(), 
-                N.array(self.direct_mode_array[:,self.mode_nums[mode_index]-self.index_from]).squeeze())
+                N.array(self.direct_mode_array[:,self.mode_nums[mode_index] - \
+                    self.index_from]).squeeze())
 
         for mode_index, mode_handle in enumerate(adjoint_mode_handles):
             mode = mode_handle.get()
             N.testing.assert_allclose(mode, 
-                self.adjoint_mode_array[:,self.mode_nums[mode_index]-self.index_from])
+                self.adjoint_mode_array[:,self.mode_nums[mode_index] - \
+                    self.index_from])
             N.testing.assert_allclose(
                 adjoint_modes_returned[mode_index].squeeze(), 
-                N.array(self.adjoint_mode_array[:,self.mode_nums[mode_index]-self.index_from]).squeeze())
+                N.array(self.adjoint_mode_array[:,self.mode_nums[mode_index] - 
+                    self.index_from]).squeeze())
         
         for direct_mode_index, direct_handle in \
             enumerate(direct_mode_handles):
@@ -271,7 +280,8 @@ class TestBPOD(unittest.TestCase):
             for adjoint_mode_index, adjoint_handle in \
                 enumerate(adjoint_mode_handles):
                 adjoint_mode = adjoint_handle.get()
-                IP = self.my_BPOD.vec_space.inner_product(direct_mode, adjoint_mode)
+                IP = self.my_BPOD.vec_space.inner_product(direct_mode, 
+                    adjoint_mode)
                 if self.mode_nums[direct_mode_index] != \
                     self.mode_nums[adjoint_mode_index]:
                     self.assertAlmostEqual(IP, 0.)

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""Test vectorspace module"""
 
 import os
 from os.path import join
@@ -81,8 +82,8 @@ class TestVectorSpace(unittest.TestCase):
         """
         nx = 40
         ny = 15
-        test_array = N.random.random((nx,ny))
-            
+        test_array = N.random.random((nx, ny))
+
         my_VS = VectorSpace(inner_product=N.vdot, verbosity=0)
         in_mem_handle = V.InMemoryVecHandle(test_array)
         # Currently not testing this, there is a problem with max recursion
@@ -92,7 +93,7 @@ class TestVectorSpace(unittest.TestCase):
         my_VS.sanity_check(in_mem_handle)
         
         # An sanity's vector that redefines multiplication to modify its data
-        class sanityMultVec(V.Vector):
+        class SanityMultVec(V.Vector):
             def __init__(self, arr):
                 self.arr = arr
             def __add__(self, obj):
@@ -103,7 +104,7 @@ class TestVectorSpace(unittest.TestCase):
                 self.arr *= a
                 return self
                 
-        class sanityAddVec(V.Vector):
+        class SanityAddVec(V.Vector):
             def __init__(self, arr):
                 self.arr = arr
             def __add__(self, obj):
@@ -117,10 +118,10 @@ class TestVectorSpace(unittest.TestCase):
         def my_IP(vec1, vec2):
             return N.vdot(vec1.arr, vec2.arr)
         my_VS.inner_product = my_IP
-        my_sanity_mult_vec = sanityMultVec(test_array)
+        my_sanity_mult_vec = SanityMultVec(test_array)
         self.assertRaises(ValueError, my_VS.sanity_check, 
             V.InMemoryVecHandle(my_sanity_mult_vec))
-        my_sanity_add_vec = sanityAddVec(test_array)
+        my_sanity_add_vec = SanityAddVec(test_array)
         self.assertRaises(ValueError, my_VS.sanity_check, 
             V.InMemoryVecHandle(my_sanity_add_vec))
                 
@@ -317,7 +318,7 @@ class TestVectorSpace(unittest.TestCase):
             col_vec_paths.append(path)
     
         # Compute inner product matrix and check type
-        for handle, type in [(V.ArrayTextVecHandle, float), 
+        for handle, dtype in [(V.ArrayTextVecHandle, float), 
             (ArrayTextComplexHandle, complex)]:
             row_vec_handles = [handle(path) for path in row_vec_paths] 
             col_vec_handles = [handle(path) for path in col_vec_paths]
@@ -326,8 +327,8 @@ class TestVectorSpace(unittest.TestCase):
             symm_inner_product_mat = \
                 self.my_vec_ops.compute_symmetric_inner_product_mat(
                     row_vec_handles)
-            self.assertEqual(inner_product_mat.dtype, type)
-            self.assertEqual(symm_inner_product_mat.dtype, type)
+            self.assertEqual(inner_product_mat.dtype, dtype)
+            self.assertEqual(symm_inner_product_mat.dtype, dtype)
 
 
 
@@ -337,7 +338,7 @@ class TestVectorSpace(unittest.TestCase):
         Test computation of matrix of inner products in memory-efficient
         chunks, both in parallel (compute_inner_product_mat).
         """ 
-        num_row_vecs_list =[1, int(round(self.total_num_vecs_in_mem / 2.)), 
+        num_row_vecs_list = [1, int(round(self.total_num_vecs_in_mem / 2.)), 
             self.total_num_vecs_in_mem, self.total_num_vecs_in_mem * 2,
             parallel.get_num_procs() + 1]
         num_col_vecs_list = num_row_vecs_list

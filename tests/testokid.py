@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""Test OKID"""
 
 import os
 from os.path import join
@@ -25,7 +26,7 @@ if plot:
 
 
 def diff(arr_measured, arr_true, normalize=False):
-    err= N.mean((arr_measured-arr_true)**2)
+    err = N.mean((arr_measured-arr_true)**2)
     if normalize:
         return err/N.mean(arr_measured**2)
     else:
@@ -75,16 +76,19 @@ class TestOKID(unittest.TestCase):
                 PLT.figure(figsize=(14,10))
                 for output_num in range(num_outputs):
                     for input_num in range(num_inputs):
-                        PLT.subplot(num_outputs, num_inputs, output_num*(num_inputs) + input_num + 1)
+                        PLT.subplot(num_outputs, num_inputs, 
+                            output_num*(num_inputs) + input_num + 1)
                         PLT.hold(True)
                         PLT.plot(Markovs_true[:,output_num,input_num],'k*-')
                         PLT.plot(Markovs_Matlab[:,output_num,input_num],'b--')
                         PLT.plot(Markovs_python[:,output_num,input_num],'r.')
-                        PLT.legend(['True','Matlab OKID','Python OKID'])
-                        PLT.title('Input %d to output %d'%(input_num+1,output_num+1))
+                        PLT.legend(['True', 'Matlab OKID', 'Python OKID'])
+                        PLT.title('Input %d to output %d'%(input_num+1, 
+                            output_num+1))
                 PLT.show()
             #print 'Diff between matlab and python is',diff(Markovs_Matlab, Markovs_python)
-            N.testing.assert_allclose(Markovs_python, Markovs_Matlab, atol=1e-3, rtol=1e-3)
+            N.testing.assert_allclose(Markovs_python, Markovs_Matlab,
+                atol=1e-3, rtol=1e-3)
             N.testing.assert_allclose(Markovs_python, Markovs_true[:num_Markovs_OKID],
                 atol=1e-3, rtol=1e-3)
       
