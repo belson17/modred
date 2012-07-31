@@ -3,8 +3,8 @@ import numpy as N
 
 from vectorspace import VectorSpace
 import util
-import parallel as parallel_mod
-parallel = parallel_mod.parallel_default_instance
+from parallel import parallel_default_instance
+_parallel = parallel_default_instance
 
 class POD(object):
     """Proper Orthogonal Decomposition.
@@ -75,16 +75,16 @@ class POD(object):
         """Gets the decomposition matrices from sources (memory or file)"""
         if self.get_mat is None:
             raise util.UndefinedError('Must specify a get_mat function')
-        if parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.eigen_vecs = self.get_mat(eigen_vecs_source)
             self.eigen_vals = N.squeeze(N.array(
                 self.get_mat(eigen_vals_source)))
         else:
             self.eigen_vecs = None
             self.eigen_vals = None
-        if parallel.is_distributed():
-            self.eigen_vecs = parallel.comm.bcast(self.eigen_vecs, root=0)
-            self.eigen_vals = parallel.comm.bcast(self.eigen_vals, root=0)
+        if _parallel.is_distributed():
+            self.eigen_vecs = _parallel.comm.bcast(self.eigen_vecs, root=0)
+            self.eigen_vals = _parallel.comm.bcast(self.eigen_vals, root=0)
         
         
     def put_decomp(self, eigen_vecs_dest, eigen_vals_dest):
@@ -94,29 +94,29 @@ class POD(object):
         
     def put_eigen_vecs(self, dest):
         """Put singular vectors, U (==V)"""
-        if self.put_mat is None and parallel.is_rank_zero():
+        if self.put_mat is None and _parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined")
             
-        if parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.put_mat(self.eigen_vecs, dest)
-        parallel.barrier()
+        _parallel.barrier()
 
     def put_eigen_vals(self, dest):
         """Put singular values, E"""
-        if self.put_mat is None and parallel.is_rank_zero():
+        if self.put_mat is None and _parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined")
             
-        if parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.put_mat(self.eigen_vals, dest)
-        parallel.barrier()
+        _parallel.barrier()
 
     def put_correlation_mat(self, correlation_mat_dest):
         """Put correlation matrix"""
-        if self.put_mat is None and parallel.is_rank_zero():
+        if self.put_mat is None and _parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined")
-        if parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.put_mat(self.correlation_mat, correlation_mat_dest)
-        parallel.barrier()
+        _parallel.barrier()
 
 
     def compute_decomp(self, vec_handles):
@@ -150,14 +150,14 @@ class POD(object):
         
     def compute_eigen_decomp(self):
         """Compute eigen decmop, UE=correlation_mat*U"""
-        if parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.eigen_vals, self.eigen_vecs = util.eigh(self.correlation_mat)
         else:
             self.eigen_vecs = None
             self.eigen_vals = None
-        if parallel.is_distributed():
-            self.eigen_vecs = parallel.comm.bcast(self.eigen_vecs, root=0)
-            self.eigen_vals = parallel.comm.bcast(self.eigen_vals, root=0)
+        if _parallel.is_distributed():
+            self.eigen_vecs = _parallel.comm.bcast(self.eigen_vecs, root=0)
+            self.eigen_vals = _parallel.comm.bcast(self.eigen_vals, root=0)
             
             
             

@@ -5,8 +5,8 @@ import numpy as N
 import util
 from vectors import InMemoryVecHandle
 from vectorspace import VectorSpace
-import parallel as parallel_mod
-parallel = parallel_mod.parallel_default_instance
+from parallel import parallel_default_instance
+_parallel = parallel_default_instance
 
 def standard_basis(num_dims):
     """Returns list of standard basis vecs of space R^n.
@@ -39,14 +39,14 @@ def compute_derivs(vec_handles, adv_vec_handles, deriv_vec_handles, dt):
         num_vecs != len(deriv_vec_handles):
         raise RuntimeError('Number of vectors not equal')
     
-    vec_index_tasks = parallel.find_assignments(range(num_vecs))[
-        parallel.get_rank()]
+    vec_index_tasks = _parallel.find_assignments(range(num_vecs))[
+        _parallel.get_rank()]
     
     for i in vec_index_tasks:
         vec = vec_handles[i].get()
         vec_dt = adv_vec_handles[i].get()
         deriv_vec_handles[i].put((vec_dt - vec)*(1./dt))
-    parallel.barrier()
+    _parallel.barrier()
 
 
 def compute_derivs_in_memory(vecs, adv_vecs, dt):
@@ -69,12 +69,12 @@ def compute_derivs_in_memory(vecs, adv_vecs, dt):
     deriv_vec_handles = [InMemoryVecHandle() for i in xrange(len(adv_vecs))]
     compute_derivs(vec_handles, adv_vec_handles, deriv_vec_handles, dt)
     deriv_vecs = [v.get() for v in deriv_vec_handles]
-    if parallel.is_distributed():
+    if _parallel.is_distributed():
         # Remove empty entries
         for i in range(deriv_vecs.count(None)):
             deriv_vecs.remove(None)
         all_deriv_vecs = util.flatten_list(
-            parallel.comm.allgather(deriv_vecs))
+            _parallel.comm.allgather(deriv_vecs))
         return all_deriv_vecs
     else:
         return deriv_vecs
@@ -168,21 +168,21 @@ class LTIGalerkinProjection(object):
 
     def put_A_reduced(self, A_reduced_dest):
         """Put reduced A matrix to ``A_reduced_dest``"""
-        if parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.put_mat(self.A_reduced, A_reduced_dest)
-        parallel.barrier()
+        _parallel.barrier()
         
     def put_B_reduced(self, B_reduced_dest):
         """Put reduced B matrix to ``B_reduced_dest``"""
-        if parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.put_mat(self.B_reduced, B_reduced_dest)
-        parallel.barrier()
+        _parallel.barrier()
         
     def put_C_reduced(self, C_reduced_dest):
         """Put reduced C matrix to ``C_reduced_dest``"""
-        if parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.put_mat(self.C_reduced, C_reduced_dest)
-        parallel.barrier()
+        _parallel.barrier()
         
     def put_model(self, A_reduced_dest, B_reduced_dest, C_reduced_dest):
         """Put reduced A, B, and C mats (numpy arrays) to destinations.

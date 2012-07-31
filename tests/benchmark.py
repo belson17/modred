@@ -16,7 +16,7 @@ import numpy as N
 import cProfile
 import modred as MR
 
-parallel = MR.parallel_default_instance
+_parallel = MR.parallel_default_instance
 
 parser = argparse.ArgumentParser(description='Get directory in which to ' +\
     'save data.')
@@ -38,23 +38,23 @@ row_vec_name = 'row_%04d'
 
 def generate_vecs(vec_dir, num_states, vec_handles):
     """Creates a random data set of vecs, saves to file."""
-    if not os.path.exists(vec_dir) and parallel.is_rank_zero():
+    if not os.path.exists(vec_dir) and _parallel.is_rank_zero():
         os.mkdir(vec_dir)
-    parallel.barrier()
+    _parallel.barrier()
     
     """
     # Parallelize saving of vecs (may slow down sequoia)
     proc_vec_num_asignments = \
-        parallel.find_assignments(range(num_vecs))[parallel.getRank()]
+        _parallel.find_assignments(range(num_vecs))[_parallel.getRank()]
     for vec_num in proc_vec_num_asignments:
         vec = N.random.random(num_states)
         save_vec(vec, vec_dir + vec_name%vec_num)
     """
-    if parallel.is_rank_zero():
+    if _parallel.is_rank_zero():
         for handle in vec_handles:
             handle.put(N.random.random(num_states))
     
-    parallel.barrier()
+    _parallel.barrier()
 
 
 def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node, 
@@ -79,7 +79,7 @@ def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node,
     prof.runcall(my_VS.compute_inner_product_mat, *(col_vec_handles,  
         row_vec_handles))
     total_time = T.time() - start_time
-    prof.dump_stats('IP_mat_r%d.prof'%parallel.get_rank())
+    prof.dump_stats('IP_mat_r%d.prof'%_parallel.get_rank())
 
     return total_time
     
@@ -101,7 +101,7 @@ def symmetric_inner_product_mat(num_states, num_vecs, max_vecs_per_node,
     start_time = T.time()
     prof.runcall(my_VS.compute_symmetric_inner_product_mat, vec_handles)
     total_time = T.time() - start_time
-    prof.dump_stats('IP_symmetric_mat_r%d.prof'%parallel.get_rank())
+    prof.dump_stats('IP_symmetric_mat_r%d.prof'%_parallel.get_rank())
 
     return total_time
 
@@ -125,20 +125,20 @@ def lin_combine(num_states, num_bases, num_products, max_vecs_per_node,
     my_VS = MR.VectorSpace(N.vdot, max_vecs_per_node=max_vecs_per_node,
         verbosity=verbosity)
     coeff_mat = N.random.random((num_bases, num_products))
-    parallel.barrier()
+    _parallel.barrier()
 
     prof = cProfile.Profile()
     start_time = T.time()
     prof.runcall(my_VS.lin_combine, *(product_handles, basis_handles, 
         coeff_mat)) 
     total_time = T.time() - start_time
-    prof.dump_stats('lincomb_r%d.prof'%parallel.get_rank())
+    prof.dump_stats('lincomb_r%d.prof'%_parallel.get_rank())
     return total_time
     
     
 def clean_up():
-    parallel.barrier()
-    if parallel.is_rank_zero():
+    _parallel.barrier()
+    if _parallel.is_rank_zero():
         rmtree(data_dir)
 
 
@@ -176,7 +176,7 @@ def main():
         print 'lin_combine, inner_product_mat, and inner_product_mat'
     #print 'Time for %s is %f'%(method_to_test, time_elapsed)
     
-    parallel.barrier()
+    _parallel.barrier()
     clean_up()
     
 

@@ -3,8 +3,8 @@
 import numpy as N
 from vectorspace import VectorSpace
 import util
-import parallel as parallel_mod
-parallel = parallel_mod.parallel_default_instance
+from parallel import parallel_default_instance
+_parallel = parallel_default_instance
 
 class BPOD(object):
     """Balanced Proper Orthogonal Decomposition
@@ -78,7 +78,7 @@ class BPOD(object):
         """Gets the decomposition matrices from elsewhere (memory or file)."""
         if self.get_mat is None:
             raise util.UndefinedError('Must specify a get_mat function')
-        if parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.L_sing_vecs = self.get_mat(L_sing_vecs_source)
             self.sing_vals = N.squeeze(N.array(self.get_mat(sing_vals_source)))
             self.R_sing_vecs = self.get_mat(R_sing_vecs_source)
@@ -86,12 +86,12 @@ class BPOD(object):
             self.L_sing_vecs = None
             self.sing_vals = None
             self.R_sing_vecs = None
-        if parallel.is_distributed():
-            self.L_sing_vecs = parallel.comm.bcast(self.L_sing_vecs,
+        if _parallel.is_distributed():
+            self.L_sing_vecs = _parallel.comm.bcast(self.L_sing_vecs,
                 root=0)
-            self.sing_vals = parallel.comm.bcast(self.sing_vals,
+            self.sing_vals = _parallel.comm.bcast(self.sing_vals,
                 root=0)
-            self.R_sing_vecs = parallel.comm.bcast(self.L_sing_vecs, 
+            self.R_sing_vecs = _parallel.comm.bcast(self.L_sing_vecs, 
                 root=0)
     
     
@@ -99,33 +99,33 @@ class BPOD(object):
         """Put Hankel mat"""
         if self.put_mat is None:
             raise util.UndefinedError('put_mat not specified')
-        elif parallel.is_rank_zero():
+        elif _parallel.is_rank_zero():
             self.put_mat(self.hankel_mat, hankel_mat_dest)           
-        parallel.barrier()
+        _parallel.barrier()
     
     def put_L_sing_vecs(self, dest):
         """Put left singular vectors of SVD, V"""
         if self.put_mat is None:
             raise util.UndefinedError("put_mat not specified")
-        elif parallel.is_rank_zero():
+        elif _parallel.is_rank_zero():
             self.put_mat(self.L_sing_vecs, dest)
-        parallel.barrier()
+        _parallel.barrier()
         
     def put_R_sing_vecs(self, dest):
         """Put right singular vectors of SVD, U"""
         if self.put_mat is None:
             raise util.UndefinedError("put_mat not specified")
-        elif parallel.is_rank_zero():
+        elif _parallel.is_rank_zero():
             self.put_mat(self.R_sing_vecs, dest)
-        parallel.barrier()
+        _parallel.barrier()
         
     def put_sing_vals(self, dest):
         """Put singular values of SVD, E"""
         if self.put_mat is None:
             raise util.UndefinedError("put_mat not specified")
-        elif parallel.is_rank_zero():
+        elif _parallel.is_rank_zero():
             self.put_mat(self.sing_vals, dest)
-        parallel.barrier()
+        _parallel.barrier()
     
     def put_decomp(self, L_sing_vecs_dest, sing_vals_dest, R_sing_vecs_dest):
         """Save the decomposition matrices to file."""
@@ -187,19 +187,19 @@ class BPOD(object):
         Useful if you already have the Hankel mat and want to skip 
         recomputing it. Instead, set ``self.hankel_mat``, and call this.
         """
-        if parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.L_sing_vecs, self.sing_vals, self.R_sing_vecs = \
                 util.svd(self.hankel_mat)
         else:
             self.L_sing_vecs = None
             self.R_sing_vecs = None
             self.sing_vals = None
-        if parallel.is_distributed():
-            self.L_sing_vecs = parallel.comm.bcast(self.L_sing_vecs,
+        if _parallel.is_distributed():
+            self.L_sing_vecs = _parallel.comm.bcast(self.L_sing_vecs,
                 root=0)
-            self.sing_vals = parallel.comm.bcast(self.sing_vals,
+            self.sing_vals = _parallel.comm.bcast(self.sing_vals,
                 root=0)
-            self.R_sing_vecs = parallel.comm.bcast(self.R_sing_vecs,
+            self.R_sing_vecs = _parallel.comm.bcast(self.R_sing_vecs,
                 root=0)
     
     

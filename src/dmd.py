@@ -4,8 +4,8 @@ import numpy as N
 from vectorspace import VectorSpace
 import util
 import vectors as V
-import parallel as parallel_mod
-parallel = parallel_mod.parallel_default_instance
+from parallel import parallel_default_instance
+_parallel = parallel_default_instance
 
 class DMD(object):
     """Dynamic Mode Decomposition/Koopman Mode Decomposition.
@@ -73,7 +73,7 @@ class DMD(object):
         """Retrieves the decomposition matrices from a source. """
         if self.get_mat is None:
             raise util.UndefinedError('Must specify a get_mat function')
-        if parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.ritz_vals = N.squeeze(N.array(self.get_mat(ritz_vals_source)))
             self.mode_norms = N.squeeze(
                 N.array(self.get_mat(mode_norms_source)))
@@ -82,10 +82,10 @@ class DMD(object):
             self.ritz_vals = None
             self.mode_norms = None
             self.build_coeffs = None
-        if parallel.is_distributed():
-            self.ritz_vals = parallel.comm.bcast(self.ritz_vals, root=0)
-            self.mode_norms = parallel.comm.bcast(self.mode_norms, root=0)
-            self.build_coeffs = parallel.comm.bcast(self.build_coeffs, root=0)
+        if _parallel.is_distributed():
+            self.ritz_vals = _parallel.comm.bcast(self.ritz_vals, root=0)
+            self.mode_norms = _parallel.comm.bcast(self.mode_norms, root=0)
+            self.build_coeffs = _parallel.comm.bcast(self.build_coeffs, root=0)
             
     def put_decomp(self, ritz_vals_dest, mode_norms_dest, build_coeffs_dest):
         """Puts the decomposition matrices in dest."""
@@ -95,27 +95,27 @@ class DMD(object):
         
     def put_ritz_vals(self, dest):
         """Puts the Ritz values"""
-        if self.put_mat is None and parallel.is_rank_zero():
+        if self.put_mat is None and _parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined, can't put")
-        if parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.put_mat(self.ritz_vals, dest)
-        parallel.barrier()
+        _parallel.barrier()
         
     def put_mode_norms(self, dest):
         """Puts the mode norms"""
-        if self.put_mat is None and parallel.is_rank_zero():
+        if self.put_mat is None and _parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined, can't put")
-        if parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.put_mat(self.mode_norms, dest)
-        parallel.barrier()
+        _parallel.barrier()
         
     def put_build_coeffs(self, dest):
         """Puts the build coeffs"""
-        if self.put_mat is None and parallel.is_rank_zero():
+        if self.put_mat is None and _parallel.is_rank_zero():
             raise util.UndefinedError("put_mat is undefined, can't put")
-        if parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.put_mat(self.build_coeffs, dest)
-        parallel.barrier()
+        _parallel.barrier()
             
     def compute_decomp(self, vec_handles):
         """Computes decomposition and returns eigen decomposition matrices.

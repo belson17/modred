@@ -9,7 +9,7 @@ from os.path import join
 import numpy as N
 
 import helper
-helper.add_to_path('src')
+helper.add_to_path(os.path.join('..', 'src'))
 
 import parallel as parallel_mod
 parallel = parallel_mod.parallel_default_instance
