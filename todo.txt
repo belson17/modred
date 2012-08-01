@@ -1,26 +1,28 @@
-##################
-# MODRED LIBRARY #
-##################
-
 #### Important ####
 
-Fix the allreduce of the IP matrix in VectorSpace, for large matrices this
-causes and out of memory on some computers. The allreduce should get each
-matrix one by one, not all at once, so that there are only ever two IP matrices
-at once. If this is not possible with allreduce, could implement it with send/recvs.
-Another option is to have each worker only have the portion of IPmat it is
-computing, but this is harder to implement. I saw 12000x12000 IPmat w/24 procs
-cause an out of memory error on the allreduce step.
-
-add an option for svd thresholding in DMD.  when the svd singular values are
+Add an option for svd thresholding in DMD.  when the svd singular values are
 ill-conditioned, then the resulting computation results can be invalid.  for
 instance the mode norms may come out negative...(when computed using
 coefficients rather than the modes themselves).
 
 
+Generalize the parallelization so that users can have parallel Vector classes.
+That is, modred would work in units of larger groups of processors/nodes, 
+MPI communicators, and the lower level user-implemented parts would operate
+within one of these communicators. The user-defined Vector class could then
+have its memory distributed amongst multiple nodes within one communicator.
+This would completely eliminate any size restrictions on the data and make
+modred amazingly useful for huge datasets. It wouldn't be that hard either,
+one needs to generalize the node/processor current paradigm to communicators, and 
+mpi4py already has the hard stuff implemented. 
+
 #### Less important ####
 
-Fix the util.make_list function.  It should be more flexible for iterable containers.  Right now, if a numpy array is passed in, it returns a single element list with the array as the element.  Instead, it should do something like list(my_array), which will return a list with as many elements as the array.
+Fix the util.make_list function.  It should be more flexible for iterable 
+containers.  Right now, if a numpy array is passed in, 
+it returns a single element list with the array as the element.  
+Instead, it should do something like list(my_array), which will return a 
+list with as many elements as the array.
 
 Make the formatting at line breaks better, do not break at '.'s. Talk to Clancy
 about possible solutions to our many line breaks.
@@ -33,41 +35,22 @@ Make a style guide for future developers. In this, include:
 vec_num and similar should be called vec_index. This is because the "number" of
 a mode
 is generally different than its index. The most common example of this is the
-first mode is called mode number 1 but has index 0 (indexFrom=1). To be clear, I
+first mode is called mode number 1 but has index 0 (indexFrom=1). 
+To be clear, I
 differentiate between a mode number and mode index. To be consistent with all
 naming conventions, index should be used instead of num when referring to some
-object's "index" internally and starting from 0.  Number is more of a
-name, index is hidden from the user and starts from 0.
-  - This has been done for vecopersations and bpod, and their tests. All future
-    code should make the distinction between xxxNum and xxxIndex notation.
+object's "index" internally and starting from 0. 
 
-The tests for DMD should be updated so that we check that the internal POD
-object has the correct arguments passed to it.
-
-Write tests directly for lin_combine in vecoperations, not just
+Write tests directly for lin_combine in vectorspace, not just
 _compute_modes.
 
 Rename/move _compute_modes. As it is, it doesn't make sense to be in
-vecoperations.
+vectorspace.
 
-Automatically detect the maxVecsPerNode. This would require some fancier
-things, like determining the available RAM and the size of a vecshot object. It
-might not be possible since some memory is used by the vec/mode objects when
+Automatically detect the max_vecs_per_node. Or in the future, max_vecs_per_communicator.
+This would require some fancier
+things, like determining the available RAM and the size of a vector object. It
+might not be possible since some memory is used by the vector objects when
 doing inner products, etc. We could leave a safety factor though, and maybe
 leave space for 1-2 vecs/modes for scratch space for the user's functions. 
-
-Create a more general subpackage that computes ROMs. It would interact well with
-other classes when necessary (for example for BPOD). 
-There could be a base class that defined the interface, and derived classes
-that implement computing the ROM ODEs for a specific original system. 
-The easiest example would be computing a ROM that is an LTI system with: 
-dx/dt = Ax + Bu y =
-Cx (+ Du) 
-This has been done (by Brandt) for the BPOD case (see src/bpodltirom.py).
-The A, B, and C matrices are computed, given the direct modes, the adjoint
-modes, and the direct modes advanced one time step.
-More thought needs to be put into this, but it might be
-able to handle general PDEs and general forms of the ROM.
-
-
 
