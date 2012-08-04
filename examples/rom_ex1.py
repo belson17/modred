@@ -10,7 +10,7 @@ num_modes = 10
 A_op = MR.MatrixOperator(N.arange(nx**2).reshape((nx, nx)))
 B_op = MR.MatrixOperator(N.arange(nx*num_inputs).reshape((nx, num_inputs)))
 C_op = MR.MatrixOperator(N.arange(nx*num_outputs).reshape((num_outputs, nx)))
-basis_vecs = [N.sin(N.linspace(0, i, nx)) for i in range(num_modes)]
+basis_vecs = [N.sin(N.linspace(0, i+1, nx)) for i in range(num_modes)]
 
 inner_product = N.vdot
 LTI_proj = MR.LTIGalerkinProjection(inner_product, basis_vecs)
