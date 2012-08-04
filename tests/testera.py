@@ -11,7 +11,7 @@ import helper
 helper.add_to_path(join(join(os.path.dirname(os.path.abspath(__file__)), 
     '..', 'src')))
 import parallel as parallel_mod
-parallel = parallel_mod.parallel_default_instance
+_parallel = parallel_mod.parallel_default_instance
 
 import era
 import util
@@ -36,7 +36,7 @@ def make_time_steps(num_steps, interval):
     time_steps[1::2] = 1 + interval*N.arange(num_steps/2)
     return time_steps
 
-@unittest.skipIf(parallel.is_distributed(), 'Only test ERA in serial')
+@unittest.skipIf(_parallel.is_distributed(), 'Only test ERA in serial')
 class testERA(unittest.TestCase):
     
     def setUp(self):

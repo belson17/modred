@@ -88,57 +88,37 @@ class BPOD(object):
             ``R_sing_vecs_source``: Source from which to retrieve right singular
             vectors.
         """
-        if self.get_mat is None:
-            raise util.UndefinedError('Must specify a get_mat function')
+        self.L_sing_vecs = _parallel.call_and_bcast(self.get_mat, 
+            L_sing_vecs_source)
+        self.sing_vals = _parallel.call_and_bcast(self.get_mat, 
+            sing_vals_source)
+        self.R_sing_vecs = _parallel.call_and_bcast(self.get_mat, 
+            R_sing_vecs_source)
+    
+    def put_Hankel_mat(self, dest):
+        """Put Hankel mat to ``dest``."""
         if _parallel.is_rank_zero():
-            self.L_sing_vecs = self.get_mat(L_sing_vecs_source)
-            self.sing_vals = N.squeeze(N.array(self.get_mat(sing_vals_source)))
-            self.R_sing_vecs = self.get_mat(R_sing_vecs_source)
-        else:
-            self.L_sing_vecs = None
-            self.sing_vals = None
-            self.R_sing_vecs = None
-        if _parallel.is_distributed():
-            self.L_sing_vecs = _parallel.comm.bcast(self.L_sing_vecs,
-                root=0)
-            self.sing_vals = _parallel.comm.bcast(self.sing_vals,
-                root=0)
-            self.R_sing_vecs = _parallel.comm.bcast(self.L_sing_vecs, 
-                root=0)
-    
-    
-    def put_Hankel_mat(self, Hankel_mat_dest):
-        """Put Hankel mat to ``Hankel_mat_dest``."""
-        if self.put_mat is None:
-            raise util.UndefinedError('put_mat not specified')
-        elif _parallel.is_rank_zero():
-            self.put_mat(self.Hankel_mat, Hankel_mat_dest)           
+            self.put_mat(self.Hankel_mat, dest)
         _parallel.barrier()
-    
+        
     def put_L_sing_vecs(self, dest):
         """Put left singular vectors of SVD to ``dest``."""
-        if self.put_mat is None:
-            raise util.UndefinedError("put_mat not specified")
-        elif _parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.put_mat(self.L_sing_vecs, dest)
         _parallel.barrier()
         
     def put_R_sing_vecs(self, dest):
         """Put right singular vectors of SVD to ``dest``."""
-        if self.put_mat is None:
-            raise util.UndefinedError("put_mat not specified")
-        elif _parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.put_mat(self.R_sing_vecs, dest)
         _parallel.barrier()
         
     def put_sing_vals(self, dest):
         """Put singular values of SVD to ``dest``."""
-        if self.put_mat is None:
-            raise util.UndefinedError("put_mat not specified")
-        elif _parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             self.put_mat(self.sing_vals, dest)
         _parallel.barrier()
-    
+        
     def put_decomp(self, L_sing_vecs_dest, sing_vals_dest, R_sing_vecs_dest):
         """Put the decomposition matrices to destinations.
         
@@ -211,21 +191,9 @@ class BPOD(object):
         recomputing it. 
         Instead, set ``self.Hankel_mat``, and call this.
         """
-        if _parallel.is_rank_zero():
-            self.L_sing_vecs, self.sing_vals, self.R_sing_vecs = \
-                util.svd(self.Hankel_mat)
-        else:
-            self.L_sing_vecs = None
-            self.R_sing_vecs = None
-            self.sing_vals = None
-        if _parallel.is_distributed():
-            self.L_sing_vecs = _parallel.comm.bcast(self.L_sing_vecs,
-                root=0)
-            self.sing_vals = _parallel.comm.bcast(self.sing_vals,
-                root=0)
-            self.R_sing_vecs = _parallel.comm.bcast(self.R_sing_vecs,
-                root=0)
-    
+        self.L_sing_vecs, self.sing_vals, self.R_sing_vecs = \
+            _parallel.call_and_bcast(util.svd, self.Hankel_mat)
+   
     
     
     def _compute_direct_build_coeff_mat(self):

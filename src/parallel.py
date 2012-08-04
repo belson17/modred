@@ -59,18 +59,9 @@ class Parallel(object):
         return self._num_nodes
     
     def print_from_rank_zero(self, msgs):
-        """Prints the elements of the list given from rank=0 only.
-        
-        Args:
-            ``msgs``: List of strings to print.
-        """
-        # If not a list, convert to list
-        if not isinstance(msgs, list):
-            msgs = [msgs]
-            
+        """Prints the string ``msgs`` from rank=0 only."""
         if self.is_rank_zero():
-            for msg in msgs:
-                print msg
+            print msg
     
     def barrier(self):
         """Forces all processors to synchronize. Wrapper for Barrier()."""
@@ -83,7 +74,28 @@ class Parallel(object):
             return True
         else:
             return False
+    
+    def call_from_rank_zero(self, func, *args, **kwargs):
+        """Calls function from rank zero, does not call ``barrier()``.
+        
+        Args:
+            ``func``: Function to call.
             
+            ``*args``: All required arguments to ``func``.
+            
+            ``**kwargs``: All keyword (optional) arguments to ``func``.
+        
+        Usage::
+        
+          parallel.call_from_rank_zero(lambda x: x+1, 1)
+        
+        """
+        if self.is_rank_zero():
+            out = func(*args, **kwargs)
+        else:
+            out = None
+        return out
+        
     def is_distributed(self):
         """Returns True if >1 processor and mpi4py imported properly."""
         return self.distributed
@@ -172,57 +184,30 @@ class Parallel(object):
         return empty_tasks
 
     
-    #def evaluate_and_bcast(self, outputs, function, arguments=None, 
-    #    keywords=None):
-        """Evaluates function with inputs and broadcasts outputs to workers.
-        
-        CURRENTLY THIS FUNCTION DOESN'T WORK.
-        
+    def call_and_bcast(self, func, *args, **kwargs):
+        """Calls function on rank 0 and broadcasts outputs to all workers.
+               
         Args:
-            outputs: must be a list
+            ``func``: A callable that takes ``*args`` and ``**kwargs``
     
-            function: must be a callable function given the arguments and
-                keywords
+            ``*args``: Required arguments for ``func``.
     
-            arguments: a list containing required arguments to *function*
-    
-            keywords: a dictionary containing optional keywords and values
-                for *function*
-
-        function is called with outputs = function(\*arguments,\*\*keywords)
-        For more information, see 
-        http://docs.python.org/tutorial/controlflow.html
-        The result is then broadcast to all processors if in parallel.
+            ``**kwargs``: Optional keyword args for ``func``.
+        
+        Usage::
+          
+          # Adds one to the rank, but only evaluated on rank 0, so
+          # ``outputs==1`` on all workers.
+          outputs = parallel.call_and_bcast(lambda x: x+1, parallel.get_rank())
+            
         """
-        #raise RuntimeError('function isnt completed')
-        
-        #print 'outputs are ', outputs
-        #print 'function is', function
-        #print 'arguments are', arguments
-        #print 'keywords are', keywords
-        #if self.isRankZero():
-        #    print function(*arguments, **keywords)
-        #    output_list = function(*arguments, **keywords)
-        #    if not isinstance(output_list, tuple):
-        #        output_list = (output_list)
-        #    if len(output_list) != len(outputs):
-        #        raise ValueError('Length of outputs differ')
-        #        
-        #    for i in range(len(outputs)):
-        #        temp = outputs[i]
-        #        temp = output_list[i]
-
-        #    print 'output_list is', output_list
-        #    print 'outputs is', outputs
-        #else:
-        #    for outputNum in range(len(outputs)):
-        #        outputs[outputNum] = None
-        #if self.isParallel():
-        #    for outputNum in range(len(outputs)):
-        #        outputs[outputNum] = self.comm.bcast(outputs[outputNum],
-        #            root=0)
-        #print 'Done broadcasting'
-        
+        if self.is_rank_zero():
+            outputs = func(*args, **kwargs)
+        else:
+            outputs = None
+        if self.is_distributed():
+            outputs = self.comm.bcast(outputs, root=0)
+        return outputs
         
     def __eq__(self, other):
         equal = (self._num_MPI_workers == other.get_num_MPI_workers() and \

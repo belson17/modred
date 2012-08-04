@@ -71,22 +71,13 @@ class DMD(object):
 
     def get_decomp(self, ritz_vals_source, mode_norms_source, 
         build_coeffs_source):
-        """Retrieves the decomposition matrices from sources."""
-        if self.get_mat is None:
-            raise util.UndefinedError('Must specify a get_mat function')
-        if _parallel.is_rank_zero():
-            self.ritz_vals = N.squeeze(N.array(self.get_mat(ritz_vals_source)))
-            self.mode_norms = N.squeeze(
-                N.array(self.get_mat(mode_norms_source)))
-            self.build_coeffs = self.get_mat(build_coeffs_source)
-        else:
-            self.ritz_vals = None
-            self.mode_norms = None
-            self.build_coeffs = None
-        if _parallel.is_distributed():
-            self.ritz_vals = _parallel.comm.bcast(self.ritz_vals, root=0)
-            self.mode_norms = _parallel.comm.bcast(self.mode_norms, root=0)
-            self.build_coeffs = _parallel.comm.bcast(self.build_coeffs, root=0)
+        """Retrieves the decomposition matrices from sources."""        
+        self.ritz_vals = N.squeeze(N.array(
+            _parallel.call_and_bcast(self.get_mat, ritz_vals_source)))
+        self.mode_norms = N.squeeze(N.array(
+            _parallel.call_and_bcast(self.get_mat, mode_norms_source)))
+        self.build_coeffs = _parallel.call_and_bcast(self.get_mat, 
+            build_coeffs_source)
             
     def put_decomp(self, ritz_vals_dest, mode_norms_dest, build_coeffs_dest):
         """Puts the decomposition matrices in destinations."""
@@ -96,27 +87,28 @@ class DMD(object):
         
     def put_ritz_vals(self, dest):
         """Puts the Ritz values to ``dest``."""
-        if self.put_mat is None and _parallel.is_rank_zero():
-            raise util.UndefinedError("put_mat is undefined, can't put")
         if _parallel.is_rank_zero():
             self.put_mat(self.ritz_vals, dest)
         _parallel.barrier()
         
     def put_mode_norms(self, dest):
         """Puts the mode norms to ``dest``."""
-        if self.put_mat is None and _parallel.is_rank_zero():
-            raise util.UndefinedError("put_mat is undefined, can't put")
         if _parallel.is_rank_zero():
             self.put_mat(self.mode_norms, dest)
         _parallel.barrier()
         
     def put_build_coeffs(self, dest):
         """Puts the build coeffs to ``dest``."""
-        if self.put_mat is None and _parallel.is_rank_zero():
-            raise util.UndefinedError("put_mat is undefined, can't put")
         if _parallel.is_rank_zero():
             self.put_mat(self.build_coeffs, dest)
         _parallel.barrier()
+        
+    def put_correlation_mat(self, dest):
+        """Puts the correlation mat to ``dest``."""
+        if _parallel.is_rank_zero():
+            self.put_mat(self.correlation_mat, dest)
+        _parallel.barrier()
+    
             
     def compute_decomp(self, vec_handles):
         """Computes decomposition and returns eigen decomposition matrices.
@@ -136,73 +128,26 @@ class DMD(object):
         if self.vec_handles is None:
             raise util.UndefinedError('vec_handles is not given')
 
-        H = self.vec_space.compute_symmetric_inner_product_mat(
+        self.correlation_mat = \
+            self.vec_space.compute_symmetric_inner_product_mat(
             self.vec_handles)
-        evals, evecs = util.eigh(H[:-1, :-1])
+        evals, evecs = _parallel.call_and_bcast(util.eigh, 
+            self.correlation_mat[:-1, :-1])
         evals_sqrt = N.mat(N.diag(evals**-0.5))
-        A = evals_sqrt * evecs.H * H[:-1, 1:] * evecs * evals_sqrt
-        self.ritz_vals, low_order_eigen_vecs = N.linalg.eig(A)
-        V_term = N.linalg.inv(low_order_eigen_vecs.H * low_order_eigen_vecs) * \
+        A = evals_sqrt * evecs.H * self.correlation_mat[:-1, 1:] * evecs * \
+            evals_sqrt
+        self.ritz_vals, low_order_eigen_vecs = _parallel.call_and_bcast(
+            N.linalg.eig, A)
+        V_term = _parallel.call_and_bcast(N.linalg.inv, 
+            low_order_eigen_vecs.H * low_order_eigen_vecs) * \
             low_order_eigen_vecs.H
-        D = N.diag(N.array(N.array(
-            V_term * evals_sqrt * evecs.H * H[:-1, 0]).squeeze(),ndmin=1))
+        D = N.diag(N.array(N.array(V_term * evals_sqrt * evecs.H * 
+            self.correlation_mat[:-1, 0]).squeeze(), ndmin=1))
         self.build_coeffs = evecs * evals_sqrt * low_order_eigen_vecs * D
-        self.mode_norms = N.diag(self.build_coeffs.H * H[:-1, :-1]* 
-            self.build_coeffs).real
-        return self.ritz_vals, self.mode_norms, self.build_coeffs
-        
-        """
-        # Compute POD from vecs (excluding last vec)
-        if self.POD is None:
-            self.POD = pod.POD(inner_product=self.vec_space.inner_product, 
-                max_vecs_per_node=self.vec_space.max_vecs_per_node, 
-                put_mat=self.put_mat, verbosity=self.verbosity)
-            # Don't use the returned mats, get them later from POD instance.
-            dum, dum = self.POD.compute_decomp(
-                vec_handles=self.vec_handles[:-1])
-        elif self.vec_handles[:-1] != self.POD.vec_handles or \
-            len(vec_handles) != len(self.POD.vec_handles)+1:
-            raise RuntimeError('vec mismatch between POD and DMD '+\
-                'objects.')
-        pod_eigen_vecs = self.POD.eigen_vecs
-        pod_eigen_vals = self.POD.eigen_vals
-        _pod_eigen_vals_sqrt_mat = N.mat(N.diag(pod_eigen_vals** -0.5))
-
-
-        # Inner product of vecs w/POD modes
-        num_vecs = len(self.vec_handles)
-        pod_modes_star_times_vecs = N.mat(N.empty((num_vecs-1, num_vecs-1)))
-        pod_modes_star_times_vecs[:,:-1] = self.POD.correlation_mat[:,1:]  
-        pod_modes_star_times_vecs[:,-1] = \
-            self.vec_space.compute_inner_product_mat(self.vec_handles[:-1], 
-                self.vec_handles[-1])
-        pod_modes_star_times_vecs = _pod_eigen_vals_sqrt_mat * \
-            pod_eigen_vecs.H *\
-            pod_modes_star_times_vecs
-            
-        # Reduced order linear system
-        low_order_linear_map = pod_modes_star_times_vecs * pod_eigen_vecs * \
-            _pod_eigen_vals_sqrt_mat
-        self.ritz_vals, low_order_eig_vecs = N.linalg.eig(low_order_linear_map)
-        
-        # Scale Ritz vectors
-        ritz_vecs_star_times_init_vec = low_order_eig_vecs.H * \
-            _pod_eigen_vals_sqrt_mat * \
-            pod_eigen_vecs.H * self.POD.correlation_mat[:,0]
-        ritz_vec_scaling = N.linalg.inv(low_order_eig_vecs.H * 
-            low_order_eig_vecs) *\
-            ritz_vecs_star_times_init_vec
-        
-        ritz_vec_scaling = N.mat(N.diag(N.array(N.array(
-            ritz_vec_scaling).squeeze(),ndmin=1)))
-
-        # Compute mode energies
-        self.build_coeffs = pod_eigen_vecs * _pod_eigen_vals_sqrt_mat *\
-            low_order_eig_vecs * ritz_vec_scaling
         self.mode_norms = N.diag(self.build_coeffs.H * 
-            self.POD.correlation_mat * self.build_coeffs).real
+            self.correlation_mat[:-1, :-1] * self.build_coeffs).real
         return self.ritz_vals, self.mode_norms, self.build_coeffs
-        """
+        
         
     def compute_decomp_in_memory(self, vecs):
         """Same as :py:meth:`compute_decomp` but takes vecs instead of handles."""
@@ -227,7 +172,7 @@ class DMD(object):
             ``index_from``: Integer to start numbering modes from, 0, 1, or other.
         """
         if self.build_coeffs is None:
-            raise util.UndefinedError('Must define self.build_coeffs')
+            raise util.UndefinedError('self.build_coeffs is undefined.')
         # User should specify ALL vecs, even though all but last are used
         if vec_handles is not None:
             self.vec_handles = util.make_list(vec_handles)
@@ -254,7 +199,7 @@ class DMD(object):
         See :py:meth:`compute_modes`.
         """
         if self.build_coeffs is None:
-            raise util.UndefinedError('Must define self.build_coeffs')
+            raise util.UndefinedError('self.build_coeffs is undefined.')
         # User should specify ALL vecs, even though all but last are used
         if vecs is not None:
             self.vecs = util.make_list(vecs)

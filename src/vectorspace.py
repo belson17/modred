@@ -184,8 +184,8 @@ class VectorSpace(object):
         
         The scaling is:
         
-        - num gets / processor ~ (n_r*n_c/((max-1)*n_p*n_p)) + n_r/n_p
-        - num MPI sends / processor ~ (n_p-1)*(n_r/((max-1)*n_p))*n_c/n_p
+        - num gets / processor ~ (n_r*n_c/((max-2)*n_p*n_p)) + n_r/n_p
+        - num MPI sends / processor ~ (n_p-1)*(n_r/((max-2)*n_p))*n_c/n_p
         - num inner products / processor ~ n_r*n_c/n_p
             
         where n_r is number of rows, n_c number of columns, max is
@@ -798,9 +798,9 @@ class VectorSpace(object):
         
         Scaling is:
         
-          num gets/worker = n_s/(n_p*(max-1)) * n_b/n_p
+          num gets/worker = n_s/(n_p*(max-2)) * n_b/n_p
           
-          passes/worker = (n_p-1) * n_s/(n_p*(max-1)) * (n_b/n_p)
+          passes/worker = (n_p-1) * n_s/(n_p*(max-2)) * (n_b/n_p)
           
           scalar multiplies/worker = n_s*n_b/n_p
           

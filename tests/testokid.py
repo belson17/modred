@@ -10,7 +10,7 @@ import helper
 helper.add_to_path(join(join(os.path.dirname(os.path.abspath(__file__)), 
     '..', 'src')))
 import parallel as parallel_mod
-parallel = parallel_mod.parallel_default_instance
+_parallel = parallel_mod.parallel_default_instance
 
 
 from okid import OKID   
@@ -34,13 +34,13 @@ def diff(arr_measured, arr_true, normalize=False):
         return err
         
         
-@unittest.skipIf(parallel.is_distributed(), 'Only test OKID in serial')
+@unittest.skipIf(_parallel.is_distributed(), 'Only test OKID in serial')
 class TestOKID(unittest.TestCase):
     def setUp(self):
         self.test_dir = join(os.path.dirname(__file__), 'files_okid')        
     
     def tearDown(self):
-        parallel.barrier()
+        pass
     
     def test_OKID(self):
         for case in ['SISO', 'SIMO', 'MISO', 'MIMO']:

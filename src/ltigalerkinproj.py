@@ -94,10 +94,10 @@ class LookUpOperator(object):
     
     Usage::
       
-      # Compute action of operator A on direct_modes outside of python.
-      A = LookUpOperator(direct_modes, A_on_modes)
+      # Compute action of operator A on basis_vecs outside of python.
+      A = LookUpOperator(basis_vecs, A_on_modes)
       A_reduced = LTIGalerkinProjection(inner_product).reduce_A(
-        A, direct_modes, adjoint_modes)
+        A, basis_vecs, adjoint_basis_vecs)
     
     """
     def __init__(self, vecs, operated_on_vecs):
@@ -136,13 +136,13 @@ class LTIGalerkinProjection(object):
     Args:
         ``inner_product``: Function to take inner product of vectors.
         
-        ``direct_modes``: List of direct modes (vecs or vec handles). 
+        ``basis_vecs``: List of direct modes (vecs or vec handles). 
     
     Kwargs:
-        ``adjoint_modes``: List of adjoint modes (vecs or vec handles).
-            If not given, then ``direct_modes`` are used.
+        ``adjoint_basis_vecs``: List of adjoint modes (vecs or vec handles).
+            If not given, then ``basis_vecs`` are used.
     
-        ``are_modes_orthonormal``: Bool for the bi-orthonormality of the modes.
+        ``is_basis_orthonormal``: Bool for bi-orthonormality of the basis vecs.
             ``True`` if the modes are orthonormal.
             
         ``put_mat``: Function to put a matrix elsewhere (memory or file).
@@ -151,62 +151,63 @@ class LTIGalerkinProjection(object):
         
         ``max_vecs_per_node``: Max number of vectors in memory per node.
     
-    This class creates either discrete or continuous time models from
-    modes (could obtain modes from :py:class:`POD` and :py:class:`BPOD`).
+    This class projects discrete or continuous time dynamics onto a set of basis
+    vectors, resulting in models. Often the basis vecs are modes from 
+    :py:class:`POD` or :py:class:`BPOD`.
     
-    If the ``direct_modes`` (and optionally the ``adjoint_modes``) are given
+    If the ``basis_vecs`` (and optionally the ``adjoint_basis_vecs``) are given
     as vectors rather than vector handles, then use the ``*_in_memory`` 
     member functions when there is a distinction. 
     For vector handles, use the regular functions.
     
     Usage::
         
-      LTI_proj = LTIGalerkinProjection(inner_product, direct_modes,
-        adjoint_modes=adjoint_modes, are_modes_orthonormal=True)
+      LTI_proj = LTIGalerkinProjection(inner_product, basis_vecs,
+        adjoint_basis_vecs=adjoint_basis_vecs, is_basis_orthonormal=True)
       A, B, C = LTI_proj.compute_model(A, B, C, num_inputs)
         
     """
-    def __init__(self, inner_product, direct_modes, adjoint_modes=None, 
-        are_modes_orthonormal=False, put_mat=util.save_array_text, verbosity=1, 
+    def __init__(self, inner_product, basis_vecs, adjoint_basis_vecs=None, 
+        is_basis_orthonormal=False, put_mat=util.save_array_text, verbosity=1, 
         max_vecs_per_node=10000):
         """Constructor"""
         self.inner_product = inner_product
-        self.direct_modes = direct_modes
-        if adjoint_modes is None:
-            self.adjoint_modes = self.direct_modes
+        self.basis_vecs = basis_vecs
+        if adjoint_basis_vecs is None:
+            self.adjoint_basis_vecs = self.basis_vecs
         else:
-            self.adjoint_modes = adjoint_modes
-        self.are_modes_orthonormal = are_modes_orthonormal
+            self.adjoint_basis_vecs = adjoint_basis_vecs
+            if len(self.adjoint_basis_vecs) != len(self.basis_vecs):
+                raise ValueError('Number of basis vecs is not equal to the '
+                    'number of adjoint basis vecs')
+        self.is_basis_orthonormal = is_basis_orthonormal
         self.put_mat = put_mat
         self.vec_space = VectorSpace(inner_product=inner_product,
             max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
-        self.model_dim = None
         self.verbosity = verbosity
         self._proj_mat = None
         self.A_reduced = None
         self.B_reduced = None
         self.C_reduced = None
 
-    def put_A_reduced(self, A_reduced_dest):
-        """Put reduced A matrix to ``A_reduced_dest``"""
-        if _parallel.is_rank_zero():
-            self.put_mat(self.A_reduced, A_reduced_dest)
+        
+    def put_A_reduced(self, dest):
+        """Put reduced A matrix to ``dest``."""
+        _parallel.call_from_rank_zero(self.put_mat, self.A_reduced, dest)
         _parallel.barrier()
         
-    def put_B_reduced(self, B_reduced_dest):
-        """Put reduced B matrix to ``B_reduced_dest``"""
-        if _parallel.is_rank_zero():
-            self.put_mat(self.B_reduced, B_reduced_dest)
+    def put_B_reduced(self, dest):
+        """Put reduced B matrix to ``dest``."""
+        _parallel.call_from_rank_zero(self.put_mat, self.B_reduced, dest)
         _parallel.barrier()
         
-    def put_C_reduced(self, C_reduced_dest):
-        """Put reduced C matrix to ``C_reduced_dest``"""
-        if _parallel.is_rank_zero():
-            self.put_mat(self.C_reduced, C_reduced_dest)
+    def put_C_reduced(self, dest):
+        """Put reduced C matrix to ``dest``."""
+        _parallel.call_from_rank_zero(self.put_mat, self.C_reduced, dest)
         _parallel.barrier()
         
     def put_model(self, A_reduced_dest, B_reduced_dest, C_reduced_dest):
-        """Put reduced A, B, and C mats (numpy arrays) to destinations.
+        """Put reduced A, B, and C matrices to destinations.
         
         Args:
             ``A_reduced_dest``: Destination for ``A_reduced``.
@@ -220,7 +221,7 @@ class LTIGalerkinProjection(object):
         self.put_C_reduced(C_reduced_dest)
         
         
-    def compute_model(self, A, B, C, num_inputs, model_dim=None):
+    def compute_model(self, A, B, C, num_inputs):
         """Computes and returns the reduced matrices. For use with vec handles.
         
         Args:
@@ -234,89 +235,65 @@ class LTIGalerkinProjection(object):
                 For continuous time systems, see also 
                 :py:meth:`compute_derivs`.
                 
-            ``B``: callable which takes basis vec, e_j, returns "B*e_j".
+            ``B``: Callable which takes basis vec, e_j, returns "B*e_j".
             
-            ``C``: callable which takes a direct mode handle, returns "C*modes".
+            ``C``: Callable which takes a direct mode handle, returns "C*modes".
 
-            ``num_inputs``: number of inputs to system
-            
-        Kwargs:
-            ``model_dim``: number of states to keep in the model. 
-                Can omit if already given. Default is maximum possible.
+            ``num_inputs``: Number of inputs to system
         """
-        self.reduce_A(A, model_dim=model_dim)
+        self.reduce_A(A)
         self.reduce_B(B, num_inputs)
         self.reduce_C(C)
         return self.A_reduced, self.B_reduced, self.C_reduced
         
-    def compute_model_in_memory(self, A, B, C, num_inputs, model_dim=None):
+    def compute_model_in_memory(self, A, B, C, num_inputs):
         """See :py:meth:`compute_model`, but takes vecs instead of handles."""
-        self.reduce_A_in_memory(A, model_dim=model_dim)
+        self.reduce_A_in_memory(A)
         self.reduce_B_in_memory(B, num_inputs)
         self.reduce_C_in_memory(C)
         return self.A_reduced, self.B_reduced, self.C_reduced
-        
+
     
-    def reduce_A_in_memory(self, A, model_dim=None):
+    def reduce_A_in_memory(self, A):
         """Computes and returns the continous or discrete time A matrix.
         
         See :py:meth:`reduce_A`, but use when modes are vecs not vec handles."""
-        if model_dim is not None:
-            self.model_dim = model_dim
-        if self.model_dim is None:
-            self.model_dim = min(len(self.direct_modes), 
-                len(self.adjoint_modes))
-        A_on_direct_modes = map(A, self.direct_modes[:self.model_dim])
-        self.A_reduced = self.vec_space.compute_inner_product_mat(
-            map(InMemoryVecHandle, self.adjoint_modes[:self.model_dim]),
-            map(InMemoryVecHandle, A_on_direct_modes))
-        if not self.are_modes_orthonormal:
-            self.A_reduced = N.dot(self._get_proj_mat_in_memory(),
+        A_on_basis_vecs = map(A, self.basis_vecs)
+        self.A_reduced = self.vec_space.compute_inner_product_mat_in_memory(
+            self.adjoint_basis_vecs, A_on_basis_vecs)
+        if not self.is_basis_orthonormal:
+            self.A_reduced = N.dot(self._get_proj_mat_in_memory(), 
                 self.A_reduced)
         return self.A_reduced
-        
-    
-    def reduce_A(self, A, model_dim=None):
+
+    def reduce_A(self, A):
         """Computes and returns the continous or discrete time A matrix.
         
         Args:
             ``A``: Callable which takes a mode handle, returns handle "A*mode".
-            
-        Kwargs:
-            ``model_dim``: Number of modes/states to keep in the model. 
-                Can omit if already given. Default is maximum possible.
-        
+                    
         Returns:
-            ``A_reduced``: reduced A matrix (2D numpy array).
+            ``A_reduced``: Reduced A matrix.
         """
-        if model_dim is not None:
-            self.model_dim = model_dim
-        if self.model_dim is None:
-            self.model_dim = min(len(self.direct_modes), 
-                len(self.adjoint_modes))
-        A_on_direct_modes = map(A, self.direct_modes[:self.model_dim])
+        A_on_basis_vecs = map(A, self.basis_vecs)
         self.A_reduced = self.vec_space.compute_inner_product_mat(
-            self.adjoint_modes[:self.model_dim], A_on_direct_modes)
-        if not self.are_modes_orthonormal:
+            self.adjoint_basis_vecs, A_on_basis_vecs)
+        if not self.is_basis_orthonormal:
             self.A_reduced = N.dot(self._get_proj_mat(), self.A_reduced)
         return self.A_reduced
-                
+        
     
-    def reduce_B(self, B, num_inputs, model_dim=None):
+    def reduce_B(self, B, num_inputs):
         """Computes and returns the reduced B matrix.
         
         Args:		
             ``B``: Callable which takes a standard basis element (array),
             returns handle "B*e_j".
             
-            ``num_inputs``: Number of inputs to the system. 
-                
-        Kwargs:
-            ``model_dim``: Number of modes/states to keep in the model. 
-                Can omit if already given.
-		
-		Returns:
-		    ``B_reduced``: Reduced B matrix (2D numpy array).
+            ``num_inputs``: Number of inputs to the system.
+        
+        Returns:
+		    ``B_reduced``: Reduced B matrix.
 		    
         Tip: If you found the modes via sampling IC responses to B and C,
         then your impulse responses may be missing a factor of 1/dt
@@ -337,106 +314,85 @@ class LTIGalerkinProjection(object):
         #(where I+dt*A ~ A_d)
         #The important thing to see is the factor of dt difference.
 
-        if model_dim is not None:
-            self.model_dim = model_dim
-        if self.model_dim is None:
-            self.model_dim = len(adjoint_mode_handles)
-        B_on_basis = map(B, standard_basis(num_inputs))
+        B_on_basis_vecs = map(B, standard_basis(num_inputs))
         self.B_reduced = self.vec_space.compute_inner_product_mat(
-            self.adjoint_modes[:self.model_dim], B_on_basis)
-        if not self.are_modes_orthonormal:
+            self.adjoint_basis_vecs, B_on_basis_vecs)
+        if not self.is_basis_orthonormal:
             self.B_reduced = N.dot(self._get_proj_mat(), self.B_reduced)
         return self.B_reduced
+        
 
-    def reduce_B_in_memory(self, B, num_inputs, model_dim=None):
+    def reduce_B_in_memory(self, B, num_inputs):
         """Computes and returns the reduced B matrix.
         
 		See :py:meth:`reduce_B`, but use when modes are vecs not vec handles."""
-        if model_dim is not None:
-            self.model_dim = model_dim
-        if self.model_dim is None:
-            self.model_dim = len(self.adjoint_modes)
-        B_on_basis = map(B, standard_basis(num_inputs))
-        self.B_reduced = self.vec_space.compute_inner_product_mat(
-            map(InMemoryVecHandle, self.adjoint_modes[:self.model_dim]), 
-            map(InMemoryVecHandle, B_on_basis))
-        if not self.are_modes_orthonormal:
-            self.B_reduced = N.dot(self._get_proj_mat_in_memory(),
+        B_on_basis_vecs = map(B, standard_basis(num_inputs))
+        self.B_reduced = self.vec_space.compute_inner_product_mat_in_memory(
+            self.adjoint_basis_vecs, B_on_basis_vecs)
+        if not self.is_basis_orthonormal:
+            self.B_reduced = N.dot(self._get_proj_mat_in_memory(), 
                 self.B_reduced)
         return self.B_reduced
-
+                
         
-        
-    def reduce_C(self, C, model_dim=None):
+    def reduce_C(self, C):
         """Computes and returns the reduced C matrix.
                
         Args: 
             ``C``: Callable that takes mode handle, returns 1D array "C*mode".
-        		
-        Kwargs:
-            ``model_dim``: Number of modes/states to keep in the model. 
-                Can omit if already given.
         
         Returns:
-            ``C_reduced``: Reduced C matrix (2D numpy array).
+            ``C_reduced``: Reduced C matrix.
         """
-        if model_dim is not None:
-            self.model_dim = model_dim
-        if self.model_dim is None:
-            self.model_dim = len(self.direct_modes)
-        C_on_direct_modes = map(C, self.direct_modes[:self.model_dim])
+        C_on_basis_vecs = map(C, self.basis_vecs)
         # Force each output from C to be a 1D array
-        C_on_direct_modes = [N.array(m.squeeze(), ndmin=1) 
-            for m in C_on_direct_modes]
-        self.C_reduced = N.array(C_on_direct_modes, ndmin=2).T
+        C_on_basis_vecs = [N.array(m.squeeze(), ndmin=1) 
+            for m in C_on_basis_vecs]
+        self.C_reduced = N.array(C_on_basis_vecs, ndmin=2).T
         return self.C_reduced
     
     
-    def reduce_C_in_memory(self, C, model_dim=None):
+    def reduce_C_in_memory(self, C):
         """Same as :py:meth:`reduce_C`, but modes are vecs not vec handles.
         
         Only for convenience and consistency, since it doesn't matter if 
         the modes are vecs or vec handles for :py:meth:`reduce_C`."""
-        return self.reduce_C(C, model_dim=model_dim)
+        return self.reduce_C(C)
         
         
-    def _get_proj_mat(self, direct_modes=None, adjoint_modes=None,
-        are_modes_orthonormal=None):
+    def _get_proj_mat(self, basis_vecs=None, adjoint_basis_vecs=None):
         """Gets the projection mat, i.e. inv(Psi^* Phi).
         
         Kwargs:
-           ``direct_modes``: Direct mode handles, default ``self.direct_modes``.
+           ``basis_vecs``: Direct mode handles, default ``self.basis_vecs``.
 
-           ``adjoint_modes``: Adjoint mode handles, default ``self.adjoint_modes``.
-
-           ``are_modes_orthonormal``: Bool, default ``self.are_modes_orthonormal``.
+           ``adjoint_basis_vecs``: Adjoint mode handles, default
+               ``self.adjoint_basis_vecs``.
                 
         There are only arguments to avoid repeating code for an "in_memory" 
         version. Otherwise one could just use the class self variables.
         """            
         if self._proj_mat is None:
-            if direct_modes is None: 
-                direct_modes = self.direct_modes
-            if adjoint_modes is None: 
-                adjoint_modes = self.adjoint_modes
-            if are_modes_orthonormal is None: 
-                are_modes_orthonormal = self.are_modes_orthonormal
+            if basis_vecs is None: 
+                basis_vecs = self.basis_vecs
+            if adjoint_basis_vecs is None: 
+                adjoint_basis_vecs = self.adjoint_basis_vecs
             
             # Check if direct and adjoint modes are equal
             symmetric = True
-            for d_mode, a_mode in zip(self.direct_modes[:self.model_dim], 
-                self.adjoint_modes[:self.model_dim]):
-                if not util.smart_eq(d_mode, a_mode):
+            basis_vec_index = 0
+            while symmetric and basis_vec_index < len(basis_vecs):
+                if not util.smart_eq(basis_vecs[basis_vec_index], 
+                    adjoint_basis_vecs[basis_vec_index]):
                     symmetric = False
-            
+                basis_vec_index += 1
+                
             if symmetric:
                 IP_mat = self.vec_space.compute_symmetric_inner_product_mat(
-                    self.direct_modes[:self.model_dim])
+                    basis_vecs)
             else:
                 IP_mat = self.vec_space.compute_inner_product_mat(
-                    self.adjoint_modes[:self.model_dim], 
-                    self.direct_modes[:self.model_dim])
-            
+                    adjoint_basis_vecs, basis_vecs)
             self._proj_mat = N.linalg.inv(IP_mat)
         return self._proj_mat
     
@@ -445,7 +401,8 @@ class LTIGalerkinProjection(object):
         """Gets the projection mat, i.e. inv(Psi^* Phi).
         
         See :py:meth:`_get_proj_mat`, but modes are vecs not handles."""
-        direct_mode_handles = map(InMemoryVecHandle, self.direct_modes)
-        adjoint_mode_handles = map(InMemoryVecHandle, self.adjoint_modes)
-        return self._get_proj_mat(direct_mode_handles, adjoint_mode_handles)
+        basis_vec_handles = map(InMemoryVecHandle, self.basis_vecs)
+        adjoint_basis_vec_handles = map(InMemoryVecHandle, 
+            self.adjoint_basis_vecs)
+        return self._get_proj_mat(basis_vec_handles, adjoint_basis_vec_handles)
             

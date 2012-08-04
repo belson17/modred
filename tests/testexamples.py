@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-""" Test examples using the Makefile"""
+""" !!This file is not used!!
+
+Examples are used with ../examples/Makefile."""
 
 import unittest
 import os, sys
@@ -11,7 +13,7 @@ helper.add_to_path(join(join(os.path.dirname(os.path.abspath(__file__)),
 helper.add_to_path(join(join(os.path.dirname(os.path.abspath(__file__)), 
     '..', 'src')))
 import parallel as parallel_mod
-parallel = parallel_mod.parallel_default_instance
+_parallel = parallel_mod.parallel_default_instance
 
 # Directory we start from, absolute path.
 running_dir = os.getcwd()
@@ -48,22 +50,22 @@ def printing(on):
 
 class TestExamples(unittest.TestCase):
     def setUp(self):
-        parallel.barrier()
+        _parallel.barrier()
         self.test_dir = join(running_dir, 'DELETE_ME_test_tutorial_examples')
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():        
+        if not os.path.isdir(self.test_dir) and _parallel.is_rank_zero():        
             os.mkdir(self.test_dir)
-        parallel.barrier()
+        _parallel.barrier()
         
         os.chdir(self.test_dir)
         
     def tearDown(self):
         os.chdir(running_dir)
-        parallel.barrier()
-        if parallel.is_rank_zero():
+        _parallel.barrier()
+        if _parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
-        parallel.barrier()
+        _parallel.barrier()
  
     @unittest.skip('Test with Makefile in examples directory instead')
     def test_tutorial_examples(self):
@@ -71,11 +73,11 @@ class TestExamples(unittest.TestCase):
         example_script = 'tutorial_ex%d.py'
         for example_num in range(1, 7):
             # Example 3 isn't meant to work in parallel
-            if not (parallel.is_distributed() and example_num != 3):
+            if not (_parallel.is_distributed() and example_num != 3):
                 #printing(False)
-                parallel.barrier()
+                _parallel.barrier()
                 execfile(join(examples_dir, example_script%example_num))
-                parallel.barrier()
+                _parallel.barrier()
                 #printing(True)
                 
     @unittest.skip('Unnecessary test for user')

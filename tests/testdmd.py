@@ -12,7 +12,7 @@ import helper
 helper.add_to_path(join(join(os.path.dirname(os.path.abspath(__file__)), 
     '..', 'src')))
 import parallel as parallel_mod
-parallel = parallel_mod.parallel_default_instance
+_parallel = parallel_mod.parallel_default_instance
 
 from dmd import DMD
 from pod import POD
@@ -31,7 +31,7 @@ class TestDMD(unittest.TestCase):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         self.test_dir = 'DELETE_ME_test_files_dmd'
-        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
+        if not os.path.isdir(self.test_dir) and _parallel.is_rank_zero():
             os.mkdir(self.test_dir)
         
         self.num_vecs = 6
@@ -41,14 +41,14 @@ class TestDMD(unittest.TestCase):
         self.my_DMD = DMD(N.vdot, verbosity=0)
         self.my_DMD_in_memory = DMD(N.vdot, verbosity=0)
         self.generate_data_set()
-        parallel.barrier()
+        _parallel.barrier()
         
     
     def tearDown(self):
-        parallel.barrier()
-        if parallel.is_rank_zero():
+        _parallel.barrier()
+        if _parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
-        parallel.barrier()
+        _parallel.barrier()
         
         
     def generate_data_set(self):
@@ -59,16 +59,12 @@ class TestDMD(unittest.TestCase):
             for i in range(self.num_vecs)]
        
         # Generate vecs if we are on the first processor
-        if parallel.is_rank_zero():
-            # A random matrix of data (#cols = #vecs)
-            self.vec_array = N.random.random((self.num_states, self.\
-                num_vecs))
+        # A random matrix of data (#cols = #vecs)
+        self.vec_array = _parallel.call_and_bcast(N.random.random, 
+            ((self.num_states, self.num_vecs)))
+        if _parallel.is_rank_zero():
             for vec_index, handle in enumerate(self.vec_handles):
                 handle.put(N.array(self.vec_array[:, vec_index]).squeeze())
-        else:
-            self.vec_array = None
-        if parallel.is_distributed():
-            self.vec_array = parallel.comm.bcast(self.vec_array, root=0)
         self.vecs = [self.vec_array[:, i] for i in range(self.num_vecs)]
 
         # Do direct DMD decomposition on all processors
@@ -91,7 +87,7 @@ class TestDMD(unittest.TestCase):
                 N.array(self.ritz_vecs_true[:, i])).real
 
         # Generate modes if we are on the first processor
-        if parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             for i in xrange(self.ritz_vecs_true.shape[1]):
                 V.PickleVecHandle(self.true_mode_path%(i+1)).put(
                     self.ritz_vecs_true[:, i])
@@ -141,8 +137,8 @@ class TestDMD(unittest.TestCase):
         data_members_modified['vec_space'].max_vecs_per_node = \
             max_vecs_per_node
         data_members_modified['vec_space'].max_vecs_per_proc = \
-            max_vecs_per_node * parallel.get_num_nodes() / \
-            parallel.get_num_procs()
+            max_vecs_per_node * _parallel.get_num_nodes() / \
+            _parallel.get_num_procs()
         self.assertEqual(util.get_data_members(my_DMD), data_members_modified)
        
 
@@ -168,7 +164,7 @@ class TestDMD(unittest.TestCase):
         
         self.my_DMD.put_decomp(ritz_vals_path, mode_norms_path, 
             build_coeffs_path)
-        parallel.barrier()
+        _parallel.barrier()
         
         # Test that matrices were correctly computed
         N.testing.assert_allclose(self.my_DMD.ritz_vals, 

@@ -29,7 +29,7 @@ A simple way to use modred to find POD modes is as follows:
 Let's walk through the important steps.
 First, we created a list of arbitrary arrays; these are the vectors.
 (The ``vecs`` argument must be a list.)
-Then we created an instance of ``POD`` called ``pod``.
+Then we created an instance of ``POD`` called ``my_POD``.
 The constructor took the argument
 ``inner_product``, a function that takes two vectors (numpy arrays in this case),
 and returns their inner product. 
@@ -70,9 +70,9 @@ The vector objects are again numpy arrays.
 
 .. literalinclude:: ../examples/tutorial_ex2.py
 
-The object ``weighted_ip`` is a callable (that is, it has a special
+The object ``weighted_IP`` is a callable (that is, it has a special
 method ``__call__``) so it acts as the inner product the usual
-way: ``value = weighted_ip(v1, v2)``.
+way: ``value = weighted_IP(vec1, vec2)``.
 
 This code can be executed in parallel without any modifications.
 
@@ -150,7 +150,7 @@ It is rare to need to handle parallelization yourself, but if you do,
 you should use the provided ``parallel`` class instance
 as in this example.
 Also provided are member functions ``parallel.get_rank()`` and 
-``parallel.get_num_procs()`` (see docs for details).
+``parallel.get_num_procs()`` (see :py:mod:`parallel` for details).
 
 If you're curious, the text files are saved with whitespace after each
 column entry and
@@ -159,8 +159,8 @@ line breaks after each row, so the 2x3 array::
   1 2 3
   4 5 6
 
-looks just like this in the text file. See docs for ``util.load_array_text`` 
-and ``util.save_array_text`` for more information. 
+looks just like this in the text file. See :py:func:`util.load_array_text` 
+and :py:func:`util.save_array_text` for more information. 
 
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -168,7 +168,7 @@ Example 4 -- Subtracting a base vector
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Often vectors are saved with an offset (also called a "shift" or "translation") 
-such as a mean or equilibrium state, but we want to do model 
+such as a mean or equilibrium state, and one might want to do model 
 reduction with this known offset removed.
 We call this offset the "base vector", and it can be subtracted off by the
 vector handle class as shown below.  The following example computes
@@ -192,7 +192,8 @@ See :ref:`sec_matrices`.
 Example 5 -- Scaling vectors and using ``VectorSpace``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You might want to scale all of your vectors by factors, and this can be done
+You might want to scale all of your vectors by factors as you retrieve them
+for use in modred, and this can also be done
 by the vector handle ``get`` function, just like the base vector.
 For example, below we show the use of quadrature weights, where each vector
 is weighted.
@@ -214,7 +215,7 @@ The last section uses the ``VectorSpace`` class,
 which contains most of the parallelization and "heavy lifting" and is
 used by ``POD``, ``BPOD``, and ``DMD``.
 It is a good idea to use this class whenever possible since it is tested
-and parallelized (see :mod:`vectorspace`).
+and parallelized (see :py:class:`vectorspace.VectorSpace`).
 
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -224,8 +225,8 @@ Example 6 -- User-defined vectors and handles
 So far all of the vectors have been arrays, but you may want to apply modred 
 to data saved in your own custom format with more complicated inner 
 products and other operations.
-This is no problem at all; modred works with any data in any format!
-That's worth saying again: **modred works with any data in any format!**
+This is no problem at all; modred works with data in any format!
+That's worth saying again: **modred works with data in any format!**
 Of course, you'll have to tell modred how to interact with your data, but 
 that's pretty easy.
 You just need to define and use your own vector handle and vector objects.
@@ -246,7 +247,7 @@ This is not required, but is recommended, as the base class provides
 some useful additional methods.
 The member function ``inner_product`` is useful, but not required.
 This example also uses the trapezoidal rule for inner products to account for 
-an 3D arbitrary cartesian grid
+a 3D arbitrary cartesian grid
 (:py:class:`vectors.InnerProductTrapz`).
 
 The class ``CustomVecHandle`` inherits from a base class
@@ -260,14 +261,13 @@ class (the "template method" design pattern).
 While you don't need to understand the guts of these base classes, more 
 is covered in :ref:`sec_details`.
 
-The above file may then be imported whenever the ``CustomVector``
-class is needed, as in the following example:
+Here's an example using these classes:
 
 .. literalinclude:: ../examples/tutorial_ex6.py
 
 This example is similar to previous ones, but some aspects are worth
 pointing out.
-The call to ``bpod.sanity_check()`` runs some basic tests to verify
+The call to ``my_BPOD.sanity_check()`` runs some basic tests to verify
 that the vector handles and vectors behave as expected, so this can be
 useful for debugging.
 After execution, the modes are saved to ``direct_mode0.pkl``, 

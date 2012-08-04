@@ -72,19 +72,11 @@ class POD(object):
      
     def get_decomp(self, eigen_vecs_source, eigen_vals_source):
         """Gets the decomposition matrices from sources (memory or file)."""
-        if self.get_mat is None:
-            raise util.UndefinedError('Must specify a get_mat function')
-        if _parallel.is_rank_zero():
-            self.eigen_vecs = self.get_mat(eigen_vecs_source)
-            self.eigen_vals = N.squeeze(N.array(
-                self.get_mat(eigen_vals_source)))
-        else:
-            self.eigen_vecs = None
-            self.eigen_vals = None
-        if _parallel.is_distributed():
-            self.eigen_vecs = _parallel.comm.bcast(self.eigen_vecs, root=0)
-            self.eigen_vals = _parallel.comm.bcast(self.eigen_vals, root=0)
         
+        self.eigen_vecs = _parallel.call_and_bcast(self.get_mat, 
+            eigen_vecs_source)
+        self.eigen_vals = N.squeeze(N.array(_parallel.call_and_bcast(
+            self.get_mat, eigen_vals_source)))
         
     def put_decomp(self, eigen_vecs_dest, eigen_vals_dest):
         """Put the decomposition matrices to file or memory."""
@@ -93,30 +85,21 @@ class POD(object):
         
     def put_eigen_vecs(self, dest):
         """Put eigenvectors to ``dest``."""
-        if self.put_mat is None and _parallel.is_rank_zero():
-            raise util.UndefinedError("put_mat is undefined")
-            
         if _parallel.is_rank_zero():
             self.put_mat(self.eigen_vecs, dest)
         _parallel.barrier()
 
     def put_eigen_vals(self, dest):
         """Put eigenvalues to ``dest``."""
-        if self.put_mat is None and _parallel.is_rank_zero():
-            raise util.UndefinedError("put_mat is undefined")
-            
         if _parallel.is_rank_zero():
             self.put_mat(self.eigen_vals, dest)
         _parallel.barrier()
-
-    def put_correlation_mat(self, correlation_mat_dest):
-        """Put correlation matrix to ``correlation_mat_dest``."""
-        if self.put_mat is None and _parallel.is_rank_zero():
-            raise util.UndefinedError("put_mat is undefined")
+        
+    def put_correlation_mat(self, dest):
+        """Put correlation matrix to ``dest``."""
         if _parallel.is_rank_zero():
-            self.put_mat(self.correlation_mat, correlation_mat_dest)
+            self.put_mat(self.correlation_mat, dest)
         _parallel.barrier()
-
 
     def compute_decomp(self, vec_handles):
         """Computes correlation mat (X*X), then the eigen decomp of this matrix.
@@ -149,17 +132,8 @@ class POD(object):
         
     def compute_eigen_decomp(self):
         """Compute eigen decomp of ``correlation_mat."""
-        if _parallel.is_rank_zero():
-            self.eigen_vals, self.eigen_vecs = util.eigh(self.correlation_mat)
-        else:
-            self.eigen_vecs = None
-            self.eigen_vals = None
-        if _parallel.is_distributed():
-            self.eigen_vecs = _parallel.comm.bcast(self.eigen_vecs, root=0)
-            self.eigen_vals = _parallel.comm.bcast(self.eigen_vals, root=0)
-            
-            
-            
+        self.eigen_vals, self.eigen_vecs = _parallel.call_and_bcast(
+            util.eigh, self.correlation_mat)    
             
     def _compute_build_coeff_mat(self):
         """Helper for ``compute_modes`` and ``compute_modes_and_return``."""

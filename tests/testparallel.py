@@ -110,21 +110,14 @@ class TestParallel(unittest.TestCase):
         self.assertEqual(task_weights, copy_task_weights)
 
 
-    @unittest.skip('Currently function isnt implemented')
-    def test_evaluate_and_bcast(self):
-        """Test that can evaluate a function and broadcast to all procs"""
-        def myAdd(arg1, arg2):
-            return arg1, arg2
-        class ThisClass(object):
-            def __init__(self):
-                self.arg1 = 0
-                self.arg2 = 0
+    def test_call_and_bcast(self):
+        """Call a function on rank zero and bcast outputs to all MPI workers."""
+        def add_and_scale(arg1, arg2, scale=1):
+            return True, scale*(arg1 + arg2)
         
-        myClass = ThisClass()
-        d = (myClass.arg1, myClass.arg2)
-        self.my_parallel.evaluate_and_bcast(d, myAdd, arguments=[1, 2])
-        print myClass.arg1, myClass.arg2
-        self.assertEqual((1, 2), (myClass.arg1, myClass.arg2))
+        outputs = self.my_parallel.call_and_bcast(add_and_scale, 
+            self.my_parallel.get_rank()+1, 2, scale=3)
+        self.assertEqual(outputs, (True, 9))
 
 
 if __name__ == '__main__':

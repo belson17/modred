@@ -1,7 +1,8 @@
 .. _sec_system_id:
 
 ---------------------------------------
-System identification -- OKID
+System identification -- OKID and ERA
 ---------------------------------------
 
-The documentation in :mod:`okid` is enough to start quickly.
+The documentation in :mod:`okid` :mod:`era` is enough to start quickly.
+

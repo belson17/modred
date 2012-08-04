@@ -5,11 +5,11 @@ import numpy as N
 import inspect
 
 class UndefinedError(Exception): 
-    """Error when something has not been defined"""
+    """Error when something has not been defined."""
     pass
 
 def make_list(arg):
-    """Makes argument a list, if not already a list"""
+    """Makes argument a list, if not already a list."""
     if not isinstance(arg, list):
         arg = [arg]
     return arg
@@ -19,10 +19,10 @@ def flatten_list(my_list):
     return [num for elem in my_list for num in elem]
     
 def save_array_text(array, filename, delimiter=' '):
-    """Saves a 1D or 2D array or matrix to a text file
+    """Saves a 1D or 2D array or matrix to a text file.
     
     Args:
-        ``mat``: Matrix or array to save to file (1D or 2D)
+        ``array``: Matrix or array to save to file (1D or 2D).
         
         ``filename``: Path to save to, string.
         
@@ -61,18 +61,17 @@ def save_array_text(array, filename, delimiter=' '):
 def load_array_text(file_name, delimiter=' ', is_complex=False):
     """Loads a text file, returns an array.
     
-    See :py:func:`save_array_text` for the format used by this function.
+    Args:
+        ``file_name``: Name of file to load.
     
     Kwargs:
         ``is_complex``: Bool, if the data saved is complex then use ``True``.
     
     Returns:
-        ``array``: a numpy array, always 2D.
+        ``array``: 2D numpy array.
+
+    See :py:func:`save_array_text` for the format used by this function.
     """
-    # Check the version of numpy, requires version >= 1.6 for ndmin option
-    #if int(N.version.version[2]) < 6:
-    #    print ('Warning: load_array_text requires numpy version >= 1.6 '
-    #        'but you are running version %s'%N.version.version)
     if is_complex:
         dtype = complex
     else:
@@ -97,7 +96,6 @@ def load_array_text(file_name, delimiter=' ', is_complex=False):
 
 def inner_product(vec1, vec2):
     """A default inner product for n-dimensional numpy arrays. """
-    #return (vec1 * vec2.conj()).sum()
     return N.vdot(vec1, vec2)
 
     
@@ -111,9 +109,9 @@ def svd(mat, tol=1e-13):
         ``tol``: Level at which singular values are truncated.
     
     Returns:
-        ``U``: matrix of left singular vectors.
+        ``U``: Matrix of left singular vectors.
         ``E``: 1D array of singular values.
-        ``V``: matrix of right singular vectors.
+        ``V``: Matrix of right singular vectors.
     
     Truncates U, E, and V such that there are no ~0 singular values.
     """
@@ -130,19 +128,29 @@ def svd(mat, tol=1e-13):
 
     return U, E, V
 
-def eigh(mat):
+def eigh(mat, tol=1e-12):
     """Computes the eigenvalues and vecs of Hermitian matrix/array.
     
-    Returns:
-        ``evals``: eigenvalues in a 1D array, sorted in descending order.
+    Args:
+        ``mat``: To take eigen decomposition of.
         
-        ``evecs``: eigenvectors, columns of matrix/array, sorted by evals.
+        ``tol``: Value at which to truncate eigenvalues and vectors.
+            Give ``None`` for no truncation.
+    
+    Returns:
+        ``evals``: Eigenvalues in a 1D array, sorted in descending order.
+        
+        ``evecs``: Eigenvectors, columns of matrix/array, sorted by evals.
     """
     evals, evecs = N.linalg.eigh(mat)
     # Sort the vecs and vals by eval magnitude
     sort_indices = N.argsort(N.abs(evals))[::-1]
     evals = evals[sort_indices]
     evecs = evecs[:, sort_indices]
+    if tol is not None:
+        num_nonzeros = (abs(evals) > tol).sum()
+        evals = evals[:num_nonzeros]
+        evecs = evecs[:,:num_nonzeros]    
     return evals, evecs
 
 
@@ -162,7 +170,7 @@ def get_file_list(directory, file_extension=None):
 
 
 def get_data_members(obj):
-    """Returns a dictionary containing data members of an ``obj``."""
+    """Returns a dictionary containing data members of ``obj``."""
     data_members = {}
     for name in dir(obj):
         value = getattr(obj, name)
@@ -206,12 +214,16 @@ def drss(num_states, num_inputs, num_outputs):
     """Generates a discrete-time random state space system.
     
     Args:
-        number of states, inputs, and outputs.
+        ``num_states``: Number of states.
+        
+        ``num_inputs``: Number of inputs.
+        
+        ``num_outputs``: Number of outputs.
     
     Returns:
-        A, B, and C matrices of system.
-    
-    All e-vals are real.
+        ``A``, ``B``, and ``C`` matrices of system.
+        
+    All eigenvalues are real.
     """
     eig_vals = N.linspace(.9, .95, num_states) 
     eig_vecs = N.random.normal(0, 2., (num_states, num_states))
@@ -225,9 +237,11 @@ def rss(num_states, num_inputs, num_outputs):
     """Generates a continuous-time random state space system.
 
     Args:
-        ``num_states``: number of states.
-        ``num_inputs``: number of inputs.
-        ``num_outputs``: number of outputs.
+        ``num_states``: Number of states.
+        
+        ``num_inputs``: Number of inputs.
+        
+        ``num_outputs``: Number of outputs.
     
     Returns:
         ``A``, ``B``, and ``C`` matrices of system.
@@ -247,12 +261,12 @@ def lsim(A, B, C, inputs):
     """Simulates a discrete time system with arbitrary inputs. 
     
     Args:
-        ``inputs``: array with indices [num_time_steps, num_inputs].
+        ``inputs``: Array with indices [num_time_steps, num_inputs].
     
     Returns:
-        ``outputs``: array with indicies [num_time_steps, num_outputs].
+        ``outputs``: Array with indices [num_time_steps, num_outputs].
     
-    Currently D matrix is not used, assumed to be zero.
+    Currently D matrix is assumed to be zero.
     """
     #D = 0
     if inputs.ndim == 1:
@@ -287,8 +301,6 @@ def lsim(A, B, C, inputs):
     
     outputs_array = N.zeros((num_steps, num_outputs))
     for t, out in enumerate(outputs):
-        #print 'assigning out.shape',out.shape,'into',outputs_array[t].shape
-        #print 'num_outputs',num_outputs
         outputs_array[t] = out
 
     return outputs_array
@@ -298,9 +310,9 @@ def impulse(A, B, C, time_steps=None):
     """Generates impulse response outputs for a discrete-time system.
     
     Args:
-        ``A, B, C``: State-space system matrices
+        ``A, B, C``: State-space system matrices.
         
-        ``time_steps``: 1D array of integers specifying the time steps
+        ``time_steps``: 1D array of integers specifying the time steps.
         
     No D matrix is included, but can simply be prepended to the output if it is
     non-zero. 
@@ -335,12 +347,12 @@ def load_signals(signal_path, delimiter=' '):
     """Loads signals from text files with columns [t signal1 signal2 ...].
     
     Args:
-        signal_paths: list of paths to signals, strings
+        ``signal_paths``: List of paths to signals, strings.
     
     Returns:
-        time_values: 1D array of time values
+        ``time_values``: 1D array of time values.
         
-        signals: array of signals with dimensions [time#, signal#]
+        ``signals``: Array of signals with dimensions [time, signal].
     
     Convenience function. Example file has format::
     
@@ -403,11 +415,7 @@ def load_multiple_signals(signal_paths, delimiter=' '):
 def smart_eq(arg1, arg2):
     """Checks if equal, accounting for numpy's ``==`` not returning a bool."""
     eq = (arg1 == arg2)
-    if isinstance(eq, bool):
-        return eq
-    elif isinstance(eq, N.ndarray):
+    if isinstance(eq, N.ndarray):
         return eq.all()
-    else:
-        raise RuntimeError('Unexpected type returned by == operator')
-
-    
+    return eq
+        

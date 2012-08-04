@@ -140,25 +140,11 @@ class TestVectorSpace(unittest.TestCase):
             mode_array: matrix of modes, each column is a mode.
                 matrix column # = mode_number - index_from
         """
-        if parallel.is_rank_zero():
-            mode_nums = range(index_from, num_modes + index_from)
-            random.shuffle(mode_nums)
-            build_coeff_mat = N.mat(N.random.random((num_vecs, num_modes)))
-            vec_array = N.mat(N.zeros((num_states, num_vecs)))
-            for vec_index in range(num_vecs):
-                vec_array[:,vec_index] = N.random.random((num_states, 1))
-            mode_array = vec_array*build_coeff_mat
-        else:
-            mode_nums = None
-            build_coeff_mat = None
-            vec_array = None
-            mode_array = None
-        if parallel.is_distributed():
-            mode_nums = parallel.comm.bcast(mode_nums, root=0)
-            build_coeff_mat = parallel.comm.bcast(build_coeff_mat,
-                root=0)
-            vec_array = parallel.comm.bcast(vec_array, root=0)
-            mode_array = parallel.comm.bcast(mode_array, root=0)
+        mode_nums = range(index_from, num_modes + index_from)
+        random.shuffle(mode_nums)
+        build_coeff_mat = N.mat(N.random.random((num_vecs, num_modes)))
+        vec_array = N.mat(N.random.random((num_states, num_vecs)))
+        mode_array = vec_array*build_coeff_mat
         return vec_array, mode_nums, build_coeff_mat, mode_array 
         
     
@@ -197,7 +183,8 @@ class TestVectorSpace(unittest.TestCase):
                     vec_handles = [V.ArrayTextVecHandle(vec_path%i) 
                         for i in xrange(num_vecs)]
                     vec_array, mode_nums, build_coeff_mat, true_modes = \
-                        self.generate_vecs_modes(num_states, num_vecs,
+                        parallel.call_and_bcast(self.generate_vecs_modes, 
+                        num_states, num_vecs,
                         num_modes, index_from=index_from)
 
                     if parallel.is_rank_zero():
@@ -273,8 +260,8 @@ class TestVectorSpace(unittest.TestCase):
         for num_modes in num_modes_list:
             # Generate data on all procs
             vec_array, mode_nums, build_coeff_mat, true_modes = \
-                self.generate_vecs_modes(num_states, num_vecs,
-                num_modes, index_from=index_from)
+                parallel.call_and_bcast(self.generate_vecs_modes, num_states, 
+                num_vecs, num_modes, index_from=index_from)
             # Returns modes
             computed_modes = my_vec_ops.compute_modes_in_memory(mode_nums, 
                 [vec_array[:,i] for i in range(num_vecs)],
@@ -289,7 +276,7 @@ class TestVectorSpace(unittest.TestCase):
 
 
     #@unittest.skip('testing others')
-    @unittest.skipIf(parallel.is_distributed(), 'serial only')
+    @unittest.skipIf(parallel.is_distributed(), 'Serial only')
     def test_compute_inner_product_mat_types(self):
         class ArrayTextComplexHandle(V.ArrayTextVecHandle):
             def get(self):
@@ -350,35 +337,24 @@ class TestVectorSpace(unittest.TestCase):
         
         for num_row_vecs in num_row_vecs_list:
             for num_col_vecs in num_col_vecs_list:
-                # generate vecs and save to file, only do on proc 0
+                # generate vecs
                 parallel.barrier()
+                row_vec_array = parallel.call_and_bcast(N.random.random, 
+                    (num_states, num_row_vecs))
+                col_vec_array = parallel.call_and_bcast(N.random.random, 
+                    (num_states, num_col_vecs))
+                row_vec_handles = [V.ArrayTextVecHandle(row_vec_path%i) 
+                    for i in xrange(num_row_vecs)]
+                col_vec_handles = [V.ArrayTextVecHandle(col_vec_path%i) 
+                    for i in xrange(num_col_vecs)]
+                
+                # Save vecs
                 if parallel.is_rank_zero():
-                    row_vec_array = N.random.random((num_states,
-                        num_row_vecs))
-                    col_vec_array = N.random.random((num_states,
-                        num_col_vecs))
-                    row_vec_handles = []
-                    col_vec_handles = []
-                    for vec_index in xrange(num_row_vecs):
-                        path = row_vec_path % vec_index
-                        util.save_array_text(row_vec_array[:,vec_index],path)
-                        row_vec_handles.append(V.ArrayTextVecHandle(path))
-                    for vec_index in xrange(num_col_vecs):
-                        path = col_vec_path % vec_index
-                        util.save_array_text(col_vec_array[:,vec_index],path)
-                        col_vec_handles.append(V.ArrayTextVecHandle(path))
-                else:
-                    row_vec_array = None
-                    col_vec_array = None
-                    row_vec_handles = None
-                    col_vec_handles = None
-                if parallel.is_distributed():
-                    row_vec_array = parallel.comm.bcast(row_vec_array, root=0)
-                    col_vec_array = parallel.comm.bcast(col_vec_array, root=0)
-                    row_vec_handles = parallel.comm.bcast(row_vec_handles,
-                        root=0)
-                    col_vec_handles = parallel.comm.bcast(col_vec_handles, 
-                        root=0)
+                    for i,h in enumerate(row_vec_handles):
+                        h.put(row_vec_array[:,i])
+                    for i,h in enumerate(col_vec_handles):
+                        h.put(col_vec_array[:,i])
+                parallel.barrier()
 
                 # If number of rows/cols is 1, check case of passing a handle
                 if len(row_vec_handles) == 1:

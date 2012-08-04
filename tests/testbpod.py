@@ -12,7 +12,7 @@ import helper
 helper.add_to_path(join(join(os.path.dirname(os.path.abspath(__file__)), 
     '..', 'src')))
 import parallel as parallel_mod
-parallel = parallel_mod.parallel_default_instance
+_parallel = parallel_mod.parallel_default_instance
 
 from bpod import BPOD
 from vectorspace import VectorSpace
@@ -26,8 +26,8 @@ class TestBPOD(unittest.TestCase):
             raise RuntimeError('Cannot write to current directory')
     
         self.test_dir = 'DELETE_ME_test_files_bpod'
-        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():        
-            os.mkdir(self.test_dir)
+        if not os.path.isdir(self.test_dir):
+            _parallel.call_from_rank_zero(os.mkdir, self.test_dir)
         
         self.mode_nums = [2, 4, 3, 6, 9, 8, 10, 11, 30]
         self.num_direct_vecs = 40
@@ -37,13 +37,11 @@ class TestBPOD(unittest.TestCase):
         
         self.my_BPOD = BPOD(N.vdot, verbosity=0)
         self.generate_data_set()
-        parallel.barrier()
+        _parallel.barrier()
 
     def tearDown(self):
-        parallel.barrier()
-        if parallel.is_rank_zero():
-            rmtree(self.test_dir, ignore_errors=True)
-        parallel.barrier()
+        _parallel.barrier()
+        _parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
     
     def generate_data_set(self):
         # create data set (saved to file)
@@ -56,24 +54,15 @@ class TestBPOD(unittest.TestCase):
             V.ArrayTextVecHandle(self.adjoint_vec_path%i) 
             for i in range(self.num_adjoint_vecs)]
         
-        if parallel.is_rank_zero():
-            self.direct_vec_array = N.random.random((self.num_states,
-                self.num_direct_vecs))
-            self.adjoint_vec_array = N.random.random((self.num_states,
-                self.num_adjoint_vecs)) 
+        self.direct_vec_array = _parallel.call_and_bcast(N.random.random,
+            (self.num_states, self.num_direct_vecs))
+        self.adjoint_vec_array = _parallel.call_and_bcast(N.random.random,
+            (self.num_states, self.num_adjoint_vecs)) 
+        if _parallel.is_rank_zero():
             for i, handle in enumerate(self.direct_vec_handles):
                 handle.put(self.direct_vec_array[:, i])
             for i, handle in enumerate(self.adjoint_vec_handles):
                 handle.put(self.adjoint_vec_array[:, i])
-            
-        else:
-            self.direct_vec_array = None
-            self.adjoint_vec_array = None
-        if parallel.is_distributed():
-            self.direct_vec_array = parallel.comm.bcast(
-                self.direct_vec_array, root=0)
-            self.adjoint_vec_array = parallel.comm.bcast(
-                self.adjoint_vec_array, root=0)
         self.direct_vecs = [self.direct_vec_array[:, i] 
             for i in range(self.num_direct_vecs)]
         self.adjoint_vecs = [self.adjoint_vec_array[:, i] 
@@ -91,9 +80,6 @@ class TestBPOD(unittest.TestCase):
         self.adjoint_mode_array = self.adjoint_vec_array * \
             N.mat(self.L_sing_vecs_true) *\
             N.mat(N.diag(self.sing_vals_true ** -0.5))
-        
-        #self.my_BPOD.direct_vec_handles=self.direct_vec_handles
-        #self.my_BPOD.adjoint_vec_handles=self.adjoint_vec_handles
         
         
         
@@ -141,7 +127,7 @@ class TestBPOD(unittest.TestCase):
         data_members_modified['vec_space'].max_vecs_per_node = \
             max_vecs_per_node
         data_members_modified['vec_space'].max_vecs_per_proc = \
-            max_vecs_per_node * parallel.get_num_nodes() / parallel.\
+            max_vecs_per_node * _parallel.get_num_nodes() / _parallel.\
             get_num_procs()
         self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
        
@@ -174,7 +160,7 @@ class TestBPOD(unittest.TestCase):
             R_sing_vecs_path)        
         self.my_BPOD.put_Hankel_mat(Hankel_mat_path)
         
-        parallel.barrier()
+        _parallel.barrier()
         L_sing_vecs_loaded = util.load_array_text(L_sing_vecs_path)
         R_sing_vecs_loaded = util.load_array_text(R_sing_vecs_path)
         sing_vals_loaded = N.squeeze(N.array(util.load_array_text(
@@ -254,7 +240,7 @@ class TestBPOD(unittest.TestCase):
                 self.mode_nums, adjoint_vecs=self.adjoint_vecs, 
                 index_from=self.index_from)
 
-        parallel.barrier()
+        _parallel.barrier()
         for mode_index, mode_handle in enumerate(direct_mode_handles):
             mode = mode_handle.get()
             N.testing.assert_allclose(mode, 
