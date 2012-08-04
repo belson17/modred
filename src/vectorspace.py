@@ -213,23 +213,7 @@ class VectorSpace(object):
             num_cols = temp
         else: 
             transpose = False
-       
-        # Compute a single inner product in order to determine matrix datatype
-        # (real or complex) and to estimate the time the IPs will take.
-        row_vec = row_vec_handles[0].get()
-        col_vec = col_vec_handles[0].get()
-        start_time = T.time()
-        IP = self.inner_product(row_vec, col_vec)
-        IP_type = type(IP)
-        end_time = T.time()
-
-        # Estimate the amount of time this will take
-        duration = end_time - start_time
-        self.print_msg('Computing the inner product matrix will take at least '
-                    '%.1f minutes' % (num_rows * num_cols * duration / 
-                    (60. * _parallel.get_num_procs())))
-        del row_vec, col_vec
-        
+               
         # convenience
         rank = _parallel.get_rank()
 
@@ -256,8 +240,38 @@ class VectorSpace(object):
             self.print_msg('Warning: The column vecs, of which '
                     'there are %d, will be retrieved %d times each. Increase '
                     'number of nodes or max_vecs_per_node to reduce redundant '
-                    '"get"s for a speedup.'%(
-                        num_cols,num_row_get_loops))
+                    '"get"s for a speedup.'%(num_cols, num_row_get_loops))
+        
+        
+        # Estimate the time this will take and determine matrix datatype
+        # (real or complex).
+        row_vec = row_vec_handles[0].get()
+        col_vec = col_vec_handles[0].get()
+        # Burn the first, it sometimes contains slow imports
+        IP_burn = self.inner_product(row_vec, col_vec)
+        
+        start_time = T.time()
+        row_vec = row_vec_handles[0].get()
+        get_time = T.time() - start_time
+        
+        start_time = T.time()
+        IP = self.inner_product(row_vec, col_vec)
+        IP_time = T.time() - start_time
+        IP_type = type(IP)
+        
+        total_IP_time = (num_rows * num_cols * IP_time /
+            _parallel.get_num_procs())
+        vecs_per_proc = self.max_vecs_per_node * _parallel.get_num_nodes() / \
+            _parallel.get_num_procs()
+        num_gets =  (num_rows*num_cols) / ((vecs_per_proc-2) *
+            _parallel.get_num_procs()**2) + num_rows/_parallel.get_num_procs()
+        total_get_time = num_gets * get_time
+        self.print_msg('Computing the inner product matrix will take at least '
+                    '%.1f minutes' % ((total_IP_time + total_get_time) / 60.))
+        del row_vec, col_vec
+
+        
+        
         
         # To find all of the inner product mat chunks, each 
         # processor has a full IP_mat with size
@@ -336,22 +350,21 @@ class VectorSpace(object):
                                     col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - start_row_index],
                                     col_vec)
-                    
+                        if (T.time() - self.prev_print_time) > self.print_interval:
+                            num_completed_IPs = (N.abs(IP_mat)>0).sum()
+                            percent_completed_IPs = (100. * num_completed_IPs*
+                                _parallel.get_num_MPI_workers()) / (
+                                num_cols*num_rows)
+                            self.print_msg(('Completed %.1f%% of inner ' + 
+                                'products')%percent_completed_IPs, sys.stderr)
+                            self.prev_print_time = T.time()
+                        
+                        
                 # Clear the retrieved column vecs after done this pass cycle
                 del col_vecs
             # Completed a chunk of rows and all columns on all processors.
             del row_vecs
-            if ((T.time() - self.prev_print_time > self.print_interval) and 
-                self.verbosity>0 and _parallel.is_rank_zero()):
-                num_completed_IPs = end_row_index * num_cols
-                percent_completed_IPs = 100. * num_completed_IPs/(
-                    num_cols*num_rows)
-                print >> sys.stderr, ('Completed %.1f%% of inner ' +\
-                    'products: IPMat[:%d, :%d] of IPMat[%d, %d]') % \
-                    (percent_completed_IPs, end_row_index, num_cols, 
-                        num_rows, num_cols)
-                self.prev_print_time = T.time()
-            
+
         # Assign these chunks into IP_mat.
         if _parallel.is_distributed():
             IP_mat = _parallel.custom_comm.allreduce(IP_mat)
@@ -423,16 +436,40 @@ class VectorSpace(object):
 
         # <num_row_chunks> is the number of sets that must be computed.
         num_row_chunks = int(N.ceil(num_vecs * 1. / num_rows_per_chunk)) 
-        if _parallel.is_rank_zero() and num_row_chunks > 1 and self.verbosity>0:
-            print ('Warning: The column vecs will be read ~%d times each. ' +\
-                'Increase number of nodes or max_vecs_per_node to reduce ' +\
-                'redundant "get_vecs"s and get a big speedup.') % num_row_chunks
+        if num_row_chunks > 1:
+            self.print_msg('Warning: The vecs, of which '
+                'there are %d, will be retrieved %d times each. Increase '
+                'number of nodes or max_vecs_per_node to reduce redundant '
+                '"get"s for a speedup.'%(num_vecs,num_row_chunks))
+    
         
-        # Compute a single inner product in order to determin matrix datatype
+        
+        # Estimate the time this will take and determine matrix datatype
+        # (real or complex).
         test_vec = vec_handles[0].get()
+        # Burn the first, it sometimes contains slow imports
+        IP_burn = self.inner_product(test_vec, test_vec)
+        
+        start_time = T.time()
+        test_vec = vec_handles[0].get()
+        get_time = T.time() - start_time
+        
+        start_time = T.time()
         IP = self.inner_product(test_vec, test_vec)
+        IP_time = T.time() - start_time
         IP_type = type(IP)
+        
+        total_IP_time = (num_vecs**2 * IP_time / 2. /
+            _parallel.get_num_procs())
+        vecs_per_proc = self.max_vecs_per_node * _parallel.get_num_nodes() / \
+            _parallel.get_num_procs()
+        num_gets =  (num_vecs**2 /2.) / ((vecs_per_proc-2) *
+            _parallel.get_num_procs()**2) + num_vecs/_parallel.get_num_procs()/2.
+        total_get_time = num_gets * get_time
+        self.print_msg('Computing the inner product matrix will take at least '
+                    '%.1f minutes' % ((total_IP_time + total_get_time) / 60.))
         del test_vec
+
         
         # Use the same trick as in compute_IP_mat, having each proc
         # fill in elements of a num_rows x num_rows sized matrix, rather than
@@ -548,7 +585,13 @@ class VectorSpace(object):
                                     col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - my_row_indices[0]],
                                     col_vec)
-                                   
+                            if (T.time() - self.prev_print_time) > self.print_interval:
+                                num_completed_IPs = (N.abs(IP_mat)>0).sum()
+                                percent_completed_IPs = (100.*2*num_completed_IPs *
+                                    _parallel.get_num_MPI_workers())/(num_vecs**2)
+                                self.print_msg(('Completed %.1f%% of inner ' + 
+                                    'products')%percent_completed_IPs, sys.stderr)
+                                self.prev_print_time = T.time()
                     # Sync after send/receive   
                     _parallel.barrier()  
                 
@@ -619,15 +662,14 @@ class VectorSpace(object):
                                     col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - proc_row_tasks[0]],
                                     col_vec)
+                        if (T.time() - self.prev_print_time) > self.print_interval:
+                            num_completed_IPs = (N.abs(IP_mat)>0).sum()
+                            percent_completed_IPs = (100.*2*num_completed_IPs *
+                                _parallel.get_num_MPI_workers())/(num_vecs**2)
+                            self.print_msg(('Completed %.1f%% of inner ' + 
+                                'products')%percent_completed_IPs, sys.stderr)
+                            self.prev_print_time = T.time()
             # Completed a chunk of rows and all columns on all processors.
-            if T.time() - self.prev_print_time > self.print_interval:
-                num_completed_IPs = end_row_index*num_vecs - \
-                    end_row_index**2 * 0.5
-                percent_completed_IPs = 100. * num_completed_IPs/(0.5 *
-                    num_vecs **2)           
-                self.print_msg('Completed %.1f%% of inner products' %
-                    percent_completed_IPs, output_channel=sys.stderr)
-                self.prev_print_time = T.time()
             # Finished row_vecs loop, delete memory used
             del row_vecs                     
         
@@ -825,7 +867,29 @@ class VectorSpace(object):
         if num_sums < vec_coeff_mat.shape[1]:
             self.print_msg('Warning: fewer outputs than rows in the coeff '
                 'matrix, some cols of coeff matrix will not be used')
-                
+        
+        # Estimate time it will take
+        # Burn the first one for slow imports
+        test_vec_burn = basis_vec_handles[0].get()
+        test_vec_burn_3 = test_vec_burn + 2.*test_vec_burn
+        del test_vec_burn, test_vec_burn_3
+        start_time = T.time()
+        test_vec = basis_vec_handles[0].get()
+        get_time = T.time() - start_time
+        start_time = T.time()
+        test_vec_3 = test_vec + test_vec*2.0
+        add_scale_time = T.time() - start_time
+        del test_vec, test_vec_3
+        
+        vecs_per_worker = self.max_vecs_per_node * _parallel.get_num_nodes() / \
+            _parallel.get_num_MPI_workers()
+        num_gets = num_sums/(_parallel.get_num_MPI_workers()*(vecs_per_worker-2)) + \
+            num_bases/_parallel.get_num_MPI_workers()
+        num_add_scales = num_sums*num_bases/_parallel.get_num_MPI_workers()
+        self.print_msg('Linear combinations will take at least %.1f minutes'%
+            (num_gets*get_time/60. + num_add_scales*add_scale_time/60.))
+
+        
         # convenience
         rank = _parallel.get_rank()
 
@@ -934,17 +998,25 @@ class VectorSpace(object):
                             else:
                                 sum_layers[sum_index-start_sum_index] += \
                                     sum_layer
+                        if (T.time() - self.prev_print_time) > self.print_interval:    
+                            self.print_msg(
+                                'Completed %.1f%% of linear combinations' %
+                                (sum_index*100./len(sum_tasks[rank])))
+                            self.prev_print_time = T.time()
+                        
 
             # Completed this set of sum vecs, puts them to memory or file
             for sum_index in xrange(start_sum_index, end_sum_index):
                 sum_vec_handles[sum_index].put(
                     sum_layers[sum_index-start_sum_index])
             del sum_layers
+            # Old print msg
+            """
             if (T.time() - self.prev_print_time) > self.print_interval:    
                 self.print_msg('Completed %.1f%% of sum vecs' %
                     (end_sum_index*100./max_num_sum_tasks))
                 self.prev_print_time = T.time()
-            
+            """
         # ensure that all workers leave function at same time
         _parallel.barrier() 
         
