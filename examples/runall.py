@@ -10,3 +10,7 @@ for i in range(1, 7):
         execfile('tutorial_ex%d.py'%i)
         parallel.barrier()
 
+for i in range(1, 3):
+    execfile('rom_ex%d.py'%i)
+    parallel.barrier()
+

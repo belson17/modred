@@ -1,6 +1,6 @@
 #all_examples := $(wildcard tutorial_ex*.py)
 
-all: test clean test_parallel
+all: test clean test_parallel clean
 
 test: 
 	python runall.py
