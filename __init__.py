@@ -1,4 +1,4 @@
-__version__ = '0.2.1'
+__version__ = '0.3.0'
 
 # Make the classes and functions in src available from top namespace.
 from src import *
