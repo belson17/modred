@@ -128,22 +128,28 @@ class DMD(object):
         if self.vec_handles is None:
             raise util.UndefinedError('vec_handles is not given')
 
+        # Compute correlation mat for all vectors.  This is more efficient
+        # because only one call is made to the inner product routine, even
+        # though we don't need the last row/column yet.  Later we need all but
+        # the last element of the last column, so it is faster to compute all
+        # of this now.  Only one extra element is computed, since this is a
+        # symmetric inner product matrix.
         self.correlation_mat = \
-            self.vec_space.compute_symmetric_inner_product_mat(
-            self.vec_handles)
-        evals, evecs = _parallel.call_and_bcast(util.eigh, 
-            self.correlation_mat[:-1, :-1])
-        evals_sqrt = N.mat(N.diag(evals**-0.5))
-        A = evals_sqrt * evecs.H * self.correlation_mat[:-1, 1:] * evecs * \
-            evals_sqrt
-        self.ritz_vals, low_order_eigen_vecs = _parallel.call_and_bcast(
-            N.linalg.eig, A)
-        V_term = _parallel.call_and_bcast(N.linalg.inv, 
-            low_order_eigen_vecs.H * low_order_eigen_vecs) * \
-            low_order_eigen_vecs.H
-        D = N.diag(N.array(N.array(V_term * evals_sqrt * evecs.H * 
+            self.vec_space.compute_symmetric_inner_product_mat(self.vec_handles)
+        correlation_mat_evals, correlation_mat_evecs = \
+            _parallel.call_and_bcast(util.eigh, self.correlation_mat[:-1, :-1])
+        correlation_mat_evals_sqrt = N.mat(N.diag(correlation_mat_evals**-0.5))
+        low_order_linear_map = correlation_mat_evals_sqrt *\
+            correlation_mat_evecs.H * self.correlation_mat[:-1, 1:] *\
+            correlation_mat_evecs * correlation_mat_evals_sqrt
+        self.ritz_vals, low_order_evecs = _parallel.call_and_bcast(
+            N.linalg.eig, low_order_linear_map)
+        self.build_coeffs = correlation_mat_evecs *\
+            correlation_mat_evals_sqrt * low_order_evecs *\
+            N.diag(N.array(N.array(_parallel.call_and_bcast(N.linalg.inv, 
+            low_order_evecs.H * low_order_evecs) * low_order_evecs.H *\
+            correlation_mat_evals_sqrt * correlation_mat_evecs.H * 
             self.correlation_mat[:-1, 0]).squeeze(), ndmin=1))
-        self.build_coeffs = evecs * evals_sqrt * low_order_eigen_vecs * D
         self.mode_norms = N.diag(self.build_coeffs.H * 
             self.correlation_mat[:-1, :-1] * self.build_coeffs).real
         return self.ritz_vals, self.mode_norms, self.build_coeffs
