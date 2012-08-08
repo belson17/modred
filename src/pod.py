@@ -72,7 +72,6 @@ class POD(object):
      
     def get_decomp(self, eigen_vecs_source, eigen_vals_source):
         """Gets the decomposition matrices from sources (memory or file)."""
-        
         self.eigen_vecs = _parallel.call_and_bcast(self.get_mat, 
             eigen_vecs_source)
         self.eigen_vals = N.squeeze(N.array(_parallel.call_and_bcast(
@@ -80,9 +79,11 @@ class POD(object):
         
     def put_decomp(self, eigen_vecs_dest, eigen_vals_dest):
         """Put the decomposition matrices to file or memory."""
-        self.put_eigen_vecs(eigen_vecs_dest)
-        self.put_eigen_vals(eigen_vals_dest)
-        
+        if _parallel.is_rank_zero():
+            self.put_eigen_vecs(eigen_vecs_dest)
+            self.put_eigen_vals(eigen_vals_dest)
+        _parallel.barrier()
+
     def put_eigen_vecs(self, dest):
         """Put eigenvectors to ``dest``."""
         if _parallel.is_rank_zero():

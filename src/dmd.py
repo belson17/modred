@@ -81,10 +81,12 @@ class DMD(object):
             
     def put_decomp(self, ritz_vals_dest, mode_norms_dest, build_coeffs_dest):
         """Puts the decomposition matrices in destinations."""
-        self.put_ritz_vals(ritz_vals_dest)
-        self.put_mode_norms(mode_norms_dest)
-        self.put_build_coeffs(build_coeffs_dest)
-        
+        if _parallel.is_rank_zero():
+            self.put_ritz_vals(ritz_vals_dest)
+            self.put_mode_norms(mode_norms_dest)
+            self.put_build_coeffs(build_coeffs_dest)
+        _parallel.barrier()
+
     def put_ritz_vals(self, dest):
         """Puts the Ritz values to ``dest``."""
         if _parallel.is_rank_zero():

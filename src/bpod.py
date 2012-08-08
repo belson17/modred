@@ -132,9 +132,11 @@ class BPOD(object):
             ``R_sing_vecs_dest``: Destination to which to put the right singular
             vectors.
         """
-        self.put_L_sing_vecs(L_sing_vecs_dest)
-        self.put_R_sing_vecs(R_sing_vecs_dest)
-        self.put_sing_vals(sing_vals_dest)
+        if _parallel.is_rank_zero():
+            self.put_L_sing_vecs(L_sing_vecs_dest)
+            self.put_R_sing_vecs(R_sing_vecs_dest)
+            self.put_sing_vals(sing_vals_dest)
+        _parallel.barrier()
     
     
     def compute_decomp(self, direct_vec_handles, adjoint_vec_handles):
