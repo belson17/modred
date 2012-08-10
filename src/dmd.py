@@ -81,11 +81,12 @@ class DMD(object):
             
     def put_decomp(self, ritz_vals_dest, mode_norms_dest, build_coeffs_dest):
         """Puts the decomposition matrices in destinations."""
-        if _parallel.is_rank_zero():
-            self.put_ritz_vals(ritz_vals_dest)
-            self.put_mode_norms(mode_norms_dest)
-            self.put_build_coeffs(build_coeffs_dest)
-        _parallel.barrier()
+        # Don't need to check if rank is zero because the following methods do
+        # that check already.  In fact, this will cause the code to hang due to
+        # the barriers within those functions.
+        self.put_ritz_vals(ritz_vals_dest)
+        self.put_mode_norms(mode_norms_dest)
+        self.put_build_coeffs(build_coeffs_dest)
 
     def put_ritz_vals(self, dest):
         """Puts the Ritz values to ``dest``."""
@@ -139,8 +140,11 @@ class DMD(object):
         self.correlation_mat = \
             self.vec_space.compute_symmetric_inner_product_mat(self.vec_handles)
         correlation_mat_evals, correlation_mat_evecs = \
-            _parallel.call_and_bcast(util.eigh, self.correlation_mat[:-1, :-1])
+            _parallel.call_and_bcast(util.eigh, self.correlation_mat)
+        #    _parallel.call_and_bcast(util.eigh, self.correlation_mat[:-1, :-1])
+        print correlation_mat_evals
         correlation_mat_evals_sqrt = N.mat(N.diag(correlation_mat_evals**-0.5))
+        print N.diag(correlation_mat_evals_sqrt)
         low_order_linear_map = correlation_mat_evals_sqrt *\
             correlation_mat_evecs.H * self.correlation_mat[:-1, 1:] *\
             correlation_mat_evecs * correlation_mat_evals_sqrt

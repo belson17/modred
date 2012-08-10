@@ -79,10 +79,11 @@ class POD(object):
         
     def put_decomp(self, eigen_vecs_dest, eigen_vals_dest):
         """Put the decomposition matrices to file or memory."""
-        if _parallel.is_rank_zero():
-            self.put_eigen_vecs(eigen_vecs_dest)
-            self.put_eigen_vals(eigen_vals_dest)
-        _parallel.barrier()
+        # Don't need to check if rank is zero because the following methods do
+        # that check already.  In fact, this will cause the code to hang due to
+        # the barriers within those functions.
+        self.put_eigen_vecs(eigen_vecs_dest)
+        self.put_eigen_vals(eigen_vals_dest)
 
     def put_eigen_vecs(self, dest):
         """Put eigenvectors to ``dest``."""
@@ -119,6 +120,7 @@ class POD(object):
         #self.correlation_mat = self.vec_space.\
         #    compute_inner_product_mat(self.vec_handles, self.vec_handles)
         self.compute_eigen_decomp()        
+        print self.eigen_vals
         return self.eigen_vecs, self.eigen_vals
        
     def compute_decomp_in_memory(self, vecs):

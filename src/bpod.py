@@ -132,11 +132,12 @@ class BPOD(object):
             ``R_sing_vecs_dest``: Destination to which to put the right singular
             vectors.
         """
-        if _parallel.is_rank_zero():
-            self.put_L_sing_vecs(L_sing_vecs_dest)
-            self.put_R_sing_vecs(R_sing_vecs_dest)
-            self.put_sing_vals(sing_vals_dest)
-        _parallel.barrier()
+        # Don't need to check if rank is zero because the following methods do
+        # that check already.  In fact, this will cause the code to hang due to
+        # the barriers within those functions.
+        self.put_L_sing_vecs(L_sing_vecs_dest)
+        self.put_R_sing_vecs(R_sing_vecs_dest)
+        self.put_sing_vals(sing_vals_dest)
     
     
     def compute_decomp(self, direct_vec_handles, adjoint_vec_handles):
