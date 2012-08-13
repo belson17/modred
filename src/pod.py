@@ -120,7 +120,6 @@ class POD(object):
         #self.correlation_mat = self.vec_space.\
         #    compute_inner_product_mat(self.vec_handles, self.vec_handles)
         self.compute_eigen_decomp()        
-        print self.eigen_vals
         return self.eigen_vecs, self.eigen_vals
        
     def compute_decomp_in_memory(self, vecs):
@@ -135,9 +134,11 @@ class POD(object):
         
     def compute_eigen_decomp(self):
         """Compute eigen decomp of ``correlation_mat."""
+        # Can we adjust the arguments to call_and_bcast such that tol takes on
+        # the default value in util.eigh?
         self.eigen_vals, self.eigen_vecs = _parallel.call_and_bcast(
-            util.eigh, self.correlation_mat)    
-            
+            util.eigh, self.correlation_mat, 1e-12, True) 
+
     def _compute_build_coeff_mat(self):
         """Helper for ``compute_modes`` and ``compute_modes_and_return``."""
         #self.eigen_vecs, self.eigen_vals must exist or an UndefinedError.

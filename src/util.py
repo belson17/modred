@@ -128,7 +128,7 @@ def svd(mat, tol=1e-13):
 
     return U, E, V
 
-def eigh(mat, tol=1e-12):
+def eigh(mat, tol=1e-12, is_positive_definite=False):
     """Computes the eigenvalues and vecs of Hermitian matrix/array.
     
     Args:
@@ -136,6 +136,11 @@ def eigh(mat, tol=1e-12):
         
         ``tol``: Value at which to truncate eigenvalues and vectors.
             Give ``None`` for no truncation.
+
+        ``is_positive_definite``: If true, matrix being decomposed will be 
+            assumed to be positive definite.  Tolerance will be automatically 
+            adjusted (if necessary) so that only positive eigenvalues are 
+            returned.
     
     Returns:
         ``evals``: Eigenvalues in a 1D array, sorted in descending order.
@@ -143,11 +148,19 @@ def eigh(mat, tol=1e-12):
         ``evecs``: Eigenvectors, columns of matrix/array, sorted by evals.
     """
     evals, evecs = N.linalg.eigh(mat)
+
     # Sort the vecs and vals by eval magnitude
     sort_indices = N.argsort(N.abs(evals))[::-1]
     evals = evals[sort_indices]
     evecs = evecs[:, sort_indices]
+
+    # Filter eigenvalues, if necessary
     if tol is not None:
+        # Adjust tolerance for pos def case if necessary. Do so if there are
+        # negative eigenvalues and the most negative one has magnitude greater
+        # than the tolerance.
+        if is_positive_definite and evals.min() < 0 and abs(evals.min()) > tol:
+            tol = abs(evals.min())
         num_nonzeros = (abs(evals) > tol).sum()
         evals = evals[:num_nonzeros]
         evecs = evecs[:,:num_nonzeros]    
@@ -344,7 +357,7 @@ def impulse(A, B, C, time_steps=None):
 
 
 def load_signals(signal_path, delimiter=' '):
-    """Loads signals from text files with columns [t signal1 signal2 ...].
+    """Loads signals from text files with columns [t signal1 signal2 ...].     
     
     Args:
         ``signal_paths``: List of paths to signals, strings.
