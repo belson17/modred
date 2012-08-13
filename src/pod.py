@@ -34,7 +34,7 @@ class POD(object):
     """
     def __init__(self, inner_product, 
         get_mat=util.load_array_text, put_mat=util.save_array_text, 
-        max_vecs_per_node=None, verbosity=0):
+        max_vecs_per_node=None, verbosity=1):
         """Constructor """
         self.vec_space = VectorSpace(inner_product=inner_product, 
             max_vecs_per_node=max_vecs_per_node, 
