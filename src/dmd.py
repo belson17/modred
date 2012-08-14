@@ -137,14 +137,11 @@ class DMD(object):
         # the last element of the last column, so it is faster to compute all
         # of this now.  Only one extra element is computed, since this is a
         # symmetric inner product matrix.
-
-        # TODO: Can we change call of call_and_bcast so that the tol value is
-        # not hardcoded, but takes the default value set in util.eigh?
         self.correlation_mat = \
             self.vec_space.compute_symmetric_inner_product_mat(self.vec_handles)
         correlation_mat_evals, correlation_mat_evecs = \
             _parallel.call_and_bcast(util.eigh, self.correlation_mat[:-1, :-1],
-                1e-12, True)
+                is_positive_definite=True)
         correlation_mat_evals_sqrt = N.mat(N.diag(correlation_mat_evals**-0.5))
         low_order_linear_map = correlation_mat_evals_sqrt *\
             correlation_mat_evecs.H * self.correlation_mat[:-1, 1:] *\
