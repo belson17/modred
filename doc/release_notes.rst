@@ -57,6 +57,9 @@ modred 0.3.0
 
 * Changed order of indices in Markov parameters returned by :py:meth:`okid.OKID`.
 
+* Changed all uses of ``hankel`` to ``Hankel`` to be consistent with naming 
+  convention.
+  
 **Internal changes**
 
 * Added :py:meth:`parallel.Parallel.call_and_bcast` method to ``Parallel`` class.
