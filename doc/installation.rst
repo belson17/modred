@@ -16,13 +16,6 @@ To install::
 
   [sudo] python setup.py install
 
-If you get permissions errors, you may need to change the permissions of the
-modred directory. On Posix, the bash command::
- 
-  chmod 777 modred-*.* 
-
-solves the problem.
-
 To run the unit tests and be sure it's working, run the following from
 a directory to which you have read and write permissions. The
 parallel tests require mpi4py to be installed::

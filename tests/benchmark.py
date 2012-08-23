@@ -161,8 +161,8 @@ def main():
                 num_states, num_bases, num_products, max_vecs_per_node)
     elif method_to_test == 'inner_product_mat':
         # inner_product_mat test
-        num_rows = 12000
-        num_cols = 12000
+        num_rows = 1200
+        num_cols = 1200
         time_elapsed = inner_product_mat(num_states, num_rows, num_cols, 
             max_vecs_per_node)
 

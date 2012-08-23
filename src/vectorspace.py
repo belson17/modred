@@ -371,6 +371,11 @@ class VectorSpace(object):
 
         if transpose:
             IP_mat = IP_mat.T
+        
+        percent_completed_IPs = 100.
+        self.print_msg(('Completed %.1f%% of inner ' + 
+            'products')%percent_completed_IPs, sys.stderr)
+        self.prev_print_time = T.time()
 
         _parallel.barrier() # ensure that all procs leave function at same time
         return IP_mat
@@ -689,6 +694,11 @@ class VectorSpace(object):
         
         # Symmetrize matrix
         IP_mat = N.triu(IP_mat) + N.triu(IP_mat, 1).T
+        
+        percent_completed_IPs = 100.
+        self.print_msg(('Completed %.1f%% of inner ' + 
+            'products')%percent_completed_IPs, sys.stderr)
+        self.prev_print_time = T.time()
         
         _parallel.barrier() # ensure that all procs leave function at same time
         return IP_mat
@@ -1010,13 +1020,9 @@ class VectorSpace(object):
                 sum_vec_handles[sum_index].put(
                     sum_layers[sum_index-start_sum_index])
             del sum_layers
-            # Old print msg
-            """
-            if (T.time() - self.prev_print_time) > self.print_interval:    
-                self.print_msg('Completed %.1f%% of sum vecs' %
-                    (end_sum_index*100./max_num_sum_tasks))
-                self.prev_print_time = T.time()
-            """
+        
+        self.print_msg('Completed %.1f%% of linear combinations' % 100.)
+        self.prev_print_time = T.time()
         # ensure that all workers leave function at same time
         _parallel.barrier() 
         
