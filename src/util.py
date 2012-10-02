@@ -9,7 +9,7 @@ class UndefinedError(Exception):
     pass
 
 def make_list(arg):
-    """Makes argument a list, if not already a list."""
+    """Returns the argument as a list. If a list, arg is returned."""
     if not isinstance(arg, list):
         arg = [arg]
     return arg
@@ -18,13 +18,13 @@ def flatten_list(my_list):
     """Flatten a list of lists into a single list"""
     return [num for elem in my_list for num in elem]
     
-def save_array_text(array, filename, delimiter=' '):
+def save_array_text(array, file_name, delimiter=' '):
     """Saves a 1D or 2D array or matrix to a text file.
     
     Args:
         ``array``: Matrix or array to save to file (1D or 2D).
         
-        ``filename``: Path to save to, string.
+        ``file_name``: Path to save to, string.
         
     Kwargs:   
         ``delimeter``: Delimeter in file, default is a whitespace.
@@ -55,7 +55,7 @@ def save_array_text(array, filename, delimiter=' '):
     elif array_save.ndim > 2:
         raise RuntimeError('Cannot save an array with >2 dimensions')
 
-    N.savetxt(filename, array_save.view(float), delimiter=delimiter)
+    N.savetxt(file_name, array_save.view(float), delimiter=delimiter)
     
     
 def load_array_text(file_name, delimiter=' ', is_complex=False):
@@ -110,7 +110,9 @@ def svd(mat, tol=1e-13):
     
     Returns:
         ``U``: Matrix of left singular vectors.
+        
         ``E``: 1D array of singular values.
+        
         ``V``: Matrix of right singular vectors.
     
     Truncates U, E, and V such that there are no ~0 singular values.
@@ -236,7 +238,7 @@ def drss(num_states, num_inputs, num_outputs):
     Returns:
         ``A``, ``B``, and ``C`` matrices of system.
         
-    All eigenvalues are real.
+    All eigenvalues are real and stable.
     """
     eig_vals = N.linspace(.9, .95, num_states) 
     eig_vecs = N.random.normal(0, 2., (num_states, num_states))
@@ -259,7 +261,7 @@ def rss(num_states, num_inputs, num_outputs):
     Returns:
         ``A``, ``B``, and ``C`` matrices of system.
         
-    All eigenvalues are real.
+    All eigenvalues are real and stable.
     """
     e_vals = -N.random.random(num_states)
     transformation = N.random.random((num_states, num_states))
@@ -270,89 +272,98 @@ def rss(num_states, num_inputs, num_outputs):
     return A, B, C
         
         
-def lsim(A, B, C, inputs):
+def lsim(A, B, C, inputs, initial_condition=None):
     """Simulates a discrete time system with arbitrary inputs. 
     
+    x(n+1) = Ax(n) + Bu(n); y(n) = Cx(n)
+    
     Args:
-        ``inputs``: Array with indices [num_time_steps, num_inputs].
+        ``A``, ``B``, and ``C``
+        
+        ``inputs``: Array with indices [num_time_steps, num_inputs], u.
+    
+    Kwargs:
+        ``initial_condition``: Initial condition, x(0).
     
     Returns:
-        ``outputs``: Array with indices [num_time_steps, num_outputs].
+        ``outputs``: Array with indices [num_time_steps, num_outputs], y.
     
-    Currently D matrix is assumed to be zero.
+    D matrix is assumed to be zero.
     """
     #D = 0
+    A_arr = N.array(A)
+    B_arr = N.array(B)
+    C_arr = N.array(C)
     if inputs.ndim == 1:
         inputs = inputs.reshape((len(inputs), 1))
     num_steps, num_inputs = inputs.shape
     num_outputs = C.shape[0]
     num_states = A.shape[0]
-    #print 'num_states is',num_states,'num inputs',num_inputs,'B shape',B.shape
-    if B.shape != (num_states, num_inputs):
-        raise ValueError('B has the wrong shape ', B.shape)
-    if A.shape != (num_states, num_states):
+    if A_arr.shape != (num_states, num_states):
         raise ValueError('A has the wrong shape ', A.shape)
-    if C.shape != (num_outputs, num_states):
+    if B_arr.shape != (num_states, num_inputs):
+        raise ValueError('B has the wrong shape ', B.shape)
+    if C_arr.shape != (num_outputs, num_states):
         raise ValueError('C has the wrong shape ', C.shape)
     #if D == 0:
     #    D = N.zeros((num_outputs, num_inputs))
     #if D.shape != (num_outputs, num_inputs):
     #    raise ValueError('D has the wrong shape, D=', D)
-    
-    outputs = [] 
-    state = N.mat(N.zeros((num_states, 1)))
-    
-    for input in inputs:
-        #print 'assigning',N.dot(C, state).shape,'into',outputs[time].shape
-        input_reshape = input.reshape((num_inputs, 1))
-        outputs.append((C*state).squeeze())
-        #print 'shape of D*input',N.dot(D,input_reshape).shape
-        #Astate = A*state
-        #print 'shape of B is',B.shape,
-        #print 'and shape of input is',input.reshape((num_inputs,1)).shape
-        state = A*state + B*input_reshape
-    
-    outputs_array = N.zeros((num_steps, num_outputs))
-    for t, out in enumerate(outputs):
-        outputs_array[t] = out
-
-    return outputs_array
+    if initial_condition is not None:
+        if initial_condition.shape[0] != num_states or initial_condition.ndim != 1:
+            raise ValueError('initial_condition has the wrong shape')
+    else:
+        initial_condition = N.zeros(num_states)
+    state = initial_condition
+    outputs = N.zeros((num_steps, num_outputs)) 
+    for ti in xrange(num_steps):
+        outputs[ti] = N.dot(C_arr, state)
+        state = N.dot(A_arr, state) + N.dot(B_arr, inputs[ti])
+    return outputs
 
     
-def impulse(A, B, C, time_steps=None):
+def impulse(A, B, C, num_time_steps=None):
     """Generates impulse response outputs for a discrete-time system.
     
     Args:
-        ``A, B, C``: State-space system matrices.
+        ``A, B, C``: State-space system matrices (numpy arrays or matrices).
         
-        ``time_steps``: 1D array of integers specifying the time steps.
-        
+        ``num_time_steps``: Number of time steps to simulate.
+    
+    Returns:
+        ``outputs``: Response outputs, indices [time step, output, input].
+    
     No D matrix is included, but can simply be prepended to the output if it is
     non-zero. 
     """
-    #num_states = A.shape[0]
+    A_arr = N.array(A)
+    B_arr = N.array(B)
+    C_arr = N.array(C)
     num_inputs = B.shape[1]
     num_outputs = C.shape[0]
-    if time_steps is None:
-        tol = 1e-6
-        max_time_steps = 2000
-        Markovs = [C*B]
-        time_steps = [0]
-        while (N.amax(abs(Markovs[-1])) > tol or len(Markovs) < 20) and \
-            len(Markovs) < max_time_steps:
-            time_steps.append(time_steps[-1] + 1)
-            Markovs.append(C * (A**time_steps[-1]) * B)
-    else:
-        Markovs = []
-        for ts in time_steps:
-            Markovs.append(C*(A**ts)*B)
-
-    outputs = N.zeros((len(Markovs), num_outputs, num_inputs))
-    for time_step, Markov in enumerate(Markovs):
-        outputs[time_step] = Markov
-    time_steps = N.array(time_steps)
+    A_powers = N.identity(A_arr.shape[0])
+    outputs = []
     
-    return time_steps, outputs
+    if num_time_steps is None:
+        tol = 1e-6
+        min_time_steps = 20
+        max_time_steps = 2000
+        ti = 0
+        continue_sim = True
+        while continue_sim and ti < max_time_steps:
+            outputs.append(N.dot(N.dot(C_arr, A_powers), B_arr))
+            A_powers = N.dot(A_powers, A_arr)
+            ti += 1
+            if ti > min_time_steps:
+                if (N.abs(outputs[-min_time_steps:] < tol)).all():
+                    continue_sim = False
+        outputs = N.array(outputs)
+    else:
+        outputs = N.zeros((num_time_steps, num_outputs, num_inputs))
+        for ti in range(num_time_steps):
+            outputs[ti] = N.dot(N.dot(C_arr, A_powers), B_arr)
+            A_powers = N.dot(A_powers, A_arr) 
+    return outputs
 
 
 

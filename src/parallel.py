@@ -70,11 +70,8 @@ class Parallel(object):
     
     def is_rank_zero(self):
         """Returns True if rank is zero, False if not."""
-        if self._rank == 0:
-            return True
-        else:
-            return False
-    
+        return self._rank == 0
+            
     def call_from_rank_zero(self, func, *args, **kwargs):
         """Calls function from rank zero, does not call ``barrier()``.
         
@@ -218,12 +215,7 @@ class Parallel(object):
         return equal
     def __ne__(self, other):
         return not (self.__eq__(other))
-    def __add__(self, other):
-        print 'Adding MPI objects doesnt make sense, returning original'
-        return self
+        
         
 # Default instance to be used everywhere, "singleton"
-parallel_default_instance = Parallel()
-        
-        
-        
+parallel_default_instance = Parallel()     

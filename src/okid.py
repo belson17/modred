@@ -21,18 +21,14 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
     
     OKID can be sensitive to the choice of parameters. A few tips:
 
-    - Use a long tail for your input/output data, otherwise the Markov
+    - Use a tail (input=0) for your input/output data, otherwise the Markov
       parameters might grow rather than decay at large times.
-    - In the tail, have input = 0.
     - If necessary, artificially append your data with zero input and 
       exponentially decaying output.
-    - Typically estimate at most ``num_Markovs`` = 1/3 to 1/2 of the number
+    - Estimate at most ``num_Markovs`` = 1/2 of the number
       of samples.
-      Estimating too many Markov params can result in spurious oscillations. 
-      If using the estimated Markov parameters for ERA, use
-      approximately 5x number of ROM states.      
-    - Data with more than one input tends to be more sensitive and harder to 
-      work with. 
+      Estimating too many Markov params can result in spurious oscillations.       
+    - Data with more than one input tends to be harder to work with. 
       
     Some comments and variables refer to textbook (J.-N. Juang 1994).
     """    

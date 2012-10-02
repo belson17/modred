@@ -136,14 +136,14 @@ class LTIGalerkinProjection(object):
     Args:
         ``inner_product``: Function to take inner product of vectors.
         
-        ``basis_vecs``: List of direct modes (vecs or vec handles). 
+        ``basis_vecs``: List of basis vectors (vecs or vec handles). 
     
     Kwargs:
-        ``adjoint_basis_vecs``: List of adjoint modes (vecs or vec handles).
+        ``adjoint_basis_vecs``: List of adjoint vectors (vecs or vec handles).
             If not given, then ``basis_vecs`` are used.
     
         ``is_basis_orthonormal``: Bool for bi-orthonormality of the basis vecs.
-            ``True`` if the modes are orthonormal.
+            ``True`` if the modes are orthonormal. Default is ``False``.
             
         ``put_mat``: Function to put a matrix elsewhere (memory or file).
         
@@ -239,7 +239,7 @@ class LTIGalerkinProjection(object):
             
             ``C``: Callable which takes a direct mode handle, returns "C*modes".
 
-            ``num_inputs``: Number of inputs to system
+            ``num_inputs``: Number of inputs to the system.
         """
         self.reduce_A(A)
         self.reduce_B(B, num_inputs)

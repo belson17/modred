@@ -27,12 +27,12 @@ class VectorSpace(object):
         ``print_interval``: Min interval between progress messages, seconds.
 
     The class implements parallelized vector addition and scalar multiplication
-    and is used in the high-level modred classes like ``POD``, ``BPOD``, ``DMD``
+    and is used in high-level classes ``POD``, ``BPOD``, ``DMD``
     and ``LTIGalerkinProjection``. 
 
-    Note: It is generally best to use all available processors, even if this
-    lowers ``max_vecs_per_node`` proportionally. 
-    However this depends on the computer and the nature of the functions
+    Note: Computations are often sped up by using all available processors,
+    even if this lowers ``max_vecs_per_node`` proportionally. 
+    However, this depends on the computer and the nature of the functions
     supplied, and sometimes loading from file is slower with more processors.
     """
     def __init__(self, inner_product=None, 
@@ -46,8 +46,8 @@ class VectorSpace(object):
         if max_vecs_per_node is None:
             self.max_vecs_per_node = 10000 # different default?
             self.print_msg('Warning: max_vecs_per_node was not specified. '
-                'Assuming 10000 vecs can be in memory per node. Decrease '
-                'max_vecs_per_node if memory errors.')
+                'Assuming %d vecs can be in memory per node. Decrease '
+                'max_vecs_per_node if memory errors.'%self.max_vecs_per_node)
         else:
             self.max_vecs_per_node = max_vecs_per_node
         
@@ -727,7 +727,7 @@ class VectorSpace(object):
         
         Args:
           ``mode_nums``: List of mode numbers to compute. 
-              Examples are: ``range(10)`` or ``[3,1,6,8]``. 
+              Examples are: ``range(10)`` or ``[3, 1, 6, 8]``. 
               The mode numbers need not be sorted. 
               
           ``mode_handles``: List of handles for modes.
@@ -790,7 +790,7 @@ class VectorSpace(object):
         
         Args:
             ``mode_nums``: List of mode numbers to compute. 
-                Examples are: ``range(10)`` or ``[3,1,6,8]``. 
+                Examples are: ``range(10)`` or ``[3, 1, 6, 8]``. 
                 The mode numbers need not be sorted. 
               
             ``vec_handles``: List of vectors.
