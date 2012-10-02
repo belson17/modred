@@ -3,6 +3,30 @@ Release notes
 =============
 
 ------------
+modred 0.3.2
+------------
+The main change is a bug fix in :py:meth:`util.lsim`.
+
+**New features and improvements**
+
+None
+
+**Bug fixes**
+
+* Function :py:meth:`util.lsim`, which is only provided for convenience (not used) 
+  is simplified and corrected.
+
+**Interface changes**
+
+* :py:meth:`util.lsim`.
+
+
+**Internal changes**
+
+None
+
+
+------------
 modred 0.3.1
 ------------
 The main change is a bug fix in the ``numpy.eigh`` wrapper, :py:meth:`util.eigh`.
