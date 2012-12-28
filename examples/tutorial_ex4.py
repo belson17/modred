@@ -1,14 +1,13 @@
 import modred as MR
 import numpy as N
 
-# Define the snapshots to be used
+# Define the snapshots to be used.
 num_vecs = 100
 base_vec_handle = MR.PickleVecHandle('base_vec.pkl')
 snapshots = [MR.PickleVecHandle('vec%d.pkl'%i, base_vec_handle=base_vec_handle)
              for i in range(num_vecs)]
  
-# Save fake data. Typically the data already exists from a previous
-# simulation or experiment.
+# Save arbitrary data, normally unnecessary.
 num_elements = 2000  
 parallel = MR.parallel_default_instance
 if parallel.is_rank_zero():
@@ -16,7 +15,7 @@ if parallel.is_rank_zero():
         snap.put(N.random.random(num_elements))
 parallel.barrier()
 
-# Calculate DMD modes, saving to Pickle files
+# Calculate DMD modes, save to pickle files.
 my_DMD = MR.DMD(N.vdot)
 my_DMD.compute_decomp(snapshots)
 my_DMD.put_decomp('ritz_vals.txt', 'mode_norms.txt', 'build_coeffs.txt')

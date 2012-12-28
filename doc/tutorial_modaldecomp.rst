@@ -31,18 +31,18 @@ First, we created a list of arbitrary arrays; these are the vectors.
 (The ``vecs`` argument must be a list.)
 Then we created an instance of ``POD`` called ``my_POD``.
 The constructor took the argument
-``inner_product``, a function that takes two vectors (numpy arrays in this case),
-and returns their inner product. 
-The ``inner_product`` must satisfy the properties of inner products, and is
+``N.vdot``, a function that returns the inner product of two vectors 
+(numpy arrays in this case). 
+The inner product function must satisfy the properties of inner products, and is
 explained more in :ref:`sec_details`.
 
-The next line, ``compute_decomp_in_memory`` computes the correlation matrix 
-(often written "X* X", if the data vectors are columns of the matrix
-X), and returns its eigenvectors and eigenvalues.
+The next line, ``compute_decomp_in_memory``, computes the correlation matrix 
+(often written :math:`X^* X`, if the data vectors are columns of the matrix
+:math:`X`), and returns its eigenvectors and eigenvalues.
 The correlation matrix is computed by taking the inner products of all 
 combinations of vectors.
 This procedure is called the "method of snapshots", as described in Section 3.4 of [HLBR]_.
-We stress that modred's approach is to never form the "X" matrix, which is
+We stress that modred's approach is to never form the :math:`X` matrix, which is
 why we pass a list of vectors rather than a single large array or matrix.
 This is explained further in later sections.
 
@@ -52,8 +52,7 @@ argument and returns the list of modes, ``modes``.
 The above example can be run in parallel with *no modifications*.
 At the end, each processor (MPI worker more generally) will have all of the
 modes in its list ``modes``.
-To do this, assuming the above script is saved as ``main_pod.py``, one
-would execute the following:: 
+To do this, where the above script is saved as ``main_pod.py``, execute:: 
   
   mpiexec -n 8 python main_pod.py
 
@@ -152,33 +151,25 @@ as in this example.
 Also provided are member functions ``parallel.get_rank()`` and 
 ``parallel.get_num_procs()`` (see :py:mod:`parallel` for details).
 
-If you're curious, the text files are saved with whitespace after each
-column entry and
-line breaks after each row, so the 2x3 array::
-  
-  1 2 3
-  4 5 6
-
-looks just like this in the text file. See :py:func:`util.load_array_text` 
-and :py:func:`util.save_array_text` for more information. 
+If you're curious, the text files are saved in a format defined in
+:py:func:`util.load_array_text` and :py:func:`util.save_array_text`. 
 
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 4 -- Subtracting a base vector
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Often vectors are saved with an offset (also called a "shift" or "translation") 
+Often vectors contain an offset (also called a "shift" or "translation") 
 such as a mean or equilibrium state, and one might want to do model 
 reduction with this known offset removed.
 We call this offset the "base vector", and it can be subtracted off by the
-vector handle class as shown below.  The following example computes
+vector handle class as shown below. The following example computes
 DMD modes from a given set of snapshots:
 
 .. literalinclude:: ../examples/tutorial_ex4.py
   
 Note that the ``handle.put`` function does not use the base vector; the base
-vector is only subtracted from the loaded vector when ``handle.get``
-is called.
+vector is only subtracted from during the call of ``handle.get``.
 To run this example in parallel, the ``put`` loop must be done only on
 one processor, as in the previous example.
 The function ``dmd.put_decomp``, by default, saves the three decomposition
@@ -188,17 +179,19 @@ the optional argument ``put_mat=`` as a different function to "put" the matrices
 in a different way, for instance to a different file format.
 See :ref:`sec_matrices`.
 
+
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 5 -- Scaling vectors and using ``VectorSpace``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You might want to scale all of your vectors by factors as you retrieve them
 for use in modred, and this can also be done
-by the vector handle ``get`` function, just like the base vector.
+by the vector handle ``get`` function, just like subtracting a base vector.
 For example, below we show the use of quadrature weights, where each vector
 is weighted.
-This example also shows how to load vectors in one format (pickle) 
-and save modes in another (text).
+This example also shows how to load vectors in one format (pickle, via
+handles ``MR.PickleVecHandle``) 
+and save modes in another (text, via handles ``MR.ArrayTextVecHandle``).
 At the end of this example, we use the lower-level 
 :class:`vectorspace.VectorSpace` class to check that the POD modes are 
 orthonormal.
@@ -207,9 +200,6 @@ orthonormal.
       
 When using both base vector subtraction and scaling, the default order
 is first subtraction, then multiplication: ``(vec - base_vec)*scale``.
-
-The input vectors are saved in pickle format (``MR.PickleVecHandle``) 
-and the modes are saved in text format (``MR.ArrayTextVecHandle``).
 
 The last section uses the ``VectorSpace`` class, 
 which contains most of the parallelization and "heavy lifting" and is

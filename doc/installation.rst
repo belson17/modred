@@ -10,7 +10,7 @@ These are mandatory requirements for modred:
 These are optional:
 
 1. For parallel execution, an MPI implementation and mpi4py, http://mpi4py.scipy.org/
-2. For plotting within Python, matplotlib, http://matplotlib.sourceforge.net/
+
 
 To install::
 
@@ -26,7 +26,7 @@ parallel tests require mpi4py to be installed::
 Please report test failures or installation problems to bbelson@princeton.edu 
 with the following information:
 
-1. Copy of the entire output of the installation/tests
+1. Copy of the entire output of the installation and tests
 2. Python version (use: python -V)
 3. Numpy version (use: python -c 'import numpy; print numpy.__version__')
 4. Your operating system

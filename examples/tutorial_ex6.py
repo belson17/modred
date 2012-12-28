@@ -3,13 +3,13 @@ import modred as MR
 from custom_vector import CustomVector, CustomVecHandle, inner_product
 
 
-# Define snapshots to use
+# Define snapshot handles.
 direct_snapshots = [CustomVecHandle('direct_snap%d.pkl' % i, scale=N.pi)
     for i in range(10)]
 adjoint_snapshots = [CustomVecHandle('adjoint_snap%d.pkl' % i, scale=N.pi)
     for i in range(10)]
     
-# Generate fake random data (for example purposes only)
+# Arbitrary data.
 parallel = MR.parallel_default_instance
 nx = 50
 ny = 30
@@ -22,13 +22,13 @@ if parallel.is_rank_zero():
         snap.put(CustomVector([x, y, z], N.random.random((nx, ny, nz))))
 parallel.barrier()
 
-# Compute balanced POD
+# Compute and save Balanced POD modes.
 my_BPOD = MR.BPOD(inner_product)
 my_BPOD.sanity_check(direct_snapshots[0])
 L_sing_vecs, sing_vals, R_sing_vecs = \
     my_BPOD.compute_decomp(direct_snapshots, adjoint_snapshots)
 
-# Model error less than ~10%
+# less than 10% error
 sing_vals_norm = sing_vals / N.sum(sing_vals)
 num_modes = N.nonzero(N.cumsum(sing_vals_norm) > 0.9)[0][0] + 1
 mode_nums = range(num_modes)

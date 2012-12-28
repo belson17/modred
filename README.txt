@@ -11,7 +11,7 @@ To install::
 You may need to change the permissions on the modred folder, on Posix systems,
 use the bash command::
 
-  chmod 777 modred-*.*
+  chmod 777 modred-*
 
 To check the installation, you can run the unit tests 
 (parallel requires mpi4py)::

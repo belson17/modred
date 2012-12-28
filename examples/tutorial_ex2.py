@@ -7,8 +7,7 @@ ny = 45
 x_grid = 1. - N.cos(N.linspace(0, N.pi, nx))
 y_grid = N.linspace(0, 2., ny)**2
 
-# We use arbitrary fake data as a placeholder
-# Normally one doesn't need to do this because you have real data.
+# Arbitrary data, normally unnecessary.
 Y, X = N.meshgrid(y_grid, x_grid)
 vecs = [N.sin(X*0.1*i) + N.cos(Y*0.15*i) for i in range(num_vecs)]
 

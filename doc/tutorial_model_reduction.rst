@@ -1,13 +1,14 @@
 .. _sec_model_reduction:
+
 -------------------------------------------------
 Model reduction
 -------------------------------------------------
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-BPOD linear reduced-order models
+Linear reduced-order models
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-We provide a class to find BPOD linear models (continuous and discrete time)
-from BPOD modes.
+We provide a class to find reduced-order models (continuous and discrete time)
+by projecting linear dynamics onto modes (Galerkin projection).
 The governing equation of the full system is assumed to be either continuous
 time
 
@@ -16,30 +17,30 @@ time
   \partial x(t)/ \partial t &= A x(t) + B u(t) \\
   y(t) &= C x(t) 
 
-where t >= 0 , or discrete time 
+where, or discrete time 
 
 .. math::
 
   x(k+1) &= A x(k) + B u(k) \\
   y(k) &= C x(k) 
 
-where k = 0,1,2,...
-Here x is the state, and is a vector. 
-A, B, and C are, in general, linear operators (often matrices).
-A acts on x and returns a vector that lives in the same vector space as x.
-B acts on elements of the input space (R^p, where p is the number of inputs) 
-and returns elements of the vector space in which x lives. 
-C acts on x and returns elements of the output space, R^q, where q is the 
-number of outputs.
+where :math:`k` is the time step.
+Here :math:`x` is the state, and is a vector. 
+:math:`A`, :math:`B`, and :math:`C` are, in general, linear operators (often matrices).
+:math:`A` acts on :math:`x` and returns a vector that lives in the same vector space as :math:`x`.
+:math:`B` acts on elements of the input space (:math:`R^p`, where :math:`p` is the number of inputs) 
+and returns elements of the vector space in which :math:`x` lives. 
+:math:`C` acts on :math:`x` and returns elements of the output space, :math:`\mathcal{R}^q`, where :math:`q`
+is the number of outputs.
 
 Projecting this equation onto the BPOD modes gives, loosely speaking:
  
-  Ar = inner_product(adjoint_modes, A*direct_modes)
+  ``Ar[i, j] = inner_product(adjoint_modes[i], A*direct_modes[j])``
   
-  Br[:,j] = inner_product(adjoint_modes, B*e_j), where e_j is the jth standard
-  basis of R^p.
+  ``Br[i, j] = inner_product(adjoint_modes[i], B*e_j)``, where ``e_j`` is the jth standard
+  basis of :math:`\mathcal{R}^p`.
   
-  Cr = C*direct_modes
+  ``Cr[:, j] = C*direct_modes[j]``
 
 For a precise description, see Rowley 2005, International Journal on Bifurcation
 and Chaos.

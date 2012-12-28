@@ -13,6 +13,8 @@ Contents:
    
    intro
    
+   whymodred
+   
    installation
 
    tutorial 
