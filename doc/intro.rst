@@ -21,3 +21,5 @@ efficient way.
 
 Python's speed limitations can be bypassed by calling compiled code
 via tools like Cython, SWIG, and f2py. 
+
+This work was supported by a grant from the the National Science Foundation.
