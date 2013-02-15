@@ -1,5 +1,16 @@
 #### Important ####
 
+Rename/move _compute_modes. As it is, it doesn't make sense to be in
+vectorspace.
+
+Write tests directly for lin_combine in vectorspace, not just
+_compute_modes.
+
+Write balance_realization which returns A, B, C, and P, Q that balances a
+given A,B,C. 
+
+Write in memory classes rather than functions.
+
 Remove requirements for having arguments be lists. This is not pythonic.
 
 Generalize the parallelization so that users can have parallel Vector classes.
@@ -30,12 +41,6 @@ To be clear, I
 differentiate between a mode number and mode index. To be consistent with all
 naming conventions, index should be used instead of num when referring to some
 object's "index" internally and starting from 0. 
-
-Write tests directly for lin_combine in vectorspace, not just
-_compute_modes.
-
-Rename/move _compute_modes. As it is, it doesn't make sense to be in
-vectorspace.
 
 Automatically detect the max_vecs_per_node. Or in the future, max_vecs_per_communicator.
 This would require some fancier

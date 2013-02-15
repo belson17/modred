@@ -56,7 +56,10 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
             inputs_outputs[:, :num_samples-i]
     
     # Ybar in book
-    Markov_aug = N.dot(outputs, N.array(N.linalg.pinv(V, cutoff)))
+    #Markov_aug = N.dot(outputs, N.array(N.linalg.pinv(V, cutoff)))
+    # Using least squares for better numerical conditioning? outputs = M V, so
+    # outputs.T = V.T M.T, solve for M = Markovs_aug.
+    Markov_aug = N.linalg.lstsq(V.T, outputs.T)[0].T
 
     D = Markov_aug[:, :num_inputs]
     

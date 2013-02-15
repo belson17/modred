@@ -13,7 +13,7 @@ None
 
 **Bug fixes**
 
-* Function :py:meth:`util.lsim`, which is only provided for convenience (not used) 
+* Function :py:meth:`util.lsim`, which is only provided for the user's convenience, 
   is simplified and corrected.
 
 **Interface changes**
