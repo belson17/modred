@@ -57,7 +57,8 @@ class testERA(unittest.TestCase):
         """
         Test that can give time_values and outputs in either format.
         
-        First tests format [0, 1, P, P+1, ...] and if there is a wrong time value.
+        First tests format [0, 1, P, P+1, ...] and if there is a wrong time
+        value.
         Then tests [0, 1, 2, 3, ...] format.
         """
         for num_inputs in [1, 3]:
@@ -94,7 +95,8 @@ class testERA(unittest.TestCase):
                         
     #@unittest.skip("testing others")
     def test_assemble_Hankel(self):
-        """ Tests Hankel mats are symmetric given [CB CAB CA**P CA**(P+1)B ...]."""
+        """ Tests Hankel mats are symmetric given 
+        ``[CB CAB CA**P CA**(P+1)B ...]``."""
         for num_inputs in [1,3]:
             for num_outputs in [1, 2, 4]:
                 for sample_interval in [1]:
@@ -107,7 +109,8 @@ class testERA(unittest.TestCase):
                     Markovs = Markovs[time_steps]
                     
                     if sample_interval == 2:
-                        time_steps, Markovs = era.make_sampled_format(time_steps, Markovs)
+                        time_steps, Markovs = era.make_sampled_format(
+                            time_steps, Markovs)
                     
                     myERA = era.ERA(verbosity=0)
                     myERA._set_Markovs(Markovs)
@@ -177,7 +180,8 @@ class testERA(unittest.TestCase):
                         C_path_computed)
                     #sing_vals = myERA.sing_vals[:num_states_model]
                     
-                    # Flatten vecs into 2D X and Y mats: [B AB A**PB A**(P+1)B ...]
+                    # Flatten vecs into 2D X and Y mats: 
+                    # [B AB A**PB A**(P+1)B ...]
                     #direct_vecs_flat = N.mat(
                     #    direct_vecs.swapaxes(0,1).reshape((num_states_model,-1)))
                     

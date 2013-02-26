@@ -4,7 +4,7 @@ Introduction
 
 Welcome to the modred project!
 
-This is a easy-to-use and parallelized library for finding modal
+This is an easy-to-use and parallelized library for finding modal
 decompositions and reduced-order models.
 
 Parallel implementations of the proper orthogonal decomposition (POD),

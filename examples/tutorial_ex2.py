@@ -3,16 +3,17 @@ import modred as MR
 
 num_vecs = 30
 nx = 100
-ny = 45
+
+# Non-uniform grid and corresponding inner product weights.
 x_grid = 1. - N.cos(N.linspace(0, N.pi, nx))
-y_grid = N.linspace(0, 2., ny)**2
+x_spacing = N.diff(x_grid)
+weights = N.append(N.append(x_spacing[0], 0.5*(x_spacing[:-1] + x_spacing[1:])),
+    x_spacing[-1])
 
-# Arbitrary data, normally unnecessary.
-Y, X = N.meshgrid(y_grid, x_grid)
-vecs = [N.sin(X*0.1*i) + N.cos(Y*0.15*i) for i in range(num_vecs)]
+# Arbitrary data
+vec_array = N.random.random((nx, num_vecs))
 
-weighted_IP = MR.InnerProductTrapz(x_grid, y_grid)
-my_POD = MR.POD(weighted_IP)
-sing_vecs, sing_vals = my_POD.compute_decomp_in_memory(vecs)
+my_POD = MR.PODArrays(inner_product_weights=weights)
+sing_vecs, sing_vals = my_POD.compute_decomp(vec_array)
 num_modes = 10
-modes = my_POD.compute_modes_in_memory(range(num_modes))
+modes = my_POD.compute_modes(range(num_modes))

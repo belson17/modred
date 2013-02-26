@@ -1,15 +1,6 @@
 #### Important ####
 
-Rename/move _compute_modes. As it is, it doesn't make sense to be in
-vectorspace.
-
-Write tests directly for lin_combine in vectorspace, not just
-_compute_modes.
-
-Write balance_realization which returns A, B, C, and P, Q that balances a
-given A,B,C. 
-
-Write in memory classes rather than functions.
+Allow for larger col chunks if extra memory.
 
 Remove requirements for having arguments be lists. This is not pythonic.
 
@@ -28,21 +19,13 @@ mpi4py already has the hard stuff implemented.
 Make the formatting at line breaks better, do not break at '.'s. Talk to Clancy
 about possible solutions to our many line breaks.
 Find a better, more natural, way to deal with line continuation/breaks. As it is,
-the code is chopped to bits and is not at all readable. No one would ever write
-code like this, and that's why we always have to go back and redo the formatting.
+the code is chopped to bits and hard to read.
 It's completely imposed and unnatural currently.
 
-Make a style guide for future developers. In this, include:
-vec_num and similar should be called vec_index. This is because the "number" of
-a mode
-is generally different than its index. The most common example of this is the
-first mode is called mode number 1 but has index 0 (indexFrom=1). 
-To be clear, I
-differentiate between a mode number and mode index. To be consistent with all
-naming conventions, index should be used instead of num when referring to some
-object's "index" internally and starting from 0. 
+Make a style guide for future developers. 
 
-Automatically detect the max_vecs_per_node. Or in the future, max_vecs_per_communicator.
+Automatically detect the max_vecs_per_node. 
+Or in the future, max_vecs_per_communicator.
 This would require some fancier
 things, like determining the available RAM and the size of a vector object. It
 might not be possible since some memory is used by the vector objects when

@@ -2,21 +2,19 @@
 
 import numpy as N
 
-def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
+def OKID(inputs, outputs, num_Markovs):
     """Approximates the Markov paramters from arbitrary inputs and outputs.
     
     Args:
-        ``inputs``: Array of input signals, with indices [input, time].
+        ``inputs``: Array of input signals, with dimensions ``[input, time]``.
         
-        ``outputs``: Array of output signals, with indices [output, time].
+        ``outputs``: Array of output signals, with dimensions ``[output, time]``.
         
         ``num_Markovs``: Integer number of Markov parameters to estimate.
             
-    Kwargs:
-        ``cutoff``: Condition number used for the pseudo-inverse.
-    
     Returns:
-        ``Markovs_est``: Array of Markov params, indices [time, output, input].
+        ``Markovs_est``: Array of Markov params, dimensions 
+        ``[time, output, input]``.
         Thus, ``Markovs_est[ti]`` is the Markov param at time index ``ti``.
     
     OKID can be sensitive to the choice of parameters. A few tips:
@@ -25,13 +23,11 @@ def OKID(inputs, outputs, num_Markovs, cutoff=1e-6):
       parameters might grow rather than decay at large times.
     - If necessary, artificially append your data with zero input and 
       exponentially decaying output.
-    - Estimate at most ``num_Markovs`` = 1/2 of the number
-      of samples.
+    - Estimate ``num_Markovs`` <= half of the number of samples.
       Estimating too many Markov params can result in spurious oscillations.       
     - Data with more than one input tends to be harder to work with. 
-      
-    Some comments and variables refer to textbook (J.-N. Juang 1994).
     """    
+    # Some internal comments and variables refer to textbook (J.-N. Juang 1994).
     # Force arrays to be 2 dimensional
     if inputs.ndim == 1:
         inputs = inputs.reshape((1, inputs.shape[0]))

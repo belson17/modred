@@ -13,7 +13,7 @@ helper.add_to_path(join(join(os.path.dirname(os.path.abspath(__file__)),
     '..', 'src')))
 
 import parallel as parallel_mod
-parallel = parallel_mod.parallel_default_instance
+_parallel = parallel_mod.parallel_default_instance
 import util
 
 
@@ -26,18 +26,18 @@ class TestUtil(unittest.TestCase):
         self.test_dir = 'DELETE_ME_test_files_util'
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        if parallel.is_rank_zero():
+        if _parallel.is_rank_zero():
             if not os.path.isdir(self.test_dir):
                 os.mkdir(self.test_dir)
     
     def tearDown(self):
-        parallel.barrier()
-        if parallel.is_rank_zero():
+        _parallel.barrier()
+        if _parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
-        parallel.barrier()
+        _parallel.barrier()
         
         
-    @unittest.skipIf(parallel.is_distributed(), 'Only save/load matrices in serial')
+    @unittest.skipIf(_parallel.is_distributed(), 'Only save/load matrices in serial')
     def test_load_save_array_text(self):
         """Test that can read/write text matrices"""
         #tol = 1e-8
@@ -67,7 +67,7 @@ class TestUtil(unittest.TestCase):
                             N.testing.assert_allclose(mat_read, mat)#,rtol=tol)
                           
                           
-    @unittest.skipIf(parallel.is_distributed(), 'Only load matrices in serial')
+    @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_svd(self):
         num_internals_list = [10, 50]
         num_rows_list = [3, 5, 40]
@@ -93,7 +93,7 @@ class TestUtil(unittest.TestCase):
     
     
         
-    @unittest.skipIf(parallel.is_distributed(), 'Only load data in serial')
+    @unittest.skipIf(_parallel.is_distributed(), 'Only load data in serial')
     def test_load_impulse_outputs(self):
         """
         Test loading multiple signal files in [t sig1 sig2 ...] format.
@@ -125,19 +125,41 @@ class TestUtil(unittest.TestCase):
                     N.testing.assert_allclose(time_values, time_values_true)
     
     
-    
+    @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')    
     def test_solve_Lyapunov(self):
         """Test solution of Lyapunov w/known solution from Matlab's dlyap"""
-        A = N.array([[1., 2.], [3., 4.]])
-        Q = N.array([[4., 3.], [1., 2.]])
-        X_true = N.array([[2.2777777777, -0.5], 
-            [-1.166666666666, -0.1666666666]])
-        X_computed = util.solve_Lyapunov(A, Q)
+        A = N.array([[0.725404224946106, 0.714742903826096],
+                    [-0.063054873189656, -0.204966058299775]])
+        Q = N.array([[0.318765239858981, -0.433592022305684],
+                    [-1.307688296305273, 0.342624466538650]])
+        X_true = N.array([[-0.601761400231752, -0.351368789021923],
+                          [-1.143398707577891, 0.334986522655114]])
+        X_computed = util.solve_Lyapunov_direct(A, Q)
         N.testing.assert_allclose(X_computed, X_true)
-        X_computed_mats = util.solve_Lyapunov(N.mat(A), N.mat(Q))
+        X_computed_mats = util.solve_Lyapunov_direct(N.mat(A), N.mat(Q))
+        N.testing.assert_allclose(X_computed_mats, X_true)    
+
+        X_computed = util.solve_Lyapunov_iterative(A, Q)
+        N.testing.assert_allclose(X_computed, X_true)
+        X_computed_mats = util.solve_Lyapunov_iterative(N.mat(A), N.mat(Q))
         N.testing.assert_allclose(X_computed_mats, X_true)    
     
     
+    @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
+    def test_balanced_truncation(self):
+        """Test balanced system is close to original."""
+        for num_inputs in [1, 3]:
+            for num_outputs in [1, 4]:
+                for num_states in [1, 10]:
+                    A, B, C = util.drss(num_states, num_inputs, num_outputs)
+                    Ar, Br, Cr = util.balanced_truncation(A, B, C)
+                    num_time_steps = 10
+                    y = util.impulse(A, B, C, num_time_steps=num_time_steps)
+                    yr = util.impulse(Ar, Br, Cr, num_time_steps=num_time_steps)
+                    N.testing.assert_allclose(yr, y, rtol=1e-5)
+    
+    
+    @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
     def test_drss(self):
         """Test drss gives correct mat dimensions and stable dynamics."""
         for num_states in [1, 5, 14]:
@@ -150,6 +172,7 @@ class TestUtil(unittest.TestCase):
                     self.assertTrue(N.amax(N.abs(N.linalg.eig(A)[0])) < 1)
     
     
+    @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
     def test_lsim(self):
         """Test that lsim has right shapes, does not test result"""
         for num_states in [1, 4, 9]:
@@ -164,7 +187,8 @@ class TestUtil(unittest.TestCase):
                     self.assertEqual(outputs.shape, (nt, num_outputs))
                     
                     
-    
+
+    @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
     def test_impulse(self):
         """Test impulse response of discrete system"""
         for num_states in [1, 10]:

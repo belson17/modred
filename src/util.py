@@ -4,18 +4,17 @@ import os
 import numpy as N
 import inspect
 
-class UndefinedError(Exception): 
-    """Error when something has not been defined."""
-    pass
+class UndefinedError(Exception): pass
 
 def make_list(arg):
-    """Returns the argument as a list. If a list, arg is returned."""
+    """Returns the argument as a list. If already a list, ``arg`` is returned.
+    """
     if not isinstance(arg, list):
         arg = [arg]
     return arg
     
 def flatten_list(my_list):
-    """Flatten a list of lists into a single list"""
+    """Flatten a list of lists into a single list."""
     return [num for elem in my_list for num in elem]
     
 def save_array_text(array, file_name, delimiter=' '):
@@ -94,13 +93,24 @@ def load_array_text(file_name, delimiter=' ', is_complex=False):
     return N.array(array.view(dtype))
 
 
-def inner_product(vec1, vec2):
-    """A default inner product for n-dimensional numpy arrays. """
-    return N.vdot(vec1, vec2)
-
+    
+class InnerProductBlock(object):
+    """Only used in tests. Takes inner product of all vectors."""
+    def __init__(self, inner_product):
+        self.inner_product = inner_product
+    def __call__(self, vecs1, vecs2):
+        n1 = len(vecs1)
+        n2 = len(vecs2)
+        mat = N.zeros((n1,n2), 
+            dtype=type(self.inner_product(vecs1[0],vecs2[0])))        
+        for i in range(n1):
+            for j in range(n2):
+                mat[i,j] = self.inner_product(vecs1[i], vecs2[j])
+        return mat
+        
     
 def svd(mat, tol=1e-13):
-    """An SVD that better meets our needs. U E V* = mat. 
+    """Wrapper for numpy's SVD, U E V^* = mat. 
     
     Args:
         ``mat``: Array or matrix to take SVD of.
@@ -115,7 +125,8 @@ def svd(mat, tol=1e-13):
         
         ``V``: Matrix of right singular vectors.
     
-    Truncates U, E, and V such that there are no ~0 singular values.
+    Truncates ``U``, ``E``, and ``V`` such that there are no singular values
+    smaller than ``tol``.
     """
     U, E, V_comp_conj = N.linalg.svd(N.mat(mat), full_matrices=0)
     V = N.mat(V_comp_conj).H
@@ -130,8 +141,10 @@ def svd(mat, tol=1e-13):
 
     return U, E, V
 
+
 def eigh(mat, tol=1e-12, is_positive_definite=False):
-    """Computes the eigenvalues and vecs of Hermitian matrix/array.
+    """Wrapper for ``numpy.linalg.eigh``. Computes the e-values and vecs of
+    Hermitian matrix/array.
     
     Args:
         ``mat``: To take eigen decomposition of.
@@ -151,14 +164,14 @@ def eigh(mat, tol=1e-12, is_positive_definite=False):
     """
     evals, evecs = N.linalg.eigh(mat)
 
-    # Sort the vecs and vals by eval magnitude
+    # Sort the vecs and evals by eval magnitude
     sort_indices = N.argsort(N.abs(evals))[::-1]
     evals = evals[sort_indices]
     evecs = evecs[:, sort_indices]
 
-    # Filter eigenvalues, if necessary
+    # Filter small and negative eigenvalues, if necessary
     if tol is not None:
-        # Adjust tolerance for pos def case if necessary. Do so if there are
+        # Adjust tolerance for pos def case if there are
         # negative eigenvalues and the most negative one has magnitude greater
         # than the tolerance.
         if is_positive_definite and evals.min() < 0 and abs(evals.min()) > tol:
@@ -208,8 +221,10 @@ def sum_lists(list1, list2):
     return [list1[i] + list2[i] for i in xrange(len(list1))]
 
 
-def solve_Lyapunov(A, Q):
-    """Solves equation of form AXA' - X + Q = 0 for X given A and Q.
+def solve_Lyapunov_direct(A, Q):
+    """Solves discrete Lyapunov equation AXA' - X + Q = 0 for X given A and Q.
+    
+    :py:meth:`solve_Lyapunov_iterative` is numerically better conditioned.
     
     See http://en.wikipedia.org/wiki/Lyapunov_equation
     """
@@ -223,6 +238,84 @@ def solve_Lyapunov(A, Q):
     X_flat = N.linalg.solve(N.identity(kron_AA.shape[0]) - kron_AA, Q_flat)
     X = X_flat.reshape((A.shape))
     return X
+
+
+def solve_Lyapunov_iterative(A, Q, max_iters=10000, tol=1e-8):
+    """Solves discrete Lyapunov equation AXA' - X + Q = 0 for X given A and Q.
+
+    Iterative discrete-time Lyapunov solver based on:     
+    Davinson and Man, "The Numerical Solution of A'Q+QA=-C." 
+    IEEE Transactions on Automatic Control, volume 13, issue 4, August 1968.
+    p. 448.
+    """
+    if A.shape[0] != A.shape[1]:
+        raise ValueError('A must be square.') 
+    if A.shape != Q.shape:
+        raise ValueError('A and Q must have the same shape.')
+    
+    if N.amax(N.abs(N.linalg.eig(A)[0])) > 1.:
+        raise ValueError('A must have stable eigenvalues (in the unit circle).') 
+    
+    X = N.copy(Q)
+    AP = N.copy(A)
+    AT = N.copy(A.transpose())
+    APT = N.copy(A.transpose())
+    error = N.inf
+    iter = 0
+    while error > tol and iter < max_iters:
+        change = AP.dot(Q).dot(APT)
+        X += change
+        AP = AP.dot(A)
+        APT = APT.dot(AT)
+        error = N.abs(change).max()
+        iter += 1
+
+    if iter >= max_iters:
+        print 'Warning: did not converge to solution. Error is %f.'%error
+    return X
+
+
+def balanced_truncation(A, B, C, order=None, return_sing_vals=False,
+    iterative_solver=True):
+    """Balance and truncate discrete-time LTI system defined by A, B, C.
+    
+    Args:
+        ``A``, ``B``, ``C``: LTI discrete-time 2D arrays.
+        
+    Kwargs:
+        ``order``: Order of truncated system. Default is maximum.
+            Can truncate afterwards 
+    
+    ``D`` is unchanged by balanced truncation.
+    
+    This function may not be as computationally efficient as 
+    Matlab's ``balancmr``. 
+    """
+    if iterative_solver:
+        gram_cont = solve_Lyapunov_iterative(A, B.dot(B.transpose().conj()))
+        gram_obsv = solve_Lyapunov_iterative(A.transpose().conj(), 
+            C.transpose().conj().dot(C))
+    else:
+        gram_cont = solve_Lyapunov_direct(A, B.dot(B.transpose().conj()))
+        gram_obsv = solve_Lyapunov_direct(A.transpose().conj(), 
+            C.transpose().conj().dot(C))
+    Uc, Ec, Vc = svd(gram_cont)
+    Uo, Eo, Vo = svd(gram_obsv)
+    Lc = Uc.dot(N.diag(Ec**0.5))
+    Lo = Uo.dot(N.diag(Eo**0.5))
+    U, E, V = svd(Lo.transpose().dot(Lc))
+    if order is None:
+        order = len(E)
+    SL = Lo.dot(U[:,:order]).dot(N.diag(E**-0.5))
+    SR = Lc.dot(V[:,:order]).dot(N.diag(E**-0.5))
+    A_bal_trunc = SL.transpose().dot(A).dot(SR)
+    B_bal_trunc = SL.transpose().dot(B)
+    C_bal_trunc = C.dot(SR)
+    if return_sing_vals:
+        return A_bal_trunc, B_bal_trunc, C_bal_trunc, E
+    else:
+        return A_bal_trunc, B_bal_trunc, C_bal_trunc
+    
 
 
 def drss(num_states, num_inputs, num_outputs):
@@ -275,20 +368,23 @@ def rss(num_states, num_inputs, num_outputs):
 def lsim(A, B, C, inputs, initial_condition=None):
     """Simulates a discrete time system with arbitrary inputs. 
     
-    x(n+1) = Ax(n) + Bu(n); y(n) = Cx(n)
+    :math:`x(n+1) = Ax(n) + Bu(n)`
+    :math:`y(n) = Cx(n)`
     
     Args:
-        ``A``, ``B``, and ``C``
+        ``A``, ``B``, and ``C``: State-space system arrays/matrices.
         
-        ``inputs``: Array with indices [num_time_steps, num_inputs], u.
+        ``inputs``: Array with dimensions ``[num_time_steps, num_inputs]``,
+        :math:`u`.
     
     Kwargs:
-        ``initial_condition``: Initial condition, x(0).
+        ``initial_condition``: Initial condition, :math:`x(0)`.
     
     Returns:
-        ``outputs``: Array with indices [num_time_steps, num_outputs], y.
+        ``outputs``: Array with dimensions ``[num_time_steps, num_outputs]``,
+        :math:`y`.
     
-    D matrix is assumed to be zero.
+    ``D`` matrix is assumed to be zero.
     """
     #D = 0
     A_arr = N.array(A)
@@ -310,7 +406,8 @@ def lsim(A, B, C, inputs, initial_condition=None):
     #if D.shape != (num_outputs, num_inputs):
     #    raise ValueError('D has the wrong shape, D=', D)
     if initial_condition is not None:
-        if initial_condition.shape[0] != num_states or initial_condition.ndim != 1:
+        if initial_condition.shape[0] != num_states or \
+            initial_condition.ndim != 1:
             raise ValueError('initial_condition has the wrong shape')
     else:
         initial_condition = N.zeros(num_states)
@@ -326,10 +423,12 @@ def impulse(A, B, C, num_time_steps=None):
     """Generates impulse response outputs for a discrete-time system.
     
     Args:
-        ``A, B, C``: State-space system matrices (numpy arrays or matrices).
+        ``A, B, C``: State-space system arrays/matrices.
         
+    Kwargs:
         ``num_time_steps``: Number of time steps to simulate.
-    
+            By default, automatically chooses.
+
     Returns:
         ``outputs``: Response outputs, indices [time step, output, input].
     
@@ -435,6 +534,7 @@ def load_multiple_signals(signal_paths, delimiter=' '):
         all_signals[path_num] = signals 
 
     return time_values, all_signals
+
 
 def smart_eq(arg1, arg2):
     """Checks if equal, accounting for numpy's ``==`` not returning a bool."""

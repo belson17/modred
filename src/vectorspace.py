@@ -13,8 +13,60 @@ from parallel import parallel_default_instance
 _parallel = parallel_default_instance
 import vectors as V
 
+
+class VectorSpaceArrays(object):
+    """Inner products and linear combinations with arrays.
+    
+    Kwargs:
+        ``weights``: 1D or 2D array of inner product weights, ``Y* weights X``.
+    """
+    def __init__(self, weights=None):
+        self.weights = weights
+        if self.weights is not None:
+            self.weights = N.array(self.weights).squeeze()
+        if self.weights is None:
+            VectorSpaceArrays.compute_inner_product_mat = \
+                VectorSpaceArrays._IP_no_weights
+        elif self.weights.ndim == 1:
+            VectorSpaceArrays.compute_inner_product_mat = \
+                VectorSpaceArrays._IP_1D_weights
+        elif self.weights.ndim == 2:
+            VectorSpaceArrays.compute_inner_product_mat = \
+                VectorSpaceArrays._IP_2D_weights
+        else:
+            raise ValueError('Weights must be None, 1D, or 2D')
+    def _IP_no_weights(self, vecs1, vecs2):
+        return N.array(vecs1).conj().transpose().dot(vecs2)
+    def _IP_1D_weights(self, vecs1, vecs2):
+        return (N.array(vecs1).conj().transpose() * self.weights).dot(vecs2)
+    def _IP_2D_weights(self, vecs1, vecs2):
+        return N.array(vecs1).conj().transpose().dot(self.weights).dot(vecs2)
+    def __eq__(self, other):
+        if type(other) == type(self):
+            return smart_eq(self.weights, other.weights)
+        else:
+            return False
+    
+    def lin_combine(self, basis_vec_array, coeff_mat,
+        coeff_mat_col_indices=None):
+        return basis_vec_array.dot(coeff_mat[:,coeff_mat_col_indices])
+    
+    def compute_symmetric_inner_product_mat(self, vec_array):
+        return self.compute_inner_product_mat(vec_array, vec_array)
+    
+    def __eq__(self, other):
+        if type(self) != type(other):
+            return False
+        return util.smart_eq(self.weights, other.weights)
+        
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+
+    
+    
    
-class VectorSpace(object):
+class VectorSpaceHandles(object):
     """Responsible for performing addition and multiplication in parallel.
 
     Kwargs:
@@ -22,13 +74,13 @@ class VectorSpace(object):
         
         ``max_vecs_per_node``: Max number of vecs in memory per node.
         
-        ``verbosity``: 1 prints progress and warnings, 0 prints almost nothing
+        ``verbosity``: 1 prints progress and warnings, 0 prints almost nothing.
         
-        ``print_interval``: Min interval between progress messages, seconds.
+        ``print_interval``: Min time (secs) between printed progress messages.
 
     The class implements parallelized vector addition and scalar multiplication
-    and is used in high-level classes ``POD``, ``BPOD``, ``DMD``
-    and ``LTIGalerkinProjection``. 
+    and is used in high-level classes in :py:mod:`pod`, :py:mod:`bpod`, 
+    :py:mod:`dmd` and :py:mod:`ltigalerkinproj`. 
 
     Note: Computations are often sped up by using all available processors,
     even if this lowers ``max_vecs_per_node`` proportionally. 
@@ -63,23 +115,17 @@ class VectorSpace(object):
                 _parallel.get_num_nodes()/_parallel.get_num_procs()
                 
     def _check_inner_product(self):
-        """Check that inner_product is defined"""
+        """Check that ``inner_product`` is defined"""
         if self.inner_product is None:
-            raise RuntimeError('No inner product function is defined')
+            raise RuntimeError('inner product function is not defined')
         
     
     def print_msg(self, msg, output_channel=sys.stdout):
-        """Print a message from rank 0 if verbosity"""
+        """Print a message from rank 0."""
         if self.verbosity > 0 and _parallel.is_rank_zero():
             print >> output_channel, msg
 
-    def sanity_check_in_memory(self, test_vec):
-        """Check user-supplied vector object. See :py:meth:`sanity_check`.
-        
-        Args:
-            ``test_vec``: A vector.
-        """
-        self.sanity_check(V.InMemoryVecHandle(test_vec))
+
 
     def sanity_check(self, test_vec_handle):
         """Check user-supplied vec handle and vec objects.
@@ -134,17 +180,17 @@ class VectorSpace(object):
 
 
     def compute_inner_product_mat(self, row_vec_handles, col_vec_handles):
-        """Computes a matrix of inner products and returns it.
+        """Computes the matrix of inner product combinations between vectors.
         
         Args:
-            ``row_vec_handles``: List of row vec handles.
-                For example BPOD adjoints, "Y".
+            ``row_vec_handles``: List of row vector handles.
+                For example BPOD adjoints, :math:`Y`.
           
-            ``col_vec_handles``: List of column vec handles.
-                For example BPOD directs, "X".
+            ``col_vec_handles``: List of column vector handles.
+                For example BPOD directs, :math:`X`.
         
         Returns:
-            ``IP_mat``: Array of inner products.
+            ``IP_mat``: 2D array of inner products.
 
         The vecs are retrieved in memory-efficient
         chunks and are not all in memory at once.
@@ -152,10 +198,11 @@ class VectorSpace(object):
         When they are the same, use :py:meth:`compute_symmetric_inner_product` 
         for a 2x speedup.
         
-        Each processor is responsible for retrieving a subset of the rows and
-        columns. The processors then exchange columns via MPI so it can be 
-        used to compute all IPs for the rows on each processor. This is 
-        repeated until all processors are done with all of their row chunks.
+        Each MPI worker (processor) is responsible for retrieving a subset of 
+        the rows and
+        columns. The processors then send/recv columns via MPI so they can be 
+        used to compute all IPs for the rows on each MPI worker. This is 
+        repeated until all MPI workers are done with all of their row chunks.
         If there are 2 processors::
            
                 | x o |
@@ -184,16 +231,18 @@ class VectorSpace(object):
         
         The scaling is:
         
-        - num gets / processor ~ (n_r*n_c/((max-2)*n_p*n_p)) + n_r/n_p
-        - num MPI sends / processor ~ (n_p-1)*(n_r/((max-2)*n_p))*n_c/n_p
-        - num inner products / processor ~ n_r*n_c/n_p
+        - num gets / processor ~ :math:`(n_r*n_c/((max-2)*n_p*n_p)) + n_r/n_p`
+        - num MPI sends / processor ~ :math:`(n_p-1)*(n_r/((max-2)*n_p))*n_c/n_p`
+        - num inner products / processor ~ :math:`n_r*n_c/n_p`
             
-        where n_r is number of rows, n_c number of columns, max is
-        max_vecs_per_proc = max_vecs_per_node/num_procs_per_node, and n_p is
-        number of processors.
+        where :math:`n_r` is number of rows, :math:`n_c` number of columns, 
+        :math:`max` is
+        ``max_vecs_per_proc = max_vecs_per_node/num_procs_per_node``, and 
+        :math:`n_p` is the number of MPI workers (processors).
         
         If there are more rows than columns, then an internal transpose
-        and un-transpose is performed to improve efficiency (since n_c only
+        and un-transpose is performed to improve efficiency (since :math:`n_c`
+        only
         appears in the scaling in the quadratic term).
         """
         self._check_inner_product()
@@ -220,7 +269,7 @@ class VectorSpace(object):
         # num_cols_per_proc_chunk is the number of cols each proc gets at once
         num_cols_per_proc_chunk = 1
         num_rows_per_proc_chunk = self.max_vecs_per_proc - \
-            num_cols_per_proc_chunk         
+            num_cols_per_proc_chunk
         
         # Determine how the retrieving and inner products will be split up.
         row_tasks = _parallel.find_assignments(range(num_rows))
@@ -305,7 +354,7 @@ class VectorSpace(object):
                 else:
                     start_col_index = 0
                     end_col_index = 0
-                # Cycle the col vecs to proc with rank -> mod(rank+1,numProcs) 
+                # Cycle the col vecs to proc with rank -> mod(rank+1,num_procs) 
                 # Must do this for each processor, until data makes a circle
                 col_vecs_recv = (None, None)
                 col_indices = range(start_col_index, end_col_index)
@@ -350,7 +399,8 @@ class VectorSpace(object):
                                     col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - start_row_index],
                                     col_vec)
-                        if (T.time() - self.prev_print_time) > self.print_interval:
+                        if (T.time() - self.prev_print_time) > \
+                            self.print_interval:
                             num_completed_IPs = (N.abs(IP_mat)>0).sum()
                             percent_completed_IPs = (100. * num_completed_IPs*
                                 _parallel.get_num_MPI_workers()) / (
@@ -377,32 +427,9 @@ class VectorSpace(object):
             'products')%percent_completed_IPs, sys.stderr)
         self.prev_print_time = T.time()
 
-        _parallel.barrier() # ensure that all procs leave function at same time
+        _parallel.barrier() 
         return IP_mat
 
-
-    def compute_inner_product_mat_in_memory(self, row_vecs, col_vecs):
-        """Computes a matrix of inner products and returns it.
-        
-        Args:
-            ``row_vecs``: List of row vecs.
-                For example BPOD adjoints, "Y".
-          
-            ``col_vecs``: List of column vecs.
-                For example BPOD directs, "X".
-        
-        Returns:
-            ``IP_mat``: Array of inner products.
-        
-        See :py:meth:`compute_inner_product_mat`.
-        """
-        self._check_inner_product()
-        row_vecs = util.make_list(row_vecs)
-        col_vecs = util.make_list(col_vecs)
-        row_vec_handles = [V.InMemoryVecHandle(v) for v in row_vecs]
-        col_vec_handles = [V.InMemoryVecHandle(v) for v in col_vecs]
-        return self.compute_inner_product_mat(row_vec_handles, col_vec_handles)
-        
         
         
         
@@ -469,7 +496,8 @@ class VectorSpace(object):
         vecs_per_proc = self.max_vecs_per_node * _parallel.get_num_nodes() / \
             _parallel.get_num_procs()
         num_gets =  (num_vecs**2 /2.) / ((vecs_per_proc-2) *
-            _parallel.get_num_procs()**2) + num_vecs/_parallel.get_num_procs()/2.
+            _parallel.get_num_procs()**2) + \
+            num_vecs/_parallel.get_num_procs()/2.
         total_get_time = num_gets * get_time
         self.print_msg('Computing the inner product matrix will take at least '
                     '%.1f minutes' % ((total_IP_time + total_get_time) / 60.))
@@ -590,10 +618,13 @@ class VectorSpace(object):
                                     col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - my_row_indices[0]],
                                     col_vec)
-                            if (T.time() - self.prev_print_time) > self.print_interval:
+                            if (T.time() - self.prev_print_time) > \
+                                self.print_interval:
                                 num_completed_IPs = (N.abs(IP_mat)>0).sum()
-                                percent_completed_IPs = (100.*2*num_completed_IPs *
-                                    _parallel.get_num_MPI_workers())/(num_vecs**2)
+                                percent_completed_IPs = \
+                                    (100.*2*num_completed_IPs * \
+                                    _parallel.get_num_MPI_workers())/\
+                                    (num_vecs**2)
                                 self.print_msg(('Completed %.1f%% of inner ' + 
                                     'products')%percent_completed_IPs, sys.stderr)
                                 self.prev_print_time = T.time()
@@ -639,7 +670,7 @@ class VectorSpace(object):
                         source = (_parallel.get_rank() - 1) % _parallel.\
                             get_num_procs()    
                             
-                        #Create unique tag based on ranks
+                        # Create unique tag based on ranks
                         send_tag = _parallel.get_rank() * (_parallel.\
                             get_num_procs() + 1) + dest
                         recv_tag = source*(_parallel.get_num_procs() + 1) +\
@@ -700,135 +731,14 @@ class VectorSpace(object):
             'products')%percent_completed_IPs, sys.stderr)
         self.prev_print_time = T.time()
         
-        _parallel.barrier() # ensure that all procs leave function at same time
+        _parallel.barrier()
         return IP_mat
         
-        
-    def compute_symmetric_inner_product_mat_in_memory(self, vecs):
-        """Computes an upper-triangular symmetric matrix of inner products.
-        
-        Args:
-            ``vecs``: List of vectors.
-        
-        Returns:
-            ``IP_mat``: Numpy array of inner products.
-        
-        See :py:meth:`compute_symmetric_inner_product_mat`.
-        """
-        self._check_inner_product()
-        vecs = util.make_list(vecs)
-        return self.compute_symmetric_inner_product_mat(
-            [V.InMemoryVecHandle(v) for v in vecs])
-        
-        
-    def compute_modes(self, mode_nums, mode_handles, vec_handles, vec_coeff_mat,
-        index_from=0):
-        """Compute modes from vector handles.
-        
-        Args:
-          ``mode_nums``: List of mode numbers to compute. 
-              Examples are: ``range(10)`` or ``[3, 1, 6, 8]``. 
-              The mode numbers need not be sorted. 
-              
-          ``mode_handles``: List of handles for modes.
-          
-          ``vec_handles``: List of handles for vectors.
-          
-          ``vec_coeff_mat``: Matrix of coefficients for constructing modes. 
-              [mode0 mode1 ...] = [vec0 vec1 ...] * vec_coeff_mat
-              The row corresponds to the vec, the column to the mode.
-              The kth column corresponds to the ``index_from + k`` mode number. 
-              
-        Kwargs:
-          ``index_from``: Integer from which to index modes, 0, 1, or other.
-        
-        This method casts computing modes as a linear combination of elements.
-        It rearranges the coeff matrix so that the first column corresponds to
-        the first mode number in mode_nums.
-        Calls ``lin_combine`` with ``sum_vecs`` as the modes and the
-        ``basis_vecs`` as the vecs.
-        """                   
-        mode_nums = util.make_list(mode_nums)
-        mode_handles = util.make_list(mode_handles)
-                
-        num_modes = len(mode_nums)
-        num_vecs = len(vec_handles)
-        
-        if num_modes > num_vecs:
-            raise ValueError(('Cannot compute more modes (%d) than number of '
-                'vecs(%d)')%(num_modes, num_vecs))
-        
-        if num_modes > len(mode_handles):
-            raise ValueError('More mode numbers than mode destinations')
-        elif num_modes < len(mode_handles):
-            print ('Warning: Fewer mode numbers (%d) than mode ' 
-                'destinations(%d),'
-                ' some mode destinations will not be used')%(
-                    num_modes, len(mode_handles))
-            mode_handles = mode_handles[:num_modes] # deepcopy?
-        
-        for mode_num in mode_nums:
-            if mode_num < index_from:
-                raise ValueError('Cannot compute if mode number is less than '
-                    'index_from')
-            elif mode_num-index_from > vec_coeff_mat.shape[1]:
-                raise ValueError('Mode index, %d, is greater '
-                    'than number of columns in the build coefficient '
-                    'matrix, %d'%(mode_num-index_from,vec_coeff_mat.shape[1]))
-        
-        # Construct vec_coeff_mat and outputPaths for lin_combine_vecs
-        mode_nums_from_zero = [mode_num-index_from for mode_num in mode_nums]
-        vec_coeff_mat_reordered = vec_coeff_mat[:, mode_nums_from_zero]
-        
-        self.lin_combine(mode_handles, vec_handles, vec_coeff_mat_reordered)
-        _parallel.barrier() # ensure that all procs leave function at same time
-    
-    
-    def compute_modes_in_memory(self, mode_nums, vecs, vec_coeff_mat, 
-        index_from=0):
-        """Compute modes from vectors. 
-        
-        Args:
-            ``mode_nums``: List of mode numbers to compute. 
-                Examples are: ``range(10)`` or ``[3, 1, 6, 8]``. 
-                The mode numbers need not be sorted. 
-              
-            ``vec_handles``: List of vectors.
-          
-            ``vec_coeff_mat``: Matrix of coefficients for constructing modes. 
-                [mode0 mode1 ...] = [vec0 vec1 ...] * vec_coeff_mat
-                The row corresponds to the vec, the column to the mode.
-                The kth column corresponds to the ``index_from + k`` mode number. 
-              
-        Kwargs:
-            ``index_from``: Integer from which to index modes, 0, 1, or other.
 
-        Returns:
-            ``modes``: List of modes.
-
-        See :py:meth:`compute_modes`.      
-        In parallel, each MPI worker returns the full list of modes.
-        """
-        vecs = util.make_list(vecs)
-        mode_handles = [V.InMemoryVecHandle() for i in mode_nums]
-        vec_handles = [V.InMemoryVecHandle(vec=vec) for vec in vecs]
-        self.compute_modes(mode_nums, mode_handles, 
-            vec_handles, vec_coeff_mat, index_from)
-        #print 'mode handles',mode_handles
-        modes = [mode_handle.get() for mode_handle in mode_handles]
-        #print 'rank: %d, modes'%_parallel.get_rank(),modes
-        if _parallel.is_distributed():
-            for i in range(modes.count(None)):
-                modes.remove(None)
-            modes_list = _parallel.comm.allgather(modes)
-            # all_modes is a 1D list of all processors' modes.
-            all_modes = util.flatten_list(modes_list)
-        else:
-            all_modes = modes
-        return all_modes
     
     
-    def lin_combine(self, sum_vec_handles, basis_vec_handles, vec_coeff_mat):
+    def lin_combine(self, sum_vec_handles, basis_vec_handles, coeff_mat,
+        coeff_mat_col_indices=None):
         """Linearly combines the basis vecs and calls ``put`` on result.
         
         Args:
@@ -836,12 +746,16 @@ class VectorSpace(object):
                 
             ``basis_vec_handles``: List of handles for the basis vecs.
                 
-            ``vec_coeff_mat``: Matrix with rows corresponding to a basis vecs
+            ``coeff_mat``: Matrix with rows corresponding to a basis vecs
                 and columns to sum (lin. comb.) vecs.
                 The rows and columns correspond, by index,
                 to the lists basis_vec_handles and sum_vec_handles.
-                ``sums = basis * vec_coeff_mat``
-
+                ``sums = basis * coeff_mat``
+        
+        Kwargs:
+            ``coeff_mat_col_indices``: List of column indices.
+                The sum_vecs corresponding to these col indices are computed.
+            
         Each processor retrieves a subset of the basis vecs to compute as many
         outputs as a processor can have in memory at once. Each processor
         computes the "layers" from the basis it is resonsible for, and for
@@ -850,33 +764,35 @@ class VectorSpace(object):
         
         Scaling is:
         
-          num gets/worker = n_s/(n_p*(max-2)) * n_b/n_p
+          num gets/worker = :math:`n_s/(n_p*(max-2)) * n_b/n_p`
           
-          passes/worker = (n_p-1) * n_s/(n_p*(max-2)) * (n_b/n_p)
+          passes/worker = :math:`(n_p-1) * n_s/(n_p*(max-2)) * (n_b/n_p)`
           
-          scalar multiplies/worker = n_s*n_b/n_p
+          scalar multiplies/worker = :math:`n_s*n_b/n_p`
           
-        Where n_s is number of sum vecs, n_b is number of basis vecs,
-        n_p is number of processors, max = max_vecs_per_node.
+        Where :math:`n_s` is number of sum vecs, :math:`n_b` is 
+        number of basis vecs,
+        :math:`n_p` is number of processors, :math:`max` = 
+        ``max_vecs_per_node``.
         """
         sum_vec_handles = util.make_list(sum_vec_handles)
         basis_vec_handles = util.make_list(basis_vec_handles)
         num_bases = len(basis_vec_handles)
         num_sums = len(sum_vec_handles)
-        if num_bases > vec_coeff_mat.shape[0]:
-            raise ValueError(('Coeff mat has fewer rows %d than num of basis '
-                'handles %d'%(vec_coeff_mat.shape[0],num_bases)))
-                
-        if num_sums > vec_coeff_mat.shape[1]:
-            raise ValueError(('Coeff matrix has fewer cols %d than num of '
-                'output handles %d')%(vec_coeff_mat.shape[1],num_sums))
-                               
-        if num_bases < vec_coeff_mat.shape[0]:
-            self.print_msg('Warning: fewer bases than cols in the coeff matrix'
+        if coeff_mat_col_indices is not None:
+            coeff_mat = coeff_mat[:, coeff_mat_col_indices]
+        if num_bases > coeff_mat.shape[0]:
+            raise ValueError(('coeff_mat has fewer rows %d than num of basis '
+                'handles %d'%(coeff_mat.shape[0],num_bases)))
+        if num_sums > coeff_mat.shape[1]:
+            raise ValueError(('coeff_mat has fewer cols %d than num of '
+                'output handles %d')%(coeff_mat.shape[1],num_sums))
+        if num_bases < coeff_mat.shape[0]:
+            self.print_msg('Warning: fewer bases than rows in coeff_mat'
                 ', some rows of coeff matrix will not be used')
-        if num_sums < vec_coeff_mat.shape[1]:
-            self.print_msg('Warning: fewer outputs than rows in the coeff '
-                'matrix, some cols of coeff matrix will not be used')
+        if num_sums < coeff_mat.shape[1]:
+            self.print_msg('Warning: fewer outputs than cols in coeff_mat '
+                ', some cols of coeff matrix will not be used')
         
         # Estimate time it will take
         # Burn the first one for slow imports
@@ -887,19 +803,19 @@ class VectorSpace(object):
         test_vec = basis_vec_handles[0].get()
         get_time = T.time() - start_time
         start_time = T.time()
-        test_vec_3 = test_vec + test_vec*2.0
+        test_vec_3 = test_vec + 2.*test_vec
         add_scale_time = T.time() - start_time
         del test_vec, test_vec_3
         
         vecs_per_worker = self.max_vecs_per_node * _parallel.get_num_nodes() / \
             _parallel.get_num_MPI_workers()
-        num_gets = num_sums/(_parallel.get_num_MPI_workers()*(vecs_per_worker-2)) + \
+        num_gets = num_sums/(_parallel.get_num_MPI_workers()*(\
+            vecs_per_worker-2)) + \
             num_bases/_parallel.get_num_MPI_workers()
         num_add_scales = num_sums*num_bases/_parallel.get_num_MPI_workers()
         self.print_msg('Linear combinations will take at least %.1f minutes'%
             (num_gets*get_time/60. + num_add_scales*add_scale_time/60.))
 
-        
         # convenience
         rank = _parallel.get_rank()
 
@@ -954,7 +870,7 @@ class VectorSpace(object):
                 else:
                     basis_indices = []
                 
-                # Pass the basis vecs to proc with rank -> mod(rank+1,numProcs) 
+                # Pass the basis vecs to proc with rank -> mod(rank+1,num_procs) 
                 # Must do this for each processor, until data makes a circle
                 basis_vecs_recv = (None, None)
 
@@ -995,12 +911,12 @@ class VectorSpace(object):
                         basis_vecs = basis_vecs_recv[0]
                     
                     # Compute the scalar multiplications for this set of data.
-                    # basis_indices stores the indices of the vec_coeff_mat to
+                    # basis_indices stores the indices of the coeff_mat to
                     # use.
                     for sum_index in xrange(start_sum_index, end_sum_index):
                         for basis_index, basis_vec in enumerate(basis_vecs):
                             sum_layer = basis_vec * \
-                                vec_coeff_mat[basis_indices[basis_index],\
+                                coeff_mat[basis_indices[basis_index],\
                                 sum_index]
                             if sum_layers[sum_index-start_sum_index] is None:
                                 sum_layers[sum_index-start_sum_index] = \
@@ -1023,45 +939,9 @@ class VectorSpace(object):
         
         self.print_msg('Completed %.1f%% of linear combinations' % 100.)
         self.prev_print_time = T.time()
-        # ensure that all workers leave function at same time
         _parallel.barrier() 
         
     
-    def lin_combine_in_memory(self, basis_vecs, vec_coeff_mat):
-        """Linearly combines the basis vecs and returns resulting vecs.
-        
-        Args:
-            ``sum_vecs``: List of sum vectors.
-                
-            ``basis_vecs``: List of basis vecs.
-                
-            ``vec_coeff_mat``: Matrix with rows corresponding to a basis vecs
-                and columns to sum (lin. comb.) vecs.
-                The rows and columns correspond, by index,
-                to the lists basis_vec_handles and sum_vec_handles.
-                ``sums = basis * vec_coeff_mat``
-        
-        Returns:
-            List of linearly combined vectors.
-        
-        See :py:meth:`lin_combine`.
-        """
-        basis_vecs = util.make_list(basis_vecs)
-        basis_vec_handles = [V.InMemoryVecHandle(vec=v) for v in basis_vecs]
-        sum_vec_handles = [V.InMemoryVecHandle() 
-            for i in range(vec_coeff_mat.shape[1])]
-        self.lin_combine(sum_vec_handles, basis_vec_handles, vec_coeff_mat)
-        sum_vecs = [sum_vec_handle.get() for sum_vec_handle in sum_vec_handles]
-        if _parallel.is_distributed():
-            sum_vecs_list = _parallel.comm.allgather(sum_vecs)
-            # all_sum_ves is a 1D list of all processors' sum_vecs.
-            all_sum_vecs = util.flatten_list(sum_vecs_list)
-            for i in range(all_sum_vecs.count(None)):
-                all_sum_vecs.remove(None)
-        else:
-            all_sum_vecs = sum_vecs
-        return all_sum_vecs
-
     def __eq__(self, other):
         if type(self) != type(other):
             return False

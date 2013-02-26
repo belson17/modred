@@ -3,6 +3,64 @@ Release notes
 =============
 
 ------------
+modred 1.0.0
+------------
+Many interface changes, including new classes for different sized data.
+
+**New features and improvements**
+
+* New classes for data that fits entirely on one node's memory. These are
+  :py:class:`pod.PODArrays`, :py:class:`bpod.BPODArrays`, 
+  :py:class:`dmd.DMDArrays`, 
+  :py:class:`ltigalerkinproj.LTIGalerkinProjectionArrays`, and
+  :py:class:`vectorspace.VectorSpaceArrays`.
+  These replace the ``in_memory`` member functions and improve 
+  computational efficiency for small data.
+
+* Balance model provided in :py:mod:`vectorspace`.
+
+
+**Bug fixes**
+
+* None
+
+
+**Interface changes**
+
+* The ``POD``, ``BPOD``, ``DMD``, ``LTIGalerkinProjection``, and
+  ``VectorSpace`` classes have 
+  each been split in two for different size data. 
+  The class names are appended with "``Arrays``" and "``Handles``".
+
+* All ``in_memory`` member functions have been removed, replaced by 
+  classes above.
+
+* Removed the ``index_from`` optional argument in ``compute_modes`` functions. 
+  Mode numbers are now always indexed from zero and are renamed mode indices.
+
+* The `VectorSpace` member function ``compute_modes`` has
+  been removed and its functionality moved to ``lin_combine``.
+
+* Function ``compute_model`` requires the result of an operator on a vector, 
+  rather than the operator itself. For example, see 
+  :py:meth:`ltigalerkinproj.LTIGalerkinProjectionHandles.compute_model`.
+  The operator classes have been removed.
+
+
+**Internal changes**
+
+* OKID now uses least squares instead of a pseudo-inverse for improved numerical
+  stability. 
+
+* Base classes :py:class:`pod.PODBase`, :py:class:`bpod.BPODBase`, 
+  :py:class:`dmd.DMDBase`, and :py:class:`ltigalerkinproj.LTIGalerkinProjBase`
+  contain common functionality for the arrays and handles derived classes. 
+
+* Added :py:class:`util.InnerProductBlock` for testing.
+
+
+
+------------
 modred 0.3.2
 ------------
 The main change is a bug fix in :py:meth:`util.lsim`.
@@ -93,9 +151,7 @@ modred 0.3.0
 * :py:class:`dmd.DMD` no longer uses an instance of :py:class:`pod.POD`. 
 
 * The equals operator of vector handles now better deals with vectors which
-are numpy array objects.
-
-
+  are numpy array objects.
 
 
 ------------

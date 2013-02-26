@@ -119,12 +119,13 @@ class InnerProductTrapz(object):
       
       nx = 10
       ny = 11
+      x_grid = 1 - N.cos(N.linspace(0, N.pi, nx))
+      y_grid = N.linspace(0, 1.0, ny)**2
+      my_trapz = InnerProductTrapz(x_grid, y_grid)
+
       v1 = N.random.random((nx,ny))
       v2 = N.random.random((nx,ny))
-      x_grid = N.arange(0, N.pi, nx)
-      y_grid = N.arange(-1, 1, ny)
-      my_trapz = InnerProductTrapz(x_grid, y_grid)
-      IP = my_trapz(v1, v2)
+      IP_v1_v2 = my_trapz(v1, v2)
     
     """
     def __init__(self, *grids):

@@ -12,64 +12,193 @@ import helper
 helper.add_to_path(join(join(os.path.dirname(os.path.abspath(__file__)), 
     '..', 'src')))
 import parallel as parallel_mod
-parallel = parallel_mod.parallel_default_instance
+_parallel = parallel_mod.parallel_default_instance
 
-from pod import POD
-from vectorspace import VectorSpace
+from pod import *
+from vectorspace import *
 import vectors as V
 import util
 
 
-class TestPOD(unittest.TestCase):
-    """ Test all the POD class methods """
-    
+class TestPODBase(unittest.TestCase):
+    def test_put_gets(self):
+        test_dir = 'DELETE_ME_test_files_pod'
+        if not os.access('.', os.W_OK):
+            raise RuntimeError('Cannot write to current directory')
+        if not os.path.isdir(test_dir):        
+            _parallel.call_from_rank_zero(os.mkdir, test_dir)
+        num_vecs = 10
+        num_states = 30
+        correlation_mat_true = _parallel.call_and_bcast(
+            N.random.random, ((num_vecs, num_vecs)))
+        eigen_vals_true = _parallel.call_and_bcast(
+            N.random.random, num_vecs)
+        eigen_vecs_true = _parallel.call_and_bcast(
+            N.random.random, ((num_states, num_vecs)))
+        my_POD = PODBase(verbosity=0)
+        my_POD.correlation_mat = correlation_mat_true
+        my_POD.eigen_vals = eigen_vals_true
+        my_POD.eigen_vecs = eigen_vecs_true
+        _parallel.barrier()
+        
+        eigen_vecs_path = join(test_dir, 'eigen_vecs.txt')
+        eigen_vals_path = join(test_dir, 'eigen_vals.txt')
+        correlation_mat_path = join(test_dir, 'correlation.txt')
+        my_POD.put_decomp(eigen_vecs_path, eigen_vals_path)
+        my_POD.put_correlation_mat(correlation_mat_path)
+        
+        POD_load = PODBase()
+        POD_load.get_decomp(eigen_vecs_path, eigen_vals_path)
+        correlation_mat_loaded = util.load_array_text(correlation_mat_path)
+
+        N.testing.assert_allclose(correlation_mat_loaded, 
+            correlation_mat_true)
+        N.testing.assert_allclose(POD_load.eigen_vecs, eigen_vecs_true)
+        N.testing.assert_allclose(POD_load.eigen_vals, eigen_vals_true)
+
+
+@unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
+class TestPODArrays(unittest.TestCase):
+    def setUp(self):
+        self.mode_indices = [2, 4, 6, 3]
+        self.num_vecs = 10
+        self.num_states = 30
+        _parallel.barrier()
+
+
+    def test_init(self):
+        def my_load(): pass
+        def my_save(): pass
+        
+        weights = N.random.random(5)
+        data_members_default = {
+            'vec_space': VectorSpaceArrays(), 
+            'put_mat': util.save_array_text, 
+            'get_mat': util.load_array_text,
+            'verbosity': 0, 
+            'eigen_vecs': None, 'eigen_vals': None,
+            'correlation_mat': None, 'vec_array': None}
+        
+        self.assertEqual(util.get_data_members(PODArrays(verbosity=0)), 
+            data_members_default)
+        
+        my_POD = PODArrays(inner_product_weights=weights, verbosity=0)
+        data_members_modified = copy.deepcopy(data_members_default)
+        data_members_modified['vec_space'] = VectorSpaceArrays(
+            weights=weights)
+        self.assertEqual(util.get_data_members(my_POD), data_members_modified)
+        
+        my_POD = PODArrays(verbosity=0)
+        data_members_modified = copy.deepcopy(data_members_default)
+        self.assertEqual(util.get_data_members(my_POD), data_members_modified)
+       
+        my_POD = PODArrays(get_mat=my_load, verbosity=0)
+        data_members_modified = copy.deepcopy(data_members_default)
+        data_members_modified['get_mat'] = my_load
+        self.assertEqual(util.get_data_members(my_POD), data_members_modified)
+ 
+        my_POD = PODArrays(put_mat=my_save, verbosity=0)
+        data_members_modified = copy.deepcopy(data_members_default)
+        data_members_modified['put_mat'] = my_save
+        self.assertEqual(util.get_data_members(my_POD), data_members_modified)
+
+
+    def test_compute_decomp(self):
+        """Test computation of the correlation mat and SVD matrices."""
+        tol = 1e-6
+        ws = N.identity(self.num_states)
+        ws[0,0] = 2
+        ws[1,0] = 1.1
+        ws[0,1] = 1.1
+        weights_list = [None, N.random.random(self.num_states), ws]
+        vec_array = _parallel.call_and_bcast(N.random.random, 
+            (self.num_states, self.num_vecs))
+        for weights in weights_list:
+            IP = VectorSpaceArrays(weights=weights).compute_inner_product_mat
+            correlation_mat_true = IP(vec_array, vec_array)
+            eigen_vals_true, eigen_vecs_true = _parallel.call_and_bcast(
+                util.eigh, correlation_mat_true)
+            mode_array = N.dot(vec_array, N.dot(eigen_vecs_true, N.diag(
+                eigen_vals_true**-0.5)))
+
+            my_POD = PODArrays(inner_product_weights=weights, verbosity=0)
+            eigen_vecs_returned, eigen_vals_returned = \
+                my_POD.compute_decomp(vec_array)            
+            
+            N.testing.assert_allclose(my_POD.correlation_mat, 
+                correlation_mat_true, rtol=tol)
+            N.testing.assert_allclose(my_POD.eigen_vecs, 
+                eigen_vecs_true, rtol=tol)
+            N.testing.assert_allclose(my_POD.eigen_vals, 
+                eigen_vals_true, rtol=tol)
+              
+            N.testing.assert_allclose(eigen_vecs_returned, 
+                eigen_vecs_true, rtol=tol)
+            N.testing.assert_allclose(eigen_vals_returned, 
+                eigen_vals_true, rtol=tol)
+                     
+
+    def test_compute_modes(self):
+        ws = N.identity(self.num_states)
+        ws[0,0] = 2
+        ws[1,0] = 1.1
+        ws[0,1] = 1.1
+        weights_list = [None, N.random.random(self.num_states), ws]
+        vec_array = _parallel.call_and_bcast(N.random.random, 
+            ((self.num_states, self.num_vecs)))
+        for weights in weights_list:
+            IP = VectorSpaceArrays(weights=weights).compute_inner_product_mat
+            correlation_mat_true = IP(vec_array, vec_array)
+            eigen_vals_true, eigen_vecs_true = _parallel.call_and_bcast(
+                util.eigh, correlation_mat_true)
+            mode_array = vec_array.dot(eigen_vecs_true).dot(N.diag(
+                eigen_vals_true**-0.5))
+            
+            my_POD = PODArrays(inner_product_weights=weights, verbosity=0)
+            eigen_vecs_returned, eigen_vals_returned = \
+                my_POD.compute_decomp(vec_array)        
+            modes_returned = my_POD.compute_modes(self.mode_indices, 
+                vec_array=vec_array)
+            N.testing.assert_allclose(modes_returned, 
+                mode_array[:,self.mode_indices])
+
+                        
+
+class TestPODHandles(unittest.TestCase):
     def setUp(self):
         self.test_dir = 'DELETE_ME_test_files_pod'
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():        
+        if not os.path.isdir(self.test_dir) and _parallel.is_rank_zero():        
             os.mkdir(self.test_dir)
-        self.mode_nums = [2, 4, 3, 6, 9, 8, 10, 11, 30]
-        self.num_vecs = 40
-        self.num_states = 100
-        self.index_from = 2
-        
-        self.my_POD = POD(N.vdot, verbosity=0)
-        self.generate_data_set()
-        parallel.barrier()
+        self.mode_indices = [2, 4, 3, 6]
+        self.num_vecs = 10
+        self.num_states = 30
+        self.vec_array = _parallel.call_and_bcast(N.random.random, 
+            (self.num_states, self.num_vecs))
+        self.correlation_mat_true = self.vec_array.conj().transpose().dot(
+            self.vec_array)
+    
+        self.eigen_vals_true, self.eigen_vecs_true = \
+            _parallel.call_and_bcast(util.eigh, self.correlation_mat_true)
 
-    def tearDown(self):
-        parallel.barrier()
-        if parallel.is_rank_zero():
-            rmtree(self.test_dir, ignore_errors=True)
-        parallel.barrier()
-
-    def generate_data_set(self):
-        """Create data set (saved to file)"""
+        self.mode_array = N.dot(self.vec_array, N.dot(self.eigen_vecs_true,
+            N.diag(self.eigen_vals_true**-0.5)))
         self.vec_path = join(self.test_dir, 'vec_%03d.txt')
         self.vec_handles = [V.ArrayTextVecHandle(self.vec_path%i)
             for i in range(self.num_vecs)]
+        for vec_index, handle in enumerate(self.vec_handles):
+            handle.put(self.vec_array[:, vec_index])
         
-        if parallel.is_rank_zero():
-            self.vec_array = N.random.random((self.num_states, 
-                self.num_vecs))
-            for vec_index, handle in enumerate(self.vec_handles):
-                handle.put(self.vec_array[:, vec_index])
-        else:
-            self.vec_array = None
-        if parallel.is_distributed():
-            self.vec_array = parallel.comm.bcast(self.vec_array, root=0)
-            
-        self.vecs = [self.vec_array[:,i] for i in range(self.num_vecs)]
-        self.correlation_mat_true = N.dot(self.vec_array.T, self.vec_array)
-        
-        #Do the SVD on all procs.
-        self.eigen_vals_true, self.eigen_vecs_true = util.eigh(
-            self.correlation_mat_true)
+        self.my_POD = PODHandles(N.vdot, verbosity=0)
+        _parallel.barrier()
 
-        self.mode_array = N.dot(self.vec_array, N.dot(self.eigen_vecs_true, N.diag(
-            self.eigen_vals_true**-0.5)))
 
+    def tearDown(self):
+        _parallel.barrier()
+        _parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
+        _parallel.barrier()
+                          
      
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
@@ -83,66 +212,47 @@ class TestPOD(unittest.TestCase):
             util.load_array_text,
             'verbosity': 0, 'eigen_vecs': None, 'eigen_vals': None,
             'correlation_mat': None, 'vec_handles': None, 'vecs': None,
-            'vec_space': VectorSpace(inner_product=my_IP, verbosity=0)}
+            'vec_space': VectorSpaceHandles(inner_product=my_IP, verbosity=0)}
+        for k,v in util.get_data_members(PODHandles(my_IP, verbosity=0)).iteritems():
+            self.assertEqual(v, data_members_default[k])
         
-        self.assertEqual(util.get_data_members(POD(my_IP, verbosity=0)), 
-            data_members_default)
-        
-        my_POD = POD(my_IP, verbosity=0)
+        my_POD = PODHandles(my_IP, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_space'] = VectorSpace(inner_product=my_IP, 
-            verbosity=0)
-        self.assertEqual(util.get_data_members(my_POD), data_members_modified)
-       
-        my_POD = POD(my_IP, get_mat=my_load, verbosity=0)
+        data_members_modified['vec_space'] = VectorSpaceHandles(
+            inner_product=my_IP, verbosity=0)
+        for k,v in util.get_data_members(my_POD).iteritems():
+            self.assertEqual(v, data_members_modified[k])
+        
+        my_POD = PODHandles(my_IP, get_mat=my_load, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['get_mat'] = my_load
-        self.assertEqual(util.get_data_members(my_POD), data_members_modified)
- 
-        my_POD = POD(my_IP, put_mat=my_save, verbosity=0)
+        for k,v in util.get_data_members(my_POD).iteritems():
+            self.assertEqual(v, data_members_modified[k])
+            
+        my_POD = PODHandles(my_IP, put_mat=my_save, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['put_mat'] = my_save
-        self.assertEqual(util.get_data_members(my_POD), data_members_modified)
-        
+        for k,v in util.get_data_members(my_POD).iteritems():
+            self.assertEqual(v, data_members_modified[k])
+            
         max_vecs_per_node = 500
-        my_POD = POD(my_IP, max_vecs_per_node=max_vecs_per_node, verbosity=0)
+        my_POD = PODHandles(my_IP, max_vecs_per_node=max_vecs_per_node, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_space'].max_vecs_per_node = \
             max_vecs_per_node
         data_members_modified['vec_space'].max_vecs_per_proc = \
-            max_vecs_per_node * parallel.get_num_nodes() / \
-            parallel.get_num_procs()
-        self.assertEqual(util.get_data_members(my_POD), data_members_modified)
-          
+            max_vecs_per_node * _parallel.get_num_nodes() / \
+            _parallel.get_num_procs()
+        for k,v in util.get_data_members(my_POD).iteritems():
+            self.assertEqual(v, data_members_modified[k])
+            
         
     def test_compute_decomp(self):
-        """
-        Test that can take vecs, compute the correlation and SVD matrices
-        
-        With previously generated random vecs, compute the correlation 
-        matrix, then take the SVD. The computed matrices are saved, then
-        loaded and compared to the true matrices. 
-        """
+        """Test computation of the correlation mat and SVD matrices."""
         tol = 1e-6
-        eigen_vecs_path = join(self.test_dir, 'eigen_vecs.txt')
-        eigen_vals_path = join(self.test_dir, 'eigen_vals.txt')
-        correlation_mat_path = join(self.test_dir, 'correlation.txt')
-        
         eigen_vecs_returned, eigen_vals_returned = \
             self.my_POD.compute_decomp(self.vec_handles)
-        eigen_vecs_returned2, eigen_vals_returned2 = \
-            self.my_POD.compute_decomp_in_memory(self.vecs)
-        N.testing.assert_equal(eigen_vecs_returned, eigen_vecs_returned2)
-        N.testing.assert_equal(eigen_vals_returned, eigen_vals_returned2)
-        
-        self.my_POD.put_decomp(eigen_vecs_path, eigen_vals_path)
-        self.my_POD.put_correlation_mat(correlation_mat_path)
-        
-        eigen_vecs_loaded = util.load_array_text(eigen_vecs_path)
-        eigen_vals_loaded = N.squeeze(N.array(util.load_array_text(
-            eigen_vals_path)))
-        correlation_mat_loaded = util.load_array_text(correlation_mat_path)
-        
+                        
         N.testing.assert_allclose(self.my_POD.correlation_mat, 
             self.correlation_mat_true, rtol=tol)
         N.testing.assert_allclose(self.my_POD.eigen_vecs, 
@@ -154,58 +264,32 @@ class TestPOD(unittest.TestCase):
             self.eigen_vecs_true, rtol=tol)
         N.testing.assert_allclose(eigen_vals_returned, 
             self.eigen_vals_true, rtol=tol)
-          
-        N.testing.assert_allclose(correlation_mat_loaded, 
-            self.correlation_mat_true, rtol=tol)
-        N.testing.assert_allclose(eigen_vecs_loaded, self.eigen_vecs_true,
-            rtol=tol)
-        N.testing.assert_allclose(eigen_vals_loaded, self.eigen_vals_true,
-            rtol=tol)
+
         
 
     def test_compute_modes(self):
-        """
-        Test computing modes in serial and parallel. 
-        
-        This method uses the existing random data set saved to disk. It tests
-        that POD can generate the modes, save them, and load them, then
-        compares them to the known solution.
-        """
         mode_path = join(self.test_dir, 'mode_%03d.txt')
         mode_handles = [V.ArrayTextVecHandle(mode_path%i) 
-            for i in self.mode_nums]
+            for i in self.mode_indices]
         # starts with the CORRECT decomposition.
         self.my_POD.eigen_vecs = self.eigen_vecs_true
         self.my_POD.eigen_vals = self.eigen_vals_true
         
-        my_POD_in_memory = POD(N.vdot, verbosity=False)
-        my_POD_in_memory.eigen_vecs = self.eigen_vecs_true
-        my_POD_in_memory.eigen_vals = self.eigen_vals_true
-        
-        self.my_POD.compute_modes(self.mode_nums, mode_handles, 
-            index_from=self.index_from, vec_handles=self.vec_handles)
-        
-        modes_returned = my_POD_in_memory.compute_modes_in_memory(
-            self.mode_nums, vecs=self.vecs, 
-            index_from=self.index_from) 
-        
+        self.my_POD.compute_modes(self.mode_indices, mode_handles, 
+            vec_handles=self.vec_handles)
+                
         for mode_index, mode_handle in enumerate(mode_handles):
             mode = mode_handle.get()
             N.testing.assert_allclose(mode.squeeze(), 
-                self.mode_array[:,self.mode_nums[mode_index]-self.index_from])
-            N.testing.assert_allclose(
-                modes_returned[mode_index].squeeze(), 
-                N.array(self.mode_array[:,
-                    self.mode_nums[mode_index]-self.index_from]).squeeze())
-
+                self.mode_array[:,self.mode_indices[mode_index]])
         
         for mode_index1, handle1 in enumerate(mode_handles):
             mode1 = handle1.get()
             for mode_index2, handle2 in enumerate(mode_handles):
                 mode2 = handle2.get()
                 IP = self.my_POD.vec_space.inner_product(mode1, mode2)
-                if self.mode_nums[mode_index1] != \
-                    self.mode_nums[mode_index2]:
+                if self.mode_indices[mode_index1] != \
+                    self.mode_indices[mode_index2]:
                     self.assertAlmostEqual(IP, 0.)
                 else:
                     self.assertAlmostEqual(IP, 1.)

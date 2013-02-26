@@ -42,8 +42,7 @@ Modred can be easily extended to other methods you might like to use.
 
 Since you provide the functions which interface with your data,
 modred can handle any data format.
-For common formats, such as arrays, 
-there are convenience functions that make this process almost trivial.
+For the common case of arrays, there are very simple classes to use.
 It is also possible to call existing functions in
 other languages such as C/C++, Fortran, Java, and Matlab with tools like Cython, 
 SWIG, f2py, and mlabwrap, thus eliminating the need
@@ -76,9 +75,8 @@ already with success.
 
 **Limitations**
 
-The biggest limitation is for datasets which have elements
-which are large so that having three in one node's memory at once
-is impossible. 
+The biggest limitation is for datasets so large that it is impossible to
+have three elements in one node's memory at once. 
 The parallelization doesn't break up individual pieces of
 data for you, i.e. it doesn't do domain decomposition for you (by design).
 However, modred could be extended so you can 

@@ -25,15 +25,10 @@ if parallel.is_rank_zero():
         handle.put(N.random.random((nx, ny)))
 parallel.barrier()
 
-# Create A, B, and C operators and compute the model.
-A_op = MR.LookUpOperator(basis_vecs, A_on_basis_vecs)
-B_op = MR.LookUpOperator(MR.standard_basis(num_inputs), B_on_bases)
-C_op = MR.LookUpOperator(basis_vecs, C_on_basis_vecs)
-
 inner_product = N.vdot
-LTI_proj = MR.LTIGalerkinProjection(inner_product, basis_vecs, 
-    adjoint_basis_vecs=adjoint_basis_vecs)
+LTI_proj = MR.LTIGalerkinProjectionHandles(inner_product, basis_vecs, 
+    adjoint_basis_vec_handles=adjoint_basis_vecs)
 A_reduced, B_reduced, C_reduced = LTI_proj.compute_model(
-    A_op, B_op, C_op, num_inputs)
+    A_on_basis_vecs, B_on_bases, C_on_basis_vecs)
 LTI_proj.put_model('A_reduced.txt', 'B_reduced.txt', 'C_reduced.txt')
 

@@ -3,22 +3,27 @@ import numpy as N
 
 # Define the snapshots to be used.
 num_vecs = 100
-base_vec_handle = MR.PickleVecHandle('base_vec.pkl')
-snapshots = [MR.PickleVecHandle('vec%d.pkl'%i, base_vec_handle=base_vec_handle)
-             for i in range(num_vecs)]
- 
-# Save arbitrary data, normally unnecessary.
-num_elements = 2000  
+# Non-uniform grid and corresponding inner product weights.
+nx = 100
+ny = 100
+x_grid = 1. - N.cos(N.linspace(0, N.pi, nx))
+y_grid = N.linspace(0, 1., ny)**2
+Y, X = N.meshgrid(y_grid, x_grid)
+
+snapshots = [MR.PickleVecHandle('vec%d.pkl'%i) for i in range(num_vecs)]
 parallel = MR.parallel_default_instance
 if parallel.is_rank_zero():
-    for snap in snapshots + [base_vec_handle]:
-        snap.put(N.random.random(num_elements))
+    for i,snap in enumerate(snapshots):
+        snap.put(N.sin(X*0.1*i) + N.cos(Y*0.15*i))
 parallel.barrier()
 
-# Calculate DMD modes, save to pickle files.
-my_DMD = MR.DMD(N.vdot)
+weighted_IP = MR.InnerProductTrapz(x_grid, y_grid)
+
+# Calculate DMD modes and save them to pickle files.
+my_DMD = MR.DMDHandles(weighted_IP)
 my_DMD.compute_decomp(snapshots)
 my_DMD.put_decomp('ritz_vals.txt', 'mode_norms.txt', 'build_coeffs.txt')
-mode_nums = [1, 4, 5, 2, 10]
-modes = [MR.PickleVecHandle('mode%d.pkl'%i) for i in mode_nums]
-my_DMD.compute_modes(mode_nums, modes)
+mode_indices = [1, 4, 5, 0, 10]
+modes = [MR.PickleVecHandle('mode%d.pkl'%i) for i in mode_indices]
+my_DMD.compute_modes(mode_indices, modes)
+
