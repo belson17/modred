@@ -1,5 +1,5 @@
 LTIGalerkinProjection
-************* 
+************************
 
 .. automodule:: ltigalerkinproj
    :members:

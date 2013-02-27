@@ -4,5 +4,5 @@
 System identification -- OKID and ERA
 ---------------------------------------
 
-The documentation in :mod:`okid` and :mod:`era` is enough to start quickly.
+See :mod:`okid` and :mod:`era`.
 

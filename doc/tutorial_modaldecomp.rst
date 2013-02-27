@@ -21,12 +21,12 @@ The examples below build on one another, each introducing new aspects.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 1 -- Data in an array
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-A simple way to use modred to find POD modes is as follows:
+A simple way to find POD modes is:
 
 .. literalinclude:: ../examples/tutorial_ex1.py
 
 Let's walk through the important steps.
-First, we created an arbitrary array.
+First, we created an array of random, arbitrary data.
 Each column is a vector represented as a 1D array. 
 Then we created an instance of ``PODArrays`` called ``my_POD``.
 The next line, ``compute_decomp``, computes the correlation matrix 
@@ -41,7 +41,7 @@ argument and returns the modes as columns of the 2D array ``mode_array``.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 2 -- Inner products with data in an array
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-You can use any inner product, specified here by a 1D array of weights so 
+You can use any inner product, specified here by a 1D array of weights, so 
 that the correlation matrix is given by
 ``(vec_array.conj().transpose() * weights).dot(vec_array)``.
 The weights can also be, more generally, a 2D array.
@@ -65,14 +65,14 @@ POD (see Chapter 5 of [HLBR]_):
 
 .. literalinclude:: ../examples/tutorial_ex3.py
 
-First, we create lists of snapshots, ``direct_snapshots`` and
+First, we create lists ``direct_snapshots`` and
 ``adjoint_snapshots``.
-Each element in these lists is a vector handle, which has functions to load
+Each element in these lists is a vector handle (in particular, 
+``ArrayTextVecHandle``), so they have functions to load
 (``vec = vec_handle.get()``) and
-save (``vec_handle.put(vec)``) a vector/snapshot but itself uses very 
-little memory because it does *not* internally contain a vector.
-Later in the script we provide modred with the vector handles, 
-in this case of type ``ArrayTextVecHandle``,
+save (``vec_handle.put(vec)``) a vector/snapshot but themselves uses very 
+little memory because vector handles do *not* internally contain a vector.
+Later in the script we provide modred with these lists of vector handles 
 which modred uses to load and save individual vectors as it needs them.
 
 Each individual snapshot is a vector and is represented as an array, 
@@ -85,8 +85,8 @@ the ``put()`` method just described.
 
 Next, we compute the BPOD modes.
 The ``BPODHandles`` constructor takes an optional argument
-``max_vecs_per_node=10``, ensuring that no more than 10
-vectors (snapshots + modes) are loaded at once on one node.
+``max_vecs_per_node=10``, instructing the function that only 10
+vectors (snapshots + modes) can be in one node's memory at one time.
 The function ``compute_decomp`` takes lists of *vector handles* as
 arguments.
 In this example, note that there are 30 direct and 30 adjoint 
@@ -94,7 +94,7 @@ snapshots, so to avoid violating ``max_vecs_per_node=10`` handles
 are necessary.
 
 Similarly, ``compute_direct_modes`` and ``compute_adjoint_modes`` take
-lists of handles, and save all of the modes via ``vec_handle.put()``,
+lists of handles, and save all of the modes via ``handle.put()``,
 rather than returning all of the modes (which could be too large for memory).
 
 Replacing ``ArrayTextVecHandle`` with ``PickleVecHandle`` would load/save  

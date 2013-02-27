@@ -71,7 +71,7 @@ def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node,
     
     generate_vecs(data_dir, num_states, row_vec_handles+col_vec_handles)
     
-    my_VS = MR.VectorSpace(N.vdot, max_vecs_per_node=max_vecs_per_node,
+    my_VS = MR.VectorSpaceHandles(N.vdot, max_vecs_per_node=max_vecs_per_node,
         verbosity=verbosity) 
     
     prof = cProfile.Profile()
@@ -94,7 +94,7 @@ def symmetric_inner_product_mat(num_states, num_vecs, max_vecs_per_node,
     
     generate_vecs(data_dir, num_states, vec_handles)
     
-    my_VS = MR.VectorSpace(N.vdot, max_vecs_per_node=max_vecs_per_node,
+    my_VS = MR.VectorSpaceHandles(N.vdot, max_vecs_per_node=max_vecs_per_node,
         verbosity=verbosity) 
     
     prof = cProfile.Profile()
@@ -122,7 +122,7 @@ def lin_combine(num_states, num_bases, num_products, max_vecs_per_node,
         for product_num in range(num_products)]
 
     generate_vecs(data_dir, num_states, basis_handles)
-    my_VS = MR.VectorSpace(N.vdot, max_vecs_per_node=max_vecs_per_node,
+    my_VS = MR.VectorSpaceHandles(N.vdot, max_vecs_per_node=max_vecs_per_node,
         verbosity=verbosity)
     coeff_mat = N.random.random((num_bases, num_products))
     _parallel.barrier()

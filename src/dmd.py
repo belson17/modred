@@ -8,7 +8,7 @@ from parallel import parallel_default_instance
 _parallel = parallel_default_instance
 
 class DMDBase(object):
-    """Base class, instantiate py:class:`DMDArrays` or py:class:`DMDHandles`."""
+    """Base class, instantiate :py:class:`DMDArrays` or :py:class:`DMDHandles`."""
     def __init__(self, get_mat=util.load_array_text, 
         put_mat=util.save_array_text, verbosity=1):
         self.get_mat = get_mat
@@ -135,8 +135,7 @@ class DMDArrays(DMDBase):
             
             ``mode_norms``: 1D array of mode norms.
             
-            ``build_coeffs``: 2D array of build coefficients for modes 
-            (:py:math:`T`).
+            ``build_coeffs``: 2D array of build coefficients for modes.
         """        
         self.set_vec_array(vec_array)
         self.correlation_mat = \
@@ -231,8 +230,7 @@ class DMDHandles(DMDBase):
             
             ``mode_norms``: 1D array of mode norms.
             
-            ``build_coeffs``: 2D array of build coefficients for modes 
-            (:py:math:`T`).
+            ``build_coeffs``: 2D array of build coefficients for modes.
         """
         if vec_handles is not None:
             self.vec_handles = util.make_list(vec_handles)

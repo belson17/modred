@@ -181,18 +181,18 @@ class BPODArrays(BPODBase):
         
         Args:
             ``direct_vec_array``: 2D array with direct vecs as columns 
-            (:py:math:`X`).
+            (:math:`X`).
             
             ``adjoint_vec_array``: 2D array with adjoint vecs as columns 
-            (:py:math:`Y`).
+            (:math:`Y`).
         
         Returns:
             ``L_sing_vecs``: Matrix of left singular vectors 
-            (:py:math:`U`).
+            (:math:`U`).
         
-            ``sing_vals``: 1D array of singular values (:py:math:`E`).
+            ``sing_vals``: 1D array of singular values (:math:`E`).
             
-            ``R_sing_vecs``: Matrix of right singular vectors (:py:math:`V`).
+            ``R_sing_vecs``: Matrix of right singular vectors (:math:`V`).
         """
         self.set_direct_vec_array(direct_vec_array)
         self.set_adjoint_vec_array(adjoint_vec_array)
@@ -212,7 +212,7 @@ class BPODArrays(BPODBase):
               
         Kwargs:
           ``direct_vec_array``: 2D array with direct vecs as columns 
-          (:py:math:`X`). 
+          (:math:`X`). 
               Optional if already given when calling 
               :py:meth:`compute_decomp`.
 
@@ -240,7 +240,7 @@ class BPODArrays(BPODBase):
               
         Kwargs:
           ``adjoint_vec_array``: 2D array with adjoint vecs as columns
-          (:py:math:`Y`). 
+          (:math:`Y`). 
               Optional if already given when calling 
               :py:meth:`compute_decomp`.
 
@@ -316,18 +316,18 @@ class BPODHandles(BPODBase):
         
         Args:
             ``direct_vec_handles``: List of handles for direct vectors 
-            (:py:math:`X`).
+            (:math:`X`).
             
             ``adjoint_vec_handles``: List of handles for adjoint vectors 
-            (:py:math:`Y`).
+            (:math:`Y`).
         
         Returns:
             ``L_sing_vecs``: Matrix of left singular vectors 
-            (:py:math:`U`).
+            (:math:`U`).
         
-            ``sing_vals``: 1D array of singular values (:py:math:`E`).
+            ``sing_vals``: 1D array of singular values (:math:`E`).
             
-            ``R_sing_vecs``: Matrix of right singular vectors (:py:math:`V`).
+            ``R_sing_vecs``: Matrix of right singular vectors (:math:`V`).
         """
         self.direct_vec_handles = direct_vec_handles
         self.adjoint_vec_handles = adjoint_vec_handles
@@ -349,7 +349,7 @@ class BPODHandles(BPODBase):
           
         Kwargs:
           ``direct_vec_handles``: List of handles for direct vecs 
-          (:py:math:`X`). 
+          (:math:`X`). 
               Optional if already given when calling :py:meth:`compute_decomp`. 
         """
         if direct_vec_handles is not None:
@@ -374,7 +374,7 @@ class BPODHandles(BPODBase):
           
         Kwargs:
           ``adjoint_vec_handles``: List of handles for adjoint vecs 
-          (:py:math:`Y`). 
+          (:math:`Y`). 
               Optional if already given when calling :py:meth:`compute_decomp`.
         """
         if adjoint_vec_handles is not None:

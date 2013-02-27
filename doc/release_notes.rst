@@ -17,7 +17,7 @@ Many interface changes, including new classes for different sized data.
   These replace the ``in_memory`` member functions and improve 
   computational efficiency for small data.
 
-* Balance model provided in :py:mod:`vectorspace`.
+* Added balanced truncation :py:meth:`util.balanced_truncation`.
 
 
 **Bug fixes**

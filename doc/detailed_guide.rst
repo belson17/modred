@@ -26,7 +26,8 @@ The requirements of the vector object are that it must:
 
 1. Support scalar multiplication, i.e. ``vector2 = 2.0*vector1``. 
 2. Support addition with other vectors, i.e. ``vector3 = vector1 + vector2``.
-3. Be compatible with the ``inner_product(vector1, vector2)`` function.
+3. Be compatible with the particular ``inner_product(vector1, vector2)`` 
+   function.
 
 Numpy arrays already meet requirements 1 and 2. 
 For your own classes, define ``__mul__`` and ``__add__`` special methods for 1 and 2.
@@ -37,7 +38,7 @@ Your inner product must satisfy the mathematical definition for an inner product
 
 - Conjugate symmetry: 
   ``inner_product(vec1, vec2) == numpy.conj(inner_product(vec2, vec1))``.
-- Linearity: ``inner_product(scalar*vec1, vec2) == scalar*inner_product(vec1, vec2)``.
+- Linearity: ``inner_product(vec1, scalar*vec2) == scalar*inner_product(vec1, vec2)``.
 - Implied norm: ``inner_product(vec, vec) >= 0`` with equality if and only if
   ``vec`` is the zero vector.
 
@@ -48,7 +49,7 @@ function of the vector class, and write a simple wrapper.
 There is an example of this in the tutorial.
 
 The resulting modes are also vectors.
-We mean this in both the programming sense that modes are also vector objects
+We mean this in both the programming sense that modes are vector objects
 and the mathematical sense that modes live in the same vector space as vectors.
 
 
@@ -58,7 +59,7 @@ Base class
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 We provide a useful base class for all user-defined vectors to inherit from,
 ``MR.Vector``.
-It isn't required to make your vector class inherit from it, but encouraged 
+It isn't required to inherit from it, but encouraged 
 because it defines a few useful special functions and has some
 error checking.
 If you're curious, take a look at it in the :mod:`vectors` module
@@ -72,9 +73,9 @@ When the vectors are large, it can be inefficient or impossible to have all
 of them in memory simultaneously.
 Thus, modred only needs a subset of vectors in memory, loading
 and saving them as necessary.
-Therefore, rather than providing modred with a list of vectors, you can 
+Therefore, you can 
 provide it with a list of *vector handles*. 
-These are **lightweight** objects that in some sense point to a vector's
+These are *lightweight* objects that in some sense point to a vector's
 location, like the filename where it's saved.
 In general, vector handles get a vector from a location and
 return it, and also put a vector to a location.
@@ -94,11 +95,11 @@ Similarly, one can think of ``put`` as saving, but more general because ``put``
 can send the vector anywhere (though most often to file).
 
 It's natural to think of a vector handle's ``get`` and ``put`` as
-"inverses", but they don't have to be.
+inverses, but they don't have to be.
 For example, it's acceptable to load an input vector from one file format
 and save modes to another file format.
-However, it does mean that one can't load the modes with this vector handle 
-since ``get`` assumes a different file format.
+However, it does mean that if one wanted to load the modes, one couldn't
+with this vector handle because ``get`` assumes a different file format.
 
 Another way to handle the case of different input vector and mode (or any output
 vector) file formats is to define a different vector handle class for each.
@@ -152,8 +153,7 @@ Checking requirements automatically
 
 First, we encourage you to write your own tests (see module ``unittest``) to
 be sure your vector object and vector handle work as you expect.
-Classes ``BPOD``, ``POD``, ``DMD``, and ``VectorSpace`` provide a member function 
-``sanity_check`` 
+Many classes provide a function ``sanity_check`` 
 that checks a few common mistakes in your vector object addition,
 scalar multiplication, and inner products.
 *We encourage you to run* ``sanity_check`` *every time you use modred.*
@@ -162,7 +162,7 @@ keep that in mind!
 
 
 --------------------------------------------------
-Vector objects and handles in classes
+How vector objects and handles are used in modred
 --------------------------------------------------
 
 The classes ``POD``, ``BPOD``, and ``DMD`` have similar interfaces which interact
@@ -171,18 +171,9 @@ First, each has ``compute_decomp``
 functions that take lists of vector handles, ``vec_handles``, as arguments.
 Within the ``compute_decomp`` functions, ``vec = vec_handle.get()``
 is called repeatedly to retrieve vectors as needed. 
-They also have member functions ``compute_decomp_in_memory`` that directly take
-lists of vectors as arguments since the use of vector handles is unnecessary.
-In fact, ``compute_decomp`` and ``compute_decomp_in_memory`` do not "know"
+In fact, ``compute_decomp`` does not "know"
 or "care" what's inside the vector handles and vectors; only
 that they satisfy the requirements.
-
-Similarly, ``POD``, ``BPOD``, and ``DMD`` all have member functions resembling 
-``compute_modes`` and ``compute_modes_in_memory``.
-Function ``compute_modes`` takes a list of vector handles for the modes and
-calls ``put(mode)``, and returns nothing.
-Function ``compute_modes_in_memory`` returns a list of modes directly, which
-is a simple option for small data.
 
 More information about these methods is provided in the documentation
 for each class.
@@ -207,15 +198,13 @@ Summarizing, to use modred on arbitrary data, define
 1. A vector object that has:
   1. Vector addition ("+", ``__add__``)
   2. Scalar multiplication ("*", ``__mul__``)
-  3. Inherits from ``MR.Vector`` (:py:class:`vectors.Vector`, recommended but not required)
+  3. Optional: inherits from :py:class:`vectors.Vector`.
 2. Function ``inner_product(vec1, vec2)``.
 3. For large data that doesn't all fit in memory, a vector handle class that has:
   1. Member function ``get()`` which returns a vector handle.
   2. Member function ``put(vec)`` where ``vec`` is a vector handle.
-  3. Optionally inherits from ``MR.VecHandle``, (:py:class:`vectors.VecHandle`) if so, 
-     1 and 2 change to:
-    1. Member function ``_get()``
-    2. Member function ``_put(vec)``
+  3. Optionally inherits from :py:class:`vectors.VecHandle`. If so, 
+     member function names in 1 and 2 change to ``_get()`` and ``_put(vec)``.
 
 Then you can get started using any of the modal decomposition classes!
 

@@ -17,7 +17,7 @@ time
   \partial x(t)/ \partial t &= A x(t) + B u(t) \\
   y(t) &= C x(t) 
 
-where, or discrete time 
+or discrete time 
 
 .. math::
 
@@ -51,20 +51,14 @@ modes and the resulting model is in continuous time.
 
 The A, B, and C operators may or may not be available within python.
 For example, if you have a large solver written in another language then 
-it might be hard to access A, B, and C from python, even with tools like 
-Cython, SWIG, and f2py. 
-Therefore, modred lets you compute the action of A, B, and C either inside of 
-python or externally.
+it might be hard to access A, B, and C from python. 
+Modred *only* requires the action of A, B, and C on the appropriate vectors,
+not the operators.
 
 
 Here's an example that uses matrix representations of the linear operators.
 
 .. literalinclude:: ../examples/rom_ex1.py
-
-The three objects ``A_op``, ``B_op``, and ``C_op`` are callable and
-perform matrix multiplication (:py:class:`ltigalerkinproj.MatrixOperator`).
-The ``LTI_proj`` instance uses these to operate on the appropriate vectors,
-including ``basis_vecs``, and computes the reduced matrices. 
 
 The list ``basis_vecs`` contains the vectors that define the basis onto 
 which the dynamics are projected.
@@ -78,13 +72,13 @@ Here's another example, this time using vector handles for large data.
 This example works in parallel with no modifications.
 
 If you do not have direct access to the time-derivatives of the direct modes
-but want a continuous time model, modred provides 
-:py:func:`ltigalerkinproj.compute_derivs` and 
-:py:func:`ltigalerkinproj.compute_derivs_in_memory`.
+but want a continuous time model, see
+:py:func:`ltigalerkinproj.compute_derivs_arrays` and 
+:py:func:`ltigalerkinproj.compute_derivs_handles`.
 
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Eigensystem Realization Algorithm (ERA)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-The documentation and examples provided in :py:func:`era.compute_ERA_model` 
-and :py:class:`era.ERA` should be sufficient.
+See documentation and examples provided in :py:func:`era.compute_ERA_model` 
+and :py:class:`era.ERA`.

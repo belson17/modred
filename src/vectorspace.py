@@ -266,11 +266,12 @@ class VectorSpaceHandles(object):
         # convenience
         rank = _parallel.get_rank()
 
+        ## Old way that worked
         # num_cols_per_proc_chunk is the number of cols each proc gets at once
         num_cols_per_proc_chunk = 1
         num_rows_per_proc_chunk = self.max_vecs_per_proc - \
             num_cols_per_proc_chunk
-        
+               
         # Determine how the retrieving and inner products will be split up.
         row_tasks = _parallel.find_assignments(range(num_rows))
         col_tasks = _parallel.find_assignments(range(num_cols))
@@ -278,6 +279,14 @@ class VectorSpaceHandles(object):
         # Find max number of col tasks among all processors
         max_num_row_tasks = max([len(tasks) for tasks in row_tasks])
         max_num_col_tasks = max([len(tasks) for tasks in col_tasks])
+        
+        ## New way
+        #if self.max_vecs_per_node > max_num_row_tasks:
+        #    num_cols_per_proc_chunk = 
+        #num_rows_per_proc_chunk = self.max_vecs_per_proc - \
+        #    num_cols_per_proc_chunk
+        
+        
         
         # These variables are the number of iters through loops that retrieve
         # ("get") row and column vecs.

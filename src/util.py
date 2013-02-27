@@ -226,6 +226,9 @@ def solve_Lyapunov_direct(A, Q):
     
     :py:meth:`solve_Lyapunov_iterative` is numerically better conditioned.
     
+    This function may not be as computationally efficient or stable as 
+    Matlab's ``dylap``.
+
     See http://en.wikipedia.org/wiki/Lyapunov_equation
     """
     A = N.array(A)
@@ -247,6 +250,9 @@ def solve_Lyapunov_iterative(A, Q, max_iters=10000, tol=1e-8):
     Davinson and Man, "The Numerical Solution of A'Q+QA=-C." 
     IEEE Transactions on Automatic Control, volume 13, issue 4, August 1968.
     p. 448.
+    
+    This function may not be as computationally efficient or stable as 
+    Matlab's ``dylap``.     
     """
     if A.shape[0] != A.shape[1]:
         raise ValueError('A must be square.') 
@@ -288,7 +294,7 @@ def balanced_truncation(A, B, C, order=None, return_sing_vals=False,
     
     ``D`` is unchanged by balanced truncation.
     
-    This function may not be as computationally efficient as 
+    This function may not be as computationally efficient or stable as 
     Matlab's ``balancmr``. 
     """
     if iterative_solver:
