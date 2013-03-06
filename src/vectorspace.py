@@ -790,18 +790,12 @@ class VectorSpaceHandles(object):
         num_sums = len(sum_vec_handles)
         if coeff_mat_col_indices is not None:
             coeff_mat = coeff_mat[:, coeff_mat_col_indices]
-        if num_bases > coeff_mat.shape[0]:
-            raise ValueError(('coeff_mat has fewer rows %d than num of basis '
-                'handles %d'%(coeff_mat.shape[0],num_bases)))
-        if num_sums > coeff_mat.shape[1]:
-            raise ValueError(('coeff_mat has fewer cols %d than num of '
-                'output handles %d')%(coeff_mat.shape[1],num_sums))
-        if num_bases < coeff_mat.shape[0]:
-            self.print_msg('Warning: fewer bases than rows in coeff_mat'
-                ', some rows of coeff matrix will not be used')
-        if num_sums < coeff_mat.shape[1]:
-            self.print_msg('Warning: fewer outputs than cols in coeff_mat '
-                ', some cols of coeff matrix will not be used')
+        if num_bases != coeff_mat.shape[0]:
+            raise ValueError(('Number of coeff_mat rows (%d) does not equal '
+                'number of basis handles (%d)'%(coeff_mat.shape[0],num_bases)))
+        if num_sums != coeff_mat.shape[1]:
+            raise ValueError(('Number of coeff_mat cols (%d) does not equal '
+                'number of output handles (%d)')%(coeff_mat.shape[1],num_sums))
         
         # Estimate time it will take
         # Burn the first one for slow imports

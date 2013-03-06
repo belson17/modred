@@ -52,8 +52,8 @@ class TestDMDBase(unittest.TestCase):
         N.testing.assert_allclose(DMD_load.build_coeffs, build_coeffs)
         N.testing.assert_allclose(DMD_load.mode_norms, mode_norms)
 
-
-
+    
+#@unittest.skip('Testing something else')
 @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
 class TestDMDArrays(unittest.TestCase):
 
@@ -106,8 +106,62 @@ class TestDMDArrays(unittest.TestCase):
             self.assertEqual(v, data_members_modified[k])
     
     
+    def _helper_compute_DMD_directly_from_data(self, vec_array, adv_vec_array,
+        inner_product):
+        correlation_mat = inner_product(vec_array, vec_array)
+        W, Sigma, dummy = util.svd(correlation_mat) # dummy = W.
+        U = vec_array.dot(W).dot(N.diag(Sigma**-0.5))
+        ritz_vals, eig_vecs = N.linalg.eig(inner_product(
+            U, adv_vec_array).dot(W).dot(N.diag(Sigma**-0.5)))
+        eig_vecs = N.mat(eig_vecs)
+        ritz_vecs = U.dot(eig_vecs)
+        scaling = N.linalg.lstsq(ritz_vecs, vec_array[:, 0])[0]
+        scaling = N.mat(N.diag(N.array(scaling).squeeze()))
+        ritz_vecs = ritz_vecs.dot(scaling)
+        build_coeffs = W.dot(N.diag(Sigma**-0.5)).dot(eig_vecs).dot(scaling)
+        mode_norms = N.diag(inner_product(ritz_vecs, ritz_vecs)).real
+        return ritz_vals, ritz_vecs, build_coeffs, mode_norms
+
+
+    def _helper_check_decomp(self, ritz_vals, build_coeffs, mode_norms, 
+        inner_product_weights, vec_array, adv_vec_array=None):
+        # Set tolerance.  
+        tol = 1e-10
+
+        # Compute DMD using modred
+        my_DMD = DMDArrays(inner_product_weights=inner_product_weights, 
+            verbosity=0)
+        ritz_vals_returned, mode_norms_returned, build_coeffs_returned = \
+            my_DMD.compute_decomp(vec_array, adv_vec_array=adv_vec_array)
+
+        # Test that matrices were correctly computed
+        N.testing.assert_allclose(my_DMD.ritz_vals, ritz_vals, rtol=tol)
+        N.testing.assert_allclose(my_DMD.build_coeffs, build_coeffs, rtol=tol)
+        N.testing.assert_allclose(my_DMD.mode_norms, mode_norms, rtol=tol)
+
+        # Test that matrices were correctly returned
+        N.testing.assert_allclose(ritz_vals_returned, ritz_vals, rtol=tol)
+        N.testing.assert_allclose(build_coeffs_returned, build_coeffs, rtol=tol)
+        N.testing.assert_allclose(mode_norms_returned, mode_norms, rtol=tol)
+
+
+    def _helper_check_modes(self, ritz_vecs, build_coeffs, vec_array):
+        # Set tolerance. 
+        tol = 1e-10
+
+        # Load build coefficients into empty DMD object.  (This way the mode
+        # building test is guaranteed to use the same coefficients.) 
+        self.my_DMD.build_coeffs = build_coeffs
+        
+        # Compute modes and compare to directly computed ritz_vecs
+        mode_indices = range(build_coeffs.shape[1])
+        modes_returned = self.my_DMD.compute_modes(mode_indices, 
+            vec_array=vec_array)
+        N.testing.assert_allclose(modes_returned, ritz_vecs[:, mode_indices], 
+            rtol=tol)
+
+
     def test_compute_decomp(self):
-        tol = 1e-6
         ws = N.identity(self.num_states)
         ws[0,0] = 2
         ws[1,0] = 1.1
@@ -117,39 +171,72 @@ class TestDMDArrays(unittest.TestCase):
             IP = VectorSpaceArrays(weights=weights).compute_inner_product_mat
             vec_array = _parallel.call_and_bcast(N.random.random, 
                 ((self.num_states, self.num_vecs)))
-            correlation_mat = IP(vec_array[:, :-1], vec_array[:, :-1])
-            W, Sigma, dummy = util.svd(correlation_mat) # dummy = W.
-            U = vec_array[:,:-1].dot(W).dot(N.diag(Sigma**-0.5))
-            ritz_vals, eig_vecs = N.linalg.eig(IP(
-                U, vec_array[:,1:]).dot(W).dot(N.diag(Sigma**-0.5)))
-            eig_vecs = N.mat(eig_vecs)
-            ritz_vecs = U.dot(eig_vecs)
-            scaling = N.linalg.lstsq(ritz_vecs, vec_array[:, 0])[0]
-            scaling = N.mat(N.diag(N.array(scaling).squeeze()))
-            ritz_vecs = ritz_vecs.dot(scaling)
-            build_coeffs = W.dot(N.diag(Sigma**-0.5)).dot(eig_vecs).dot(
-                scaling)
-            _parallel.barrier()
-            mode_norms = N.diag(IP(ritz_vecs, ritz_vecs)).real
 
-            my_DMD = DMDArrays(inner_product_weights=weights, verbosity=0)
-            ritz_vals_returned, mode_norms_returned, build_coeffs_returned = \
-                my_DMD.compute_decomp(vec_array)
-            
-            N.testing.assert_allclose(my_DMD.ritz_vals, ritz_vals, rtol=tol)
-            N.testing.assert_allclose(my_DMD.build_coeffs,
-                build_coeffs, rtol=tol)
-            N.testing.assert_allclose(my_DMD.mode_norms, 
-                mode_norms, rtol=tol)
+            # Compute DMD directly from data, for a sequential dataset
+            ritz_vals, ritz_vecs, build_coeffs, mode_norms =\
+                self._helper_compute_DMD_directly_from_data(vec_array[:, :-1],
+                vec_array[:, 1:], IP)
+
+            # Check modred against direct computation, for a sequential dataset
+            _parallel.barrier()
+            self._helper_check_decomp(ritz_vals, build_coeffs, mode_norms,
+                weights, vec_array)
+
+            # Now create more data, to check a non-sequential dataset
+            adv_vec_array = _parallel.call_and_bcast(N.random.random, 
+                ((self.num_states, self.num_vecs)))
+
+            # Compute DMD directly from data, for a non-sequential dataset
+            ritz_vals, ritz_vecs, build_coeffs, mode_norms =\
+                self._helper_compute_DMD_directly_from_data(vec_array, 
+                    adv_vec_array, IP)
+
+            # Check modred against direct computation, for a non-sequential 
+            # dataset
+            _parallel.barrier()
+            self._helper_check_decomp(ritz_vals, build_coeffs, mode_norms,
+                weights, vec_array, adv_vec_array=adv_vec_array)
+
+            # Check that if differently sized arrays are passed in, an error 
+            # is raised.
+            self.assertRaises(ValueError, self.my_DMD.compute_decomp,
+                vec_array, adv_vec_array[:-1])
     
-            N.testing.assert_allclose(ritz_vals_returned, 
-                ritz_vals, rtol=tol)
-            N.testing.assert_allclose(build_coeffs_returned, 
-                build_coeffs, rtol=tol)
-            N.testing.assert_allclose(mode_norms_returned, 
-                mode_norms, rtol=tol)
-        
-        
+    
+    def test_compute_modes(self):
+        ws = N.identity(self.num_states)
+        ws[0,0] = 2
+        ws[1,0] = 1.1
+        ws[0,1] = 1.1
+        weights_list = [None, N.random.random(self.num_states), ws]
+        for weights in weights_list:
+            IP = VectorSpaceArrays(weights=weights).compute_inner_product_mat
+            vec_array = _parallel.call_and_bcast(N.random.random, 
+                ((self.num_states, self.num_vecs)))
+            
+            # Compute DMD directly from data, for a sequential dataset
+            ritz_vals, ritz_vecs, build_coeffs, mode_norms =\
+                self._helper_compute_DMD_directly_from_data(vec_array[:, :-1],
+                vec_array[:, 1:], IP)
+     
+            # Check direct computation against modred   
+            _parallel.barrier()
+            self._helper_check_modes(ritz_vecs, build_coeffs, vec_array)
+
+            # Generate data for a non-sequential dataset
+            adv_vec_array = _parallel.call_and_bcast(N.random.random, 
+                ((self.num_states, self.num_vecs)))
+
+            # Compute DMD directly from data, for a non-sequential dataset
+            ritz_vals, ritz_vecs, build_coeffs, mode_norms =\
+                self._helper_compute_DMD_directly_from_data(vec_array, 
+                    adv_vec_array, IP)
+     
+            # Check direct computation against modred   
+            _parallel.barrier()
+            self._helper_check_modes(ritz_vecs, build_coeffs, vec_array)
+
+           
 #@unittest.skip('others')
 class TestDMDHandles(unittest.TestCase):
     def setUp(self):
@@ -164,9 +251,12 @@ class TestDMDHandles(unittest.TestCase):
         self.my_DMD = DMDHandles(N.vdot, verbosity=0)
 
         self.vec_path = join(self.test_dir, 'dmd_vec_%03d.pkl')
+        self.adv_vec_path = join(self.test_dir, 'dmd_adv_vec_%03d.pkl')
         self.mode_path = join(self.test_dir, 'dmd_truemode_%03d.pkl')
         self.vec_handles = [V.PickleVecHandle(self.vec_path%i) 
             for i in range(self.num_vecs)]
+        self.adv_vec_handles = [V.PickleVecHandle(self.adv_vec_path%i) for i in 
+            range(self.num_vecs)]
         _parallel.barrier()
         
     
@@ -176,7 +266,7 @@ class TestDMDHandles(unittest.TestCase):
             rmtree(self.test_dir, ignore_errors=True)
         _parallel.barrier()
 
-
+    
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
@@ -188,7 +278,8 @@ class TestDMDHandles(unittest.TestCase):
         data_members_default = {'put_mat': util.save_array_text, 'get_mat':
              util.load_array_text,
             'verbosity': 0, 'ritz_vals': None, 'build_coeffs': None,
-            'correlation_mat': None, 'mode_norms': None, 'vec_handles': None,
+            'correlation_mat': None, 'mode_norms': None, 'vec_handles': None, 
+            'adv_vec_handles': None, 
             'vec_space': VectorSpaceHandles(my_IP, verbosity=0)}
         
         # Get default data member values
@@ -227,38 +318,42 @@ class TestDMDHandles(unittest.TestCase):
         for k,v in util.get_data_members(my_DMD).iteritems():
             self.assertEqual(v, data_members_modified[k])
        
+    def _helper_compute_DMD_directly_from_data(self, vec_array, adv_vec_array,
+        inner_product):
+        # Create lists of vecs, advanced vecs for inner product function
+        vecs = [vec_array[:, i] for i in range(vec_array.shape[1])]
+        adv_vecs = [adv_vec_array[:, i] for i in range(adv_vec_array.shape[1])]
 
-    def test_compute_decomp(self):
-        # Depending on vecs generated, test will fail if tol = 8, so use 7
-        tol = 1e-7 
-        IP = util.InnerProductBlock(N.vdot)
-
-        vec_array = _parallel.call_and_bcast(N.random.random, 
-            ((self.num_states, self.num_vecs)))
-        vecs = [vec_array[:, i] for i in range(self.num_vecs)]
-        if _parallel.is_rank_zero():
-            for vec_index, handle in enumerate(self.vec_handles):
-                handle.put(N.array(vec_array[:, vec_index]).squeeze())
-        correlation_mat = IP(vecs[:-1], vecs[:-1])
-        
+        # Compute DMD
+        correlation_mat = inner_product(vecs, vecs)
         W, Sigma, dummy = util.svd(correlation_mat) # dummy = W.
-        U = vec_array[:, :-1].dot(W).dot(N.diag(Sigma**-0.5))
+        U = vec_array.dot(W).dot(N.diag(Sigma**-0.5))
         U_list = [U[:,i] for i in range(U.shape[1])]
-        ritz_vals, eig_vecs = N.linalg.eig(IP(
-            U_list, vecs[1:]).dot(W).dot(N.diag(Sigma**-0.5)))
+        ritz_vals, eig_vecs = N.linalg.eig(inner_product(
+            U_list, adv_vecs).dot(W).dot(N.diag(Sigma**-0.5)))
         eig_vecs = N.mat(eig_vecs)
         ritz_vecs = U.dot(eig_vecs)
         scaling = N.linalg.lstsq(ritz_vecs, vec_array[:, 0])[0]
         scaling = N.mat(N.diag(N.array(scaling).squeeze()))
         ritz_vecs = ritz_vecs.dot(scaling)
+        build_coeffs = W.dot(N.diag(Sigma**-0.5)).dot(eig_vecs).dot(scaling)
         ritz_vecs_list = [N.array(ritz_vecs[:,i]).squeeze() 
             for i in range(ritz_vecs.shape[1])]
-        build_coeffs = W.dot(N.diag(Sigma**-0.5)).dot(eig_vecs).dot(scaling)
-        _parallel.barrier()
-        mode_norms = N.diag(IP(ritz_vecs_list, ritz_vecs_list)).real
+        mode_norms = N.diag(inner_product(ritz_vecs_list, ritz_vecs_list)).real
+
+        return ritz_vals, ritz_vecs, build_coeffs, mode_norms
+
+    
+    def _helper_check_decomp(self, ritz_vals, build_coeffs, mode_norms, 
+        vec_handles, adv_vec_handles=None):
+        # Set tolerance.  
+        tol = 1e-10
+
+        # Compute DMD using modred
         ritz_vals_returned, mode_norms_returned, build_coeffs_returned = \
-            self.my_DMD.compute_decomp(self.vec_handles)
-        
+            self.my_DMD.compute_decomp(vec_handles, 
+            adv_vec_handles=adv_vec_handles)
+
         # Test that matrices were correctly computed
         N.testing.assert_allclose(self.my_DMD.ritz_vals, 
             ritz_vals, rtol=tol)
@@ -267,6 +362,7 @@ class TestDMDHandles(unittest.TestCase):
         N.testing.assert_allclose(self.my_DMD.mode_norms, 
             mode_norms, rtol=tol)
 
+        # Test that matrices were correctly returned
         N.testing.assert_allclose(ritz_vals_returned, 
             ritz_vals, rtol=tol)
         N.testing.assert_allclose(build_coeffs_returned, 
@@ -275,56 +371,106 @@ class TestDMDHandles(unittest.TestCase):
             mode_norms, rtol=tol)
 
 
-    def test_compute_modes(self):
-        """Test building of modes, reconstruction formula."""
-        tol = 1e-7
-        IP = util.InnerProductBlock(N.vdot)
+    def _helper_check_modes(self, ritz_vecs, build_coeffs, vec_handles):
+        # Set tolerance. 
+        tol = 1e-10
 
+        # Load build coefficients into empty DMD object.  (This way the mode
+        # building test is guaranteed to use the same coefficients.) 
+        self.my_DMD.build_coeffs = build_coeffs
+        
+        # Compute modes and save to file
+        mode_path = join(self.test_dir, 'dmd_mode_%03d.pkl')
+        mode_indices = range(build_coeffs.shape[1])
+        self.my_DMD.compute_modes(mode_indices, 
+            [V.PickleVecHandle(mode_path%i) for i in mode_indices],
+            vec_handles=vec_handles)
+        
+        # Load all modes into matrix, compare to ritz vecs from direct
+        # computation
+        mode_array = N.array(N.zeros((self.num_states, build_coeffs.shape[1])), 
+            dtype=complex)
+        for i in range(build_coeffs.shape[1]):
+            mode_array[:, i] = V.PickleVecHandle(mode_path % i).get()
+        N.testing.assert_allclose(mode_array, ritz_vecs, rtol=tol)
+
+
+    def test_compute_decomp(self):
+        """Test DMD decomposition (ritz values, build coefficients, mode
+        norms)"""    
+        # Define an array of vectors, with corresponding handles
         vec_array = _parallel.call_and_bcast(N.random.random, 
             ((self.num_states, self.num_vecs)))
-        vecs = [vec_array[:, i] for i in range(self.num_vecs)]
         if _parallel.is_rank_zero():
             for vec_index, handle in enumerate(self.vec_handles):
                 handle.put(N.array(vec_array[:, vec_index]).squeeze())
-        correlation_mat = IP(vecs[:-1], vecs[:-1])
+
+        # Compute DMD directly from data, for a sequential dataset
+        ritz_vals, ritz_vecs, build_coeffs, mode_norms =\
+            self._helper_compute_DMD_directly_from_data(vec_array[:, :-1],
+            vec_array[:, 1:], util.InnerProductBlock(N.vdot))
+
+        # Check modred against direct computation, for a sequential dataset
+        _parallel.barrier()
+        self._helper_check_decomp(ritz_vals, build_coeffs, mode_norms,
+            self.vec_handles)
+
+        # Now create more data, to check a non-sequential dataset
+        adv_vec_array = _parallel.call_and_bcast(N.random.random, 
+            ((self.num_states, self.num_vecs)))
+        if _parallel.is_rank_zero():
+            for vec_index, handle in enumerate(self.adv_vec_handles):
+                handle.put(N.array(adv_vec_array[:, vec_index]).squeeze())
+
+        # Compute DMD directly from data, for a non-sequential dataset
+        ritz_vals, ritz_vecs, build_coeffs, mode_norms =\
+            self._helper_compute_DMD_directly_from_data(vec_array, 
+                adv_vec_array, util.InnerProductBlock(N.vdot))
+
+        # Check modred against direct computation, for a non-sequential dataset
+        _parallel.barrier()
+        self._helper_check_decomp(ritz_vals, build_coeffs, mode_norms,
+            self.vec_handles, adv_vec_handles=self.adv_vec_handles)
+
+        # Check that if mismatched sets of handles are passed in, an error is
+        # raised.
+        self.assertRaises(ValueError, self.my_DMD.compute_decomp,
+            self.vec_handles, self.adv_vec_handles[:-1])
+
+
+    def test_compute_modes(self):
+        """Test building of modes."""
+        vec_array = _parallel.call_and_bcast(N.random.random, 
+            ((self.num_states, self.num_vecs)))
+        if _parallel.is_rank_zero():
+            for vec_index, handle in enumerate(self.vec_handles):
+                handle.put(N.array(vec_array[:, vec_index]).squeeze())
         
-        W, Sigma, dummy = util.svd(correlation_mat) # dummy = W.
-        U = vec_array[:, :-1].dot(W).dot(N.diag(Sigma**-0.5))
-        U_list = [U[:,i] for i in range(U.shape[1])]
-        ritz_vals, eig_vecs = N.linalg.eig(IP(
-            U_list, vecs[1:]).dot(W).dot(N.diag(Sigma**-0.5)))
-        eig_vecs = N.mat(eig_vecs)
-        ritz_vecs = U.dot(eig_vecs)
-        scaling = N.linalg.lstsq(ritz_vecs, vec_array[:, 0])[0]
-        scaling = N.mat(N.diag(N.array(scaling).squeeze()))
-        ritz_vecs = ritz_vecs.dot(scaling)
-        ritz_vecs_list = [N.array(ritz_vecs[:,i]).squeeze() 
-            for i in range(ritz_vecs.shape[1])]
-        build_coeffs = W.dot(N.diag(Sigma**-0.5)).dot(eig_vecs).dot(scaling)
-        _parallel.barrier()        
-        mode_norms = N.diag(IP(ritz_vecs_list, ritz_vecs_list)).real
-        ritz_vals_returned, mode_norms_returned, build_coeffs_returned = \
-            self.my_DMD.compute_decomp(self.vec_handles)
-            
-        mode_path = join(self.test_dir, 'dmd_mode_%03d.pkl')
-                
-        self.my_DMD.build_coeffs = build_coeffs
-        mode_indices = range(self.num_vecs-1)
-        self.my_DMD.compute_modes(mode_indices, 
-            [V.PickleVecHandle(mode_path%i) for i in mode_indices],
-            vec_handles=self.vec_handles)
-        
-        # Load all modes into matrix
-        mode_array = N.array(N.zeros((self.num_states, self.num_vecs-1)), 
-            dtype=complex)
-        for i in range(self.num_vecs-1):
-            mode_array[:, i] = V.PickleVecHandle(
-                mode_path % i).get()
-        N.testing.assert_allclose(mode_array, ritz_vecs, rtol=tol)
-        
-        vandermonde_mat = N.fliplr(N.vander(ritz_vals, self.num_vecs-1))
-        N.testing.assert_allclose(vec_array[:, :-1],
-            ritz_vecs * vandermonde_mat, rtol=tol)
+        # Compute DMD directly from data, for a sequential dataset
+        ritz_vals, ritz_vecs, build_coeffs, mode_norms =\
+            self._helper_compute_DMD_directly_from_data(vec_array[:, :-1],
+            vec_array[:, 1:], util.InnerProductBlock(N.vdot))
+ 
+        # Check direct computation against modred   
+        _parallel.barrier()
+        self._helper_check_modes(ritz_vecs, build_coeffs, self.vec_handles)
+
+        # Generate data for a non-sequential dataset
+        adv_vec_array = _parallel.call_and_bcast(N.random.random, 
+            ((self.num_states, self.num_vecs)))
+        if _parallel.is_rank_zero():
+            for vec_index, handle in enumerate(self.adv_vec_handles):
+                handle.put(N.array(adv_vec_array[:, vec_index]).squeeze())
+
+        # Compute DMD directly from data, for a non-sequential dataset
+        ritz_vals, ritz_vecs, build_coeffs, mode_norms =\
+            self._helper_compute_DMD_directly_from_data(vec_array, 
+                adv_vec_array, util.InnerProductBlock(N.vdot))
+ 
+        # Check direct computation against modred   
+        _parallel.barrier()
+        self._helper_check_modes(ritz_vecs, build_coeffs, self.vec_handles)
+
 
 
 if __name__ == '__main__':
