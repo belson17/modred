@@ -225,17 +225,17 @@ class DMDArrays(DMDBase):
             raise util.UndefinedError('vec_array is undefined.')
 
         # For sequential data, the user will provide a list vec_handles that
-        # whose length is one larger than the number of columns of the 
+        # whose length is one larger than the number of rows of the
         # build_coeffs matrix.  This is to be expected, as vec_handles is
         # essentially partitioned into two sets of handles, each of length one
         # less than vec_handles.
-        if self.vec_array.shape[1] - self.build_coeffs.shape[1] == 1:
+        if self.vec_array.shape[1] - self.build_coeffs.shape[0] == 1:
             return self.vec_space.lin_combine(self.vec_array[:, :-1], 
                 self.build_coeffs, coeff_mat_col_indices=mode_indices)
         # For a non-sequential dataset, the user will provide a list vec_handles
-        # whose length is equal to the number of columns in the build_coeffs
+        # whose length is equal to the number of rows in the build_coeffs
         # matrix.
-        elif self.vec_array.shape[1] == self.build_coeffs.shape[1]:
+        elif self.vec_array.shape[1] == self.build_coeffs.shape[0]:
             return self.vec_space.lin_combine(self.vec_array, 
                 self.build_coeffs, coeff_mat_col_indices=mode_indices)
         # Otherwise, raise an error, as the number of handles should fit one of
@@ -391,17 +391,17 @@ class DMDHandles(DMDBase):
             self.vec_handles = util.make_list(vec_handles)
 
         # For sequential data, the user will provide a list vec_handles that
-        # whose length is one larger than the number of columns of the 
+        # whose length is one larger than the number of rows of the 
         # build_coeffs matrix.  This is to be expected, as vec_handles is
         # essentially partitioned into two sets of handles, each of length one
         # less than vec_handles.
-        if len(self.vec_handles) - self.build_coeffs.shape[1] == 1:
+        if len(self.vec_handles) - self.build_coeffs.shape[0] == 1:
             self.vec_space.lin_combine(mode_handles, self.vec_handles[:-1], 
                 self.build_coeffs, coeff_mat_col_indices=mode_indices)
         # For a non-sequential dataset, the user will provide a list vec_handles
-        # whose length is equal to the number of columns in the build_coeffs
+        # whose length is equal to the number of rows in the build_coeffs
         # matrix.
-        elif len(self.vec_handles) == self.build_coeffs.shape[1]:
+        elif len(self.vec_handles) == self.build_coeffs.shape[0]:
             self.vec_space.lin_combine(mode_handles, self.vec_handles, 
                 self.build_coeffs, coeff_mat_col_indices=mode_indices)
         # Otherwise, raise an error, as the number of handles should fit one of
