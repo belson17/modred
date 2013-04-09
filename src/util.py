@@ -6,6 +6,13 @@ import inspect
 
 class UndefinedError(Exception): pass
 
+def make_2D_array(array):
+    """If ``array`` is 1D array, makes it 2D array."""
+    if array.ndim == 1:
+        array = array.reshape((array.shape[0], 1))
+    return array
+
+
 def make_list(arg):
     """Returns the argument as a list. If already a list, ``arg`` is returned.
     """

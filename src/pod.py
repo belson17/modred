@@ -6,18 +6,192 @@ import util
 from parallel import parallel_default_instance
 _parallel = parallel_default_instance
 
-class PODBase(object):
-    """Base class, instantiate py:class:`PODArrays` or py:class:`PODHandles`."""
-    def __init__(self, get_mat=util.load_array_text, 
-        put_mat=util.save_array_text, verbosity=1):
-        """Constructor """
+def compute_POD_arrays_snaps_method(vec_array, mode_indices, 
+    inner_product_weights=None, return_all=False):
+    """Computes the POD modes from arrays using the method of snapshots.
+    
+    Args:
+        ``vec_array``: 2D array of vectors stacked as columns.
+        
+        ``mode_indices``: List of mode indices to compute.
+            Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
+
+    Kwargs:
+        ``inner_product_weights``: 1D or 2D array of inner product weights.
+            It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
+        
+        ``return_all``: Changes what is returned, see below. Default is false.
+        
+    Returns:
+        ``modes``: 2D array with requested modes as columns.
+        
+        ``eigen_vals``: 1D array of eigen values.
+        
+        If ``return_all`` is true, also returns:
+        
+        ``eigen_vecs``: 2D array of eigen vectors of correlation matrix.
+        
+        ``correlation_mat``: Matrix of inner products of all vecs in ``vec_array``.
+                
+    The algorithm is
+    
+    1. Eigendecomp :math:`U E = X^* W X`.
+    2. Coefficient matrix :math:`T = U E^{-1/2}`.
+    3. Modes are :math:`T X`.
+    
+    where :math:`X`, :math:`W`, :math:`X^* W X`, and :math:`T` correspond to 
+    ``vec_array``, ``inner_product_weights``, ``correlation_mat``, 
+    and ``build_coeff_mat``, respectively.
+       
+    Since this method "squares" the vectors and thus the singular values,
+    it is slightly less accurate than taking the SVD of :math:`X` directly,
+    as in :py:func:`compute_POD_arrays_direct_method`. 
+    However, this method is faster when :math:`X` has more rows than columns, 
+    i.e. there are fewer vectors than elements in each vector.
+    """
+    if _parallel.is_distributed():
+        raise RuntimeError('Cannot run in parallel.')
+    vec_space = VectorSpaceArrays(weights=inner_product_weights)
+    # compute decomp
+    vec_array = util.make_2D_array(vec_array)
+    correlation_mat = \
+        vec_space.compute_symmetric_inner_product_mat(vec_array)
+    eigen_vals, eigen_vecs = util.eigh(correlation_mat, 
+        is_positive_definite=True)
+    # compute modes
+    build_coeff_mat = N.dot(eigen_vecs, N.diag(eigen_vals**-0.5))
+    modes = vec_space.lin_combine(vec_array,
+        build_coeff_mat, coeff_mat_col_indices=mode_indices)
+    if return_all:
+        return modes, eigen_vals, eigen_vecs, correlation_mat
+    else:
+        return modes, eigen_vals
+
+def compute_POD_arrays_direct_method(vec_array, mode_indices,
+    inner_product_weights=None, return_all=False):
+    """Computes the POD modes from arrays using the method of snapshots.
+    
+    Args:
+        ``vec_array``: 2D array of vectors stacked as columns.
+        
+        ``mode_indices``: List of mode indices to compute.
+            Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
+
+    Kwargs:
+        ``inner_product_weights``: 1D or 2D array of inner product weights.
+            The inner product of two vectors is :math:`v_1^* W v_2` where 
+            :math:`W` corresponds to ``inner_product_weights``.
+        
+        ``return_all``: Changes what is returned, see below. Default is false.
+    
+    Returns:
+        ``modes``: 2D array with requested modes as columns.
+        
+        ``eigen_vals``: 1D array of eigenvalues. 
+            These are the eigenvalues of the correlation matrix (:math:`X^* W X`), 
+            and are also the squares of the singular values of :math:`X`. 
+        
+        If ``return_all`` is true, also returns:
+               
+        ``eigen_vecs``: 2D array of eigenvectors.
+            These are the eigenvectors of correlation matrix (:math:`X^* W X`),
+            and are also the right singular vectors of :math:`X`.
+                
+    The algorithm is
+    
+    1. SVD :math:`U E V = W^{1/2} X`.
+    2. Modes are :math:`W^{-1/2} U`.
+    
+    where :math:`X`, :math:`W`, :math:`E`, :math:`V`, correspond to 
+    ``vec_array``, ``inner_product_weights``, ``eigen_vals**0.5``, 
+    and ``eigen_vecs``, respectively.
+       
+    Since this method does not square the vectors and singular values,
+    it is more accurate than taking the eigen decomposition of :math:`X^* W X`,
+    as in the method of snapshots (:py:func:`compute_POD_arrays_direct_method`). 
+    However, this method is slower when :math:`X` has more rows than columns, 
+    i.e. there are fewer vectors than elements in each vector.
+    """
+    if _parallel.is_distributed():
+        raise RuntimeError('Cannot run in parallel.')
+    vec_array = util.make_2D_array(vec_array)
+    if inner_product_weights is None:
+        modes, E, eigen_vecs = util.svd(N.array(vec_array))
+        eigen_vals = E**2
+        modes = modes[:,mode_indices]
+    
+    elif inner_product_weights.ndim == 2:
+        if inner_product_weights.shape[0] > 500:
+            print 'Warning: Cholesky decomposition could be time consuming.'
+        sqrt_weights = N.linalg.cholesky(inner_product_weights)
+        vec_array_weighted = sqrt_weights.dot(N.array(vec_array))
+        modes_weighted, E, eigen_vecs = util.svd(vec_array_weighted)
+        eigen_vals = E**2
+        inv_sqrt_weights = N.linalg.inv(sqrt_weights)
+        modes = N.linalg.solve(sqrt_weights, modes_weighted[:,mode_indices])
+        #modes = inv_sqrt_weights.dot(modes_weighted[:, mode_indices])
+    
+    elif inner_product_weights.ndim == 1:
+        sqrt_weights = inner_product_weights**0.5
+        vec_array_weighted = N.swapaxes(N.swapaxes(
+            N.array(vec_array), 0, 1) * sqrt_weights, 0, 1)
+        modes_weighted, E, eigen_vecs = util.svd(vec_array_weighted)
+        eigen_vals = E**2
+        modes = N.swapaxes(N.swapaxes(
+            N.array(modes_weighted[:,mode_indices]),0,1) * 
+            sqrt_weights**-1.0, 0, 1)
+    
+    if return_all:
+        return modes, eigen_vals, eigen_vecs
+    else:
+        return modes, eigen_vals
+    
+
+
+
+
+
+class PODHandles(object):
+    """Proper Orthogonal Decomposition.
+
+    Args:
+        ``inner_product``: Function to find inner product of two vector objects.
+
+    Kwargs:
+        ``put_mat``: Function to put a matrix out of modred.
+
+        ``get_mat``: Function to get a matrix into modred.
+
+        ``verbosity``: 0 prints almost nothing, 1 prints progress and warnings.
+
+        ``max_vec_handles_per_node``: Max number of vectors in memory per node.
+
+    Computes orthonormal POD modes from vec_handles.
+    It uses :py:class:`vectorspace.VectorSpaceHandles` for low level functions.
+
+    Usage::
+
+      myPOD = POD(my_inner_product)
+      myPOD.compute_decomp(vec_handles)
+      myPOD.compute_modes(range(10), modes)
+
+    See also :mod:`vectors`.
+    """
+    def __init__(self, inner_product,
+        get_mat=util.load_array_text, put_mat=util.save_array_text,
+        max_vecs_per_node=None, verbosity=1):
         self.get_mat = get_mat
         self.put_mat = put_mat
         self.verbosity = verbosity
         self.eigen_vecs = None
         self.eigen_vals = None
+
+        self.vec_space = VectorSpaceHandles(inner_product=inner_product,
+            max_vecs_per_node=max_vecs_per_node,
+            verbosity=verbosity)
+        self.vec_handles = None
         self.correlation_mat = None
-        
+
     def get_decomp(self, eigen_vecs_source, eigen_vals_source):
         """Gets the decomposition matrices from sources (memory or file)."""
         self.eigen_vecs = _parallel.call_and_bcast(self.get_mat,
@@ -49,11 +223,6 @@ class PODBase(object):
             self.put_mat(self.correlation_mat, dest)
         _parallel.barrier()
 
-    def compute_eigen_decomp(self):
-        """Compute eigen decomp of ``correlation_mat``."""
-        self.eigen_vals, self.eigen_vecs = _parallel.call_and_bcast(
-            util.eigh, self.correlation_mat, is_positive_definite=True)
-
     def _compute_build_coeff_mat(self):
         """Compute transformation matrix (:math:`T`) from vectors to modes.
         Helper for ``compute_modes`` and ``compute_modes_and_return``."""
@@ -63,126 +232,7 @@ class PODBase(object):
             raise util.UndefinedError('Must define self.eigen_vals')
         build_coeff_mat = N.dot(self.eigen_vecs, N.diag(self.eigen_vals**-0.5))
         return build_coeff_mat
-        
 
-class PODArrays(PODBase):
-    """Compute POD modes for small data.
-    
-    Kwargs:
-    ``inner_product_weights``: 1D or 2D array of weights.
-        The product ``X* inner_product_weights X`` will be computed.
-    
-    ``put_mat``: Function to put a matrix out of modred.
-
-    ``get_mat``: Function to get a matrix into modred.
-
-    ``verbosity``: 0 prints almost nothing, 1 prints progress and warnings.
-
-    Computes orthonormal POD modes from vectors. Only use this in serial.
-    It uses :py:class:`vectorspace.VectorSpaceArrays` for low level 
-    functions.
-
-    Usage::
-
-      myPOD = PODArrays()
-      eig_vecs, eig_vals = myPOD.compute_decomp(vecs)
-      modes = myPOD.compute_modes(range(10))
-
-    See also :mod:`vectors`.
-    """
-    def __init__(self, inner_product_weights=None, get_mat=util.load_array_text, 
-        put_mat=util.save_array_text, verbosity=1):
-        """Constructor"""
-        if _parallel.is_distributed():
-            raise RuntimeError('Cannot be used in parallel.')
-        PODBase.__init__(self, get_mat=get_mat, put_mat=put_mat, 
-            verbosity=verbosity)
-        self.vec_space = VectorSpaceArrays(weights=inner_product_weights)
-        self.vec_array = None
-    
-    def set_vec_array(self, vec_array):
-        if vec_array.ndim == 1:
-            self.vec_array = vec_array.reshape((vec_array.shape[0], 1))
-        else:
-            self.vec_array = vec_array
-            
-    def compute_decomp(self, vec_array):
-        """Computes correlation matrix (:math:`X^*X`) and its eigen decomp.
-
-        Args:
-            ``vec_array``: 2D array of vectors stacked as columns (:math:`X`).
-
-        Returns:
-            ``eigen_vecs``: Matrix with eigen vectors as columns.
-
-            ``eigen_vals``: 1D array of eigen values.
-        """
-        self.set_vec_array(vec_array)
-        self.correlation_mat = \
-            self.vec_space.compute_symmetric_inner_product_mat(self.vec_array)
-        self.compute_eigen_decomp()
-        return self.eigen_vecs, self.eigen_vals
-    
-    
-    def compute_modes(self, mode_indices, vec_array=None):
-        """Computes the modes and returns them.
-
-        Args:
-            ``mode_indices``: List of mode indices to compute.
-                Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
-
-        Kwargs:
-            ``vec_array``: 2D array with vectors as columns.  
-                Optional if given when calling ``compute_decomp``.
-
-        Returns:
-            ``modes``: 2D array with requested modes as columns.
-        """
-        if vec_array is not None:
-            self.set_vec_array(vec_array)
-        if self.vec_array is None:
-            raise UndefinedError('vec_array undefined')
-        build_coeff_mat = self._compute_build_coeff_mat()
-        return self.vec_space.lin_combine(self.vec_array,
-            build_coeff_mat, coeff_mat_col_indices=mode_indices)
-        
-
-class PODHandles(PODBase):
-    """Proper Orthogonal Decomposition.
-
-    Args:
-        ``inner_product``: Function to find inner product of two vector objects.
-
-    Kwargs:
-        ``put_mat``: Function to put a matrix out of modred.
-
-        ``get_mat``: Function to get a matrix into modred.
-
-        ``verbosity``: 0 prints almost nothing, 1 prints progress and warnings.
-
-        ``max_vec_handles_per_node``: Max number of vectors in memory per node.
-
-    Computes orthonormal POD modes from vec_handles.
-    It uses :py:class:`vectorspace.VectorSpaceHandles` for low level functions.
-
-    Usage::
-
-      myPOD = POD(my_inner_product)
-      myPOD.compute_decomp(vec_handles)
-      myPOD.compute_modes(range(10), modes)
-
-    See also :mod:`vectors`.
-    """
-    def __init__(self, inner_product,
-        get_mat=util.load_array_text, put_mat=util.save_array_text,
-        max_vecs_per_node=None, verbosity=1):
-        PODBase.__init__(self, get_mat=get_mat, put_mat=put_mat, 
-            verbosity=verbosity)
-        self.vec_space = VectorSpaceHandles(inner_product=inner_product,
-            max_vecs_per_node=max_vecs_per_node,
-            verbosity=verbosity)
-        self.vec_handles = None
-        
 
     def sanity_check(self, test_vec_handle):
         """Check user-supplied vector handle.
@@ -211,7 +261,8 @@ class PODHandles(PODBase):
             compute_symmetric_inner_product_mat(self.vec_handles)
         #self.correlation_mat = self.vec_space.\
         #    compute_inner_product_mat(self.vec_handles, self.vec_handles)
-        self.compute_eigen_decomp()
+        self.eigen_vals, self.eigen_vecs = _parallel.call_and_bcast(
+            util.eigh, self.correlation_mat, is_positive_definite=True)
         return self.eigen_vecs, self.eigen_vals
 
     def compute_modes(self, mode_indices, modes, vec_handles=None):
