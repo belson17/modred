@@ -1,28 +1,31 @@
-"""DMD class"""
 
 import numpy as N
-from vectorspace import *
+from vectorspace import VectorSpaceMatrices, VectorSpaceHandles
 import util
-import vectors as V
 from parallel import parallel_default_instance
 _parallel = parallel_default_instance
 
 
-def compute_DMD_arrays_snaps_method(vec_array, mode_indices, adv_vec_array=None,
+def compute_DMD_matrices_snaps_method(vecs, mode_indices, adv_vecs=None,
     inner_product_weights=None, return_all=False):
     """Dynamic Mode Decomposition/Koopman Mode Decomposition for small data.
 
     Args:
-        ``vec_array``: 2D array with vectors as columns.
+        ``vecs``: Matrix with vectors as columns.
     
         ``mode_indices``: List of mode numbers, ``range(10)`` or ``[3, 0, 5]``.
     
     Kwargs:
-        ``adv_vec_array``: 2D array with vectors, advanced in time, as columns.
-            If not provided, it is assumed that the vectors come from a 
-            sequential time-series, and ``vec_array`` is partitioned according
-            to the indices [:-1] and [1:].
-            
+        ``adv_vecs``: Matrix with ``vecs`` advanced in time as columns.
+            If not provided, then it is assumed that the vectors are a 
+            sequential time-series. Thus ``vecs`` becomes ``vecs[:-1]`` and
+            ``adv_vecs`` becomes ``vecs[1:]``.
+
+        ``inner_product_weights``: 1D or Matrix of inner product weights.
+            It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
+
+        ``return_all``: Return more objects, see below. Default is false.
+
     Returns:
         ``modes``: 2D array with requested modes as columns.
 
@@ -30,60 +33,54 @@ def compute_DMD_arrays_snaps_method(vec_array, mode_indices, adv_vec_array=None,
         
         ``mode_norms``: 1D array of mode norms.
         
+        If ``return_all`` is true, also returns:
+        
         ``build_coeffs``: 2D array of build coefficients for modes.
         
     """
     if _parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
-    vec_space = VectorSpaceArrays(weights=inner_product_weights)
-    # Always set vec_array
-    vec_array = util.make_2D_array(vec_array)
-    if adv_vec_array is not None:
-        adv_vec_array = util.make_2D_array(adv_vec_array)
-        if vec_array.shape != adv_vec_array.shape:
-            raise ValueError(('vec_array and adv_vec_array are not the '
-                'same shape.'))
-        # For non-sequential data, compute the correlation matrix from the 
-        # unadvanced snapshots only.
-        correlation_mat = N.mat(vec_space.compute_symmetric_inner_product_mat(
-            vec_array))
-    # For a sequential dataset, compute correlation mat for all vectors.
-    # This is more efficient because only one call is made to the inner
-    # product routine, even though we don't need the last row/column yet.
-    # Later we need all but the last element of the last column, so it is
-    # faster to compute all of this now.  Only one extra element is
-    # computed, since this is a symmetric inner product matrix.  Then
-    # slice the expanded correlation matrix accordingly.
-    else:
-        expanded_correlation_mat =\
-            N.mat(vec_space.compute_symmetric_inner_product_mat(
-            vec_array))
+    vec_space = VectorSpaceMatrices(weights=inner_product_weights)
+    vecs = util.make_mat(vecs)
+    # Sequential dataset
+    if adv_vecs is None:
+        # Compute correlation mat for all vectors.
+        # This is more efficient because only one call is made to the inner
+        # product routine, even though we don't need the last row and column yet.
+        expanded_correlation_mat = \
+            vec_space.compute_symmetric_inner_product_mat(vecs)
         correlation_mat = expanded_correlation_mat[:-1, :-1]
+    # Non-sequential data
+    else:
+        adv_vecs = util.make_mat(adv_vecs)
+        if vecs.shape != adv_vecs.shape:
+            raise ValueError(('vecs and adv_vecs are not the same shape.'))
+        # Compute the correlation matrix from the unadvanced snapshots only.
+        correlation_mat = N.mat(vec_space.compute_symmetric_inner_product_mat(
+            vecs))
     
-    
-    # Compute eigendecomposition of correlation matrix
     correlation_mat_evals, correlation_mat_evecs = util.eigh(correlation_mat, 
         is_positive_definite=True)
     correlation_mat_evals_sqrt = N.mat(N.diag(correlation_mat_evals**-0.5))
  
-    # Compute low-order linear map for non-squential snapshot set
-    if adv_vec_array is not None:
-        low_order_linear_map = correlation_mat_evals_sqrt *\
-            correlation_mat_evecs.H *\
-            vec_space.compute_inner_product_mat(vec_array,
-            adv_vec_array) * correlation_mat_evecs *\
-            correlation_mat_evals_sqrt
-    # Compute low-order linear map for sequential snapshot set.  This takes
-    # advantage of the fact that for a sequential dataset, the unadvanced
-    # and advanced vectors overlap.
+    # Compute low-order linear map for sequential or non-sequential case.
+    # Sequential snapshot set. Takes advantage of the fact that the
+    # the unadvanced and advanced vectors are the same except for first
+    # and last entries.
+    if adv_vecs is None:
+        low_order_linear_map = correlation_mat_evals_sqrt * \
+            correlation_mat_evecs.H * \
+            expanded_correlation_mat[:-1, 1:] * \
+            correlation_mat_evecs * correlation_mat_evals_sqrt
+    # Non-sequential snapshot set.
     else: 
         low_order_linear_map = correlation_mat_evals_sqrt *\
             correlation_mat_evecs.H *\
-            expanded_correlation_mat[:-1, 1:] *\
-            correlation_mat_evecs * correlation_mat_evals_sqrt
+            vec_space.compute_inner_product_mat(vecs,
+            adv_vecs) * correlation_mat_evecs *\
+            correlation_mat_evals_sqrt
     
-    # Compute eigendecomposition of low-order linear map, finish DMD
-    # computation.
+    # Compute eigendecomposition of low-order linear map.
     ritz_vals, low_order_evecs = N.linalg.eig(low_order_linear_map)
     build_coeffs = correlation_mat_evecs *\
         correlation_mat_evals_sqrt * low_order_evecs *\
@@ -93,26 +90,19 @@ def compute_DMD_arrays_snaps_method(vec_array, mode_indices, adv_vec_array=None,
         correlation_mat[:, 0]).squeeze(), ndmin=1))
     mode_norms = N.diag(build_coeffs.H * correlation_mat * build_coeffs).real
     
-
-    # For sequential data, the user will provide a list vec_handles that
-    # whose length is one larger than the number of columns of the 
-    # build_coeffs matrix.  This is to be expected, as vec_handles is
-    # essentially partitioned into two sets of handles, each of length one
-    # less than vec_handles.
-    if vec_array.shape[1] - build_coeffs.shape[1] == 1:
-        modes = vec_space.lin_combine(vec_array[:, :-1], 
+    # For sequential data, user must provide one more vec than columns of 
+    # build_coeffs. 
+    if vecs.shape[1] - build_coeffs.shape[0] == 1:
+        modes = vec_space.lin_combine(vecs[:, :-1], 
             build_coeffs, coeff_mat_col_indices=mode_indices)
-    # For a non-sequential dataset, the user will provide a list vec_handles
-    # whose length is equal to the number of columns in the build_coeffs
-    # matrix.
-    elif vec_array.shape[1] == build_coeffs.shape[1]:
-        modes = vec_space.lin_combine(vec_array, 
+    # For sequential data, user must provide as many vecs as columns of 
+    # build_coeffs. 
+    elif vecs.shape[1] == build_coeffs.shape[0]:
+        modes = vec_space.lin_combine(vecs, 
             build_coeffs, coeff_mat_col_indices=mode_indices)
-    # Otherwise, raise an error, as the number of handles should fit one of
-    # the two cases described above.
     else:
-        raise ValueError(('Number of cols in vec_array does not match '
-            'number of cols in build_coeffs matrix.'))
+        raise ValueError(('Number of cols in vecs does not match '
+            'number of rows in build_coeffs matrix.'))
     
     if return_all:
         return modes, ritz_vals, mode_norms, build_coeffs    
@@ -123,34 +113,120 @@ def compute_DMD_arrays_snaps_method(vec_array, mode_indices, adv_vec_array=None,
 
 
 
-def compute_DMD_arrays_direct_method(vec_array, mode_indices, adv_vec_array=None,
-    inner_product_weights=None, return_all=False):
+def compute_DMD_matrices_direct_method(vecs, mode_indices, 
+    adv_vecs=None, inner_product_weights=None, return_all=False):
     """Dynamic Mode Decomposition/Koopman Mode Decomposition for small data.
 
     Args:
-        ``vec_array``: 2D array with vectors as columns.
+        ``vecs``: Matrix with vectors as columns.
     
         ``mode_indices``: List of mode numbers, ``range(10)`` or ``[3, 0, 5]``.
     
     Kwargs:
-        ``adv_vec_array``: 2D array with vectors, advanced in time, as columns.
-            If not provided, it is assumed that the vectors come from a 
-            sequential time-series, and ``vec_array`` is partitioned according
-            to the indices [:-1] and [1:].
+        ``adv_vecs``: Matrix with ``vecs`` advanced in time as columns.
+            If not provided, then it is assumed that the vectors are a 
+            sequential time-series. Thus ``vecs`` becomes ``vecs[:-1]`` and
+            ``adv_vecs`` becomes ``vecs[1:]``.
             
+        ``inner_product_weights``: 1D or Matrix of inner product weights.
+            It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
+
+        ``return_all``: Return more objects, see below. Default is false.
+
     Returns:
-        ``modes``: 2D array with requested modes as columns.
+        ``modes``: Matrix with requested modes as columns.
 
         ``ritz_vals``: 1D array of Ritz values.
         
         ``mode_norms``: 1D array of mode norms.
-        
-        ``build_coeffs``: 2D array of build coefficients for modes.
+
+        If ``return_all`` is true, also returns:
+
+        ``build_coeffs``: Matrix of build coefficients for modes.
         
     """
-    # TODO: everything!!
-    return compute_DMD_arrays_snaps_method(vec_array, mode_indices, adv_vec_array,
-        inner_product_weights, return_all)
+    if _parallel.is_distributed():
+        raise RuntimeError('Cannot run in parallel.')
+    vec_space = VectorSpaceMatrices(weights=inner_product_weights)
+    vecs = util.make_mat(vecs)
+    if adv_vecs is not None:
+        adv_vecs = util.make_mat(adv_vecs)
+    
+    if inner_product_weights is None:
+        vecs_weighted = vecs
+        if adv_vecs is not None:
+            adv_vecs_weighted = adv_vecs
+    elif inner_product_weights.ndim == 1:
+        sqrt_weights = N.mat(N.diag(inner_product_weights**0.5))
+        vecs_weighted = sqrt_weights * vecs
+        if adv_vecs is not None:
+            adv_vecs_weighted = sqrt_weights * adv_vecs
+    elif inner_product_weights.ndim == 2:
+        if inner_product_weights.shape[0] > 500:
+            print 'Warning: Cholesky decomposition could be time consuming.'
+        sqrt_weights = N.mat(N.linalg.cholesky(inner_product_weights)).H
+        vecs_weighted = sqrt_weights * vecs
+        if adv_vecs is not None:
+            adv_vecs_weighted = sqrt_weights * adv_vecs
+    
+    # Compute low-order linear map for sequential snapshot set.  This takes
+    # advantage of the fact that for a sequential dataset, the unadvanced
+    # and advanced vectors overlap.
+    if adv_vecs is None:        
+        U, sing_vals, correlation_mat_evecs = util.svd(vecs_weighted[:,:-1])
+        correlation_mat_evals = sing_vals**2
+        correlation_mat = correlation_mat_evecs * \
+            N.mat(N.diag(correlation_mat_evals)) * correlation_mat_evecs.H
+        last_col = U.H * vecs_weighted[:,-1]
+        correlation_mat_evals_sqrt = N.mat(N.diag(sing_vals**-1.0))
+        correlation_mat = correlation_mat_evecs * \
+            N.mat(N.diag(correlation_mat_evals)) * correlation_mat_evecs.H
+
+        low_order_linear_map = N.mat(N.concatenate(
+            (correlation_mat_evals_sqrt * correlation_mat_evecs.H * \
+            correlation_mat[:, 1:], last_col), axis=1)) * \
+            correlation_mat_evecs * correlation_mat_evals_sqrt
+    else: 
+        if vecs.shape != adv_vecs.shape:
+            raise ValueError(('vecs and adv_vecs are not the same shape.'))
+        U, sing_vals, correlation_mat_evecs = util.svd(vecs_weighted)
+        correlation_mat_evals_sqrt = N.mat(N.diag(sing_vals**-1.0))
+        low_order_linear_map = U.H * adv_vecs_weighted * \
+            correlation_mat_evecs * correlation_mat_evals_sqrt   
+        correlation_mat_evals = sing_vals**2
+        correlation_mat = correlation_mat_evecs * \
+            N.mat(N.diag(correlation_mat_evals)) * correlation_mat_evecs.H
+
+    # Compute eigendecomposition of low-order linear map.
+    ritz_vals, low_order_evecs = N.linalg.eig(low_order_linear_map)
+    build_coeffs = correlation_mat_evecs *\
+        correlation_mat_evals_sqrt * low_order_evecs *\
+        N.diag(N.array(N.array(N.linalg.inv(
+        low_order_evecs.H * low_order_evecs) * low_order_evecs.H *\
+        correlation_mat_evals_sqrt * correlation_mat_evecs.H * 
+        correlation_mat[:, 0]).squeeze(), ndmin=1))
+    mode_norms = N.diag(build_coeffs.H * correlation_mat * build_coeffs).real
+
+    # For sequential data, the user will provide a vecs 
+    # whose length is one larger than the number of columns of the 
+    # build_coeffs matrix. 
+    if vecs.shape[1] - build_coeffs.shape[0] == 1:
+        modes = vec_space.lin_combine(vecs[:, :-1], 
+            build_coeffs, coeff_mat_col_indices=mode_indices)
+    # For a non-sequential dataset, user provides vecs
+    # whose length is equal to the number of columns of build_coeffs
+    elif vecs.shape[1] == build_coeffs.shape[0]:
+        modes = vec_space.lin_combine(vecs, 
+            build_coeffs, coeff_mat_col_indices=mode_indices)
+    # Raise an error if number of handles isn't one of the two cases above.
+    else:
+        raise ValueError(('Number of cols in vecs does not match '
+            'number of rows in build_coeffs matrix.'))
+    
+    if return_all:
+        return modes, ritz_vals, mode_norms, build_coeffs    
+    else:
+        return modes, ritz_vals, mode_norms
     
 
          
@@ -194,6 +270,12 @@ class DMDHandles(object):
         self.vec_space = VectorSpaceHandles(inner_product=inner_product, 
             max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
         self.vec_handles = None
+        # Do these need to be member vars?
+        self.adv_vec_handles = None
+        self.correlation_mat_evals = None
+        self.low_order_linear_map = None
+        self.correlation_mat_evecs = None
+        self.expanded_correlation_mat = None
 
     def get_decomp(self, ritz_vals_source, mode_norms_source, 
         build_coeffs_source):
@@ -271,17 +353,18 @@ class DMDHandles(object):
             ``vec_handles``: List of handles for the vectors.
         
         Kwargs:
-            ``adv_vec_handles``: List of handles for the vectors advanced in
-            time.  If this argument is not provided, it is assumed that the
-            vectors come from a sequential time-series, and vec_handles will be
-            partitioned according to the indices [:-1] and [1:].
-       
+            ``adv_vec_handles``: List of handles of ``vecs`` advanced in time.
+            If not provided, it is assumed that the
+            vectors are a sequential time-series. Thus ``vec_handles`` becomes
+            ``vec_handless[:-1]`` and ``adv_vec_handles`` 
+            becomes ``vec_handles[1:]``.
+            
         Returns:
             ``ritz_vals``: 1D array of Ritz values.
             
             ``mode_norms``: 1D array of mode norms.
             
-            ``build_coeffs``: 2D array of build coefficients for modes.
+            ``build_coeffs``: Matrix of build coefficients for modes.
         """
         if vec_handles is not None:
             self.vec_handles = util.make_list(vec_handles)
@@ -291,9 +374,7 @@ class DMDHandles(object):
             self.adv_vec_handles = util.make_list(adv_vec_handles)
             if len(self.vec_handles) != len(self.adv_vec_handles):
                 raise ValueError(('Number of vec_handles and adv_vec_handles'
-                    ' is not equal.'))
-        else:
-            self.adv_vec_handles = None
+                    ' is not equal.'))            
 
         # For a sequential dataset, compute correlation mat for all vectors.
         # This is more efficient because only one call is made to the inner
@@ -367,13 +448,13 @@ class DMDHandles(object):
         # build_coeffs matrix.  This is to be expected, as vec_handles is
         # essentially partitioned into two sets of handles, each of length one
         # less than vec_handles.
-        if len(self.vec_handles) - self.build_coeffs.shape[1] == 1:
+        if len(self.vec_handles) - self.build_coeffs.shape[0] == 1:
             self.vec_space.lin_combine(mode_handles, self.vec_handles[:-1], 
                 self.build_coeffs, coeff_mat_col_indices=mode_indices)
         # For a non-sequential dataset, the user will provide a list vec_handles
         # whose length is equal to the number of columns in the build_coeffs
         # matrix.
-        elif len(self.vec_handles) == self.build_coeffs.shape[1]:
+        elif len(self.vec_handles) == self.build_coeffs.shape[0]:
             self.vec_space.lin_combine(mode_handles, self.vec_handles, 
                 self.build_coeffs, coeff_mat_col_indices=mode_indices)
         # Otherwise, raise an error, as the number of handles should fit one of

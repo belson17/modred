@@ -19,46 +19,54 @@ object that satisfies the properties of a vector space.
 The examples below build on one another, each introducing new aspects.
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Example 1 -- Data in an array
+Example 1 -- All data in an array
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A simple way to find POD modes is:
 
 .. literalinclude:: ../examples/tutorial_ex1.py
 
 Let's walk through the important steps.
-First, we created an array of random, arbitrary data.
+First, we create an array of random data.
 Each column is a vector represented as a 1D array. 
-Then we created an instance of ``PODArrays`` called ``my_POD``.
-The next line, ``compute_decomp``, computes the correlation matrix 
-(``vec_array.conj().transpose().dot(vec_array)``), and returns its 
-eigenvectors and eigenvalues.
-This procedure is called the "method of snapshots", as described in 
+Then we call function ``compute_POD_arrays_direct_method``, which returns
+the first ``num_modes`` modes as columns of 2D array ``modes``
+and all of the non-zero eigenvalues, sorted from largest to smallest.
+
+This function implements the "method of snapshots", as described in 
 Section 3.4 of [HLBR]_.
-The last line, ``compute_modes`` takes a list of mode numbers as an
-argument and returns the modes as columns of the 2D array ``mode_array``. 
+In short, it computes the correlation matrix 
+:math:`X^* X`, where :math:`X` is ``vecs``, then finds the 
+eigenvectors and eigenvalues, which are related to the modes.
 
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Example 2 -- Inner products with data in an array
+Example 2 -- Inner products with all data in an array
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-You can use any inner product, specified here by a 1D array of weights, so 
-that the correlation matrix is given by
-``(vec_array.conj().transpose() * weights).dot(vec_array)``.
-The weights can also be, more generally, a 2D array.
+You can use a weighted inner product, specified here by a 1D array of weights,
+so that the correlation matrix is :math:`X^* W X`, 
+where :math:`X` is ``vecs`` and :math:`W` contains the
+inner product weights.
+The weights also can, more generally, be a 2D array.
 The vectors are again represented as columns of 2D numpy arrays.
 
 .. literalinclude:: ../examples/tutorial_ex2.py
+
+This function takes the SVD of :math:`W^{1/2} X`, 
+and we refer to this as the "direct method" to distinguish it from the
+method of snapshots in the previous example. 
+The differences between the two are insignificant in most cases. 
+For details, see :py:func:`pod.compute_POD_arrays_direct_method`.
 
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 3 -- Vector handles for loading and saving
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-This example demonstrates so-called "vector handles", which 
+This example demonstrates *vector handles*, which 
 are very important because they
-allow modred to interact with large data without requiring that all of the
-vectors be in memory simultaneously.
-This contrasts the previous examples where all of the vectors were 
-stored in a single 2D array, which is only possible for smaller data.
+allow modred to interact with large and complicated datasets without requiring 
+that all of the vectors be stacked into a single 2D array.
+This is necessary, for example,
+if the data is too large to all fit in memory simultaneously.
 
 The following example computes direct and adjoint modes using Balanced
 POD (see Chapter 5 of [HLBR]_):
@@ -67,45 +75,45 @@ POD (see Chapter 5 of [HLBR]_):
 
 First, we create lists ``direct_snapshots`` and
 ``adjoint_snapshots``.
-Each element in these lists is a vector handle (in particular, 
-``ArrayTextVecHandle``), so they have functions to load
-(``vec = vec_handle.get()``) and
-save (``vec_handle.put(vec)``) a vector/snapshot but themselves uses very 
-little memory because vector handles do *not* internally contain a vector.
-Later in the script we provide modred with these lists of vector handles 
-which modred uses to load and save individual vectors as it needs them.
+("Snapshots" is just a common word to describe vectors that come from 
+time-sampling a system as it evolves.)
+Each element in these lists is a vector handle (in particular, an instance of
+``VecHandleArrayText``).
+All vector handles have member functions to load, ``vec = vec_handle.get()``,
+and save, ``vec_handle.put(vec)``, but themselves use very 
+little memory because they do *not* internally contain a vector.
+Modred uses these vector handles to load and save individual vectors only as it 
+needs them.
 
-Each individual snapshot is a vector and is represented as an array, 
-but they are not stacked into a single 2D array since we are considering
-the case that there's insufficient memory to do this. 
-Ordinarily, the snapshots would already exist, for instance as files
-on disk from a simulation or experiment.
+All the snapshots are vectors and each is represented as an array, 
+but they are *not* stacked into a single 2D array. 
+Ordinarily the snapshots would already exist, for instance as files
+from a simulation or experiment.
 Here, we artificially generate snapshots and write them to file using 
 the ``put()`` method just described.
 
 Next, we compute the BPOD modes.
 The ``BPODHandles`` constructor takes an optional argument
-``max_vecs_per_node=10``, instructing the function that only 10
+``max_vecs_per_node=10``, specifying that only 10
 vectors (snapshots + modes) can be in one node's memory at one time.
 The function ``compute_decomp`` takes lists of *vector handles* as
 arguments.
 In this example, note that there are 30 direct and 30 adjoint 
-snapshots, so to avoid violating ``max_vecs_per_node=10`` handles 
-are necessary.
+snapshots, so handles are necessary to avoid violating ``max_vecs_per_node=10``.
 
 Similarly, ``compute_direct_modes`` and ``compute_adjoint_modes`` take
-lists of handles, and save all of the modes via ``handle.put()``,
-rather than returning all of the modes (which could be too large for memory).
+lists of handles.
+The modes are saved via ``handle.put()``
+rather than returned, which could be too large for memory.
 
-Replacing ``ArrayTextVecHandle`` with ``PickleVecHandle`` would load/save  
+Replacing ``VecHandleArrayText`` with ``VecHandlePickle`` would load/save  
 all vectors (snapshots and/or modes) to python's binary pickle files.
-Pickling works with *any* type of vector, including user-defined ones, whereas
-saving to text is only written for 1D and 2D arrays.
+Note that pickling works with *any* type of vector, including user-defined 
+ones, whereas saving to text is only written for 1D and 2D arrays.
 
 To run this example in parallel is easy.
-The only complication is the data must be saved by only one processor 
-(MPI worker).
-Moving a few lines inside the following if block solves this::
+The only complication is the data must be saved by only one processor, and 
+moving these lines inside an ``if`` block solves this::
   
   parallel = MR.parallel_default_instance
   if parallel.is_rank_zero():
@@ -115,13 +123,13 @@ Moving a few lines inside the following if block solves this::
 
 After this change, the code will still work in serial, even if mpi4py is not
 installed.
-To do this, where the above script is saved as ``main_bpod.py``, execute:: 
+To run this, where the above script is saved as ``main_bpod.py``, execute:: 
   
-  mpiexec -n 8 python main_pod.py
+  mpiexec -n 8 python main_bpod.py
 
 It is rare to need to handle parallelization yourself, but if you do, 
-you should use the provided ``parallel_default_instance`` instance
-as in this example.
+you should use the provided ``MR.parallel_default_instance`` instance
+as above.
 Also provided are member functions ``parallel.get_rank()`` and 
 ``parallel.get_num_procs()`` (see :py:mod:`parallel` for details).
 
@@ -135,9 +143,9 @@ Example 4 -- Inner product function
 You are free to use any inner product function with interface 
 ``value = inner_product(vec1, vec2)`` and that satisfies the mathematical
 definition (see :ref:`sec_details`).
-This example uses a provided trapezoidal rule for inner products on 
+This example uses the trapezoidal rule for inner products on 
 an arbitrary n-dimensional cartesian grid 
-(:py:class:`vectors.InnerProductTrapz`).
+(see :py:class:`vectors.InnerProductTrapz`).
 The object ``weighted_IP`` is callable (it has a special
 method ``__call__``) so it acts as the inner product the usual
 way: ``value = weighted_IP(vec1, vec2)``.
@@ -146,8 +154,7 @@ way: ``value = weighted_IP(vec1, vec2)``.
 
 Also shown in this example is the useful ``put_decomp``, which, by default 
 saves the arrays associated with the decomposition to text files.
-This behavior can be changed by providing a different function to constructor 
-as keyword argument ``put_mat``. See :ref:`sec_matrices`.
+(See :ref:`sec_matrices`.)
 
 Again, this code can be executed in parallel without any modifications.
 
@@ -156,10 +163,10 @@ Again, this code can be executed in parallel without any modifications.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 5 -- Shifting and scaling vectors using vector handles
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Often vectors contain an offset (also called a "shift" or "translation") 
+Often vectors contain an offset (also called a shift or translation) 
 such as a mean or equilibrium state, and one might want to do model 
 reduction with this known offset removed.
-We call this offset the "base vector", and it can be subtracted off by the
+We call this offset the base vector, and it can be subtracted off by the
 vector handle class as shown in this example. 
   
 Note that ``handle.put`` does *not* use the base vector; the base
@@ -167,24 +174,23 @@ vector is only subtracted by ``handle.get``.
 
 You might also want to scale all of your vectors by factors as you retrieve them
 for use in modred, and this can also be done
-by the vector handle ``get`` function.
-For example, below we show the use of quadrature weights, where each vector
-is weighted.
+by the ``handle.get`` function.
 When using both base vector shifting and scaling, the default order
 is first shifting then scaling: ``(vec - base_vec)*scale``.
 
-This example also shows how to load vectors in one format (pickle, via
-handles ``MR.PickleVecHandle``) 
-and save modes in another (text, via handles ``MR.ArrayTextVecHandle``).
+This examples uses quadrature weights, where each vector is weighted.
+It also shows how to load vectors in one format (pickle, via
+``MR.VecHandlePickle``) 
+and save modes in another (text, via ``MR.VecHandleArrayText``).
 
 .. literalinclude:: ../examples/tutorial_ex5.py
 
-At the end of this example, we use an instance of the lower-level 
-"heavy lifting" class 
+At the end of this example, we use an instance of the low-level 
+class 
 :class:`vectorspace.VectorSpaceHandles` to check that the POD modes are 
 orthonormal.
-It's generally not necessary to use this class, but if the need arises,
-it should be used since it is tested and parallelized.
+It's generally not necessary to use this class (or do this check),
+but if the need arises, it should be used since it is tested and parallelized.
 
 
 
@@ -207,7 +213,7 @@ file, for instance called ``custom_vector.py``:
 
 .. literalinclude:: ../examples/custom_vector.py
 
-A ``CustomVector`` meets the requirements for a vector object: vector addition
+Instances of ``CustomVector`` meet the requirements for a vector object: vector addition
 ``__add__`` and scalar multiplication ``__mul__`` are defined, and 
 the objects are compatible with an inner product function such as
 ``inner_product(v1, v2)``.
@@ -224,7 +230,7 @@ The class ``CustomVecHandle`` inherits from a base class
 load and save vectors from/to Pickle files.  Note the leading
 underscore: the functions ``get`` and ``put`` (without leading
 underscore) are defined in the ``VecHandle`` base class, and take care
-of things like scaling or subtracting a base vector.  The methods
+of scaling or subtracting a base vector.  The methods
 ``_get`` and ``_put`` defined here are in turn called by the base
 class (the "template method" design pattern).
 While you don't need to understand the guts of these base classes, more 
@@ -247,13 +253,12 @@ generating the "fake" random data: most scripts will only need
 to deal with the vector handle classes, not the vectors themselves.
 
 When you're ready to start using modred, take a look at what types of 
-vectors, file formats, and inner_products are supplied in :mod:`vectors`.
+vectors, file formats, and inner products are supplied in :mod:`vectors`.
 If you don't find what you need, you can define your own vectors and vector
 handles following examples like this.
-Built-in classes like ``ArrayTextVecHandle`` and ``PickleVecHandle`` are
-good examples, and your own custom vector handle classes will probably
-closely resemble these.
-We provide them with modred since they are common cases.
+Built-in classes like ``VecHandleArrayText`` and ``VecHandlePickle`` are
+common cases and serve as good examples since your own custom vector 
+handle classes will probably resemble them.
 
 As usual, this example can be executed in parallel without any 
 modifications.
@@ -266,18 +271,12 @@ modifications.
 Matrix input and output
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-By default, ``put_mat`` and ``get_mat`` save and load to text files
-because this tends to be a versatile format.
-However, if you prefer a different format, you can define your own
-functions ``put_mat`` and ``get_mat``, and pass them as keyword
-arguments to the constructors for ``POD``, ``BPOD``, ``DMD``, etc.
-For example, you can save in a different file format, or ``get`` and ``put``
-the matrices to another class's data member. 
-The only requirement is that the functions
-match the required interfaces: ``put_mat(mat, mat_dest)`` and
+By default, ``put_mat`` and ``get_mat`` save and load to text files.
+If you prefer a different format, you can pass your own
+functions as keyword arguments ``put_mat`` and ``get_mat`` to the constructors.
+The functions should have interfaces: ``put_mat(mat, mat_dest)`` and
 ``mat = get_mat(mat_source)``.
-
-These functions must properly deal with numpy matrices and 1D and 2D arrays. 
+The ``mat`` argument could be a numpy matrix, 1D array, or 2D array. 
 
 ^^^^^^^^^^^^^^
 References

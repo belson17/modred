@@ -9,13 +9,13 @@ num_modes = 40
 
 # Create random modes and action on modes. Typically this data already exists and
 # this section is unnecesary.
-basis_vecs = [MR.PickleVecHandle('dir_mode_%02d.pkl'%i) 
+basis_vecs = [MR.VecHandlePickle('dir_mode_%02d.pkl'%i) 
     for i in range(num_modes)]
-adjoint_basis_vecs = [MR.PickleVecHandle('adj_mode_%02d.pkl'%i) 
+adjoint_basis_vecs = [MR.VecHandlePickle('adj_mode_%02d.pkl'%i) 
     for i in range(num_modes)]
-A_on_basis_vecs = [MR.PickleVecHandle('A_on_dir_mode_%02d.pkl'%i) 
+A_on_basis_vecs = [MR.VecHandlePickle('A_on_dir_mode_%02d.pkl'%i) 
     for i in range(num_modes)]
-B_on_bases = [MR.PickleVecHandle('B_on_basis_%02d.pkl'%i) 
+B_on_bases = [MR.VecHandlePickle('B_on_basis_%02d.pkl'%i) 
     for i in range(num_inputs)]
 C_on_basis_vecs = [N.sin(N.linspace(0, 0.1*i, num_outputs)) for i in range(num_modes)]
 parallel = MR.parallel_default_instance

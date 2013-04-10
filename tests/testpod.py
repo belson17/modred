@@ -31,20 +31,22 @@ class TestPODArraysFunctions(unittest.TestCase):
     def test_compute_modes(self):
         ws = N.identity(self.num_states)
         tol = 1e-6
-        ws[0,0] = 2
-        ws[1,1] = 2.2
-        weights_list = [None, N.random.random(self.num_states), ws]
+        weights_full = N.mat(N.random.random((self.num_states, self.num_states)))
+        weights_full = N.triu(weights_full) + N.triu(weights_full, 1).H
+        weights_full = weights_full*weights_full
+        weights_diag = N.random.random(self.num_states)
+        weights_list = [None, weights_diag, weights_full]
         vec_array = N.random.random((self.num_states, self.num_vecs))
         for weights in weights_list:
-            IP = VectorSpaceArrays(weights=weights).compute_inner_product_mat
+            IP = VectorSpaceMatrices(weights=weights).compute_inner_product_mat
             correlation_mat_true = IP(vec_array, vec_array)
             eigen_vals_true, eigen_vecs_true = util.eigh(correlation_mat_true)
-            build_coeff_mat_true = eigen_vecs_true.dot(N.diag(
+            build_coeff_mat_true = eigen_vecs_true * N.mat(N.diag(
                 eigen_vals_true**-0.5))
             modes_true = vec_array.dot(build_coeff_mat_true)
             
             modes, eigen_vals, eigen_vecs, correlation_mat = \
-                compute_POD_arrays_snaps_method(vec_array, self.mode_indices, 
+                compute_POD_matrices_snaps_method(vec_array, self.mode_indices, 
                 inner_product_weights=weights, return_all=True)
             
             N.testing.assert_allclose(eigen_vals, eigen_vals_true, rtol=tol)
@@ -53,7 +55,7 @@ class TestPODArraysFunctions(unittest.TestCase):
             N.testing.assert_allclose(modes, modes_true[:,self.mode_indices])
                         
             modes, eigen_vals, eigen_vecs = \
-                compute_POD_arrays_direct_method(vec_array, self.mode_indices, 
+                compute_POD_matrices_direct_method(vec_array, self.mode_indices, 
                 inner_product_weights=weights, return_all=True)
             
             N.testing.assert_allclose(eigen_vals, eigen_vals_true)
@@ -84,7 +86,7 @@ class TestPODHandles(unittest.TestCase):
         self.mode_array = N.dot(self.vec_array, N.dot(self.eigen_vecs_true,
             N.diag(self.eigen_vals_true**-0.5)))
         self.vec_path = join(self.test_dir, 'vec_%03d.txt')
-        self.vec_handles = [V.ArrayTextVecHandle(self.vec_path%i)
+        self.vec_handles = [V.VecHandleArrayText(self.vec_path%i)
             for i in range(self.num_vecs)]
         for vec_index, handle in enumerate(self.vec_handles):
             handle.put(self.vec_array[:, vec_index])
@@ -205,7 +207,7 @@ class TestPODHandles(unittest.TestCase):
 
     def test_compute_modes(self):
         mode_path = join(self.test_dir, 'mode_%03d.txt')
-        mode_handles = [V.ArrayTextVecHandle(mode_path%i) 
+        mode_handles = [V.VecHandleArrayText(mode_path%i) 
             for i in self.mode_indices]
         # starts with the CORRECT decomposition.
         self.my_POD.eigen_vecs = self.eigen_vecs_true

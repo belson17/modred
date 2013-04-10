@@ -1,16 +1,16 @@
 """A group of useful functions"""
 
+import inspect
 import os
 import numpy as N
-import inspect
 
 class UndefinedError(Exception): pass
 
-def make_2D_array(array):
-    """If ``array`` is 1D array, makes it 2D array."""
+def make_mat(array):
+    """Makes 1D or 2D array into matrix. 1D arrays become mats with one col."""
     if array.ndim == 1:
         array = array.reshape((array.shape[0], 1))
-    return array
+    return N.mat(array)
 
 
 def make_list(arg):
@@ -231,11 +231,11 @@ def sum_lists(list1, list2):
 def solve_Lyapunov_direct(A, Q):
     """Solves discrete Lyapunov equation AXA' - X + Q = 0 for X given A and Q.
     
-    :py:meth:`solve_Lyapunov_iterative` is numerically better conditioned.
-    
     This function may not be as computationally efficient or stable as 
     Matlab's ``dylap``.
 
+    See also :py:func:`solve_Lyapunov_iterative`.
+    
     See http://en.wikipedia.org/wiki/Lyapunov_equation
     """
     A = N.array(A)
@@ -293,7 +293,7 @@ def balanced_truncation(A, B, C, order=None, return_sing_vals=False,
     """Balance and truncate discrete-time LTI system defined by A, B, C.
     
     Args:
-        ``A``, ``B``, ``C``: LTI discrete-time 2D arrays.
+        ``A``, ``B``, ``C``: LTI discrete-time matrices.
         
     Kwargs:
         ``order``: Order of truncated system. Default is maximum.
@@ -385,7 +385,7 @@ def lsim(A, B, C, inputs, initial_condition=None):
     :math:`y(n) = Cx(n)`
     
     Args:
-        ``A``, ``B``, and ``C``: State-space system arrays/matrices.
+        ``A``, ``B``, and ``C``: State-space system matrices.
         
         ``inputs``: Array with dimensions ``[num_time_steps, num_inputs]``,
         :math:`u`.

@@ -1,7 +1,3 @@
-"""Parallelized addition and multiplication for vector spaces.
-
-There are separate methods to operate on vectors and vector handles.
-"""
 
 import sys  
 import copy
@@ -14,45 +10,47 @@ _parallel = parallel_default_instance
 import vectors as V
 
 
-class VectorSpaceArrays(object):
-    """Inner products and linear combinations with arrays.
+class VectorSpaceMatrices(object):
+    """Inner products and linear combinations with matrices.
     
     Kwargs:
-        ``weights``: 1D or 2D array of inner product weights, ``Y* weights X``.
+        ``inner_product_weights``: 1D array or matrix of inner product weights.
+            It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
     """
     def __init__(self, weights=None):
         self.weights = weights
         if self.weights is not None:
             self.weights = N.array(self.weights).squeeze()
         if self.weights is None:
-            VectorSpaceArrays.compute_inner_product_mat = \
-                VectorSpaceArrays._IP_no_weights
+            VectorSpaceMatrices.compute_inner_product_mat = \
+                VectorSpaceMatrices._IP_no_weights
         elif self.weights.ndim == 1:
-            VectorSpaceArrays.compute_inner_product_mat = \
-                VectorSpaceArrays._IP_1D_weights
+            VectorSpaceMatrices.compute_inner_product_mat = \
+                VectorSpaceMatrices._IP_1D_weights
         elif self.weights.ndim == 2:
-            VectorSpaceArrays.compute_inner_product_mat = \
-                VectorSpaceArrays._IP_2D_weights
+            self.weights = N.mat(self.weights)
+            VectorSpaceMatrices.compute_inner_product_mat = \
+                VectorSpaceMatrices._IP_2D_weights
         else:
             raise ValueError('Weights must be None, 1D, or 2D')
     def _IP_no_weights(self, vecs1, vecs2):
-        return N.array(vecs1).conj().transpose().dot(vecs2)
+        return N.mat(vecs1).H * N.mat(vecs2)
     def _IP_1D_weights(self, vecs1, vecs2):
-        return (N.array(vecs1).conj().transpose() * self.weights).dot(vecs2)
+        return N.mat((N.array(vecs1).conj().T * self.weights).dot(vecs2))
     def _IP_2D_weights(self, vecs1, vecs2):
-        return N.array(vecs1).conj().transpose().dot(self.weights).dot(vecs2)
+        return N.mat(vecs1).H * self.weights * N.mat(vecs2)
     def __eq__(self, other):
         if type(other) == type(self):
             return smart_eq(self.weights, other.weights)
         else:
             return False
     
-    def lin_combine(self, basis_vec_array, coeff_mat,
+    def lin_combine(self, basis_vecs, coeff_mat,
         coeff_mat_col_indices=None):
-        return basis_vec_array.dot(coeff_mat[:,coeff_mat_col_indices])
+        return N.mat(basis_vecs) * N.mat(coeff_mat[:,coeff_mat_col_indices])
     
-    def compute_symmetric_inner_product_mat(self, vec_array):
-        return self.compute_inner_product_mat(vec_array, vec_array)
+    def compute_symmetric_inner_product_mat(self, vecs):
+        return self.compute_inner_product_mat(vecs, vecs)
     
     def __eq__(self, other):
         if type(self) != type(other):

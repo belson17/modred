@@ -51,7 +51,7 @@ class VecHandle(object):
     
 
 
-class InMemoryVecHandle(VecHandle):
+class VecHandleInMemory(VecHandle):
     """Gets and puts vectors in memory."""
     def __init__(self, vec=None, base_vec_handle=None, scale=None):
         VecHandle.__init__(self, base_vec_handle, scale)
@@ -68,7 +68,7 @@ class InMemoryVecHandle(VecHandle):
         return util.smart_eq(self.vec, other.vec)
         
         
-class ArrayTextVecHandle(VecHandle):
+class VecHandleArrayText(VecHandle):
     """Gets and puts array vector objects to text files."""
     def __init__(self, vec_path, base_vec_handle=None, scale=None):
         VecHandle.__init__(self, base_vec_handle, scale)
@@ -85,7 +85,7 @@ class ArrayTextVecHandle(VecHandle):
         return self.vec_path == other.vec_path
         
 
-class PickleVecHandle(VecHandle):
+class VecHandlePickle(VecHandle):
     """Gets and puts any vector object to pickle files."""
     def __init__(self, vec_path, base_vec_handle=None, scale=None):
         VecHandle.__init__(self, base_vec_handle, scale)
@@ -135,7 +135,7 @@ class InnerProductTrapz(object):
     def __call__(self, vec1, vec2):
         return self.inner_product(vec1, vec2)
     def inner_product(self, vec1, vec2):
-        """Takes the inner product. Also can call instances of the class."""
+        """Takes the inner product."""
         IP = vec1 * vec2
         for grid in reversed(self.grids):
             if not isinstance(grid, N.ndarray):
@@ -151,10 +151,10 @@ class Vector(object):
         """Must overwrite"""
         raise NotImplementedError('constructor must be implemented by subclass')
     def __add__(self, other):
-        raise NotImplementedError('addition must be implemented by subclasses')
+        raise NotImplementedError('addition must be implemented by subclass')
     def __mul__(self, scalar):
         raise NotImplementedError('multiplication must be implemented by '
-            'subclasses')
+            'subclass')
     def __rmul__(self, scalar):
         return self.__mul__(scalar)
     def __lmul__(self, scalar):

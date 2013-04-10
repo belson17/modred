@@ -64,9 +64,9 @@ def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node,
     
     Remember that rows correspond to adjoint modes and cols to direct modes
     """
-    col_vec_handles = [MR.PickleVecHandle(join(data_dir, col_vec_name%col_num))
+    col_vec_handles = [MR.VecHandlePickle(join(data_dir, col_vec_name%col_num))
         for col_num in range(num_cols)]
-    row_vec_handles = [MR.PickleVecHandle(join(data_dir, row_vec_name%row_num))
+    row_vec_handles = [MR.VecHandlePickle(join(data_dir, row_vec_name%row_num))
         for row_num in range(num_rows)]
     
     generate_vecs(data_dir, num_states, row_vec_handles+col_vec_handles)
@@ -89,7 +89,7 @@ def symmetric_inner_product_mat(num_states, num_vecs, max_vecs_per_node,
     """
     Computes symmetric inner product matrix from known vecs (as in POD).
     """    
-    vec_handles = [MR.PickleVecHandle(join(data_dir, row_vec_name%row_num))
+    vec_handles = [MR.VecHandlePickle(join(data_dir, row_vec_name%row_num))
         for row_num in range(num_vecs)]
     
     generate_vecs(data_dir, num_states, vec_handles)
@@ -115,9 +115,9 @@ def lin_combine(num_states, num_bases, num_products, max_vecs_per_node,
     num_products is the resulting number of vecs
     """
 
-    basis_handles = [MR.PickleVecHandle(join(data_dir, basis_name%basis_num))
+    basis_handles = [MR.VecHandlePickle(join(data_dir, basis_name%basis_num))
         for basis_num in range(num_bases)]
-    product_handles = [MR.PickleVecHandle(join(data_dir, 
+    product_handles = [MR.VecHandlePickle(join(data_dir, 
         product_name%product_num))
         for product_num in range(num_products)]
 

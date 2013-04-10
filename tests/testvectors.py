@@ -44,37 +44,37 @@ class TestVectors(unittest.TestCase):
         scale = N.random.random()
         
         # Test base class functionality
-        vec_handle = V.InMemoryVecHandle(vec=vec_true, 
-            base_vec_handle=V.InMemoryVecHandle(vec=base_vec1),
+        vec_handle = V.VecHandleInMemory(vec=vec_true, 
+            base_vec_handle=V.VecHandleInMemory(vec=base_vec1),
             scale=scale)
         vec_comp = vec_handle.get()
         N.testing.assert_equal(vec_comp, scale*(vec_true - base_vec1))
         
-        vec_handle = V.InMemoryVecHandle(vec=vec_true, 
-            base_vec_handle=V.InMemoryVecHandle(vec=base_vec2),
+        vec_handle = V.VecHandleInMemory(vec=vec_true, 
+            base_vec_handle=V.VecHandleInMemory(vec=base_vec2),
             scale=scale)
         vec_comp = vec_handle.get()
         N.testing.assert_equal(vec_comp, scale*(vec_true - base_vec2))
         
-        vec_handle = V.InMemoryVecHandle(vec=vec_true, 
-            base_vec_handle=V.InMemoryVecHandle(vec=base_vec1))
+        vec_handle = V.VecHandleInMemory(vec=vec_true, 
+            base_vec_handle=V.VecHandleInMemory(vec=base_vec1))
         vec_comp = vec_handle.get()
         N.testing.assert_equal(vec_comp, vec_true - base_vec1)
         
-        vec_handle = V.InMemoryVecHandle(vec=vec_true)
+        vec_handle = V.VecHandleInMemory(vec=vec_true)
         vec_comp = vec_handle.get()
         N.testing.assert_equal(vec_comp, vec_true)
 
         # Test put
-        vec_handle = V.InMemoryVecHandle()
+        vec_handle = V.VecHandleInMemory()
         vec_handle.put(vec_true)
         N.testing.assert_equal(vec_handle.vec, vec_true)
         
         # Test __eq__ operator
-        vec_handle1 = V.InMemoryVecHandle(vec=N.ones(2))
-        vec_handle2 = V.InMemoryVecHandle(vec=N.ones(2))
-        vec_handle3 = V.InMemoryVecHandle(vec=N.ones(3))
-        vec_handle4 = V.InMemoryVecHandle(vec=N.zeros(2))
+        vec_handle1 = V.VecHandleInMemory(vec=N.ones(2))
+        vec_handle2 = V.VecHandleInMemory(vec=N.ones(2))
+        vec_handle3 = V.VecHandleInMemory(vec=N.ones(3))
+        vec_handle4 = V.VecHandleInMemory(vec=N.zeros(2))
         self.assertEqual(vec_handle1, vec_handle1)
         self.assertEqual(vec_handle1, vec_handle2)
         self.assertNotEqual(vec_handle1, vec_handle3)
@@ -90,7 +90,7 @@ class TestVectors(unittest.TestCase):
         vec_saved = join(self.test_dir, 'put_vec')
         base_path1 = join(self.test_dir, 'base_vec1')
         base_path2 = join(self.test_dir, 'base_vec2')
-        for VecHandle in [V.ArrayTextVecHandle, V.PickleVecHandle]:
+        for VecHandle in [V.VecHandleArrayText, V.VecHandlePickle]:
             VecHandle(base_path1).put(base_vec1)
             VecHandle(base_path2).put(base_vec2)
             VecHandle(vec_true_path).put(vec_true)

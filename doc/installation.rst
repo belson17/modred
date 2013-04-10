@@ -32,7 +32,7 @@ Please report problems to bbelson@princeton.edu with the following:
 
 The documentation is available at: http://packages.python.org/modred.
 
-While unnecessary, you can build the documentation yourself if you have Sphinx 
+While unnecessary, you can build the documentation with Sphinx 
 (http://sphinx.pocoo.org). From the modred directory, run 
 ``sphinx-build doc doc/_build`` and then open ``doc/_build/index.html`` in a 
 web browser.
