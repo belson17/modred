@@ -19,7 +19,7 @@ object that satisfies the properties of a vector space.
 The examples below build on one another, each introducing new aspects.
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Example 1 -- All data in an array
+Example 1 -- All data in a matrix
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A simple way to find POD modes is:
 
@@ -28,8 +28,8 @@ A simple way to find POD modes is:
 Let's walk through the important steps.
 First, we create an array of random data.
 Each column is a vector represented as a 1D array. 
-Then we call function ``compute_POD_arrays_direct_method``, which returns
-the first ``num_modes`` modes as columns of 2D array ``modes``
+Then we call function ``compute_POD_matrices_direct_method``, which returns
+the first ``num_modes`` modes as columns of matrix ``modes``
 and all of the non-zero eigenvalues, sorted from largest to smallest.
 
 This function implements the "method of snapshots", as described in 
@@ -40,14 +40,14 @@ eigenvectors and eigenvalues, which are related to the modes.
 
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Example 2 -- Inner products with all data in an array
+Example 2 -- Inner products with all data in a matrix
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 You can use a weighted inner product, specified here by a 1D array of weights,
 so that the correlation matrix is :math:`X^* W X`, 
 where :math:`X` is ``vecs`` and :math:`W` contains the
 inner product weights.
-The weights also can, more generally, be a 2D array.
-The vectors are again represented as columns of 2D numpy arrays.
+The weights also can, more generally, be a matrix
+The vectors are again represented as columns of a matrix.
 
 .. literalinclude:: ../examples/tutorial_ex2.py
 
@@ -64,7 +64,7 @@ Example 3 -- Vector handles for loading and saving
 This example demonstrates *vector handles*, which 
 are very important because they
 allow modred to interact with large and complicated datasets without requiring 
-that all of the vectors be stacked into a single 2D array.
+that all of the vectors be stacked into a single matrix.
 This is necessary, for example,
 if the data is too large to all fit in memory simultaneously.
 
