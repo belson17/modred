@@ -53,7 +53,7 @@ def compute_derivs_handles(vec_handles, adv_vec_handles, deriv_vec_handles, dt):
 
 
 def compute_derivs_matrices(vecs, adv_vecs, dt):
-    """Computes 1st-order time derivatives of vectors using matrices. 
+    """Computes 1st-order time derivatives of vectors from data in matrices. 
     
     Args:
         ``vecs``: Matrix with vectors as columns.
@@ -113,7 +113,8 @@ class LTIGalerkinProjectionBase(object):
         
 
 class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
-    """Computes the reduced-order model matrices from modes for an LTI system.
+    """Computes the reduced-order model matrices for an LTI system, 
+    with data in matrices.
     
     Args:
         ``basis_vecs``: Matrix with basis vectors as columns. 
@@ -275,7 +276,8 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
         
 
 class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
-    """Computes the reduced-order model matrices from modes for an LTI system.
+    """Computes the reduced-order model matrices from modes for an LTI system,
+    using handles.
     
     Args:
         ``inner_product``: Function to take inner product of vectors.

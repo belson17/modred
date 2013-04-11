@@ -15,8 +15,8 @@ sized data.
   :py:func:`pod.compute_POD_matrices_snaps_method`, 
   :py:func:`pod.compute_POD_matrices_direct_method`,
   :py:func:`bpod.compute_BPOD_matrices`, 
-  :py:func:`pod.compute_DMD_matrices_snaps_method`, 
-  :py:func:`pod.compute_DMD_matrices_direct_method`,
+  :py:func:`dmd.compute_DMD_matrices_snaps_method`, 
+  :py:func:`dmd.compute_DMD_matrices_direct_method`,
   :py:class:`ltigalerkinproj.LTIGalerkinProjectionMatrices`, and
   :py:class:`vectorspace.VectorSpaceMatrices`.
   These replace the ``in_memory`` member functions and improve 

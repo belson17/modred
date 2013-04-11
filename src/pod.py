@@ -7,7 +7,7 @@ _parallel = parallel_default_instance
 
 def compute_POD_matrices_snaps_method(vecs, mode_indices, 
     inner_product_weights=None, return_all=False):
-    """Computes the POD modes from matrices using the method of snapshots.
+    """Computes POD modes with data in a matrix using the method of snapshots.
     
     Args:
         ``vecs``: Matrix of vectors stacked as columns.
@@ -68,7 +68,7 @@ def compute_POD_matrices_snaps_method(vecs, mode_indices,
 
 def compute_POD_matrices_direct_method(vecs, mode_indices,
     inner_product_weights=None, return_all=False):
-    """Computes the POD modes from matrices using the method of snapshots.
+    """Computes POD modes with data in a matrix using the direct method.
     
     Args:
         ``vecs``: Matrix of vectors stacked as columns.

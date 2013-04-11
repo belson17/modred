@@ -8,7 +8,7 @@ _parallel = parallel_default_instance
 def compute_BPOD_matrices(direct_vecs, adjoint_vecs, 
     direct_mode_indices, adjoint_mode_indices, inner_product_weights=None, 
     return_all=False):
-    """Computes BPOD modes as columns in 2D arrays.
+    """Computes BPOD modes with data in a matrix.
         
     Args:
         ``direct_vecs``: Matrix with direct vecs as columns (:math:`X`).

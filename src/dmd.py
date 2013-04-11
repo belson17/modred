@@ -8,7 +8,8 @@ _parallel = parallel_default_instance
 
 def compute_DMD_matrices_snaps_method(vecs, mode_indices, adv_vecs=None,
     inner_product_weights=None, return_all=False):
-    """Dynamic Mode Decomposition/Koopman Mode Decomposition for small data.
+    """Dynamic Mode Decomposition/Koopman Mode Decomposition with data in a
+    matrix, using method of snapshots.
 
     Args:
         ``vecs``: Matrix with vectors as columns.
@@ -36,8 +37,12 @@ def compute_DMD_matrices_snaps_method(vecs, mode_indices, adv_vecs=None,
         If ``return_all`` is true, also returns:
         
         ``build_coeffs``: 2D array of build coefficients for modes.
-        
-    """
+    
+    This uses the method of snapshots, which is faster than the direct method
+    (in :py:func:`compute_DMD_matrices_direct_method`)
+    when the ``vecs`` has more rows than columns (more elements in a vector
+    than number of vectors). However, it "squares" this matrix and its singular
+    values, making it slightly less accurate than the direct method."""
     if _parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
     vec_space = VectorSpaceMatrices(weights=inner_product_weights)
@@ -118,7 +123,8 @@ def compute_DMD_matrices_snaps_method(vecs, mode_indices, adv_vecs=None,
 
 def compute_DMD_matrices_direct_method(vecs, mode_indices, 
     adv_vecs=None, inner_product_weights=None, return_all=False):
-    """Dynamic Mode Decomposition/Koopman Mode Decomposition for small data.
+    """Dynamic Mode Decomposition/Koopman Mode Decomposition with data in a
+    matrix, using a direct method.
 
     Args:
         ``vecs``: Matrix with vectors as columns.
@@ -147,6 +153,10 @@ def compute_DMD_matrices_direct_method(vecs, mode_indices,
 
         ``build_coeffs``: Matrix of build coefficients for modes.
         
+    This method does not square the matrix of vectors as in the method of
+    snapshots (:py:func:`compute_DMD_matrices_snaps_method`). It's slightly 
+    more accurate, but slower when the number of elements in a vector is 
+    more than the number of vectors (more rows than columns in ``vecs``).
     """
     if _parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
