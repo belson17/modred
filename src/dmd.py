@@ -89,7 +89,10 @@ def compute_DMD_matrices_snaps_method(vecs, mode_indices, adv_vecs=None,
         correlation_mat_evals_sqrt * correlation_mat_evecs.H * 
         correlation_mat[:, 0]).squeeze(), ndmin=1))
     mode_norms = N.diag(build_coeffs.H * correlation_mat * build_coeffs).real
-    
+    if (mode_norms < 0).any():
+        print ('Warning: mode norms has negative values. This is often happens '
+            'when the rank of the vector matrix is much less than the number '
+            'of columns. Try using fewer vectors (fewer columns).')
     # For sequential data, user must provide one more vec than columns of 
     # build_coeffs. 
     if vecs.shape[1] - build_coeffs.shape[0] == 1:
@@ -206,7 +209,10 @@ def compute_DMD_matrices_direct_method(vecs, mode_indices,
         correlation_mat_evals_sqrt * correlation_mat_evecs.H * 
         correlation_mat[:, 0]).squeeze(), ndmin=1))
     mode_norms = N.diag(build_coeffs.H * correlation_mat * build_coeffs).real
-
+    if (mode_norms < 0).any():
+        print ('Warning: mode norms has negative values. This is often happens '
+            'when the rank of the vector matrix is much less than the number '
+            'of columns. Try using fewer vectors (fewer columns).')
     # For sequential data, the user will provide a vecs 
     # whose length is one larger than the number of columns of the 
     # build_coeffs matrix. 
@@ -421,7 +427,12 @@ class DMDHandles(object):
         # Compute eigendecomposition of low-order linear map, finish DMD
         # computation.
         self._compute_eigen_decomp()
-
+        if (self.mode_norms < 0).any() and self.verbosity > 0 and \
+            _parallel.is_rank_zero():
+            print >> output_channel, ('Warning: mode norms has negative '
+                'values. This is often happens '
+                'when the rank of the vector matrix is much less than the '
+                'number of columns. Try using fewer vectors (fewer columns).')
         return self.ritz_vals, self.mode_norms, self.build_coeffs
         
         
