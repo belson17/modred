@@ -78,7 +78,7 @@ class TestUtil(unittest.TestCase):
                     left_mat = N.mat(N.random.random((num_rows, num_internals)))
                     right_mat = N.mat(N.random.random((num_internals, num_cols)))
                     full_mat = left_mat*right_mat
-                    [L_sing_vecs, sing_vals, R_sing_vecs] = util.svd(full_mat)
+                    L_sing_vecs, sing_vals, R_sing_vecs = util.svd(full_mat)
                     
                     U, E, V_comp_conj = N.linalg.svd(full_mat, full_matrices=0)
                     V = N.mat(V_comp_conj).H

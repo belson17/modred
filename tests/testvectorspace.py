@@ -78,7 +78,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
         test_array = N.random.random((nx, ny))
 
         my_VS = VectorSpaceHandles(inner_product=N.vdot, verbosity=0)
-        in_mem_handle = V.InMemoryVecHandle(test_array)
+        in_mem_handle = V.VecHandleInMemory(test_array)
         my_VS.sanity_check(in_mem_handle)
         
         # An sanity's vector that redefines multiplication to modify its data
@@ -109,10 +109,10 @@ class TestVectorSpaceHandles(unittest.TestCase):
         my_VS.inner_product = my_IP
         my_sanity_mult_vec = SanityMultVec(test_array)
         self.assertRaises(ValueError, my_VS.sanity_check, 
-            V.InMemoryVecHandle(my_sanity_mult_vec))
+            V.VecHandleInMemory(my_sanity_mult_vec))
         my_sanity_add_vec = SanityAddVec(test_array)
         self.assertRaises(ValueError, my_VS.sanity_check, 
-            V.InMemoryVecHandle(my_sanity_add_vec))
+            V.VecHandleInMemory(my_sanity_add_vec))
                 
         
         
@@ -159,7 +159,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
                 #print 'num_modes =',num_modes
                 #print 'max_vecs_per_node =',max_vecs_per_node                          
                 #print 'index_from =',index_from
-                vec_handles = [V.ArrayTextVecHandle(vec_path%i) 
+                vec_handles = [V.VecHandleArrayText(vec_path%i) 
                     for i in xrange(num_vecs)]
                 vec_array, mode_indices, build_coeff_mat, true_modes = \
                     _parallel.call_and_bcast(self.generate_vecs_modes, 
@@ -169,7 +169,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
                     for vec_index, vec_handle in enumerate(vec_handles):
                         vec_handle.put(vec_array[:,vec_index])
                 _parallel.barrier()
-                mode_handles = [V.ArrayTextVecHandle(mode_path%mode_num)
+                mode_handles = [V.VecHandleArrayText(mode_path%mode_num)
                     for mode_num in mode_indices]
                 
                 # If there are more vecs than mat has rows
@@ -197,7 +197,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
                 _parallel.barrier()
                 #print 'mode_indices',mode_indices
                 for mode_index in mode_indices:
-                    computed_mode = V.ArrayTextVecHandle(
+                    computed_mode = V.VecHandleArrayText(
                         mode_path % mode_index).get()
                     #print 'mode number',mode_num
                     #print 'true mode',true_modes[:,\
@@ -215,9 +215,9 @@ class TestVectorSpaceHandles(unittest.TestCase):
     #@unittest.skip('testing others')
     @unittest.skipIf(_parallel.is_distributed(), 'Serial only')
     def test_compute_inner_product_mat_types(self):
-        class ArrayTextComplexHandle(V.ArrayTextVecHandle):
+        class ArrayTextComplexHandle(V.VecHandleArrayText):
             def get(self):
-                return (1 + 1j)*V.ArrayTextVecHandle.get(self)
+                return (1 + 1j)*V.VecHandleArrayText.get(self)
         
         num_row_vecs = 4
         num_col_vecs = 6
@@ -243,7 +243,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
             col_vec_paths.append(path)
     
         # Compute inner product matrix and check type
-        for handle, dtype in [(V.ArrayTextVecHandle, float), 
+        for handle, dtype in [(V.VecHandleArrayText, float), 
             (ArrayTextComplexHandle, complex)]:
             row_vec_handles = [handle(path) for path in row_vec_paths] 
             col_vec_handles = [handle(path) for path in col_vec_paths]
@@ -277,9 +277,9 @@ class TestVectorSpaceHandles(unittest.TestCase):
                     (num_states, num_row_vecs))
                 col_vec_array = _parallel.call_and_bcast(N.random.random, 
                     (num_states, num_col_vecs))
-                row_vec_handles = [V.ArrayTextVecHandle(row_vec_path%i) 
+                row_vec_handles = [V.VecHandleArrayText(row_vec_path%i) 
                     for i in xrange(num_row_vecs)]
-                col_vec_handles = [V.ArrayTextVecHandle(col_vec_path%i) 
+                col_vec_handles = [V.VecHandleArrayText(col_vec_path%i) 
                     for i in xrange(num_col_vecs)]
                 
                 # Save vecs

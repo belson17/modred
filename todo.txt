@@ -1,5 +1,11 @@
 #### Important ####
 
+Clean up docstrings so it's all on the same level. 
+Either include math in docstrings or don't.
+Either use matrix or vector space notation, maybe depending on arrays or
+handles implementations.
+Maybe include an "algorithms" section like matlab.
+
 Allow for larger col chunks if extra memory.
 
 Remove requirements for having arguments be lists. This is not pythonic.

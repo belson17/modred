@@ -330,7 +330,7 @@ def ips():
         s.barriers /= s.workers
     
     # Speedup plot
-    PLT.figure(figsize=(5,4))
+    PLT.figure(figsize=(5.5,4))
     width = .4
     PLT.hold(True)
     #PLT.plot(workers, workers,'k-')
@@ -382,5 +382,5 @@ def ips():
 if __name__ == '__main__':
     #ips_n1p_rainier()
     #ips_np1_della()
-    lin()
-    #ips()
+    #lin()
+    ips()

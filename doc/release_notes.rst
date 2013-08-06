@@ -5,15 +5,20 @@ Release notes
 ------------
 modred 1.0.0
 ------------
-Many interface changes, including new classes for different sized data.
+Many interface changes including new classes and functions for different
+sized data.
 
 **New features and improvements**
 
-* New classes for data that fits entirely on one node's memory. These are
-  :py:class:`pod.PODArrays`, :py:class:`bpod.BPODArrays`, 
-  :py:class:`dmd.DMDArrays`, 
-  :py:class:`ltigalerkinproj.LTIGalerkinProjectionArrays`, and
-  :py:class:`vectorspace.VectorSpaceArrays`.
+* New functions and classes for data that fits entirely on one node's memory. 
+  These are
+  :py:func:`pod.compute_POD_matrices_snaps_method`, 
+  :py:func:`pod.compute_POD_matrices_direct_method`,
+  :py:func:`bpod.compute_BPOD_matrices`, 
+  :py:func:`dmd.compute_DMD_matrices_snaps_method`, 
+  :py:func:`dmd.compute_DMD_matrices_direct_method`,
+  :py:class:`ltigalerkinproj.LTIGalerkinProjectionMatrices`, and
+  :py:class:`vectorspace.VectorSpaceMatrices`.
   These replace the ``in_memory`` member functions and improve 
   computational efficiency for small data.
 
@@ -27,22 +32,25 @@ Many interface changes, including new classes for different sized data.
 
 **Interface changes**
 
-* The ``POD``, ``BPOD``, ``DMD``, ``LTIGalerkinProjection``, and
-  ``VectorSpace`` classes have 
-  each been split in two for different size data. 
-  The class names are appended with "``Arrays``" and "``Handles``".
+* The old classes ``POD``, ``BPOD``, ``DMD``,  
+  are now only for large data and have their names appended with "``Handles``".
 
+* Old classes ``LTIGalerkinProjection``, and ``VectorSpace``
+  have been split into two, and names appended with "``Matrices``" and 
+  "``Handles``".
+  
 * All ``in_memory`` member functions have been removed, replaced by 
-  classes above.
+  the functions and classes above.
 
 * Removed the ``index_from`` optional argument in ``compute_modes`` functions. 
   Mode numbers are now always indexed from zero and are renamed mode indices.
 
-* The `VectorSpace` member function ``compute_modes`` has
+* The ``VectorSpace`` member function ``compute_modes`` has
   been removed and its functionality moved to ``lin_combine``.
 
-* Function ``compute_model`` requires the result of an operator on a vector, 
-  rather than the operator itself. For example, see 
+* ``LTIGalerkinProjection`` member function ``compute_model`` uses the
+  result of an operator on a vector, 
+  rather than the operator itself. See 
   :py:meth:`ltigalerkinproj.LTIGalerkinProjectionHandles.compute_model`.
   The operator classes have been removed.
 
@@ -51,10 +59,6 @@ Many interface changes, including new classes for different sized data.
 
 * OKID now uses least squares instead of a pseudo-inverse for improved numerical
   stability. 
-
-* Base classes :py:class:`pod.PODBase`, :py:class:`bpod.BPODBase`, 
-  :py:class:`dmd.DMDBase`, and :py:class:`ltigalerkinproj.LTIGalerkinProjBase`
-  contain common functionality for the arrays and handles derived classes. 
 
 * Added :py:class:`util.InnerProductBlock` for testing.
 

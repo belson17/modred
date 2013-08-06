@@ -18,107 +18,23 @@ from bpod import *
 from vectorspace import *
 import util
 import vectors as V
-
-class TestBPODBase(unittest.TestCase):
-    def test_puts_gets(self):
-        """Test that put/get work in base class."""
-        test_dir = 'DELETE_ME_test_files_bpod'
-        if not os.access('.', os.W_OK):
-            raise RuntimeError('Cannot write to current directory')
-        if not os.path.isdir(test_dir) and _parallel.is_rank_zero():        
-            os.mkdir(test_dir)
-        num_vecs = 10
-        num_states = 30
-        Hankel_mat_true = _parallel.call_and_bcast(
-            N.random.random, ((num_vecs, num_vecs)))
-        L_sing_vecs_true, sing_vals_true, R_sing_vecs_true = \
-            _parallel.call_and_bcast(util.svd, Hankel_mat_true)
-        my_BPOD = BPODBase(verbosity=0)
-        _parallel.barrier()
-
-        L_sing_vecs_path = join(test_dir, 'L_sing_vecs.txt')
-        R_sing_vecs_path = join(test_dir, 'R_sing_vecs.txt')
-        sing_vals_path = join(test_dir, 'sing_vals.txt')
-        Hankel_mat_path = join(test_dir, 'Hankel_mat.txt')
-        my_BPOD.Hankel_mat = Hankel_mat_true
-        my_BPOD.sing_vals = sing_vals_true
-        my_BPOD.L_sing_vecs = L_sing_vecs_true
-        my_BPOD.R_sing_vecs = R_sing_vecs_true
-        
-        my_BPOD.put_decomp(L_sing_vecs_path, sing_vals_path,
-            R_sing_vecs_path)
-        my_BPOD.put_Hankel_mat(Hankel_mat_path)
-        BPOD_load = BPODBase(verbosity=0)
-        
-        BPOD_load.get_decomp(
-            L_sing_vecs_path, sing_vals_path, R_sing_vecs_path)
-        Hankel_mat_loaded = util.load_array_text(Hankel_mat_path)
-
-        N.testing.assert_allclose(Hankel_mat_loaded, 
-            Hankel_mat_true)
-        N.testing.assert_allclose(BPOD_load.L_sing_vecs, L_sing_vecs_true)
-        N.testing.assert_allclose(BPOD_load.R_sing_vecs, R_sing_vecs_true)
-        N.testing.assert_allclose(BPOD_load.sing_vals, sing_vals_true)
         
 
 @unittest.skipIf(_parallel.is_distributed(),'Serial only.')
-class TestBPODArrays(unittest.TestCase):
+class TestBPODMatrices(unittest.TestCase):
     def setUp(self):
         self.mode_indices = [2, 4, 6, 3]
         self.num_direct_vec_handles = 10
         self.num_adjoint_vec_handles = 12
         self.num_states = 30
         
-        self.direct_vec_array = _parallel.call_and_bcast(N.random.random,
+        self.direct_vecs = _parallel.call_and_bcast(N.random.random,
             (self.num_states, self.num_direct_vec_handles))
-        self.adjoint_vec_array = _parallel.call_and_bcast(N.random.random,
+        self.adjoint_vecs = _parallel.call_and_bcast(N.random.random,
             (self.num_states, self.num_adjoint_vec_handles)) 
-        
 
-    def test_init_parallel(self):
-        if _parallel.is_distributed():
-            self.assertRaises(RuntimeError, PODArrays)
-
-    def test_init(self):
-        def my_load(): pass
-        def my_save(): pass
-        if _parallel.is_distributed():
-            self.assertRaises(RuntimeError, BPODArrays)
-        weights = N.random.random(5)
-        
-        data_members_default = {'vec_space': VectorSpaceArrays(), 
-            'put_mat': util.save_array_text, 
-            'get_mat': util.load_array_text,
-            'verbosity': 0, 
-            'L_sing_vecs': None, 'R_sing_vecs': None, 'sing_vals': None,
-            'Hankel_mat': None, 'direct_vec_array': None, 
-            'adjoint_vec_array': None}
-        
-        self.assertEqual(util.get_data_members(BPODArrays(verbosity=0)), 
-            data_members_default)
-        
-        my_BPOD = BPODArrays(inner_product_weights=weights, verbosity=0)
-        data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_space'] = VectorSpaceArrays(weights)
-        self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
-        
-        my_BPOD = BPODArrays(verbosity=0)
-        data_members_modified = copy.deepcopy(data_members_default)
-        self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
-       
-        my_BPOD = BPODArrays(get_mat=my_load, verbosity=0)
-        data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['get_mat'] = my_load
-        self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
- 
-        my_BPOD = BPODArrays(put_mat=my_save, verbosity=0)
-        data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['put_mat'] = my_save
-        self.assertEqual(util.get_data_members(my_BPOD), data_members_modified)
-
-
-    def test_compute_decomp(self):
-        """Test that can take vecs, compute the Hankel and SVD matrices."""
+    def test_compute_modes(self):
+        """Test computing modes in serial and parallel."""
         tol = 1e-6
         ws = N.identity(self.num_states)
         ws[0,0] = 2
@@ -126,69 +42,30 @@ class TestBPODArrays(unittest.TestCase):
         ws[0,1] = 1.1
         weights_list = [None, N.random.random(self.num_states), ws]
         for weights in weights_list:
-            my_BPOD = BPODArrays(inner_product_weights=weights)
-            IP = VectorSpaceArrays(weights=weights).compute_inner_product_mat
-            Hankel_mat_true = IP(self.adjoint_vec_array, self.direct_vec_array)
-
-            L_sing_vecs_true, sing_vals_true, R_sing_vecs_true = \
-                _parallel.call_and_bcast(util.svd,
-                    Hankel_mat_true)
-            direct_mode_array = self.direct_vec_array.dot(
-                R_sing_vecs_true).dot(N.diag(sing_vals_true**-0.5))
-            
-            L_sing_vecs_returned, sing_vals_returned, R_sing_vecs_returned = \
-                my_BPOD.compute_decomp(self.direct_vec_array,
-                    self.adjoint_vec_array)
-            
-            N.testing.assert_allclose(my_BPOD.Hankel_mat, 
-                Hankel_mat_true, rtol=tol)
-            N.testing.assert_allclose(my_BPOD.L_sing_vecs, 
-                L_sing_vecs_true, rtol=tol)
-            N.testing.assert_allclose(my_BPOD.R_sing_vecs, 
-                R_sing_vecs_true, rtol=tol)
-            N.testing.assert_allclose(my_BPOD.sing_vals, 
-                sing_vals_true, rtol=tol)
-              
-            N.testing.assert_allclose(L_sing_vecs_returned, 
-                L_sing_vecs_true, rtol=tol)
-            N.testing.assert_allclose(R_sing_vecs_returned, 
-                R_sing_vecs_true, rtol=tol)
-            N.testing.assert_allclose(sing_vals_returned, 
-                sing_vals_true, rtol=tol)
-                     
-
-    def test_compute_modes(self):
-        """Test computing modes in serial and parallel."""
-        ws = N.identity(self.num_states)
-        ws[0,0] = 2
-        ws[1,0] = 1.1
-        ws[0,1] = 1.1
-        weights_list = [None, N.random.random(self.num_states), ws]
-        for weights in weights_list:
-            my_BPOD = BPODArrays(inner_product_weights=weights)
-            IP = VectorSpaceArrays(weights=weights).compute_inner_product_mat
-            Hankel_mat_true = IP(self.adjoint_vec_array, 
-                self.direct_vec_array)
+            IP = VectorSpaceMatrices(weights=weights).compute_inner_product_mat
+            Hankel_mat_true = IP(self.adjoint_vecs, self.direct_vecs)
             
             L_sing_vecs_true, sing_vals_true, R_sing_vecs_true = \
                 _parallel.call_and_bcast(util.svd, Hankel_mat_true)
-            direct_modes_array = self.direct_vec_array.dot(
+            direct_modes_array_true = self.direct_vecs.dot(
                 R_sing_vecs_true).dot(N.diag(sing_vals_true**-0.5))
-            adjoint_modes_array = self.adjoint_vec_array.dot(
+            adjoint_modes_array_true = self.adjoint_vecs.dot(
                 L_sing_vecs_true).dot(N.diag(sing_vals_true**-0.5))
-            L_sing_vecs_returned, sing_vals_returned, R_sing_vecs_returned = \
-                my_BPOD.compute_decomp(self.direct_vec_array, 
-                self.adjoint_vec_array)
+            direct_modes_array, adjoint_modes_array, sing_vals, \
+                L_sing_vecs, R_sing_vecs, Hankel_mat = \
+                compute_BPOD_matrices(self.direct_vecs, 
+                self.adjoint_vecs, self.mode_indices, self.mode_indices,
+                inner_product_weights=weights, return_all=True)
 
-            direct_modes_returned = my_BPOD.compute_direct_modes(
-                self.mode_indices, direct_vec_array=self.direct_vec_array)
-            adjoint_modes_returned = my_BPOD.compute_adjoint_modes(
-                self.mode_indices)
-            N.testing.assert_allclose(direct_modes_returned, 
-                direct_modes_array[:,self.mode_indices])
-            N.testing.assert_allclose(adjoint_modes_returned, 
-                adjoint_modes_array[:,self.mode_indices])
-
+            N.testing.assert_allclose(Hankel_mat, Hankel_mat_true)
+            N.testing.assert_allclose(sing_vals, sing_vals_true)
+            N.testing.assert_allclose(L_sing_vecs, L_sing_vecs_true)
+            N.testing.assert_allclose(R_sing_vecs, R_sing_vecs_true)
+            N.testing.assert_allclose(direct_modes_array, 
+                direct_modes_array_true[:,self.mode_indices])
+            N.testing.assert_allclose(adjoint_modes_array, 
+                adjoint_modes_array_true[:,self.mode_indices])
+            
                         
 
 
@@ -209,10 +86,10 @@ class TestBPODHandles(unittest.TestCase):
         self.direct_vec_path = join(self.test_dir, 'direct_vec_%03d.txt')
         self.adjoint_vec_path = join(self.test_dir, 'adjoint_vec_%03d.txt')
 
-        self.direct_vec_handles = [V.ArrayTextVecHandle(self.direct_vec_path%i) 
+        self.direct_vec_handles = [V.VecHandleArrayText(self.direct_vec_path%i) 
             for i in range(self.num_direct_vecs)]
         self.adjoint_vec_handles = [
-            V.ArrayTextVecHandle(self.adjoint_vec_path%i) 
+            V.VecHandleArrayText(self.adjoint_vec_path%i) 
             for i in range(self.num_adjoint_vecs)]
         
         self.direct_vec_array = _parallel.call_and_bcast(N.random.random,
@@ -301,7 +178,45 @@ class TestBPODHandles(unittest.TestCase):
         for k,v in util.get_data_members(my_BPOD).iteritems():
             self.assertEqual(v, data_members_modified[k])
        
-       
+    def test_puts_gets(self):
+        """Test that put/get work in base class."""
+        test_dir = 'DELETE_ME_test_files_bpod'
+        if not os.access('.', os.W_OK):
+            raise RuntimeError('Cannot write to current directory')
+        if not os.path.isdir(test_dir) and _parallel.is_rank_zero():        
+            os.mkdir(test_dir)
+        num_vecs = 10
+        num_states = 30
+        Hankel_mat_true = _parallel.call_and_bcast(
+            N.random.random, ((num_vecs, num_vecs)))
+        L_sing_vecs_true, sing_vals_true, R_sing_vecs_true = \
+            _parallel.call_and_bcast(util.svd, Hankel_mat_true)
+        my_BPOD = BPODHandles(None, verbosity=0)
+        _parallel.barrier()
+
+        L_sing_vecs_path = join(test_dir, 'L_sing_vecs.txt')
+        R_sing_vecs_path = join(test_dir, 'R_sing_vecs.txt')
+        sing_vals_path = join(test_dir, 'sing_vals.txt')
+        Hankel_mat_path = join(test_dir, 'Hankel_mat.txt')
+        my_BPOD.Hankel_mat = Hankel_mat_true
+        my_BPOD.sing_vals = sing_vals_true
+        my_BPOD.L_sing_vecs = L_sing_vecs_true
+        my_BPOD.R_sing_vecs = R_sing_vecs_true
+        
+        my_BPOD.put_decomp(L_sing_vecs_path, sing_vals_path, R_sing_vecs_path)
+        my_BPOD.put_Hankel_mat(Hankel_mat_path)
+        BPOD_load = BPODHandles(None, verbosity=0)
+        
+        BPOD_load.get_decomp(
+            L_sing_vecs_path, sing_vals_path, R_sing_vecs_path)
+        Hankel_mat_loaded = util.load_array_text(Hankel_mat_path)
+
+        N.testing.assert_allclose(Hankel_mat_loaded, 
+            Hankel_mat_true)
+        N.testing.assert_allclose(BPOD_load.L_sing_vecs, L_sing_vecs_true)
+        N.testing.assert_allclose(BPOD_load.R_sing_vecs, R_sing_vecs_true)
+        N.testing.assert_allclose(BPOD_load.sing_vals, sing_vals_true)
+
     #@unittest.skip('testing others')
     def test_compute_decomp(self):
         """Test that can take vecs, compute the Hankel and SVD matrices. """
@@ -340,9 +255,9 @@ class TestBPODHandles(unittest.TestCase):
         self.my_BPOD.L_sing_vecs = self.L_sing_vecs_true
         self.my_BPOD.sing_vals = self.sing_vals_true
         
-        direct_mode_handles = [V.ArrayTextVecHandle(direct_mode_path%i) 
+        direct_mode_handles = [V.VecHandleArrayText(direct_mode_path%i) 
             for i in self.mode_nums]
-        adjoint_mode_handles = [V.ArrayTextVecHandle(adjoint_mode_path%i)
+        adjoint_mode_handles = [V.VecHandleArrayText(adjoint_mode_path%i)
             for i in self.mode_nums]
 
         self.my_BPOD.compute_direct_modes(self.mode_nums, direct_mode_handles,

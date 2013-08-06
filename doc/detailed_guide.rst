@@ -4,9 +4,14 @@
 Interfacing with your data
 ==================================================
 
-As stated before, modred can work with data in any format.
-Of course, you'll need to tell modred how to do this.
-This section fully explains the process and the relevant mathematical background.
+The simplest way to use modred is with the Matlab-like functions and 2D
+arrays.
+However, sometimes your data is too large for this.
+In these cases, there is a high-level object-oriented interface
+that works with data in any format and never needs the data stacked into
+a 2D array.
+Of course, you'll need to tell modred how to interact with your data.
+This section explains how to do this and the mathematical background.
 
 -------------------
 Vector objects
@@ -22,7 +27,7 @@ We do mean an element of a vector space (technically an inner product space).
 You are free to choose *any* object, from numpy arrays to your own class, so long as
 it satisfies a few simple requirements.
 
-The requirements of the vector object are that it must:
+The vector object must:
 
 1. Support scalar multiplication, i.e. ``vector2 = 2.0*vector1``. 
 2. Support addition with other vectors, i.e. ``vector3 = vector1 + vector2``.
@@ -30,10 +35,12 @@ The requirements of the vector object are that it must:
    function.
 
 Numpy arrays already meet requirements 1 and 2. 
-For your own classes, define ``__mul__`` and ``__add__`` special methods for 1 and 2.
+For your own classes, define the special methods ``__mul__`` and ``__add__``
+for 1 and 2.
 
-You also need an inner product function that takes two vectors returns a single number.
-This number can be real or complex, but must always be the same type.
+You also need an inner product function that takes two vectors returns a single number. 
+This number can be real or complex, but may not switch from real to complex 
+depending on the input.
 Your inner product must satisfy the mathematical definition for an inner product:
 
 - Conjugate symmetry: 
@@ -200,13 +207,15 @@ Summarizing, to use modred on arbitrary data, define
   2. Scalar multiplication ("*", ``__mul__``)
   3. Optional: inherits from :py:class:`vectors.Vector`.
 2. Function ``inner_product(vec1, vec2)``.
-3. For large data that doesn't all fit in memory, a vector handle class that has:
+3. A vector handle class that has:
   1. Member function ``get()`` which returns a vector handle.
   2. Member function ``put(vec)`` where ``vec`` is a vector handle.
   3. Optionally inherits from :py:class:`vectors.VecHandle`. If so, 
-     member function names in 1 and 2 change to ``_get()`` and ``_put(vec)``.
+     member function names in 1 and 2 change to ``_get`` and ``_put``.
 
 Then you can get started using any of the modal decomposition classes!
+Before writing your own classes, check out :py:mod:`vectors`, which
+has several common vector and vector handles classes.
 
 For large data, Python's speed limitations can be 
 bypassed by implementing functions in compiled languages such as C/C++ and 

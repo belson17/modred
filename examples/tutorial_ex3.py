@@ -3,9 +3,9 @@ import modred as MR
 
 # Define the handles for the snapshots
 num_vecs = 30    
-direct_snapshots = [MR.ArrayTextVecHandle('direct_vec%d.txt' % i) 
+direct_snapshots = [MR.VecHandleArrayText('direct_vec%d.txt' % i) 
     for i in range(num_vecs)]
-adjoint_snapshots = [MR.ArrayTextVecHandle('adjoint_vec%d.txt' % i)
+adjoint_snapshots = [MR.VecHandleArrayText('adjoint_vec%d.txt' % i)
     for i in range(num_vecs)]
 
 # Save arbitrary data in text files
@@ -22,9 +22,9 @@ L_sing_vecs, sing_vals, R_sing_vecs = \
 
 num_modes = 10
 mode_nums = range(num_modes)  
-direct_modes = [MR.ArrayTextVecHandle('direct_mode%d' % i) 
+direct_modes = [MR.VecHandleArrayText('direct_mode%d' % i) 
     for i in mode_nums]
-adjoint_modes = [MR.ArrayTextVecHandle('adjoint_mode%d' % i) 
+adjoint_modes = [MR.VecHandleArrayText('adjoint_mode%d' % i) 
     for i in mode_nums]
 my_BPOD.compute_direct_modes(mode_nums, direct_modes)
 my_BPOD.compute_adjoint_modes(mode_nums, adjoint_modes)

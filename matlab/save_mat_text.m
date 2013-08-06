@@ -17,7 +17,7 @@ function save_mat_text(mat, filename, delimiter)
     end
     
     file_ID = fopen(filename,'w');
-    format = '%.16f';
+    format = '%.16e';
     for row=1:nrows
         for col=1:ncols-1
             fprintf(file_ID, [format, delimiter], mat_write(row,col));

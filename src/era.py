@@ -1,7 +1,4 @@
-"""Functions and classes for ERA models. See paper by Ma et al. 2011, TCFD.
-
-Contains ERA function :py:func:`compute_ERA_model` and class :py:class:`ERA`.
-"""
+"""Functions and classes for ERA models. See paper by Ma et al. 2011, TCFD."""
 import numpy as N
 import util
 
