@@ -92,10 +92,13 @@ class VecHandlePickle(VecHandle):
         self.vec_path = vec_path
     def _get(self):
         """Loads vector from path."""
-        return cPickle.load(open(self.vec_path, 'rb'))
+        with open(self.vec_path, 'rb') as file_obj:
+            to_return = cPickle.load(file_obj)
+        return to_return
     def _put(self, vec):
         """Saves vector to path."""
-        cPickle.dump(vec, open(self.vec_path, 'wb'))
+        with open(self.vec_path, 'wb') as file_obj:
+            cPickle.dump(vec, file_obj)
     def __eq__(self, other):
         if type(other) != type(self):
             return False

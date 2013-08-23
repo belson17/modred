@@ -3,7 +3,7 @@ import numpy as N
 
 num_vecs = 100
 # Non-uniform grid and corresponding inner product weights.
-nx = 100
+nx = 80
 ny = 100
 x_grid = 1. - N.cos(N.linspace(0, N.pi, nx))
 y_grid = N.linspace(0, 1., ny)**2

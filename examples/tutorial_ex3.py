@@ -11,9 +11,9 @@ adjoint_snapshots = [MR.VecHandleArrayText('adjoint_vec%d.txt' % i)
 # Save arbitrary data in text files
 x = N.linspace(0, N.pi, 200)
 for i, snap in enumerate(direct_snapshots):
-    snap.put([N.sin(x*i) for i in range(num_vecs)])
+    snap.put(N.sin(x*i))
 for i, snap in enumerate(adjoint_snapshots):
-    snap.put([N.cos(0.5*x*i) for i in range(num_vecs)])
+    snap.put(N.cos(0.5*x*i))
 
 # Calculate and save BPOD modes
 my_BPOD = MR.BPODHandles(N.vdot, max_vecs_per_node=10)
