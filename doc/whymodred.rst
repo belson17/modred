@@ -79,7 +79,7 @@ However, modred could be extended so you can
 provide parallelized functions, allowing arbitrarily large
 data.
 If you're curious about this, contact Brandt Belson at
-bbelson@princeton.edu.
+b e l s o n 1 7 @ g m a i l . c o m or Jonathan Tu at j h t u @ b e r k e l e y . e d u.
 For now, a work-around is to use "fat" nodes with large amounts
 of memory (RAM). 
 
