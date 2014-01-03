@@ -556,3 +556,32 @@ def smart_eq(arg1, arg2):
         return eq.all()
     return eq
         
+
+def Hankel(first_row, last_col=None):
+    """
+    Construct a Hankel matrix.
+    
+    Args:
+        ``first_row``: 1D array corresponding to first row.
+    
+    Kwargs:
+        ``last_col``: 1D array corresponding to the last col, default zeros.
+    
+    Returns:
+        Hankel: 2D array with dimensions [len(last_col), len(first_row)].
+    """
+    first_row = N.asarray(first_row).flatten()
+    if last_col is None:
+        last_col = N.zeros(first_row.shape)
+    else:
+        last_col = N.asarray(last_col).flatten()
+    
+    unique_vals = N.concatenate((first_row, last_col[1:]))
+    a, b = N.ogrid[0:len(last_col), 0:len(first_row)]
+    indices = a + b
+    return unique_vals[indices]
+
+    
+    
+    
+

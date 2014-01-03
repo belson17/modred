@@ -2,6 +2,33 @@
 Release notes
 =============
 
+
+------------
+modred 1.0.1
+------------
+We increased the speed of the BPOD implementations. 
+
+**New features and improvements**
+
+* None
+
+**Bug fixes**
+
+* None
+
+
+**Interface changes**
+
+* None
+
+**Internal changes**
+
+* BPOD classes now compute fewer inner products. The number of inner products 
+  is now the sum of the number of direct vectors and the number of adjoint 
+  vectors, whereas previously it was the product. This is achieved by taking
+  advantage of a property of the adjoint. 
+
+
 ------------
 modred 1.0.0
 ------------

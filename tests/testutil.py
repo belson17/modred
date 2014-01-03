@@ -207,6 +207,23 @@ class TestUtil(unittest.TestCase):
                     outputs = util.impulse(A, B, C, num_time_steps=num_time_steps)
                     N.testing.assert_allclose(outputs, outputs_true)
                     
-    
+
+    def test_Hankel(self):
+        """Test forming Hankel matrix from first row and last column."""
+        for num_rows in [1, 4, 6]:
+            for num_cols in [1, 3, 6]:
+                first_row = N.random.random((num_cols))
+                last_col = N.random.random((num_rows))
+                last_col[0] = first_row[-1]
+                Hankel_true = N.zeros((num_rows, num_cols))
+                for r in range(num_rows):
+                    for c in range(num_cols):
+                        if r+c < num_cols:
+                            Hankel_true[r,c] = first_row[r+c]
+                        else:
+                            Hankel_true[r,c] = last_col[r+c-num_cols+1]
+                Hankel_comp = util.Hankel(first_row, last_col)
+                N.testing.assert_equal(Hankel_comp, Hankel_true)
+
 if __name__ == '__main__':
     unittest.main()

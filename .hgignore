@@ -31,3 +31,4 @@ examples/sing_{vals,vecs}.txt
 *~
 build
 build/*
+doc/_html/*

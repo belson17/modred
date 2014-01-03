@@ -52,12 +52,17 @@ def compute_BPOD_matrices(direct_vecs, adjoint_vecs,
     direct_vecs = util.make_mat(direct_vecs)
     adjoint_vecs = util.make_mat(adjoint_vecs)
     
-    Hankel_mat = vec_space.compute_inner_product_mat(adjoint_vecs, 
+    #Hankel_mat = vec_space.compute_inner_product_mat(adjoint_vecs, 
+    #    direct_vecs)
+    first_adjoint_all_direct = vec_space.compute_inner_product_mat(adjoint_vecs[:,0], 
         direct_vecs)
+    all_adjoint_last_direct = vec_space.compute_inner_product_mat(adjoint_vecs, 
+        direct_vecs[:,-1])
+    Hankel_mat = util.Hankel(first_adjoint_all_direct, all_adjoint_last_direct)
     L_sing_vecs, sing_vals, R_sing_vecs = util.svd(Hankel_mat)
-    
+    #print 'diff in Hankels',Hankel_mat - Hankel_mat2
+    #Hankel_mat = Hankel_mat2
     sing_vals_sqrt_mat = N.mat(N.diag(sing_vals**-0.5))
-    
     direct_build_coeff_mat = R_sing_vecs * sing_vals_sqrt_mat
     direct_mode_array = vec_space.lin_combine(direct_vecs, 
         direct_build_coeff_mat, coeff_mat_col_indices=direct_mode_indices)
