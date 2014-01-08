@@ -22,7 +22,7 @@ parallel tests require mpi4py to be installed::
   python -c 'import modred.tests; modred.tests.run()'
   mpiexec -n 3 python -c 'import modred.tests; modred.tests.run()'
   
-Please report problems to bbelson@princeton.edu with the following:
+Please report problems to  b e l s o n 1 7@gmail.com with the following:
 
 1. Copy of the entire output of the installation and tests
 2. Python version (``python -V``)
