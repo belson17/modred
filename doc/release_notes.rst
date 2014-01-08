@@ -4,7 +4,7 @@ Release notes
 
 
 ------------
-modred 1.0.1
+modred 1.0.2
 ------------
 We increased the speed of the BPOD implementations. 
 
@@ -16,7 +16,6 @@ We increased the speed of the BPOD implementations.
 
 * None
 
-
 **Interface changes**
 
 * None
@@ -27,6 +26,29 @@ We increased the speed of the BPOD implementations.
   is now the sum of the number of direct vectors and the number of adjoint 
   vectors, whereas previously it was the product. This is achieved by taking
   advantage of a property of the adjoint. 
+
+
+------------
+modred 1.0.1
+------------
+Small changes mostly related to examples.
+
+**New features and improvements**
+
+* None
+
+**Bug fixes**
+
+* Changed a tutorial example. 
+
+**Interface changes**
+
+* None
+
+**Internal changes**
+
+* None
+
 
 
 ------------
