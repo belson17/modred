@@ -17,7 +17,8 @@ setup(
         ),
     # long_description=long_description,
     # keywords='',
-    author='Brandt Belson, Jonathan Tu, and Clarence W. Rowley',
+    author=('Brandt Belson, Jonathan Tu and Clarence W. Rowley;'
+            ' ported for python 3 by Pierre Augier'),
     author_email=(
         'bbelson@princeton.edu, jhtu@princeton.edu, cwrowley@princeton.edu'
         ),
