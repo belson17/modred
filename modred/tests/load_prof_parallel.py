@@ -5,6 +5,8 @@
 Give this script a number of processors and optionally a number of lines of
 stats to print, e.g. ``python load_prof_parallel.py 24 40``
 """
+from __future__ import print_function
+from future.builtins import range
 
 import sys
 import pstats as P
@@ -25,7 +27,7 @@ stats = P.Stats(prof_path%0)
 for rank in range(1, num_procs):
     stats.add(prof_path%rank)   
     
-print '\n----- Sum of all processors stats -----'
+print('\n----- Sum of all processors stats -----')
 stats.strip_dirs().sort_stats('cumulative').print_stats(num_stats)
 
 

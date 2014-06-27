@@ -1,13 +1,18 @@
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from future.builtins import range
+from future.builtins import object
 
 import sys  
 import copy
 import time as T
 import numpy as np
 
-import util
-from parallel import parallel_default_instance
+from . import util
+from .parallel import parallel_default_instance
 _parallel = parallel_default_instance
-import vectors as V
+from . import vectors as V
 
 
 class VectorSpaceMatrices(object):
@@ -110,7 +115,7 @@ class VectorSpaceHandles(object):
                 'max_vecs_per_node for a speedup.')
         else:
             self.max_vecs_per_proc = self.max_vecs_per_node * \
-                _parallel.get_num_nodes()/_parallel.get_num_procs()
+                _parallel.get_num_nodes() // _parallel.get_num_procs()
                 
     def _check_inner_product(self):
         """Check that ``inner_product`` is defined"""
@@ -121,7 +126,7 @@ class VectorSpaceHandles(object):
     def print_msg(self, msg, output_channel=sys.stdout):
         """Print a message from rank 0."""
         if self.verbosity > 0 and _parallel.is_rank_zero():
-            print >> output_channel, msg
+            print(msg, file=output_channel)
 
 
 
@@ -271,8 +276,8 @@ class VectorSpaceHandles(object):
             num_cols_per_proc_chunk
                
         # Determine how the retrieving and inner products will be split up.
-        row_tasks = _parallel.find_assignments(range(num_rows))
-        col_tasks = _parallel.find_assignments(range(num_cols))
+        row_tasks = _parallel.find_assignments(list(range(num_rows)))
+        col_tasks = _parallel.find_assignments(list(range(num_cols)))
            
         # Find max number of col tasks among all processors
         max_num_row_tasks = max([len(tasks) for tasks in row_tasks])
@@ -339,7 +344,7 @@ class VectorSpaceHandles(object):
         # The efficiency is not an issue, the size of the mats
         # are small compared to the size of the vecs for large data.
         IP_mat = np.mat(np.zeros((num_rows, num_cols), dtype=IP_type))
-        for row_get_index in xrange(num_row_get_loops):
+        for row_get_index in range(num_row_get_loops):
             if len(row_tasks[rank]) > 0:
                 start_row_index = min(row_tasks[rank][0] + 
                     row_get_index*num_rows_per_proc_chunk, 
@@ -351,7 +356,7 @@ class VectorSpaceHandles(object):
             else:
                 row_vecs = []
 
-            for col_get_index in xrange(num_col_get_loops):
+            for col_get_index in range(num_col_get_loops):
                 if len(col_tasks[rank]) > 0:
                     start_col_index = min(col_tasks[rank][0] + 
                         col_get_index*num_cols_per_proc_chunk, 
@@ -364,8 +369,8 @@ class VectorSpaceHandles(object):
                 # Cycle the col vecs to proc with rank -> mod(rank+1,num_procs) 
                 # Must do this for each processor, until data makes a circle
                 col_vecs_recv = (None, None)
-                col_indices = range(start_col_index, end_col_index)
-                for pass_index in xrange(_parallel.get_num_procs()):
+                col_indices = list(range(start_col_index, end_col_index))
+                for pass_index in range(_parallel.get_num_procs()):
                     #if rank==0: print 'starting pass index=',pass_index
                     # If on the first pass, get the col vecs, no send/recv
                     # This is all that is called when in serial, loop iterates
@@ -400,7 +405,7 @@ class VectorSpaceHandles(object):
                     # the indices of the IP_mat columns to be
                     # filled in.
                     if len(row_vecs) > 0:
-                        for row_index in xrange(start_row_index, end_row_index):
+                        for row_index in range(start_row_index, end_row_index):
                             for col_vec_index, col_vec in enumerate(col_vecs):
                                 IP_mat[row_index, col_indices[
                                     col_vec_index]] = self.inner_product(
@@ -517,10 +522,10 @@ class VectorSpaceHandles(object):
         # For the rectangular portions, the inner product mat is filled 
         # in directly.
         IP_mat = np.mat(np.zeros((num_vecs, num_vecs), dtype=IP_type))
-        for start_row_index in xrange(0, num_vecs, num_rows_per_chunk):
+        for start_row_index in range(0, num_vecs, num_rows_per_chunk):
             end_row_index = min(num_vecs, start_row_index + num_rows_per_chunk)
-            proc_row_tasks_all = _parallel.find_assignments(range(
-                start_row_index, end_row_index))
+            proc_row_tasks_all = _parallel.find_assignments(list(range(
+                start_row_index, end_row_index)))
             num_active_procs = len([task for task in \
                 proc_row_tasks_all if task != []])
             proc_row_tasks = proc_row_tasks_all[_parallel.get_rank()]
@@ -533,12 +538,12 @@ class VectorSpaceHandles(object):
             # Triangular chunks
             if len(proc_row_tasks) > 0:
                 # Test that indices are consecutive
-                if proc_row_tasks[0:] != range(proc_row_tasks[0], 
-                    proc_row_tasks[-1] + 1):
+                if proc_row_tasks[0:] != list(range(proc_row_tasks[0], 
+                    proc_row_tasks[-1] + 1)):
                     raise ValueError('Indices are not consecutive.')
                 
                 # Per-processor triangles (using only vecs in memory)
-                for row_index in xrange(proc_row_tasks[0], 
+                for row_index in range(proc_row_tasks[0], 
                     proc_row_tasks[-1] + 1):
                     # Diagonal term
                     IP_mat[row_index, row_index] = self.\
@@ -546,7 +551,7 @@ class VectorSpaceHandles(object):
                         0]], row_vecs[row_index - proc_row_tasks[0]])
                         
                     # Off-diagonal terms
-                    for col_index in xrange(row_index + 1, proc_row_tasks[
+                    for col_index in range(row_index + 1, proc_row_tasks[
                         -1] + 1):
                         IP_mat[row_index, col_index] = self.\
                             inner_product(row_vecs[row_index -\
@@ -556,7 +561,7 @@ class VectorSpaceHandles(object):
             # Number of square chunks to fill in is n * (n-1) / 2.  At each
             # iteration we fill in n of them, so we need (n-1) / 2 
             # iterations (round up).  
-            for set_index in xrange(int(np.ceil((num_active_procs - 1.) / 2))):
+            for set_index in range(int(np.ceil((num_active_procs - 1.) / 2))):
                 # The current proc is "sender"
                 my_rank = _parallel.get_rank()
                 my_row_indices = proc_row_tasks
@@ -588,7 +593,7 @@ class VectorSpaceHandles(object):
                     my_row_indices += [np.nan] * (max_num_to_send - my_num_rows) 
                     row_vecs += [[]] * (max_num_to_send - my_num_rows)
                 """
-                for send_index in xrange(max_num_to_send):
+                for send_index in range(max_num_to_send):
                     # Only processors responsible for rows communicate
                     if my_num_rows > 0:  
                         # Send row vecs, in groups of num_cols_per_proc_chunk
@@ -618,7 +623,7 @@ class VectorSpaceHandles(object):
                         col_vecs = col_vecs_recv[0]
                         my_col_indices = col_vecs_recv[1]
                         
-                        for row_index in xrange(my_row_indices[0], 
+                        for row_index in range(my_row_indices[0], 
                             my_row_indices[-1] + 1):
                             for col_vec_index, col_vec in enumerate(col_vecs):
                                 IP_mat[row_index, my_col_indices[
@@ -643,23 +648,23 @@ class VectorSpaceHandles(object):
             # Start at index after last row, continue to last column. This part
             # of the code is the same as in compute_IP_mat, as of 
             # revision 141.  
-            for start_col_index in xrange(end_row_index, num_vecs, 
+            for start_col_index in range(end_row_index, num_vecs, 
                 num_cols_per_chunk):
                 end_col_index = min(start_col_index + num_cols_per_chunk, 
                     num_vecs)
-                proc_col_tasks = _parallel.find_assignments(range(
-                    start_col_index, end_col_index))[_parallel.get_rank()]
+                proc_col_tasks = _parallel.find_assignments(list(range(
+                    start_col_index, end_col_index)))[_parallel.get_rank()]
                         
                 # Pass the col vecs to proc with rank -> mod(rank+1,numProcs) 
                 # Must do this for each processor, until data makes a circle
                 col_vecs_recv = (None, None)
                 if len(proc_col_tasks) > 0:
-                    col_indices = range(proc_col_tasks[0], 
-                        proc_col_tasks[-1]+1)
+                    col_indices = list(range(proc_col_tasks[0], 
+                        proc_col_tasks[-1]+1))
                 else:
                     col_indices = []
                     
-                for num_passes in xrange(_parallel.get_num_procs()):
+                for num_passes in range(_parallel.get_num_procs()):
                     # If on the first pass, get the col vecs, no send/recv
                     # This is all that is called when in serial, loop iterates
                     # once.
@@ -698,7 +703,7 @@ class VectorSpaceHandles(object):
                     # the indices of the IP_mat columns to be
                     # filled in.
                     if len(proc_row_tasks) > 0:
-                        for row_index in xrange(proc_row_tasks[0],
+                        for row_index in range(proc_row_tasks[0],
                             proc_row_tasks[-1]+1):
                             for col_vec_index, col_vec in enumerate(col_vecs):
                                 IP_mat[row_index, col_indices[
@@ -825,8 +830,8 @@ class VectorSpaceHandles(object):
         num_sums_per_proc_chunk = self.max_vecs_per_proc - \
             num_bases_per_proc_chunk
         
-        basis_tasks = _parallel.find_assignments(range(num_bases))
-        sum_tasks = _parallel.find_assignments(range(num_sums))
+        basis_tasks = _parallel.find_assignments(list(range(num_bases)))
+        sum_tasks = _parallel.find_assignments(list(range(num_sums)))
 
         # Find max number tasks among all processors
         max_num_basis_tasks = max([len(tasks) for tasks in basis_tasks])
@@ -846,13 +851,14 @@ class VectorSpaceHandles(object):
                 'max_vecs_per_node to reduce redundant retrieves and get a '
                 'big speedup.'%(num_bases, num_sum_put_iters))
                
-        for sum_put_index in xrange(num_sum_put_iters):
+        for sum_put_index in range(num_sum_put_iters):
             if len(sum_tasks[rank]) > 0:
                 start_sum_index = min(sum_tasks[rank][0] + 
                     sum_put_index*num_sums_per_proc_chunk, 
                     sum_tasks[rank][-1]+1)
                 end_sum_index = min(start_sum_index+num_sums_per_proc_chunk,
                     sum_tasks[rank][-1]+1)
+
                 # Create empty list on each processor
                 sum_layers = [None]*(end_sum_index - start_sum_index)
             else:
@@ -860,14 +866,14 @@ class VectorSpaceHandles(object):
                 end_sum_index = 0
                 sum_layers = []
 
-            for basis_get_index in xrange(num_basis_get_iters):
+            for basis_get_index in range(num_basis_get_iters):
                 if len(basis_tasks[rank]) > 0:    
                     start_basis_index = min(basis_tasks[rank][0] + 
                         basis_get_index*num_bases_per_proc_chunk, 
                         basis_tasks[rank][-1]+1)
                     end_basis_index = min(start_basis_index + 
                         num_bases_per_proc_chunk, basis_tasks[rank][-1]+1)
-                    basis_indices = range(start_basis_index, end_basis_index)
+                    basis_indices = list(range(start_basis_index, end_basis_index))
                 else:
                     basis_indices = []
                 
@@ -875,7 +881,7 @@ class VectorSpaceHandles(object):
                 # Must do this for each processor, until data makes a circle
                 basis_vecs_recv = (None, None)
 
-                for pass_index in xrange(_parallel.get_num_procs()):
+                for pass_index in range(_parallel.get_num_procs()):
                     # If on the first pass, retrieve the basis vecs, 
                     # no send/recv.
                     # This is all that is called when in serial, 
@@ -914,7 +920,7 @@ class VectorSpaceHandles(object):
                     # Compute the scalar multiplications for this set of data.
                     # basis_indices stores the indices of the coeff_mat to
                     # use.
-                    for sum_index in xrange(start_sum_index, end_sum_index):
+                    for sum_index in range(start_sum_index, end_sum_index):
                         for basis_index, basis_vec in enumerate(basis_vecs):
                             sum_layer = basis_vec * \
                                 coeff_mat[basis_indices[basis_index],\
@@ -933,7 +939,7 @@ class VectorSpaceHandles(object):
                         
 
             # Completed this set of sum vecs, puts them to memory or file
-            for sum_index in xrange(start_sum_index, end_sum_index):
+            for sum_index in range(start_sum_index, end_sum_index):
                 sum_vec_handles[sum_index].put(
                     sum_layers[sum_index-start_sum_index])
             del sum_layers

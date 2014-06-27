@@ -1,4 +1,9 @@
 """Parallel class and functions for distributed memory"""
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from future.builtins import range
+from future.builtins import object
 import os
 import numpy as np
 
@@ -31,7 +36,7 @@ class Parallel(object):
             
             # Must use custom_comm for reduce commands! This is
             # more scalable, see reductions.py for more details
-            from reductions import Intracomm
+            from .reductions import Intracomm
             self.custom_comm = Intracomm(self.comm)
             
             # To adjust number of procs, use submission script/mpiexec
@@ -61,7 +66,7 @@ class Parallel(object):
     def print_from_rank_zero(self, msgs):
         """Prints the string ``msgs`` from rank=0 only."""
         if self.is_rank_zero():
-            print msg
+            print(msg)
     
     def barrier(self):
         """Forces all processors to synchronize. Wrapper for Barrier()."""

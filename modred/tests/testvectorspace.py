@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 """Test vectorspace module"""
+from __future__ import division
+from future.builtins import range
 
 import os
 from os.path import join
@@ -124,7 +126,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
             mode_array: matrix of modes, each column is a mode.
                 matrix column # = mode_index
         """
-        mode_indices = range(num_modes)
+        mode_indices = list(range(num_modes))
         random.shuffle(mode_indices)
         build_coeff_mat = np.mat(np.random.random((num_vecs, num_modes)))
         vec_array = np.mat(np.random.random((num_states, num_vecs)))
@@ -157,7 +159,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
                 #print 'max_vecs_per_node =',max_vecs_per_node                          
                 #print 'index_from =',index_from
                 vec_handles = [V.VecHandleArrayText(vec_path%i) 
-                    for i in xrange(num_vecs)]
+                    for i in range(num_vecs)]
                 vec_array, mode_indices, build_coeff_mat, true_modes = \
                     _parallel.call_and_bcast(self.generate_vecs_modes, 
                     num_states, num_vecs, num_modes)
@@ -230,11 +232,11 @@ class TestVectorSpaceHandles(unittest.TestCase):
             num_col_vecs)))
         row_vec_paths = []
         col_vec_paths = []
-        for vec_index in xrange(num_row_vecs):
+        for vec_index in range(num_row_vecs):
             path = row_vec_path % vec_index
             util.save_array_text(row_vec_array[:,vec_index], path)
             row_vec_paths.append(path)
-        for vec_index in xrange(num_col_vecs):
+        for vec_index in range(num_col_vecs):
             path = col_vec_path % vec_index
             util.save_array_text(col_vec_array[:,vec_index], path)
             col_vec_paths.append(path)
@@ -275,9 +277,9 @@ class TestVectorSpaceHandles(unittest.TestCase):
                 col_vec_array = _parallel.call_and_bcast(np.random.random, 
                     (num_states, num_col_vecs))
                 row_vec_handles = [V.VecHandleArrayText(row_vec_path%i) 
-                    for i in xrange(num_row_vecs)]
+                    for i in range(num_row_vecs)]
                 col_vec_handles = [V.VecHandleArrayText(col_vec_path%i) 
-                    for i in xrange(num_col_vecs)]
+                    for i in range(num_col_vecs)]
                 
                 # Save vecs
                 if _parallel.is_rank_zero():

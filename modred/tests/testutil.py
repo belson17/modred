@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """Test util module"""
+from future.builtins import range
 
 import unittest
 # For deleting directories and their contents

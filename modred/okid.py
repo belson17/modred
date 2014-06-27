@@ -1,4 +1,5 @@
 """OKID function. (Book: Applied System Identification, Jer-Nan Juang, 1994)"""
+from future.builtins import range
 
 import numpy as np
 
@@ -49,7 +50,7 @@ def OKID(inputs, outputs, num_Markovs):
     V[:num_inputs] = inputs
     
     inputs_outputs = np.concatenate((inputs, outputs), axis=0)
-    for i in xrange(1, num_Markovs+1):
+    for i in range(1, num_Markovs+1):
         V[num_inputs + (i-1)*num_inouts:num_inputs + i*num_inouts, i:] = \
             inputs_outputs[:, :num_samples-i]
     

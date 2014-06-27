@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 """Test ltigalerkinproj module"""
+from __future__ import division
+from future.builtins import zip
+from future.builtins import map
+from future.builtins import range
 
 import unittest
 import os
@@ -278,8 +282,8 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
         LGP.compute_derivs_handles(self.basis_vec_handles, 
             self.A_on_basis_vec_handles, deriv_handles, dt)
         derivs_loaded = [v.get() for v in deriv_handles]
-        derivs_loaded = map(np.squeeze, derivs_loaded)
-        map(np.testing.assert_allclose, derivs_loaded, true_derivs)
+        derivs_loaded = list(map(np.squeeze, derivs_loaded))
+        list(map(np.testing.assert_allclose, derivs_loaded, true_derivs))
         
         
     #@unittest.skip('testing others')

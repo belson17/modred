@@ -2,12 +2,14 @@
 """ !!This file is not used!!
 
 Examples are used with ../examples/Makefile."""
+from __future__ import absolute_import
+from past.builtins import execfile
+from future.builtins import range
 
 import unittest
 import os, sys
 from os.path import join
 from shutil import rmtree
-import helper
 
 import modred.parallel as parallel_mod
 _parallel = parallel_mod.parallel_default_instance
@@ -79,7 +81,7 @@ class TestExamples(unittest.TestCase):
                 
     @unittest.skip('Unnecessary test for user')
     def test_benchmark(self):
-        import benchmark as B
+        from . import benchmark as B
         num_states = 14
         num_bases = 10
         num_sums = 5

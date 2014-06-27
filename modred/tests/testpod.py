@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 """Test POD module"""
+from __future__ import division
+from future.builtins import range
 
 import unittest
 import os
@@ -149,26 +151,26 @@ class TestPODHandles(unittest.TestCase):
             'verbosity': 0, 'eigen_vecs': None, 'eigen_vals': None,
             'correlation_mat': None, 'vec_handles': None, 'vecs': None,
             'vec_space': VectorSpaceHandles(inner_product=my_IP, verbosity=0)}
-        for k,v in util.get_data_members(PODHandles(my_IP, verbosity=0)).iteritems():
+        for k,v in util.get_data_members(PODHandles(my_IP, verbosity=0)).items():
             self.assertEqual(v, data_members_default[k])
         
         my_POD = PODHandles(my_IP, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_space'] = VectorSpaceHandles(
             inner_product=my_IP, verbosity=0)
-        for k,v in util.get_data_members(my_POD).iteritems():
+        for k,v in util.get_data_members(my_POD).items():
             self.assertEqual(v, data_members_modified[k])
         
         my_POD = PODHandles(my_IP, get_mat=my_load, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['get_mat'] = my_load
-        for k,v in util.get_data_members(my_POD).iteritems():
+        for k,v in util.get_data_members(my_POD).items():
             self.assertEqual(v, data_members_modified[k])
             
         my_POD = PODHandles(my_IP, put_mat=my_save, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['put_mat'] = my_save
-        for k,v in util.get_data_members(my_POD).iteritems():
+        for k,v in util.get_data_members(my_POD).items():
             self.assertEqual(v, data_members_modified[k])
             
         max_vecs_per_node = 500
@@ -179,7 +181,7 @@ class TestPODHandles(unittest.TestCase):
         data_members_modified['vec_space'].max_vecs_per_proc = \
             max_vecs_per_node * _parallel.get_num_nodes() / \
             _parallel.get_num_procs()
-        for k,v in util.get_data_members(my_POD).iteritems():
+        for k,v in util.get_data_members(my_POD).items():
             self.assertEqual(v, data_members_modified[k])
             
         

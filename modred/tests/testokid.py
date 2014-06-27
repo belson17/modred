@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 """Test OKID"""
+from __future__ import division
+from future.builtins import range
 
 import os
 from os.path import join

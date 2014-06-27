@@ -1,6 +1,11 @@
 """Functions and classes for ERA models. See paper by Ma et al. 2011, TCFD."""
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from future.builtins import range
+from future.builtins import object
 import numpy as np
-import util
+from . import util
 
 
 def make_sampled_format(times, Markovs, dt_tol=1e-6):
@@ -154,9 +159,9 @@ class ERA(object):
             
         Kwargs:
             ``mc``: Number of Markov parameters for controllable dimension.
-            		
+        
             ``mo``: Number of Markov parameters for observable dimension.
-            		Default is mc and mo equal and maximal for a balanced model.
+                       Default is mc and mo equal and maximal for a balanced model.
         
         Assembles the Hankel matrices from self.Markovs and takes SVD.
         
@@ -192,8 +197,8 @@ class ERA(object):
         self.C = Ur[:self.num_Markovs] * np.mat(np.diag(Er**.5))
         
         if (np.abs(np.linalg.eigvals(self.A)) >= 1.).any() and self.verbosity:
-            print 'Warning: Unstable eigenvalues of reduced A matrix'
-            print 'eig vals are', np.linalg.eigvals(self.A)
+            print('Warning: Unstable eigenvalues of reduced A matrix')
+            print('eig vals are', np.linalg.eigvals(self.A))
         return self.A, self.B, self.C
           
  
@@ -211,10 +216,10 @@ class ERA(object):
         self.put_mat(self.B, B_dest)
         self.put_mat(self.C, C_dest)
         if self.verbosity:
-            print 'Put ROM matrices to:'
-            print A_dest
-            print B_dest
-            print C_dest
+            print('Put ROM matrices to:')
+            print(A_dest)
+            print(B_dest)
+            print(C_dest)
       
     def put_decomp(self, Hankel_mat_dest, Hankel_mat2_dest, L_sing_vecs_dest, 
         sing_vals_dest, R_sing_vecs_dest):
@@ -275,7 +280,7 @@ class ERA(object):
         
         if self.mo is None or self.mc is None:
             # Set mo and mc, time_steps is always in format [0, 1, P, P+1, ...]
-            self.mo = (self.num_time_steps-2)/4
+            self.mo = (self.num_time_steps-2)//4
             self.mc = self.mo
                 
         if (self.mo + self.mc) +2 > self.num_time_steps:

@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 """Test era module"""
+from __future__ import division
+from future.builtins import range
 
 import unittest
 import os

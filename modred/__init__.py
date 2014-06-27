@@ -1,4 +1,5 @@
 """This file makes the modred directory a python package."""
+from __future__ import absolute_import
 
 # Modules to load when using "from modred import *"
 #__all__ = ['bpod', 'bpodltirom', 'dmd', 'era', 'vectorspace',
@@ -12,17 +13,17 @@
 # top level.  There are no naming conflicts and there is no room for
 # confusion.
 
-from bpod import *
-from pod import *
-from dmd import *
-from era import *
-from vectorspace import *
-from okid import *
-from ltigalerkinproj import *
-from parallel import *
-from util import *
-from vectors import *
+from .bpod import *
+from .pod import *
+from .dmd import *
+from .era import *
+from .vectorspace import *
+from .okid import *
+from .ltigalerkinproj import *
+from .parallel import *
+from .util import *
+from .vectors import *
 
 # tidy up...
-del V, np, sys, os, T, inspect, cPickle, copy
+del V, np, sys, os, T, inspect, pickle, copy
 

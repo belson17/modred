@@ -1,8 +1,11 @@
+from __future__ import print_function
+from __future__ import absolute_import
+from future.builtins import object
 
 import numpy as np
-from vectorspace import VectorSpaceMatrices, VectorSpaceHandles
-import util
-from parallel import parallel_default_instance
+from .vectorspace import VectorSpaceMatrices, VectorSpaceHandles
+from . import util
+from .parallel import parallel_default_instance
 _parallel = parallel_default_instance
 
 def compute_POD_matrices_snaps_method(vecs, mode_indices, 
@@ -125,7 +128,7 @@ def compute_POD_matrices_direct_method(vecs, mode_indices,
             
     elif inner_product_weights.ndim == 2:
         if inner_product_weights.shape[0] > 500:
-            print 'Warning: Cholesky decomposition could be time consuming.'
+            print('Warning: Cholesky decomposition could be time consuming.')
         sqrt_weights = np.linalg.cholesky(inner_product_weights).H
         vecs_weighted = sqrt_weights * vecs
         modes_weighted, sing_vals, eigen_vecs = util.svd(vecs_weighted)

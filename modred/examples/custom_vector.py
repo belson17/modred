@@ -1,4 +1,6 @@
-import cPickle
+from future import standard_library
+standard_library.install_hooks()
+import pickle
 import modred as mr
 from copy import deepcopy
 
@@ -30,15 +32,15 @@ class CustomVecHandle(mr.VecHandle):
 
     def _get(self):
         file_id = open(self.vec_path, 'rb')
-        grids = cPickle.load(file_id)
-        data_array = cPickle.load(file_id)
+        grids = pickle.load(file_id)
+        data_array = pickle.load(file_id)
         file_id.close()
         return CustomVector(grids, data_array)
 
     def _put(self, vec):
         file_id = open(self.vec_path, 'wb')
-        cPickle.dump(vec.grids, file_id)
-        cPickle.dump(vec.data_array, file_id)
+        pickle.dump(vec.grids, file_id)
+        pickle.dump(vec.data_array, file_id)
         file_id.close()
         
 def inner_product(v1, v2):

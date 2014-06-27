@@ -1,3 +1,5 @@
+from past.builtins import execfile
+from future.builtins import range
 #!/usr/bin/env python
 
 # modred must be installed.

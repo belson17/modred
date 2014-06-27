@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 """Simulate linearized CGL and find BPOD modes and reduced-order model."""
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from future.builtins import range
 
 import numpy as np
 import scipy.linalg as SL
 import modred as mr
-import hermite as H
+from . import hermite as H
 
 plots = False
 
@@ -31,11 +35,11 @@ gamma = 1. + 1J * c_d
 # chi: decay rate of global modes
 chi = (-mu_2 / (2.*gamma))**0.25 
 
-print '----- Parameters ------'
+print('----- Parameters ------')
 for var in ['nx','dt','U','c_u','c_d','mu_0','mu_2','s','x_s',
     'nu','gamma','chi']:
-    print var, '=', eval(var)
-print '-----------------------'
+    print(var, '=', eval(var))
+print('-----------------------')
 
 # Collocation points in x are roughly [-85, 85], as in Ilak 2010
 x, Ds = H.herdif(nx, 2, np.real(chi))
@@ -133,7 +137,7 @@ if plots:
 # Compute the BPOD modes
 r = 10
 direct_modes, adjoint_modes, sing_vals = mr.compute_BPOD_matrices(
-    q, q_adj, range(r), range(r), inner_product_weights=weights)
+    q, q_adj, list(range(r)), list(range(r)), inner_product_weights=weights)
 
 # Plot the first 3 modes
 if plots:
@@ -164,7 +168,7 @@ for ti in range(nt-1):
 y = C*q
 yr = Cr*qr
 
-print 'Max error in reduced system impulse response output y is', np.amax(np.abs(y-yr))
+print('Max error in reduced system impulse response output y is', np.amax(np.abs(y-yr)))
 
 if plots:
     PLT.figure()

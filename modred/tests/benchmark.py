@@ -6,11 +6,15 @@ Then in python, do this to view the results, see load_prof_parallel.py
       
 benchmark.py is to be used after installing modred.
 """
+from __future__ import print_function
+from future import standard_library
+standard_library.install_hooks()
+from future.builtins import range
 import os
 from os.path import join
 from shutil import rmtree
 import argparse
-import cPickle
+import pickle
 import time as T
 import numpy as np
 import cProfile
@@ -172,8 +176,8 @@ def main():
         time_elapsed = symmetric_inner_product_mat(
                 num_states, num_vecs, max_vecs_per_node)
     else:
-        print 'Did not recognize --function argument, choose from'
-        print 'lin_combine, inner_product_mat, and inner_product_mat'
+        print('Did not recognize --function argument, choose from')
+        print('lin_combine, inner_product_mat, and inner_product_mat')
     #print 'Time for %s is %f'%(method_to_test, time_elapsed)
     
     _parallel.barrier()

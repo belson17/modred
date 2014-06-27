@@ -1,3 +1,4 @@
+from future.builtins import range
 import numpy as np
 import modred as mr
 
@@ -21,7 +22,7 @@ L_sing_vecs, sing_vals, R_sing_vecs = \
     my_BPOD.compute_decomp(direct_snapshots, adjoint_snapshots)
 
 num_modes = 10
-mode_nums = range(num_modes)  
+mode_nums = list(range(num_modes))  
 direct_modes = [mr.VecHandleArrayText('direct_mode%d' % i) 
     for i in mode_nums]
 adjoint_modes = [mr.VecHandleArrayText('adjoint_mode%d' % i) 

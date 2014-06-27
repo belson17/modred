@@ -4,10 +4,15 @@ We recommend using these functions and classes when possible.
 Otherwise, you can write your own vector class and/or vector handle,
 see documentation :ref:`sec_details`.
 """
+from __future__ import absolute_import
+from future.builtins import str
+from future import standard_library
+standard_library.install_hooks()
+from future.builtins import object
 
-import cPickle
+import pickle
 import numpy as np
-import util
+from . import util
 
 class VecHandle(object):
     """Recommended base class for vector handles (not required)."""
@@ -93,12 +98,12 @@ class VecHandlePickle(VecHandle):
     def _get(self):
         """Loads vector from path."""
         with open(self.vec_path, 'rb') as file_obj:
-            to_return = cPickle.load(file_obj)
+            to_return = pickle.load(file_obj)
         return to_return
     def _put(self, vec):
         """Saves vector to path."""
         with open(self.vec_path, 'wb') as file_obj:
-            cPickle.dump(vec, file_obj)
+            pickle.dump(vec, file_obj)
     def __eq__(self, other):
         if type(other) != type(self):
             return False

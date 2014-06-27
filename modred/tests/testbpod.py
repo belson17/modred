@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 """Test the bpod module"""
+from __future__ import division
+from future.builtins import zip
+from future.builtins import range
 
 import unittest
 import copy
@@ -184,26 +187,26 @@ class TestBPODHandles(unittest.TestCase):
         # Get default data member values
         #self.maxDiff = None
         for k,v in util.get_data_members(
-            BPODHandles(my_IP, verbosity=0)).iteritems():
+            BPODHandles(my_IP, verbosity=0)).items():
             self.assertEqual(v, data_members_default[k])
         
         my_BPOD = BPODHandles(my_IP, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_space'] = VectorSpaceHandles(
             inner_product=my_IP, verbosity=0)
-        for k,v in util.get_data_members(my_BPOD).iteritems():
+        for k,v in util.get_data_members(my_BPOD).items():
             self.assertEqual(v, data_members_modified[k])
        
         my_BPOD = BPODHandles(my_IP, get_mat=my_load, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['get_mat'] = my_load
-        for k,v in util.get_data_members(my_BPOD).iteritems():
+        for k,v in util.get_data_members(my_BPOD).items():
             self.assertEqual(v, data_members_modified[k])
  
         my_BPOD = BPODHandles(my_IP, put_mat=my_save, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['put_mat'] = my_save
-        for k,v in util.get_data_members(my_BPOD).iteritems():
+        for k,v in util.get_data_members(my_BPOD).items():
             self.assertEqual(v, data_members_modified[k])
         
         max_vecs_per_node = 500
@@ -214,7 +217,7 @@ class TestBPODHandles(unittest.TestCase):
         data_members_modified['vec_space'].max_vecs_per_proc = \
             max_vecs_per_node * _parallel.get_num_nodes() / _parallel.\
             get_num_procs()
-        for k,v in util.get_data_members(my_BPOD).iteritems():
+        for k,v in util.get_data_members(my_BPOD).items():
             self.assertEqual(v, data_members_modified[k])
        
     def test_puts_gets(self):

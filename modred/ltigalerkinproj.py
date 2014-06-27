@@ -1,11 +1,15 @@
 """Module for Galerkin projection of LTI systems."""
+from __future__ import division
+from __future__ import absolute_import
+from future.builtins import range
+from future.builtins import object
 
 import numpy as np
 
-import util
-from vectors import VecHandleInMemory
-from vectorspace import *
-from parallel import parallel_default_instance
+from . import util
+from .vectors import VecHandleInMemory
+from .vectorspace import *
+from .parallel import parallel_default_instance
 _parallel = parallel_default_instance
 
 def standard_basis(num_dims):
@@ -42,7 +46,7 @@ def compute_derivs_handles(vec_handles, adv_vec_handles, deriv_vec_handles, dt):
         num_vecs != len(deriv_vec_handles):
         raise RuntimeError('Number of vectors not equal')
     
-    vec_index_tasks = _parallel.find_assignments(range(num_vecs))[
+    vec_index_tasks = _parallel.find_assignments(list(range(num_vecs)))[
         _parallel.get_rank()]
     
     for i in vec_index_tasks:

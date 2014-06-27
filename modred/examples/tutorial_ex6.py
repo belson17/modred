@@ -1,6 +1,9 @@
+from __future__ import division
+from __future__ import absolute_import
+from future.builtins import range
 import numpy as np
 import modred as mr
-from custom_vector import CustomVector, CustomVecHandle, inner_product
+from .custom_vector import CustomVector, CustomVecHandle, inner_product
 
 
 # Define snapshot handles.
@@ -31,7 +34,7 @@ L_sing_vecs, sing_vals, R_sing_vecs = \
 # less than 10% error
 sing_vals_norm = sing_vals / np.sum(sing_vals)
 num_modes = np.nonzero(np.cumsum(sing_vals_norm) > 0.9)[0][0] + 1
-mode_nums = range(num_modes)
+mode_nums = list(range(num_modes))
 
 direct_modes = [CustomVecHandle('direct_mode%d.pkl'%i) for i in mode_nums] 
 adjoint_modes = [CustomVecHandle('adjoint_mode%d.pkl'%i) for i in mode_nums]

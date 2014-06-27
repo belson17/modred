@@ -1,8 +1,10 @@
+from __future__ import absolute_import
+from future.builtins import object
 
 import numpy as np
-from vectorspace import VectorSpaceMatrices, VectorSpaceHandles
-import util
-from parallel import parallel_default_instance
+from .vectorspace import VectorSpaceMatrices, VectorSpaceHandles
+from . import util
+from .parallel import parallel_default_instance
 _parallel = parallel_default_instance
 
 def compute_BPOD_matrices(direct_vecs, adjoint_vecs, 

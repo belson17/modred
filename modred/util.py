@@ -1,4 +1,7 @@
 """A group of useful functions"""
+from __future__ import print_function
+from future.builtins import range
+from future.builtins import object
 
 import inspect
 import os
@@ -85,7 +88,8 @@ def load_array_text(file_name, delimiter=' ', is_complex=False):
     array = np.loadtxt(file_name, delimiter=delimiter) #, ndmin=2)
     ## This section reproduces behavior of ndmin=2 option of np.loadtxt
     if array.ndim == 1:
-        num_rows = sum(1 for line in open(file_name))
+        with open(file_name) as f:
+            num_rows = sum(1 for line in f)
         if num_rows > 1:
             array = array.reshape((-1, 1))
         else:
@@ -194,7 +198,7 @@ def get_file_list(directory, file_extension=None):
     files = os.listdir(directory)
     if file_extension is not None:
         if len(file_extension) == 0:
-            print 'Warning: gave an empty file extension'
+            print('Warning: gave an empty file extension')
         filtered_files = []
         for f in files:
             if f[-len(file_extension):] == file_extension:
@@ -225,7 +229,7 @@ def sum_lists(list1, list2):
     This function is used in MPI reduce commands, but could be used
     elsewhere too."""
     assert len(list1) == len(list2)
-    return [list1[i] + list2[i] for i in xrange(len(list1))]
+    return [list1[i] + list2[i] for i in range(len(list1))]
 
 
 def solve_Lyapunov_direct(A, Q):
@@ -284,7 +288,7 @@ def solve_Lyapunov_iterative(A, Q, max_iters=10000, tol=1e-8):
         iter += 1
 
     if iter >= max_iters:
-        print 'Warning: did not converge to solution. Error is %f.'%error
+        print('Warning: did not converge to solution. Error is %f.'%error)
     return X
 
 
@@ -426,7 +430,7 @@ def lsim(A, B, C, inputs, initial_condition=None):
         initial_condition = np.zeros(num_states)
     state = initial_condition
     outputs = np.zeros((num_steps, num_outputs)) 
-    for ti in xrange(num_steps):
+    for ti in range(num_steps):
         outputs[ti] = np.dot(C_arr, state)
         state = np.dot(A_arr, state) + np.dot(B_arr, inputs[ti])
     return outputs
@@ -467,7 +471,11 @@ def impulse(A, B, C, num_time_steps=None):
             A_powers = np.dot(A_powers, A_arr)
             ti += 1
             if ti > min_time_steps:
-                if (np.abs(outputs[-min_time_steps:] < tol)).all():
+                # pa: I change that since it is strange and it gives
+                # TypeError: unorderable types: list() < float()
+                # with python 3
+                # if (np.abs(outputs[-min_time_steps:] < tol)).all():
+                if (np.abs(outputs[-1] < tol)).all():
                     continue_sim = False
         outputs = np.array(outputs)
     else:

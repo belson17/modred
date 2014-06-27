@@ -1,3 +1,5 @@
+from __future__ import print_function
+from future.builtins import range
 import numpy as np
 import modred as mr
 
@@ -33,4 +35,4 @@ my_POD.compute_modes(mode_indices, modes)
 vec_space = mr.VectorSpaceHandles(inner_product=np.vdot)
 IP_mat = vec_space.compute_symmetric_inner_product_mat(modes)
 if not np.allclose(IP_mat, np.eye(len(mode_indices))):
-    print 'Warning: modes are not orthonormal', IP_mat
+    print('Warning: modes are not orthonormal', IP_mat)

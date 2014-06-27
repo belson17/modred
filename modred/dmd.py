@@ -1,8 +1,11 @@
+from __future__ import print_function
+from __future__ import absolute_import
+from future.builtins import object
 
 import numpy as np
-from vectorspace import VectorSpaceMatrices, VectorSpaceHandles
-import util
-from parallel import parallel_default_instance
+from .vectorspace import VectorSpaceMatrices, VectorSpaceHandles
+from . import util
+from .parallel import parallel_default_instance
 _parallel = parallel_default_instance
 
 
@@ -176,7 +179,7 @@ def compute_DMD_matrices_direct_method(vecs, mode_indices,
             adv_vecs_weighted = sqrt_weights * adv_vecs
     elif inner_product_weights.ndim == 2:
         if inner_product_weights.shape[0] > 500:
-            print 'Warning: Cholesky decomposition could be time consuming.'
+            print('Warning: Cholesky decomposition could be time consuming.')
         sqrt_weights = np.mat(np.linalg.cholesky(inner_product_weights)).H
         vecs_weighted = sqrt_weights * vecs
         if adv_vecs is not None:
@@ -438,10 +441,10 @@ class DMDHandles(object):
         self._compute_eigen_decomp()
         if (self.mode_norms < 0).any() and self.verbosity > 0 and \
             _parallel.is_rank_zero():
-            print >> output_channel, ('Warning: mode norms has negative '
+            print(('Warning: mode norms has negative '
                 'values. This is often happens '
                 'when the rank of the vector matrix is much less than the '
-                'number of columns. Try using fewer vectors (fewer columns).')
+                'number of columns. Try using fewer vectors (fewer columns).'), file=output_channel)
         return self.ritz_vals, self.mode_norms, self.build_coeffs
         
         

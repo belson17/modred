@@ -2,6 +2,9 @@
 
 To use this, must copy in the
 scaling times from profiling benchmark.py with cProfile."""
+from __future__ import division
+from __future__ import print_function
+from future.builtins import object
 
 import numpy as np
 import matplotlib.pyplot as PLT
@@ -190,12 +193,12 @@ def lin():
     PLT.savefig('lin_combine_speedup.eps')
     
     # Table of time spent in each operation for diff num of workers
-    print 'Workers |   Total Wall   |        Loads       |' +\
-        '      Send-recvs     |   Barriers'
+    print('Workers |   Total Wall   |        Loads       |' +\
+        '      Send-recvs     |   Barriers')
     for s in cases:
-        print '  %d    |  %.1f   | %.1f (%f) | %.1f (%f) | %.1f (%f)'%(
+        print('  %d    |  %.1f   | %.1f (%f) | %.1f (%f) | %.1f (%f)'%(
             s.workers, s.total, s.loads, s.loads/s.total, (s.sends+s.recvs), 
-            (s.sends+s.recvs)/s.total, s.barriers, s.barriers/s.total)
+            (s.sends+s.recvs)/s.total, s.barriers, s.barriers/s.total))
     
     
     # Time spent breakdown
@@ -342,13 +345,13 @@ def ips():
     PLT.savefig('IPs_speedup.eps')
     
     # Table of time spent in each operation for diff num of workers
-    print 'Workers |   Total Wall   |        Loads       |' +\
-        '     IPs     |      sends+recvs     |   barriers'
+    print('Workers |   Total Wall   |        Loads       |' +\
+        '     IPs     |      sends+recvs     |   barriers')
     for s in cases:
-        print ('  %d    |  %.1f   | %.1f (%.2f) | %.1f (%.2f) | %.1f (%.2f) |'+
+        print(('  %d    |  %.1f   | %.1f (%.2f) | %.1f (%.2f) | %.1f (%.2f) |'+
             '%.1f (%.2f)')%(
             s.workers, s.total, s.loads, s.loads/s.total, s.ips, s.ips/s.total,
-            s.sendrecvs, s.sendrecvs/s.total, s.barriers, s.barriers/s.total)
+            s.sendrecvs, s.sendrecvs/s.total, s.barriers, s.barriers/s.total))
     
     
     # Time spent breakdown

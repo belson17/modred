@@ -1,6 +1,8 @@
 """
 Spectral differentiation from J.A.C. Weideman and S.C. Reddy 1998, ACM TOMS.
 """
+from __future__ import division
+from future.builtins import range
 
 import numpy as np
 import numpy.ma as ma
