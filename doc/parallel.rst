@@ -1,5 +1,5 @@
 Parallel Class
 ************** 
 
-.. automodule:: parallel
+.. automodule:: modred.parallel
    :members:

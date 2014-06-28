@@ -1,6 +1,0 @@
-ERA 
-**** 
-
-.. automodule:: era
-   :members:
-

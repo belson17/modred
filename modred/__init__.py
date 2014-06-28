@@ -1,6 +1,8 @@
 """This file makes the modred directory a python package."""
 from __future__ import absolute_import
 
+from ._version import __version__
+
 # Modules whose internal contents are available through the modred
 # namespace as "modred.foo" are imported below.  For example, this
 # allows "myPOD = modred.POD()" rather than "myPOD =

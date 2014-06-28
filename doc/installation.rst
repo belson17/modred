@@ -4,12 +4,14 @@ Installation and requirements
 
 Mandatory:
 
-1. Python 2.x (tested for 2.7), http://python.org.
-2. Relatively new version of Numpy (tested for 1.5 and 1.6), http://numpy.scipy.org.
+1. Python 2.x (tested for 2.7) or Python 3 (>=3.3), http://python.org.
+2. Relatively new version of Numpy (tested for 1.5 and 1.6),
+   http://numpy.scipy.org.
 
 Optional:
 
-1. For parallel execution, an MPI implementation and mpi4py, http://mpi4py.scipy.org.
+1. For parallel execution, an MPI implementation and mpi4py,
+   http://mpi4py.scipy.org.
 
 
 To install::

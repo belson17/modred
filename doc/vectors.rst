@@ -1,6 +1,6 @@
 Module vectors 
 ********************* 
 
-.. automodule:: vectors
+.. automodule:: modred.vectors
    :members:
 

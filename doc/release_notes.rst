@@ -2,6 +2,29 @@
 Release notes
 =============
 
+------------
+modred 1.0.3
+------------
+Done by Pierre Augier.
+
+**New features and improvements**
+
+* None
+
+**Bug fixes**
+
+* A bug in the function ``modred.util.impulse``.
+
+**Interface changes**
+
+* None
+
+**Internal changes**
+
+* Improve the packaging.
+
+* Ported to python >= 3.3 using `python-future
+  <http://python-future.org/>`_.
 
 ------------
 modred 1.0.2

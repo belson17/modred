@@ -23,7 +23,7 @@ Example 1 -- All data in a matrix
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A simple way to find POD modes is:
 
-.. literalinclude:: ../examples/tutorial_ex1.py
+.. literalinclude:: ../modred/examples/tutorial_ex1.py
 
 Let's walk through the important steps.
 First, we create an array of random data.
@@ -49,7 +49,7 @@ inner product weights.
 The weights also can, more generally, be a matrix
 The vectors are again represented as columns of a matrix.
 
-.. literalinclude:: ../examples/tutorial_ex2.py
+.. literalinclude:: ../modred/examples/tutorial_ex2.py
 
 This function takes the SVD of :math:`W^{1/2} X`, 
 and we refer to this as the "direct method" to distinguish it from the
@@ -71,7 +71,7 @@ if the data is too large to all fit in memory simultaneously.
 The following example computes direct and adjoint modes using Balanced
 POD (see Chapter 5 of [HLBR]_):
 
-.. literalinclude:: ../examples/tutorial_ex3.py
+.. literalinclude:: ../modred/examples/tutorial_ex3.py
 
 First, we create lists ``direct_snapshots`` and
 ``adjoint_snapshots``.
@@ -150,7 +150,7 @@ The object ``weighted_IP`` is callable (it has a special
 method ``__call__``) so it acts as the inner product the usual
 way: ``value = weighted_IP(vec1, vec2)``.
 
-.. literalinclude:: ../examples/tutorial_ex4.py
+.. literalinclude:: ../modred/examples/tutorial_ex4.py
 
 Also shown in this example is the useful ``put_decomp``, which, by default 
 saves the arrays associated with the decomposition to text files.
@@ -183,7 +183,7 @@ It also shows how to load vectors in one format (pickle, via
 ``mr.VecHandlePickle``) 
 and save modes in another (text, via ``mr.VecHandleArrayText``).
 
-.. literalinclude:: ../examples/tutorial_ex5.py
+.. literalinclude:: ../modred/examples/tutorial_ex5.py
 
 At the end of this example, we use an instance of the low-level 
 class 
@@ -211,7 +211,7 @@ There are two important new features of this example: a custom vector class
 ``CustomVecHandle``.  These definitions may be collected together in a
 file, for instance called ``custom_vector.py``:
 
-.. literalinclude:: ../examples/custom_vector.py
+.. literalinclude:: ../modred/examples/custom_vector.py
 
 Instances of ``CustomVector`` meet the requirements for a vector object: vector addition
 ``__add__`` and scalar multiplication ``__mul__`` are defined, and 
@@ -238,7 +238,7 @@ is covered in :ref:`sec_details`.
 
 Here's an example using these classes:
 
-.. literalinclude:: ../examples/tutorial_ex6.py
+.. literalinclude:: ../modred/examples/tutorial_ex6.py
 
 This example is similar to previous ones, but some aspects are worth
 pointing out.

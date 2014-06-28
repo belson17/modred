@@ -4,13 +4,17 @@ from setuptools import setup, find_packages
 import os
 here = os.path.abspath(os.path.dirname(__file__))
 
-# # Get the long description from the relevant file
+# Get the long description from the relevant file
 with open(os.path.join(here, 'README.rst')) as f:
     long_description = f.read()
 
+# Get the version from the relevant file
+with open(os.path.join(here, 'modred/_version.py')) as f:
+    exec(f.read())
+
 setup(
     name='modred',
-    version='1.0.3',
+    version=__version__,
     description=(
         'Compute modal decompositions and reduced-order models, '
         'easily, efficiently, and in parallel.'
@@ -43,7 +47,7 @@ setup(
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4'
         ],
-    packages=find_packages(exclude=['docs', 'matlab']),
+    packages=find_packages(exclude=['doc', 'matlab']),
     package_data={'modred':[
             'modred/tests/files_okid/SISO/*', 
             'modred/tests/files_okid/SIMO/*', 

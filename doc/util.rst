@@ -1,6 +1,6 @@
 Utility Functions
 ***************** 
 
-.. automodule:: util
+.. automodule:: modred.util
    :members:
 

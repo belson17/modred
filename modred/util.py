@@ -471,7 +471,7 @@ def impulse(A, B, C, num_time_steps=None):
             A_powers = np.dot(A_powers, A_arr)
             ti += 1
             if ti > min_time_steps:
-                # pa: I change that since it is strange and it gives
+                # PA: I changed that since it is strange and it gives
                 # TypeError: unorderable types: list() < float()
                 # with python 3
                 # if (np.abs(outputs[-min_time_steps:] < tol)).all():
