@@ -28,18 +28,20 @@ def standard_basis(num_dims):
 
 def compute_derivs_handles(vec_handles, adv_vec_handles, deriv_vec_handles, dt):
     """Computes 1st-order time derivatives of vectors using handles. 
-    
+
     Args:
         ``vec_handles``: List of vec handles.
-        
-        ``adv_vec_handles``: List of vec handles for vecs advanced ``dt`` in
-        time.
-        
-        ``deriv_vec_handles``: List of vec handles for time derivatives of vecs.
-        
+
+        ``adv_vec_handles``: List of vec handles for vecs advanced
+        ``dt`` in time.
+
+        ``deriv_vec_handles``: List of vec handles for time
+        derivatives of vecs.
+
         ``dt``: Time step of ``adv_vec_handles``
-        
-    Computes d(``vec``)/dt = (``vec``(t=dt) - ``vec``(t=0)) / dt.
+
+    Computes d(``vec``)/dt =  ( ``vec``\(t=dt) -  ``vec``\(t=0) ) / dt.
+
     """
     num_vecs = len(vec_handles)
     if num_vecs != len(adv_vec_handles) or \

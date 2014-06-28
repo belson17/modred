@@ -192,7 +192,7 @@ Example
 An example of a custom class for vectors and vector handles is shown
 below:
 
-.. literalinclude:: ../examples/custom_vector.py
+.. literalinclude:: ../modred/examples/custom_vector.py
 
 For an example using this class, see the tutorial in :ref:`sec_modaldecomp`.
 
@@ -203,15 +203,15 @@ Summary and next steps
 Summarizing, to use modred on arbitrary data, define
 
 1. A vector object that has:
-  1. Vector addition ("+", ``__add__``)
-  2. Scalar multiplication ("*", ``__mul__``)
-  3. Optional: inherits from :py:class:`vectors.Vector`.
+   1. Vector addition ("+", ``__add__``),
+   2. Scalar multiplication ("*", ``__mul__``),
+   3. Optional: inherits from :py:class:`vectors.Vector`.
 2. Function ``inner_product(vec1, vec2)``.
 3. A vector handle class that has:
-  1. Member function ``get()`` which returns a vector handle.
-  2. Member function ``put(vec)`` where ``vec`` is a vector handle.
-  3. Optionally inherits from :py:class:`vectors.VecHandle`. If so, 
-     member function names in 1 and 2 change to ``_get`` and ``_put``.
+   1. Member function ``get()`` which returns a vector handle.
+   2. Member function ``put(vec)`` where ``vec`` is a vector handle.
+   3. Optionally inherits from :py:class:`vectors.VecHandle`. If so, 
+   member function names in 1 and 2 change to ``_get`` and ``_put``.
 
 Then you can get started using any of the modal decomposition classes!
 Before writing your own classes, check out :py:mod:`vectors`, which

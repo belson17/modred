@@ -84,7 +84,7 @@ Example 1: Smaller data and matrices
 *****************************************
 Here's an example that uses matrices.
 
-.. literalinclude:: ../examples/rom_ex1.py
+.. literalinclude:: ../modred/examples/rom_ex1.py
 
 The array ``basis_vecs`` contains the vectors that define the basis onto 
 which the dynamics are projected.
@@ -111,7 +111,7 @@ Example 2: Larger data and vector handles
 Here's an example similar to what might arise when doing large simulations in 
 another language or program.
 
-.. literalinclude:: ../examples/rom_ex2.py
+.. literalinclude:: ../modred/examples/rom_ex2.py
 
 This example works in parallel with no modifications.
 

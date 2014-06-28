@@ -258,7 +258,7 @@ class BPODHandles(object):
         Kwargs:
           ``direct_vec_handles``: List of handles for direct vecs 
           (:math:`X`). 
-              Optional if already given when calling :py:meth:`compute_decomp`. 
+          Optional if already given when calling :py:meth:`compute_decomp`. 
         """
         if direct_vec_handles is not None:
             self.direct_vec_handles = util.make_list(direct_vec_handles)
@@ -276,17 +276,17 @@ class BPODHandles(object):
     def compute_adjoint_modes(self, mode_indices, modes, 
         adjoint_vec_handles=None):
         """Computes adjoint modes, calls ``put`` on them.
-        
+
         Args:
           ``mode_indices``: List of mode numbers to compute. 
               Examples are ``range(10)`` or ``[3, 0, 6, 8]``. 
-              
+
           ``modes``: List of handles for adjoint modes.
-          
+
         Kwargs:
           ``adjoint_vec_handles``: List of handles for adjoint vecs 
           (:math:`Y`). 
-              Optional if already given when calling :py:meth:`compute_decomp`.
+          Optional if already given when calling :py:meth:`compute_decomp`.
         """
         if adjoint_vec_handles is not None:
             self.adjoint_vec_handles = util.make_list(adjoint_vec_handles)
