@@ -18,21 +18,17 @@ This work was supported by a grant from the the National Science
 Foundation.
 
 Installation
-------------
+--------------
 
 To install::
 
   [sudo] python setup.py install
 
-You may need to change the permissions on the modred folder, on Posix systems,
-use the bash command::
-
-  chmod 777 modred-*
-
-To check the installation, you can run the unit tests 
-(parallel requires mpi4py)::
+To check the installation, you can run the unit tests (parallel
+requires mpi4py)::
 
   python -c 'import modred.tests; modred.tests.run()'
+
   mpiexec -n 3 python -c 'import modred.tests; modred.tests.run()'
 
 Please report failures and installation problems to bbelson@princeton.edu with

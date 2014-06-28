@@ -4,9 +4,9 @@ from __future__ import absolute_import
 from future.builtins import range
 from future.builtins import object
 
-import sys  
+import sys
 import copy
-import time as T
+from time import time
 import numpy as np
 
 from . import util
@@ -66,9 +66,9 @@ class VectorSpaceMatrices(object):
         return not self.__eq__(other)
 
 
-    
-    
-   
+
+
+
 class VectorSpaceHandles(object):
     """Responsible for performing addition and multiplication in parallel.
 
@@ -311,13 +311,13 @@ class VectorSpaceHandles(object):
         # Burn the first, it sometimes contains slow imports
         IP_burn = self.inner_product(row_vec, col_vec)
         
-        start_time = T.time()
+        start_time = time()
         row_vec = row_vec_handles[0].get()
-        get_time = T.time() - start_time
+        get_time = time() - start_time
         
-        start_time = T.time()
+        start_time = time()
         IP = self.inner_product(row_vec, col_vec)
-        IP_time = T.time() - start_time
+        IP_time = time() - start_time
         IP_type = type(IP)
         
         total_IP_time = (num_rows * num_cols * IP_time /
@@ -411,7 +411,7 @@ class VectorSpaceHandles(object):
                                     col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - start_row_index],
                                     col_vec)
-                        if (T.time() - self.prev_print_time) > \
+                        if (time() - self.prev_print_time) > \
                             self.print_interval:
                             num_completed_IPs = (np.abs(IP_mat)>0).sum()
                             percent_completed_IPs = (100. * num_completed_IPs*
@@ -419,7 +419,7 @@ class VectorSpaceHandles(object):
                                 num_cols*num_rows)
                             self.print_msg(('Completed %.1f%% of inner ' + 
                                 'products')%percent_completed_IPs, sys.stderr)
-                            self.prev_print_time = T.time()
+                            self.prev_print_time = time()
                         
                         
                 # Clear the retrieved column vecs after done this pass cycle
@@ -437,7 +437,7 @@ class VectorSpaceHandles(object):
         percent_completed_IPs = 100.
         self.print_msg(('Completed %.1f%% of inner ' + 
             'products')%percent_completed_IPs, sys.stderr)
-        self.prev_print_time = T.time()
+        self.prev_print_time = time()
 
         _parallel.barrier() 
         return IP_mat
@@ -494,13 +494,13 @@ class VectorSpaceHandles(object):
         # Burn the first, it sometimes contains slow imports
         IP_burn = self.inner_product(test_vec, test_vec)
         
-        start_time = T.time()
+        start_time = time()
         test_vec = vec_handles[0].get()
-        get_time = T.time() - start_time
+        get_time = time() - start_time
         
-        start_time = T.time()
+        start_time = time()
         IP = self.inner_product(test_vec, test_vec)
-        IP_time = T.time() - start_time
+        IP_time = time() - start_time
         IP_type = type(IP)
         
         total_IP_time = (num_vecs**2 * IP_time / 2. /
@@ -630,7 +630,7 @@ class VectorSpaceHandles(object):
                                     col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - my_row_indices[0]],
                                     col_vec)
-                            if (T.time() - self.prev_print_time) > \
+                            if (time() - self.prev_print_time) > \
                                 self.print_interval:
                                 num_completed_IPs = (np.abs(IP_mat)>0).sum()
                                 percent_completed_IPs = \
@@ -639,7 +639,7 @@ class VectorSpaceHandles(object):
                                     (num_vecs**2)
                                 self.print_msg(('Completed %.1f%% of inner ' + 
                                     'products')%percent_completed_IPs, sys.stderr)
-                                self.prev_print_time = T.time()
+                                self.prev_print_time = time()
                     # Sync after send/receive   
                     _parallel.barrier()  
                 
@@ -710,13 +710,13 @@ class VectorSpaceHandles(object):
                                     col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - proc_row_tasks[0]],
                                     col_vec)
-                        if (T.time() - self.prev_print_time) > self.print_interval:
+                        if (time() - self.prev_print_time) > self.print_interval:
                             num_completed_IPs = (np.abs(IP_mat)>0).sum()
                             percent_completed_IPs = (100.*2*num_completed_IPs *
                                 _parallel.get_num_MPI_workers())/(num_vecs**2)
                             self.print_msg(('Completed %.1f%% of inner ' + 
                                 'products')%percent_completed_IPs, sys.stderr)
-                            self.prev_print_time = T.time()
+                            self.prev_print_time = time()
             # Completed a chunk of rows and all columns on all processors.
             # Finished row_vecs loop, delete memory used
             del row_vecs                     
@@ -741,7 +741,7 @@ class VectorSpaceHandles(object):
         percent_completed_IPs = 100.
         self.print_msg(('Completed %.1f%% of inner ' + 
             'products')%percent_completed_IPs, sys.stderr)
-        self.prev_print_time = T.time()
+        self.prev_print_time = time()
         
         _parallel.barrier()
         return IP_mat
@@ -805,12 +805,12 @@ class VectorSpaceHandles(object):
         test_vec_burn = basis_vec_handles[0].get()
         test_vec_burn_3 = test_vec_burn + 2.*test_vec_burn
         del test_vec_burn, test_vec_burn_3
-        start_time = T.time()
+        start_time = time()
         test_vec = basis_vec_handles[0].get()
-        get_time = T.time() - start_time
-        start_time = T.time()
+        get_time = time() - start_time
+        start_time = time()
         test_vec_3 = test_vec + 2.*test_vec
-        add_scale_time = T.time() - start_time
+        add_scale_time = time() - start_time
         del test_vec, test_vec_3
         
         vecs_per_worker = self.max_vecs_per_node * _parallel.get_num_nodes() / \
@@ -931,11 +931,11 @@ class VectorSpaceHandles(object):
                             else:
                                 sum_layers[sum_index-start_sum_index] += \
                                     sum_layer
-                        if (T.time() - self.prev_print_time) > self.print_interval:    
+                        if (time() - self.prev_print_time) > self.print_interval:
                             self.print_msg(
                                 'Completed %.1f%% of linear combinations' %
                                 (sum_index*100./len(sum_tasks[rank])))
-                            self.prev_print_time = T.time()
+                            self.prev_print_time = time()
                         
 
             # Completed this set of sum vecs, puts them to memory or file
@@ -945,7 +945,7 @@ class VectorSpaceHandles(object):
             del sum_layers
         
         self.print_msg('Completed %.1f%% of linear combinations' % 100.)
-        self.prev_print_time = T.time()
+        self.prev_print_time = time()
         _parallel.barrier() 
         
     

@@ -223,4 +223,4 @@ class Parallel(object):
         
         
 # Default instance to be used everywhere, "singleton"
-parallel_default_instance = Parallel()     
+parallel_default_instance = Parallel()

@@ -5,20 +5,20 @@ import os
 here = os.path.abspath(os.path.dirname(__file__))
 
 # # Get the long description from the relevant file
-with open(os.path.join(here, 'README.md')) as f:
+with open(os.path.join(here, 'README.rst')) as f:
     long_description = f.read()
 
 setup(
     name='modred',
-    version='1.0.2',
+    version='1.0.3',
     description=(
         'Compute modal decompositions and reduced-order models, '
         'easily, efficiently, and in parallel.'
         ),
     # long_description=long_description,
     # keywords='',
-    author=('Brandt Belson, Jonathan Tu and Clarence W. Rowley;'
-            ' ported for python 3 by Pierre Augier'),
+    author=('Brandt Belson, Jonathan Tu, and Clarence W. Rowley;'
+            'repacked and ported for python 3 by Pierre Augier'),
     author_email=(
         'bbelson@princeton.edu, jhtu@princeton.edu, cwrowley@princeton.edu'
         ),
@@ -49,4 +49,5 @@ setup(
             'modred/tests/files_okid/SIMO/*', 
             'modred/tests/files_okid/MISO/*', 
             'modred/tests/files_okid/MIMO/*']},
+      install_requires=['numpy', 'future']
     )
