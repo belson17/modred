@@ -1,4 +1,5 @@
 Welcome to the modred library!
+--------------
 
 This is an easy-to-use and parallelized library for finding modal
 decompositions and reduced-order models.
@@ -21,6 +22,10 @@ Installation
 --------------
 
 To install::
+
+  [sudo] pip install modred
+
+or, download the source code and run::
 
   [sudo] python setup.py install
 
