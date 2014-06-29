@@ -1,8 +1,13 @@
 
 from setuptools import setup, find_packages
+from pkg_resources import parse_version
 
 import os
 here = os.path.abspath(os.path.dirname(__file__))
+
+import sys
+if sys.version_info[:2] < (2, 6) or (3, 0) <= sys.version_info[0:2] < (3, 2):
+    raise RuntimeError("Python version 2.6, 2.7 or >= 3.2 required.")
 
 # Get the long description from the relevant file
 with open(os.path.join(here, 'README.rst')) as f:
@@ -11,6 +16,14 @@ with open(os.path.join(here, 'README.rst')) as f:
 # Get the version from the relevant file
 with open(os.path.join(here, 'modred/_version.py')) as f:
     exec(f.read())
+# Get the development status from the version string
+parsed_version = parse_version(__version__)
+if any(w in ['*a', '*alpha'] for w in parsed_version):
+    devstatus = 'Development Status :: 3 - Alpha'
+elif any(w in ['*b', '*beta'] for w in parsed_version):
+    devstatus = 'Development Status :: 4 - Beta'
+else:
+    devstatus = 'Development Status :: 5 - Production/Stable'
 
 setup(
     name='modred',
@@ -35,7 +48,7 @@ setup(
         # 3 - Alpha
         # 4 - Beta
         # 5 - Production/Stable
-        'Development Status :: 3 - Alpha',
+        devstatus,
         'Intended Audience :: Science/Research',
         'Intended Audience :: Education',
         'Topic :: Scientific/Engineering',
