@@ -1,7 +1,7 @@
 """
 Module where the version is written.
 
-It is only executed in setup.py.
+It is executed in setup.py and imported in modred/__init__.py.
 
 See:
 
