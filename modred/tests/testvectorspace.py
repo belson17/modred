@@ -39,7 +39,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
         # so messages won't print during tests
         self.default_data_members = {'inner_product': np.vdot,
             'max_vecs_per_node': 10000,
-            'max_vecs_per_proc': 10000 * _parallel.get_num_nodes() / \
+            'max_vecs_per_proc': 10000 * _parallel.get_num_nodes() // \
                 _parallel.get_num_procs(),
             'verbosity': 0, 'print_interval': 10, 'prev_print_time': 0.}        
         _parallel.barrier()
@@ -64,7 +64,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
         data_members = copy.deepcopy(data_members_original)
         data_members['max_vecs_per_node'] = max_vecs_per_node
         data_members['max_vecs_per_proc'] = max_vecs_per_node * \
-            _parallel.get_num_nodes()/ _parallel.get_num_procs()
+            _parallel.get_num_nodes() // _parallel.get_num_procs()
         self.assertEqual(util.get_data_members(my_VS), data_members)
 
         
@@ -156,7 +156,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
                 #print 'num_vecs =',num_vecs
                 #print 'num_states =',num_states
                 #print 'num_modes =',num_modes
-                #print 'max_vecs_per_node =',max_vecs_per_node                          
+                #print 'max_vecs_per_node =',max_vecs_per_node
                 #print 'index_from =',index_from
                 vec_handles = [V.VecHandleArrayText(vec_path%i) 
                     for i in range(num_vecs)]
