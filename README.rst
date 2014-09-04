@@ -36,7 +36,7 @@ requires mpi4py)::
 
   mpiexec -n 3 python -c 'import modred.tests; modred.tests.run()'
 
-Please report failures and installation problems to bbelson@princeton.edu with
+Please report failures and installation problems to belson17 at gmail.com with
 the following information:
 
 1. Copy of the entire output of the tests or installation
