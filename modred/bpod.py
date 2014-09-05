@@ -1,5 +1,5 @@
 
-import numpy as N
+import numpy as np
 from vectorspace import VectorSpaceMatrices, VectorSpaceHandles
 import util
 from parallel import parallel_default_instance
@@ -62,7 +62,7 @@ def compute_BPOD_matrices(direct_vecs, adjoint_vecs,
     L_sing_vecs, sing_vals, R_sing_vecs = util.svd(Hankel_mat)
     #print 'diff in Hankels',Hankel_mat - Hankel_mat2
     #Hankel_mat = Hankel_mat2
-    sing_vals_sqrt_mat = N.mat(N.diag(sing_vals**-0.5))
+    sing_vals_sqrt_mat = np.mat(np.diag(sing_vals**-0.5))
     direct_build_coeff_mat = R_sing_vecs * sing_vals_sqrt_mat
     direct_mode_array = vec_space.lin_combine(direct_vecs, 
         direct_build_coeff_mat, coeff_mat_col_indices=direct_mode_indices)
@@ -142,7 +142,7 @@ class BPODHandles(object):
         """
         self.L_sing_vecs = _parallel.call_and_bcast(self.get_mat, 
             L_sing_vecs_source)
-        self.sing_vals = N.squeeze(_parallel.call_and_bcast(self.get_mat, 
+        self.sing_vals = np.squeeze(_parallel.call_and_bcast(self.get_mat, 
             sing_vals_source))
         self.R_sing_vecs = _parallel.call_and_bcast(self.get_mat, 
             R_sing_vecs_source)
@@ -263,8 +263,8 @@ class BPODHandles(object):
         if self.direct_vec_handles is None:
             raise util.UndefinedError('direct_vec_handles undefined')
             
-        self.sing_vals = N.squeeze(N.array(self.sing_vals))
-        build_coeff_mat = N.dot(self.R_sing_vecs, N.diag(self.sing_vals**-0.5))
+        self.sing_vals = np.squeeze(np.array(self.sing_vals))
+        build_coeff_mat = np.dot(self.R_sing_vecs, np.diag(self.sing_vals**-0.5))
         
         self.vec_space.lin_combine(modes, self.direct_vec_handles, 
             build_coeff_mat, coeff_mat_col_indices=mode_indices)
@@ -291,8 +291,8 @@ class BPODHandles(object):
         if self.adjoint_vec_handles is None:
             raise util.UndefinedError('adjoint_vec_handles undefined')
         
-        self.sing_vals = N.squeeze(N.array(self.sing_vals))
-        build_coeff_mat = N.dot(self.L_sing_vecs, N.diag(self.sing_vals**-0.5))
+        self.sing_vals = np.squeeze(np.array(self.sing_vals))
+        build_coeff_mat = np.dot(self.L_sing_vecs, np.diag(self.sing_vals**-0.5))
         
         self.vec_space.lin_combine(modes, self.adjoint_vec_handles, 
             build_coeff_mat, coeff_mat_col_indices=mode_indices)

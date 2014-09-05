@@ -2,7 +2,7 @@
 
 import inspect
 import os
-import numpy as N
+import numpy as np
 
 class UndefinedError(Exception): pass
 
@@ -10,7 +10,7 @@ def make_mat(array):
     """Makes 1D or 2D array into matrix. 1D arrays become mats with one col."""
     if array.ndim == 1:
         array = array.reshape((array.shape[0], 1))
-    return N.mat(array)
+    return np.mat(array)
 
 
 def make_list(arg):
@@ -53,7 +53,7 @@ def save_array_text(array, file_name, delimiter=' '):
     with Matlab's ``load``.
     """
     # Cast into an array. Also makes it memory C-contiguous.
-    array_save = N.array(array)
+    array_save = np.array(array)
     
     # If one-dimensional array, then make a vector of many rows, 1 column
     if array_save.ndim == 1:
@@ -61,7 +61,7 @@ def save_array_text(array, file_name, delimiter=' '):
     elif array_save.ndim > 2:
         raise RuntimeError('Cannot save an array with >2 dimensions')
 
-    N.savetxt(file_name, array_save.view(float), delimiter=delimiter)
+    np.savetxt(file_name, array_save.view(float), delimiter=delimiter)
     
     
 def load_array_text(file_name, delimiter=' ', is_complex=False):
@@ -82,8 +82,8 @@ def load_array_text(file_name, delimiter=' ', is_complex=False):
         dtype = complex
     else:
         dtype = float
-    array = N.loadtxt(file_name, delimiter=delimiter) #, ndmin=2)
-    ## This section reproduces behavior of ndmin=2 option of N.loadtxt
+    array = np.loadtxt(file_name, delimiter=delimiter) #, ndmin=2)
+    ## This section reproduces behavior of ndmin=2 option of np.loadtxt
     if array.ndim == 1:
         num_rows = sum(1 for line in open(file_name))
         if num_rows > 1:
@@ -97,7 +97,7 @@ def load_array_text(file_name, delimiter=' ', is_complex=False):
             'has an odd number of columns. Maybe it has real data.')
             
     # Cast as an array, copies to make it C-contiguous memory
-    return N.array(array.view(dtype))
+    return np.array(array.view(dtype))
 
 
     
@@ -108,7 +108,7 @@ class InnerProductBlock(object):
     def __call__(self, vecs1, vecs2):
         n1 = len(vecs1)
         n2 = len(vecs2)
-        mat = N.zeros((n1,n2), 
+        mat = np.zeros((n1,n2), 
             dtype=type(self.inner_product(vecs1[0],vecs2[0])))        
         for i in range(n1):
             for j in range(n2):
@@ -135,9 +135,9 @@ def svd(mat, tol=1e-13):
     Truncates ``U``, ``E``, and ``V`` such that there are no singular values
     smaller than ``tol``.
     """
-    U, E, V_comp_conj = N.linalg.svd(N.mat(mat), full_matrices=0)
-    V = N.mat(V_comp_conj).H
-    U = N.mat(U)
+    U, E, V_comp_conj = np.linalg.svd(np.mat(mat), full_matrices=0)
+    V = np.mat(V_comp_conj).H
+    U = np.mat(U)
     
     # Only return sing vals above the tolerance
     num_nonzeros = (abs(E) > tol).sum()
@@ -169,10 +169,10 @@ def eigh(mat, tol=1e-12, is_positive_definite=False):
         
         ``evecs``: Eigenvectors, columns of matrix/array, sorted by evals.
     """
-    evals, evecs = N.linalg.eigh(mat)
+    evals, evecs = np.linalg.eigh(mat)
 
     # Sort the vecs and evals by eval magnitude
-    sort_indices = N.argsort(N.abs(evals))[::-1]
+    sort_indices = np.argsort(np.abs(evals))[::-1]
     evals = evals[sort_indices]
     evecs = evecs[:, sort_indices]
 
@@ -238,14 +238,14 @@ def solve_Lyapunov_direct(A, Q):
     
     See http://en.wikipedia.org/wiki/Lyapunov_equation
     """
-    A = N.array(A)
-    Q = N.array(Q)
+    A = np.array(A)
+    Q = np.array(Q)
     if A.shape != Q.shape:
         raise ValueError('A and Q dont have same shape')
     #A_flat = A.flatten()
     Q_flat = Q.flatten()
-    kron_AA = N.kron(A, A)
-    X_flat = N.linalg.solve(N.identity(kron_AA.shape[0]) - kron_AA, Q_flat)
+    kron_AA = np.kron(A, A)
+    X_flat = np.linalg.solve(np.identity(kron_AA.shape[0]) - kron_AA, Q_flat)
     X = X_flat.reshape((A.shape))
     return X
 
@@ -266,21 +266,21 @@ def solve_Lyapunov_iterative(A, Q, max_iters=10000, tol=1e-8):
     if A.shape != Q.shape:
         raise ValueError('A and Q must have the same shape.')
     
-    if N.amax(N.abs(N.linalg.eig(A)[0])) > 1.:
+    if np.amax(np.abs(np.linalg.eig(A)[0])) > 1.:
         raise ValueError('A must have stable eigenvalues (in the unit circle).') 
     
-    X = N.copy(Q)
-    AP = N.copy(A)
-    AT = N.copy(A.transpose())
-    APT = N.copy(A.transpose())
-    error = N.inf
+    X = np.copy(Q)
+    AP = np.copy(A)
+    AT = np.copy(A.transpose())
+    APT = np.copy(A.transpose())
+    error = np.inf
     iter = 0
     while error > tol and iter < max_iters:
         change = AP.dot(Q).dot(APT)
         X += change
         AP = AP.dot(A)
         APT = APT.dot(AT)
-        error = N.abs(change).max()
+        error = np.abs(change).max()
         iter += 1
 
     if iter >= max_iters:
@@ -314,13 +314,13 @@ def balanced_truncation(A, B, C, order=None, return_sing_vals=False,
             C.transpose().conj().dot(C))
     Uc, Ec, Vc = svd(gram_cont)
     Uo, Eo, Vo = svd(gram_obsv)
-    Lc = Uc.dot(N.diag(Ec**0.5))
-    Lo = Uo.dot(N.diag(Eo**0.5))
+    Lc = Uc.dot(np.diag(Ec**0.5))
+    Lo = Uo.dot(np.diag(Eo**0.5))
     U, E, V = svd(Lo.transpose().dot(Lc))
     if order is None:
         order = len(E)
-    SL = Lo.dot(U[:,:order]).dot(N.diag(E**-0.5))
-    SR = Lc.dot(V[:,:order]).dot(N.diag(E**-0.5))
+    SL = Lo.dot(U[:,:order]).dot(np.diag(E**-0.5))
+    SR = Lc.dot(V[:,:order]).dot(np.diag(E**-0.5))
     A_bal_trunc = SL.transpose().dot(A).dot(SR)
     B_bal_trunc = SL.transpose().dot(B)
     C_bal_trunc = C.dot(SR)
@@ -346,12 +346,12 @@ def drss(num_states, num_inputs, num_outputs):
         
     All eigenvalues are real and stable.
     """
-    eig_vals = N.linspace(.9, .95, num_states) 
-    eig_vecs = N.random.normal(0, 2., (num_states, num_states))
-    A = N.mat(N.real(N.dot(N.dot(N.linalg.inv(eig_vecs), 
-        N.diag(eig_vals)), eig_vecs)))
-    B = N.mat(N.random.normal(0, 1., (num_states, num_inputs)))
-    C = N.mat(N.random.normal(0, 1., (num_outputs, num_states)))
+    eig_vals = np.linspace(.9, .95, num_states) 
+    eig_vecs = np.random.normal(0, 2., (num_states, num_states))
+    A = np.mat(np.real(np.dot(np.dot(np.linalg.inv(eig_vecs), 
+        np.diag(eig_vals)), eig_vecs)))
+    B = np.mat(np.random.normal(0, 1., (num_states, num_inputs)))
+    C = np.mat(np.random.normal(0, 1., (num_outputs, num_states)))
     return A, B, C
 
 def rss(num_states, num_inputs, num_outputs):
@@ -369,12 +369,12 @@ def rss(num_states, num_inputs, num_outputs):
         
     All eigenvalues are real and stable.
     """
-    e_vals = -N.random.random(num_states)
-    transformation = N.random.random((num_states, num_states))
-    A = N.dot(N.dot(N.linalg.inv(transformation), N.diag(e_vals)),
+    e_vals = -np.random.random(num_states)
+    transformation = np.random.random((num_states, num_states))
+    A = np.dot(np.dot(np.linalg.inv(transformation), np.diag(e_vals)),
         transformation)
-    B = N.random.random((num_states, num_inputs))
-    C = N.random.random((num_outputs, num_states))
+    B = np.random.random((num_states, num_inputs))
+    C = np.random.random((num_outputs, num_states))
     return A, B, C
         
         
@@ -400,9 +400,9 @@ def lsim(A, B, C, inputs, initial_condition=None):
     ``D`` matrix is assumed to be zero.
     """
     #D = 0
-    A_arr = N.array(A)
-    B_arr = N.array(B)
-    C_arr = N.array(C)
+    A_arr = np.array(A)
+    B_arr = np.array(B)
+    C_arr = np.array(C)
     if inputs.ndim == 1:
         inputs = inputs.reshape((len(inputs), 1))
     num_steps, num_inputs = inputs.shape
@@ -415,7 +415,7 @@ def lsim(A, B, C, inputs, initial_condition=None):
     if C_arr.shape != (num_outputs, num_states):
         raise ValueError('C has the wrong shape ', C.shape)
     #if D == 0:
-    #    D = N.zeros((num_outputs, num_inputs))
+    #    D = np.zeros((num_outputs, num_inputs))
     #if D.shape != (num_outputs, num_inputs):
     #    raise ValueError('D has the wrong shape, D=', D)
     if initial_condition is not None:
@@ -423,12 +423,12 @@ def lsim(A, B, C, inputs, initial_condition=None):
             initial_condition.ndim != 1:
             raise ValueError('initial_condition has the wrong shape')
     else:
-        initial_condition = N.zeros(num_states)
+        initial_condition = np.zeros(num_states)
     state = initial_condition
-    outputs = N.zeros((num_steps, num_outputs)) 
+    outputs = np.zeros((num_steps, num_outputs)) 
     for ti in xrange(num_steps):
-        outputs[ti] = N.dot(C_arr, state)
-        state = N.dot(A_arr, state) + N.dot(B_arr, inputs[ti])
+        outputs[ti] = np.dot(C_arr, state)
+        state = np.dot(A_arr, state) + np.dot(B_arr, inputs[ti])
     return outputs
 
     
@@ -448,12 +448,12 @@ def impulse(A, B, C, num_time_steps=None):
     No D matrix is included, but can simply be prepended to the output if it is
     non-zero. 
     """
-    A_arr = N.array(A)
-    B_arr = N.array(B)
-    C_arr = N.array(C)
+    A_arr = np.array(A)
+    B_arr = np.array(B)
+    C_arr = np.array(C)
     num_inputs = B.shape[1]
     num_outputs = C.shape[0]
-    A_powers = N.identity(A_arr.shape[0])
+    A_powers = np.identity(A_arr.shape[0])
     outputs = []
     
     if num_time_steps is None:
@@ -463,18 +463,18 @@ def impulse(A, B, C, num_time_steps=None):
         ti = 0
         continue_sim = True
         while continue_sim and ti < max_time_steps:
-            outputs.append(N.dot(N.dot(C_arr, A_powers), B_arr))
-            A_powers = N.dot(A_powers, A_arr)
+            outputs.append(np.dot(np.dot(C_arr, A_powers), B_arr))
+            A_powers = np.dot(A_powers, A_arr)
             ti += 1
             if ti > min_time_steps:
-                if (N.abs(outputs[-min_time_steps:] < tol)).all():
+                if (np.abs(outputs[-min_time_steps:] < tol)).all():
                     continue_sim = False
-        outputs = N.array(outputs)
+        outputs = np.array(outputs)
     else:
-        outputs = N.zeros((num_time_steps, num_outputs, num_inputs))
+        outputs = np.zeros((num_time_steps, num_outputs, num_inputs))
         for ti in range(num_time_steps):
-            outputs[ti] = N.dot(N.dot(C_arr, A_powers), B_arr)
-            A_powers = N.dot(A_powers, A_arr) 
+            outputs[ti] = np.dot(np.dot(C_arr, A_powers), B_arr)
+            A_powers = np.dot(A_powers, A_arr) 
     return outputs
 
 
@@ -532,7 +532,7 @@ def load_multiple_signals(signal_paths, delimiter=' '):
     num_signals = signals.shape[1]
     
     # Now allocate array and read all of the signals
-    all_signals = N.zeros((num_signal_paths, num_time_values, num_signals))    
+    all_signals = np.zeros((num_signal_paths, num_time_values, num_signals))    
     
     # Set the signals we already loaded
     all_signals[0] = signals
@@ -541,7 +541,7 @@ def load_multiple_signals(signal_paths, delimiter=' '):
     for path_num, signal_path in enumerate(signal_paths):
         time_values_read, signals = load_signals(signal_path, 
             delimiter=delimiter)
-        if not N.allclose(time_values_read, time_values):
+        if not np.allclose(time_values_read, time_values):
             raise ValueError('Time values in %s are inconsistent with '
                 'other files')
         all_signals[path_num] = signals 
@@ -552,7 +552,7 @@ def load_multiple_signals(signal_paths, delimiter=' '):
 def smart_eq(arg1, arg2):
     """Checks if equal, accounting for numpy's ``==`` not returning a bool."""
     eq = (arg1 == arg2)
-    if isinstance(eq, N.ndarray):
+    if isinstance(eq, np.ndarray):
         return eq.all()
     return eq
         
@@ -570,14 +570,14 @@ def Hankel(first_row, last_col=None):
     Returns:
         Hankel: 2D array with dimensions [len(last_col), len(first_row)].
     """
-    first_row = N.asarray(first_row).flatten()
+    first_row = np.asarray(first_row).flatten()
     if last_col is None:
-        last_col = N.zeros(first_row.shape)
+        last_col = np.zeros(first_row.shape)
     else:
-        last_col = N.asarray(last_col).flatten()
+        last_col = np.asarray(last_col).flatten()
     
-    unique_vals = N.concatenate((first_row, last_col[1:]))
-    a, b = N.ogrid[0:len(last_col), 0:len(first_row)]
+    unique_vals = np.concatenate((first_row, last_col[1:]))
+    a, b = np.ogrid[0:len(last_col), 0:len(first_row)]
     indices = a + b
     return unique_vals[indices]
 

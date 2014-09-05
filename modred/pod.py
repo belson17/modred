@@ -1,5 +1,5 @@
 
-import numpy as N
+import numpy as np
 from vectorspace import VectorSpaceMatrices, VectorSpaceHandles
 import util
 from parallel import parallel_default_instance
@@ -58,7 +58,7 @@ def compute_POD_matrices_snaps_method(vecs, mode_indices,
     eigen_vals, eigen_vecs = util.eigh(correlation_mat, 
         is_positive_definite=True)
     # compute modes
-    build_coeff_mat = eigen_vecs * N.mat(N.diag(eigen_vals**-0.5))
+    build_coeff_mat = eigen_vecs * np.mat(np.diag(eigen_vals**-0.5))
     modes = vec_space.lin_combine(vecs,
         build_coeff_mat, coeff_mat_col_indices=mode_indices)
     if return_all:
@@ -119,18 +119,18 @@ def compute_POD_matrices_direct_method(vecs, mode_indices,
     
     elif inner_product_weights.ndim == 1:
         sqrt_weights = inner_product_weights**0.5
-        vecs_weighted = N.mat(N.diag(sqrt_weights)) * vecs
+        vecs_weighted = np.mat(np.diag(sqrt_weights)) * vecs
         modes_weighted, sing_vals, eigen_vecs = util.svd(vecs_weighted)
-        modes = N.mat(N.diag(sqrt_weights**-1.0))*modes_weighted[:,mode_indices]
+        modes = np.mat(np.diag(sqrt_weights**-1.0))*modes_weighted[:,mode_indices]
             
     elif inner_product_weights.ndim == 2:
         if inner_product_weights.shape[0] > 500:
             print 'Warning: Cholesky decomposition could be time consuming.'
-        sqrt_weights = N.linalg.cholesky(inner_product_weights).H
+        sqrt_weights = np.linalg.cholesky(inner_product_weights).H
         vecs_weighted = sqrt_weights * vecs
         modes_weighted, sing_vals, eigen_vecs = util.svd(vecs_weighted)
-        modes = N.linalg.solve(sqrt_weights, modes_weighted[:, mode_indices])
-        #inv_sqrt_weights = N.linalg.inv(sqrt_weights)
+        modes = np.linalg.solve(sqrt_weights, modes_weighted[:, mode_indices])
+        #inv_sqrt_weights = np.linalg.inv(sqrt_weights)
         #modes = inv_sqrt_weights.dot(modes_weighted[:, mode_indices])
     
     eigen_vals = sing_vals**2
@@ -191,7 +191,7 @@ class PODHandles(object):
         """Gets the decomposition matrices from sources (memory or file)."""
         self.eigen_vecs = _parallel.call_and_bcast(self.get_mat,
             eigen_vecs_source)
-        self.eigen_vals = N.squeeze(N.array(_parallel.call_and_bcast(
+        self.eigen_vals = np.squeeze(np.array(_parallel.call_and_bcast(
             self.get_mat, eigen_vals_source)))
 
     def put_decomp(self, eigen_vecs_dest, eigen_vals_dest):
@@ -225,7 +225,7 @@ class PODHandles(object):
             raise util.UndefinedError('Must define self.eigen_vecs')
         if self.eigen_vals is None:
             raise util.UndefinedError('Must define self.eigen_vals')
-        build_coeff_mat = N.dot(self.eigen_vecs, N.diag(self.eigen_vals**-0.5))
+        build_coeff_mat = np.dot(self.eigen_vecs, np.diag(self.eigen_vals**-0.5))
         return build_coeff_mat
 
 

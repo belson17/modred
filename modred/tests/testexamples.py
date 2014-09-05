@@ -8,11 +8,8 @@ import os, sys
 from os.path import join
 from shutil import rmtree
 import helper
-helper.add_to_path(join(join(os.path.dirname(os.path.abspath(__file__)), 
-    '..', 'examples')))
-helper.add_to_path(join(join(os.path.dirname(os.path.abspath(__file__)), 
-    '..', 'src')))
-import parallel as parallel_mod
+
+import modred.parallel as parallel_mod
 _parallel = parallel_mod.parallel_default_instance
 
 # Directory we start from, absolute path.
@@ -24,7 +21,7 @@ examples_dir = join(join(this_file_dir, '..'), 'examples')
 
 """
 # Redefine stdout and stderr to suppress output from the examples in the tests.
-class NoPrintingStream(object):
+class np.PrintingStream(object):
     def write(self,data): pass
     #def read(self,data): pass
     def flush(self): pass
@@ -36,12 +33,12 @@ old_printers = [sys.stdout,sys.stderr,sys.stdin,sys.__stdout__,
 def printing(on):
     #Takes True or False
     if not on:
-        sys.stdout = NoPrintingStream()
-        sys.stderr = NoPrintingStream()
-        #sys.stdin = NoPrintingStream()
-        sys.__stdout__ = NoPrintingStream()
-        sys.__stderr__ = NoPrintingStream()
-        #sys.__stdin__ = NoPrintingStream()
+        sys.stdout = np.PrintingStream()
+        sys.stderr = np.PrintingStream()
+        #sys.stdin = np.PrintingStream()
+        sys.__stdout__ = np.PrintingStream()
+        sys.__stderr__ = np.PrintingStream()
+        #sys.__stdin__ = np.PrintingStream()
         
     else:
         (sys.stdout,sys.stderr,sys.stdin,sys.__stdout__,sys.__stderr__, \

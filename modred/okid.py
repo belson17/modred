@@ -1,6 +1,8 @@
 """OKID function. (Book: Applied System Identification, Jer-Nan Juang, 1994)"""
 
-import numpy as N
+import numpy as np
+
+# test None
 
 def OKID(inputs, outputs, num_Markovs):
     """Approximates the Markov paramters from arbitrary inputs and outputs.
@@ -27,7 +29,7 @@ def OKID(inputs, outputs, num_Markovs):
       Estimating too many Markov params can result in spurious oscillations.       
     - Data with more than one input tends to be harder to work with. 
     """    
-    # Some internal comments and variables refer to textbook (J.-N. Juang 1994).
+    # Some internal comments and variables refer to textbook (J.-np. Juang 1994).
     # Force arrays to be 2 dimensional
     if inputs.ndim == 1:
         inputs = inputs.reshape((1, inputs.shape[0]))
@@ -43,19 +45,19 @@ def OKID(inputs, outputs, num_Markovs):
     # Convenience variable
     num_inouts = num_inputs + num_outputs
     
-    V = N.zeros((num_inputs + num_inouts*num_Markovs, num_samples))
+    V = np.zeros((num_inputs + num_inouts*num_Markovs, num_samples))
     V[:num_inputs] = inputs
     
-    inputs_outputs = N.concatenate((inputs, outputs), axis=0)
+    inputs_outputs = np.concatenate((inputs, outputs), axis=0)
     for i in xrange(1, num_Markovs+1):
         V[num_inputs + (i-1)*num_inouts:num_inputs + i*num_inouts, i:] = \
             inputs_outputs[:, :num_samples-i]
     
     # Ybar in book
-    #Markov_aug = N.dot(outputs, N.array(N.linalg.pinv(V, cutoff)))
+    #Markov_aug = np.dot(outputs, np.array(np.linalg.pinv(V, cutoff)))
     # Using least squares for better numerical conditioning? outputs = M V, so
     # outputs.T = V.T M.T, solve for M = Markovs_aug.
-    Markov_aug = N.linalg.lstsq(V.T, outputs.T)[0].T
+    Markov_aug = np.linalg.lstsq(V.T, outputs.T)[0].T
 
     D = Markov_aug[:, :num_inputs]
     
@@ -76,13 +78,13 @@ def OKID(inputs, outputs, num_Markovs):
                 Markov_num*num_inouts+num_inouts])
     
     # Estimate the Markov parameters of the system
-    Markov_est = N.empty((num_Markovs, num_outputs, num_inputs))
+    Markov_est = np.empty((num_Markovs, num_outputs, num_inputs))
     Markov_est[0] = D
     
     for Markov_num in range(1, num_Markovs):
-        summation_term = N.zeros((num_outputs, num_inputs))
+        summation_term = np.zeros((num_outputs, num_inputs))
         for i in range(1, Markov_num+1):
-            summation_term += N.dot(Markov_aug_output[i], 
+            summation_term += np.dot(Markov_aug_output[i], 
                 Markov_est[Markov_num-i,:,:])
             #print 'k=%d, i=%d'%(Markov_num,i)
         Markov_est[Markov_num] = Markov_aug_input[Markov_num] - \

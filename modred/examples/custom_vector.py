@@ -1,12 +1,12 @@
 import cPickle
-import modred as MR
+import modred as mr
 from copy import deepcopy
 
-class CustomVector(MR.Vector):
+class CustomVector(mr.Vector):
     def __init__(self, grids, data_array):
         self.grids = grids
         self.data_array = data_array
-        self.weighted_ip = MR.InnerProductTrapz(*self.grids)
+        self.weighted_ip = mr.InnerProductTrapz(*self.grids)
 
     def __add__(self, other):
         """Return a new object that is the sum of self and other"""
@@ -23,9 +23,9 @@ class CustomVector(MR.Vector):
     def inner_product(self, other):
         return self.weighted_ip(self.data_array, other.data_array)
 
-class CustomVecHandle(MR.VecHandle):
-    def __init__(self, vec_path, base_handle=None, scale=None):
-        MR.VecHandle.__init__(self, base_handle, scale)
+class CustomVecHandle(mr.VecHandle):
+    def __init__(self, vec_path, base_handle=np.ne, scale=np.ne):
+        mr.VecHandle.__init__(self, base_handle, scale)
         self.vec_path = vec_path
 
     def _get(self):

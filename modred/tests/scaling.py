@@ -3,7 +3,7 @@
 To use this, must copy in the
 scaling times from profiling benchmark.py with cProfile."""
 
-import numpy as N
+import numpy as np
 import matplotlib.pyplot as PLT
 
 class Scaling(object):
@@ -164,7 +164,7 @@ def lin():
     cases.append(s)
     
     
-    workers = N.array([c.workers for c in cases])
+    workers = np.array([c.workers for c in cases])
     
     # Find the average for each processor, so now in Wall time instead of 
     # CPU time.
@@ -318,7 +318,7 @@ def ips():
     cases.append(s)
     
     
-    workers = N.array([c.workers for c in cases])
+    workers = np.array([c.workers for c in cases])
     
     # Find the average for each processor, so now in Wall time instead of 
     # CPU time.

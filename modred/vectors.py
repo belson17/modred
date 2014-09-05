@@ -6,7 +6,7 @@ see documentation :ref:`sec_details`.
 """
 
 import cPickle
-import numpy as N
+import numpy as np
 import util
 
 class VecHandle(object):
@@ -107,7 +107,7 @@ class VecHandlePickle(VecHandle):
         
 def inner_product_array_uniform(vec1, vec2):
     """Takes inner product of numpy arrays without weighting."""
-    return N.vdot(vec1, vec2)
+    return np.vdot(vec1, vec2)
 
 
 class InnerProductTrapz(object):
@@ -122,12 +122,12 @@ class InnerProductTrapz(object):
       
       nx = 10
       ny = 11
-      x_grid = 1 - N.cos(N.linspace(0, N.pi, nx))
-      y_grid = N.linspace(0, 1.0, ny)**2
+      x_grid = 1 - np.cos(np.linspace(0, np.pi, nx))
+      y_grid = np.linspace(0, 1.0, ny)**2
       my_trapz = InnerProductTrapz(x_grid, y_grid)
 
-      v1 = N.random.random((nx,ny))
-      v2 = N.random.random((nx,ny))
+      v1 = np.random.random((nx,ny))
+      v2 = np.random.random((nx,ny))
       IP_v1_v2 = my_trapz(v1, v2)
     
     """
@@ -141,10 +141,10 @@ class InnerProductTrapz(object):
         """Takes the inner product."""
         IP = vec1 * vec2
         for grid in reversed(self.grids):
-            if not isinstance(grid, N.ndarray):
+            if not isinstance(grid, np.ndarray):
                 raise TypeError('Each grid must be a numpy array, not a '
                     '%s'%str(type(grid)))
-            IP = N.trapz(IP, x=grid)
+            IP = np.trapz(IP, x=grid)
         return IP
 
 

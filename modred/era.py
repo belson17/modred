@@ -1,5 +1,5 @@
 """Functions and classes for ERA models. See paper by Ma et al. 2011, TCFD."""
-import numpy as N
+import numpy as np
 import util
 
 
@@ -32,13 +32,13 @@ def make_sampled_format(times, Markovs, dt_tol=1e-6):
         raise RuntimeError('Size of time and output arrays differ')
 
     dt = times[1] - times[0]
-    if N.amax(N.abs(N.diff(times)-dt)) > dt_tol:
+    if np.amax(np.abs(np.diff(times)-dt)) > dt_tol:
         raise ValueError('Data is not equally spaced in time')
     
-    time_steps = N.round((times-times[0])/dt)
+    time_steps = np.round((times-times[0])/dt)
     num_time_steps_corr = (num_time_steps - 1)*2
-    Markovs_corr = N.zeros((num_time_steps_corr, num_Markovs, num_inputs))
-    time_steps_corr = N.zeros(num_time_steps_corr, dtype=int)
+    Markovs_corr = np.zeros((num_time_steps_corr, num_Markovs, num_inputs))
+    time_steps_corr = np.zeros(num_time_steps_corr, dtype=int)
     Markovs_corr[::2] = Markovs[:-1]
     Markovs_corr[1::2] = Markovs[1:]
     time_steps_corr[::2] = time_steps[:-1]
@@ -168,7 +168,7 @@ class ERA(object):
         This means the reduced B matrix is "off" by a factor of dt. 
         You can account for this by multiplying B by dt.
         """
-        #SVD is ``L_sing_vecs*N.mat(N.diag(sing_vals))*\
+        #SVD is ``L_sing_vecs*np.mat(np.diag(sing_vals))*\
         #    R_sing_vecs.H = Hankel_mat``
         self._set_Markovs(Markovs)       
         self.mc = mc
@@ -179,21 +179,21 @@ class ERA(object):
             util.svd(self.Hankel_mat) 
 
         # Truncate matrices
-        Ur = N.mat(self.L_sing_vecs[:, :num_states])
-        Er = N.squeeze(self.sing_vals[:num_states])
-        Vr = N.mat(self.R_sing_vecs[:, :num_states])
+        Ur = np.mat(self.L_sing_vecs[:, :num_states])
+        Er = np.squeeze(self.sing_vals[:num_states])
+        Vr = np.mat(self.R_sing_vecs[:, :num_states])
         
-        self.A = N.mat(N.diag(Er**-.5)) * Ur.H * self.Hankel_mat2 * Vr * \
-            N.mat(N.diag(Er**-.5))
-        self.B = (N.mat(N.diag(Er**.5)) * (Vr.H)[:, :self.num_inputs]) 
+        self.A = np.mat(np.diag(Er**-.5)) * Ur.H * self.Hankel_mat2 * Vr * \
+            np.mat(np.diag(Er**-.5))
+        self.B = (np.mat(np.diag(Er**.5)) * (Vr.H)[:, :self.num_inputs]) 
         # *dt above is removed, users must do this themselves.
         # It is explained in the docs.
         
-        self.C = Ur[:self.num_Markovs] * N.mat(N.diag(Er**.5))
+        self.C = Ur[:self.num_Markovs] * np.mat(np.diag(Er**.5))
         
-        if (N.abs(N.linalg.eigvals(self.A)) >= 1.).any() and self.verbosity:
+        if (np.abs(np.linalg.eigvals(self.A)) >= 1.).any() and self.verbosity:
             print 'Warning: Unstable eigenvalues of reduced A matrix'
-            print 'eig vals are', N.linalg.eigvals(self.A)
+            print 'eig vals are', np.linalg.eigvals(self.A)
         return self.A, self.B, self.C
           
  
@@ -282,9 +282,9 @@ class ERA(object):
             raise ValueError('mo+mc+2=%d and must be <= than the number of '
                 'samples %d'%(self.mo+self.mc+2, self.num_time_steps))
         
-        self.Hankel_mat = N.zeros((self.num_Markovs*self.mo, 
+        self.Hankel_mat = np.zeros((self.num_Markovs*self.mo, 
             self.num_inputs*self.mc))
-        self.Hankel_mat2 = N.zeros(self.Hankel_mat.shape)
+        self.Hankel_mat2 = np.zeros(self.Hankel_mat.shape)
         #Markovs_flattened = \
         #    self.Markovs.swapaxes(0,1).reshape((num_Markovs, -1))
         for row in range(self.mo):

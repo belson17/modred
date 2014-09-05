@@ -1,6 +1,6 @@
 """Parallel class and functions for distributed memory"""
 import os
-import numpy as N
+import numpy as np
 
 class ParallelError(Exception):
     """Parallel related errors"""
@@ -131,9 +131,9 @@ class Parallel(object):
         
         # If no weights are given, assume each task has uniform weight
         if task_weights is None:
-            task_weights = N.ones(len(tasks))
+            task_weights = np.ones(len(tasks))
         else:
-            task_weights = N.array(task_weights)
+            task_weights = np.array(task_weights)
         
         first_unassigned_index = 0
 
@@ -151,7 +151,7 @@ class Parallel(object):
             if task_weights[first_unassigned_index:].size != 0:
                 # Index of tasks element which has sum(tasks[:ind]) 
                 # closest to work_per_worker
-                new_max_task_index = N.abs(N.cumsum(
+                new_max_task_index = np.abs(np.cumsum(
                     task_weights[first_unassigned_index:]) -\
                     work_per_worker).argmin() + first_unassigned_index
                 # Append all tasks up to and including new_max_task_index

@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """Simulate linearized CGL and find BPOD modes and reduced-order model."""
 
-import numpy as N
+import numpy as np
 import scipy.linalg as SL
-import modred as MR
+import modred as mr
 import hermite as H
 
 plots = False
@@ -38,36 +38,36 @@ for var in ['nx','dt','U','c_u','c_d','mu_0','mu_2','s','x_s',
 print '-----------------------'
 
 # Collocation points in x are roughly [-85, 85], as in Ilak 2010
-x, Ds = H.herdif(nx, 2, N.real(chi))
+x, Ds = H.herdif(nx, 2, np.real(chi))
 
 # Inner product weights, trapezoidal rule
-weights = N.zeros(nx)
+weights = np.zeros(nx)
 weights[0] = 0.5*(x[1] - x[0])
 weights[-1] = 0.5*(x[-1] - x[-2])
 weights[1:-1] = 0.5*(x[2:] - x[0:-2])
-M = N.mat(N.diag(weights))
-inv_M = N.linalg.inv(M)
-M_sqrt = N.mat(N.diag(weights**0.5))
-inv_M_sqrt = N.mat(N.diag(weights**-0.5))
+M = np.mat(np.diag(weights))
+inv_M = np.linalg.inv(M)
+M_sqrt = np.mat(np.diag(weights**0.5))
+inv_M_sqrt = np.mat(np.diag(weights**-0.5))
 
 # LTI system matrices for direct and adjoint ("_adj") systems
 mu = (mu_0 - c_u**2) + mu_2 * x**2/2.
-A = N.mat(-nu * Ds[0] + gamma * Ds[1] + N.diag(mu))
+A = np.mat(-nu * Ds[0] + gamma * Ds[1] + np.diag(mu))
 
 # Compute optimal disturbance and use it as B matrix
-A_discrete = N.mat(SL.expm(A*dt))
-exp_mat = N.mat(N.identity(nx, dtype=complex))
+A_discrete = np.mat(SL.expm(A*dt))
+exp_mat = np.mat(np.identity(nx, dtype=complex))
 max_sing_val = 0
 for i in range(1, 100):
     exp_mat *= A_discrete
-    U,E,VH = N.linalg.svd(M_sqrt*exp_mat*inv_M_sqrt)
+    U,E,VH = np.linalg.svd(M_sqrt*exp_mat*inv_M_sqrt)
     if max_sing_val < E[0]:
         max_sing_val = E[0]
-        optimal_dist = N.mat(VH).H[:,0]
+        optimal_dist = np.mat(VH).H[:,0]
         #print i, E[0], max_sing_val
 
 B = -inv_M_sqrt * optimal_dist
-C = N.mat(N.exp(-((x - x_s)/s)**2)) * M
+C = np.mat(np.exp(-((x - x_s)/s)**2)) * M
 A_adj = inv_M * A.H * M
 C_adj = inv_M * C.H
 
@@ -94,37 +94,37 @@ if plots:
     PLT.grid(True)
     
 
-# Simulate impulse responses to the direct and adjoint systems w/Crank-Nicolson
+# Simulate impulse responses to the direct and adjoint systems w/Crank-np.colson
 # (q(i+1) - q(i)) / dt = 1/2 (A q(i+1) + A q(i)) + B u(i)
 # => (I - dt/2 A) q(i+1) = q(i) + dt/2 A q(i) + dt B u(i)
 #    LHS q(i+1) = RHS q(i) + dt B u(i)
-LHS = N.identity(nx) - dt/2.*A
-RHS = N.identity(nx) + dt/2.*A
-LHS_adj = N.identity(nx) - dt/2.*A_adj
-RHS_adj = N.identity(nx) + dt/2.*A_adj
+LHS = np.identity(nx) - dt/2.*A
+RHS = np.identity(nx) + dt/2.*A
+LHS_adj = np.identity(nx) - dt/2.*A_adj
+RHS_adj = np.identity(nx) + dt/2.*A_adj
 
 nt = 300
-q = N.mat(N.zeros((nx, nt), dtype=complex))
-q_adj = N.mat(N.zeros((nx, nt), dtype=complex))
+q = np.mat(np.zeros((nx, nt), dtype=complex))
+q_adj = np.mat(np.zeros((nx, nt), dtype=complex))
 
 q[:,0] = B
 q_adj[:,0] = C_adj
 
 for ti in range(nt-1):
-    q[:,ti+1] = N.linalg.solve(LHS, RHS*q[:,ti])
-    q_adj[:,ti+1] = N.linalg.solve(LHS_adj, RHS_adj*q_adj[:,ti])
+    q[:,ti+1] = np.linalg.solve(LHS, RHS*q[:,ti])
+    q_adj[:,ti+1] = np.linalg.solve(LHS_adj, RHS_adj*q_adj[:,ti])
     
 # Plot all snapshots as a contour plot
 if plots:
-    t = N.arange(0, nt*dt, dt)
-    X, T = N.meshgrid(x, t)
+    t = np.arange(0, nt*dt, dt)
+    X, T = np.meshgrid(x, t)
     PLT.figure()
-    PLT.contourf(T, X, N.array(q.real).T, 20, cmap=PLT.cm.binary)
+    PLT.contourf(T, X, np.array(q.real).T, 20, cmap=PLT.cm.binary)
     PLT.xlabel('t')
     PLT.ylabel('x')
     PLT.colorbar()
     PLT.figure()
-    PLT.contourf(T, X, N.array(q_adj.real).T, 20, cmap=PLT.cm.binary)
+    PLT.contourf(T, X, np.array(q_adj.real).T, 20, cmap=PLT.cm.binary)
     PLT.xlabel('t')
     PLT.ylabel('x')
     PLT.title('adjoint')
@@ -132,7 +132,7 @@ if plots:
 
 # Compute the BPOD modes
 r = 10
-direct_modes, adjoint_modes, sing_vals = MR.compute_BPOD_matrices(
+direct_modes, adjoint_modes, sing_vals = mr.compute_BPOD_matrices(
     q, q_adj, range(r), range(r), inner_product_weights=weights)
 
 # Plot the first 3 modes
@@ -148,23 +148,23 @@ if plots:
         PLT.title('Direct and adjoint mode %d'%(i+1))
 
 # Project the linear dynamics onto the modes
-projection = MR.LTIGalerkinProjectionMatrices(direct_modes,
+projection = mr.LTIGalerkinProjectionMatrices(direct_modes,
     adjoint_basis_vecs=adjoint_modes, inner_product_weights=weights,
     is_basis_orthonormal=True)
 A_direct_modes = A * direct_modes
 Ar, Br, Cr = projection.compute_model(A_direct_modes, B, C.dot(direct_modes))
 
 # Verify that the model accurately reproduces the impulse response
-qr = N.mat(N.zeros((r, nt), dtype=complex))
+qr = np.mat(np.zeros((r, nt), dtype=complex))
 qr[:,0] = Br
-LHSr = N.identity(r) - dt/2.*Ar
-RHSr = N.identity(r) + dt/2.*Ar
+LHSr = np.identity(r) - dt/2.*Ar
+RHSr = np.identity(r) + dt/2.*Ar
 for ti in range(nt-1):
-    qr[:,ti+1] = N.linalg.solve(LHSr, RHSr*qr[:,ti])
+    qr[:,ti+1] = np.linalg.solve(LHSr, RHSr*qr[:,ti])
 y = C*q
 yr = Cr*qr
 
-print 'Max error in reduced system impulse response output y is', N.amax(N.abs(y-yr))
+print 'Max error in reduced system impulse response output y is', np.amax(np.abs(y-yr))
 
 if plots:
     PLT.figure()

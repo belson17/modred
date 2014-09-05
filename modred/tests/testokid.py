@@ -4,17 +4,14 @@
 import os
 from os.path import join
 import unittest
-import numpy as N
+import numpy as np
 
-import helper
-helper.add_to_path(join(join(os.path.dirname(os.path.abspath(__file__)), 
-    '..', 'src')))
-import parallel as parallel_mod
+import modred.parallel as parallel_mod
 _parallel = parallel_mod.parallel_default_instance
 
 
-from okid import OKID   
-import util
+from modred.okid import OKID   
+from modred import util
 
 
 # Useful for debugging, makes plots
@@ -27,9 +24,9 @@ if plot:
 
 
 def diff(arr_measured, arr_true, normalize=False):
-    err = N.mean((arr_measured-arr_true)**2)
+    err = np.mean((arr_measured-arr_true)**2)
     if normalize:
-        return err/N.mean(arr_measured**2)
+        return err/np.mean(arr_measured**2)
     else:
         return err
         
@@ -51,24 +48,24 @@ class TestOKID(unittest.TestCase):
             
             assert(nt2 == nt)
             
-            Markovs_true = N.zeros((nt, num_outputs, num_inputs))
+            Markovs_true = np.zeros((nt, num_outputs, num_inputs))
             
             temp = util.load_array_text(join(join(self.test_dir, case),
                 'Markovs_Matlab_output1.txt'))
             temp = temp.reshape((num_inputs, -1))
             num_Markovs_OKID = temp.shape[1]
-            Markovs_Matlab = N.zeros((num_Markovs_OKID, num_outputs, num_inputs))
+            Markovs_Matlab = np.zeros((num_Markovs_OKID, num_outputs, num_inputs))
             
             for iOut in range(num_outputs):
                 data = util.load_array_text(join(join(
                     self.test_dir, case), 'Markovs_Matlab_output%d.txt'%(iOut+1)))
                 if num_inputs > 1:
-                    data = N.swapaxes(data, 0, 1)
+                    data = np.swapaxes(data, 0, 1)
                 Markovs_Matlab[:,iOut,:] = data
                 data = util.load_array_text(join(join(
                     self.test_dir, case), 'Markovs_true_output%d.txt'%(iOut+1)))
                 if num_inputs > 1:
-                    data = N.swapaxes(data, 0, 1)
+                    data = np.swapaxes(data, 0, 1)
                 Markovs_true[:,iOut,:] = data
             
             Markovs_python = OKID(inputs, outputs, num_Markovs_OKID)
@@ -88,9 +85,9 @@ class TestOKID(unittest.TestCase):
                             output_num+1))
                 PLT.show()
             #print 'Diff between matlab and python is',diff(Markovs_Matlab, Markovs_python)
-            N.testing.assert_allclose(Markovs_python, Markovs_Matlab,
+            np.testing.assert_allclose(Markovs_python, Markovs_Matlab,
                 atol=1e-3, rtol=1e-3)
-            N.testing.assert_allclose(Markovs_python, Markovs_true[:num_Markovs_OKID],
+            np.testing.assert_allclose(Markovs_python, Markovs_true[:num_Markovs_OKID],
                 atol=1e-3, rtol=1e-3)
       
       

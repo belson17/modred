@@ -2,8 +2,8 @@
 
 # modred must be installed.
 import os
-import modred as MR
-parallel = MR.parallel_default_instance
+import modred as mr
+parallel = mr.parallel_default_instance
 
 for i in range(1, 7):
     if not parallel.is_distributed():

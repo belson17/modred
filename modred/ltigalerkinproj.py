@@ -1,6 +1,6 @@
 """Module for Galerkin projection of LTI systems."""
 
-import numpy as N
+import numpy as np
 
 import util
 from vectors import VecHandleInMemory
@@ -18,7 +18,7 @@ def standard_basis(num_dims):
         ``basis``: The standard basis as a list of 1D arrays.
             ``[array([1,0,...]), array([0,1,...]), ...]``.
     """
-    return list(N.identity(num_dims))
+    return list(np.identity(num_dims))
 
 
 
@@ -234,7 +234,7 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
         Returns:
             ``C_reduced``: Reduced C matrix.
         """
-        self.C_reduced = N.mat(N.array(C_on_basis_vecs, ndmin=2))
+        self.C_reduced = np.mat(np.array(C_on_basis_vecs, ndmin=2))
         return self.C_reduced
 
 
@@ -247,7 +247,7 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
             else:
                 IP_mat = self.vec_space.compute_inner_product_mat(
                     self.adjoint_basis_vecs, self.basis_vecs)
-            self._proj_mat = N.linalg.inv(IP_mat)
+            self._proj_mat = np.linalg.inv(IP_mat)
         return self._proj_mat
         
         
@@ -397,7 +397,7 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
         Returns:
             ``C_reduced``: Reduced C matrix.
         """
-        self.C_reduced = N.mat(N.array(C_on_basis_vecs, ndmin=2).T)
+        self.C_reduced = np.mat(np.array(C_on_basis_vecs, ndmin=2).T)
         return self.C_reduced
     
     
@@ -432,5 +432,5 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
             else:
                 IP_mat = self.vec_space.compute_inner_product_mat(
                     self.adjoint_basis_vec_handles, self.basis_vec_handles)
-            self._proj_mat = N.linalg.inv(IP_mat)
+            self._proj_mat = np.linalg.inv(IP_mat)
         return self._proj_mat

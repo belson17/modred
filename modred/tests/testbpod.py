@@ -6,19 +6,17 @@ import copy
 import os
 from os.path import join
 from shutil import rmtree
-import numpy as N
+import numpy as np
 
-import helper
-helper.add_to_path(join(join(os.path.dirname(os.path.abspath(__file__)), 
-    '..', 'src')))
-import parallel as parallel_mod
+
+import modred.parallel as parallel_mod
 _parallel = parallel_mod.parallel_default_instance
 
-from bpod import *
-from vectorspace import *
-import util
-import vectors as V
-        
+from modred.bpod import *
+from modred.vectorspace import *
+from modred import util
+from modred import vectors as V
+
 
 @unittest.skipIf(_parallel.is_distributed(),'Serial only.')
 @unittest.skip('Testing others')
@@ -30,40 +28,40 @@ class TestBPODMatrices(unittest.TestCase):
         self.num_states = 15
         num_inputs = 1
         num_outputs = 1
-        self.A = N.mat(N.random.random((self.num_states, self.num_states)))
-        self.B = N.mat(N.random.random((self.num_states, self.num_inputs)))
-        self.C = N.mat(N.random.random((self.num_outputs, self.num_states)))
+        self.A = np.mat(np.random.random((self.num_states, self.num_states)))
+        self.B = np.mat(np.random.random((self.num_states, self.num_inputs)))
+        self.C = np.mat(np.random.random((self.num_outputs, self.num_states)))
         self.direct_vecs = []
-        A_powers = N.identity(A.shape[0])
+        A_powers = np.identity(A.shape[0])
         for t in range(self.num_direct_vecs):
             A_powers = A_powers.dot(A)
             self.direct_vecs.append(A_powers.dot(B))
-        self.direct_vecs = N.array(self.direct_vecs).squeeze().T
-        #self.direct_vecs = _parallel.call_and_bcast(N.random.random,
+        self.direct_vecs = np.array(self.direct_vecs).squeeze().T
+        #self.direct_vecs = _parallel.call_and_bcast(np.random.random,
         #    (self.num_states, self.num_direct_vec_handles))
-        #self.adjoint_vecs = _parallel.call_and_bcast(N.random.random,
+        #self.adjoint_vecs = _parallel.call_and_bcast(np.random.random,
         #    (self.num_states, self.num_adjoint_vec_handles)) 
         
         
     def test_compute_modes(self):
         """Test computing modes in serial and parallel."""
         tol = 1e-6
-        ws = N.identity(self.num_states)
+        ws = np.identity(self.num_states)
         ws[0,0] = 2
         ws[1,0] = 1.1
         ws[0,1] = 1.1
-        weights_list = [None, N.random.random(self.num_states), ws]
-        weights_mats = [N.mat(N.identity(self.num_states)), N.mat(N.diag(weights_list[1])),
-            N.mat(ws)]
+        weights_list = [None, np.random.random(self.num_states), ws]
+        weights_mats = [np.mat(np.identity(self.num_states)), np.mat(np.diag(weights_list[1])),
+            np.mat(ws)]
         for weights, weights_mat in zip(weights_list, weights_mats):
-            A_adjoint = N.linalg.inv(weights_mat) * self.A.H * weights_mat
-            C_adjoint = N.linalg.inv(weights_mat) * self.C.H
-            A_adjoint_powers = N.identity(A_adjoint.shape[0])
+            A_adjoint = np.linalg.inv(weights_mat) * self.A.H * weights_mat
+            C_adjoint = np.linalg.inv(weights_mat) * self.C.H
+            A_adjoint_powers = np.identity(A_adjoint.shape[0])
             adjoint_vecs = []
             for t in range(self.num_adjoint_vecs):
                 A_adjoint_powers = A_adjoint_powers.dot(A_adjoint)
                 adjoint_vecs.append(A_adjoint_powers.dot(C_adjoint))
-            adjoint_vecs = N.array(adjoint_vecs).squeeze().T
+            adjoint_vecs = np.array(adjoint_vecs).squeeze().T
         
             IP = VectorSpaceMatrices(weights=weights).compute_inner_product_mat
             Hankel_mat_true = IP(adjoint_vecs, self.direct_vecs)
@@ -71,22 +69,22 @@ class TestBPODMatrices(unittest.TestCase):
             L_sing_vecs_true, sing_vals_true, R_sing_vecs_true = \
                 _parallel.call_and_bcast(util.svd, Hankel_mat_true)
             direct_modes_array_true = self.direct_vecs.dot(
-                R_sing_vecs_true).dot(N.diag(sing_vals_true**-0.5))
+                R_sing_vecs_true).dot(np.diag(sing_vals_true**-0.5))
             adjoint_modes_array_true = adjoint_vecs.dot(
-                L_sing_vecs_true).dot(N.diag(sing_vals_true**-0.5))
+                L_sing_vecs_true).dot(np.diag(sing_vals_true**-0.5))
             direct_modes_array, adjoint_modes_array, sing_vals, \
                 L_sing_vecs, R_sing_vecs, Hankel_mat = \
                 compute_BPOD_matrices(self.direct_vecs, 
                 adjoint_vecs, self.mode_indices, self.mode_indices,
                 inner_product_weights=weights, return_all=True)
 
-            N.testing.assert_allclose(Hankel_mat, Hankel_mat_true)
-            N.testing.assert_allclose(sing_vals, sing_vals_true)
-            N.testing.assert_allclose(L_sing_vecs, L_sing_vecs_true)
-            N.testing.assert_allclose(R_sing_vecs, R_sing_vecs_true)
-            N.testing.assert_allclose(direct_modes_array, 
+            np.testing.assert_allclose(Hankel_mat, Hankel_mat_true)
+            np.testing.assert_allclose(sing_vals, sing_vals_true)
+            np.testing.assert_allclose(L_sing_vecs, L_sing_vecs_true)
+            np.testing.assert_allclose(R_sing_vecs, R_sing_vecs_true)
+            np.testing.assert_allclose(direct_modes_array, 
                 direct_modes_array_true[:,self.mode_indices], rtol=tol, atol=tol)
-            N.testing.assert_allclose(adjoint_modes_array, 
+            np.testing.assert_allclose(adjoint_modes_array, 
                 adjoint_modes_array_true[:,self.mode_indices], rtol=tol, atol=tol)
             
                         
@@ -109,27 +107,27 @@ class TestBPODHandles(unittest.TestCase):
         self.num_outputs = 1
         self.num_states = 20
         
-        #A = N.mat(N.random.random((self.num_states, self.num_states)))
-        A = N.mat(_parallel.call_and_bcast(util.drss, self.num_states,1,1)[0])
-        B = N.mat(_parallel.call_and_bcast(N.random.random, 
+        #A = np.mat(np.random.random((self.num_states, self.num_states)))
+        A = np.mat(_parallel.call_and_bcast(util.drss, self.num_states,1,1)[0])
+        B = np.mat(_parallel.call_and_bcast(np.random.random, 
             (self.num_states, self.num_inputs)))
-        C = N.mat(_parallel.call_and_bcast(N.random.random, 
+        C = np.mat(_parallel.call_and_bcast(np.random.random, 
             (self.num_outputs, self.num_states)))
         self.direct_vecs = [B]
-        A_powers = N.identity(A.shape[0])
+        A_powers = np.identity(A.shape[0])
         for t in range(self.num_direct_vecs-1):
             A_powers = A_powers.dot(A)
             self.direct_vecs.append(A_powers.dot(B))
-        self.direct_vec_array = N.array(self.direct_vecs).squeeze().T
+        self.direct_vec_array = np.array(self.direct_vecs).squeeze().T
 
         A_adjoint = A.H
         C_adjoint = C.H
-        A_adjoint_powers = N.identity(A_adjoint.shape[0])
+        A_adjoint_powers = np.identity(A_adjoint.shape[0])
         self.adjoint_vecs = [C_adjoint]
         for t in range(self.num_adjoint_vecs-1):
             A_adjoint_powers = A_adjoint_powers.dot(A_adjoint)
             self.adjoint_vecs.append(A_adjoint_powers.dot(C_adjoint))
-        self.adjoint_vec_array = N.array(self.adjoint_vecs).squeeze().T
+        self.adjoint_vec_array = np.array(self.adjoint_vecs).squeeze().T
 
         self.direct_vec_path = join(self.test_dir, 'direct_vec_%03d.txt')
         self.adjoint_vec_path = join(self.test_dir, 'adjoint_vec_%03d.txt')
@@ -146,20 +144,20 @@ class TestBPODHandles(unittest.TestCase):
             for i, handle in enumerate(self.adjoint_vec_handles):
                 handle.put(self.adjoint_vecs[i])
                
-        self.Hankel_mat_true = N.dot(self.adjoint_vec_array.T, 
+        self.Hankel_mat_true = np.dot(self.adjoint_vec_array.T, 
             self.direct_vec_array)
     
         self.L_sing_vecs_true, self.sing_vals_true, self.R_sing_vecs_true = \
             _parallel.call_and_bcast(util.svd, self.Hankel_mat_true, tol=1e-10)
         
         self.direct_mode_array = self.direct_vec_array * \
-            N.mat(self.R_sing_vecs_true) * \
-            N.mat(N.diag(self.sing_vals_true ** -0.5))
+            np.mat(self.R_sing_vecs_true) * \
+            np.mat(np.diag(self.sing_vals_true ** -0.5))
         self.adjoint_mode_array = self.adjoint_vec_array * \
-            N.mat(self.L_sing_vecs_true) *\
-            N.mat(N.diag(self.sing_vals_true ** -0.5))
+            np.mat(self.L_sing_vecs_true) *\
+            np.mat(np.diag(self.sing_vals_true ** -0.5))
 
-        self.my_BPOD = BPODHandles(N.vdot, verbosity=0)
+        self.my_BPOD = BPODHandles(np.vdot, verbosity=0)
         _parallel.barrier()
 
     def tearDown(self):
@@ -229,7 +227,7 @@ class TestBPODHandles(unittest.TestCase):
         num_vecs = 10
         num_states = 30
         Hankel_mat_true = _parallel.call_and_bcast(
-            N.random.random, ((num_vecs, num_vecs)))
+            np.random.random, ((num_vecs, num_vecs)))
         L_sing_vecs_true, sing_vals_true, R_sing_vecs_true = \
             _parallel.call_and_bcast(util.svd, Hankel_mat_true)
         my_BPOD = BPODHandles(None, verbosity=0)
@@ -252,10 +250,10 @@ class TestBPODHandles(unittest.TestCase):
             L_sing_vecs_path, sing_vals_path, R_sing_vecs_path)
         Hankel_mat_loaded = _parallel.call_and_bcast(util.load_array_text, Hankel_mat_path)
 
-        N.testing.assert_allclose(Hankel_mat_loaded, Hankel_mat_true)
-        N.testing.assert_allclose(BPOD_load.L_sing_vecs, L_sing_vecs_true)
-        N.testing.assert_allclose(BPOD_load.R_sing_vecs, R_sing_vecs_true)
-        N.testing.assert_allclose(BPOD_load.sing_vals, sing_vals_true)
+        np.testing.assert_allclose(Hankel_mat_loaded, Hankel_mat_true)
+        np.testing.assert_allclose(BPOD_load.L_sing_vecs, L_sing_vecs_true)
+        np.testing.assert_allclose(BPOD_load.R_sing_vecs, R_sing_vecs_true)
+        np.testing.assert_allclose(BPOD_load.sing_vals, sing_vals_true)
 
     #@unittest.skip('testing others')
     def test_compute_decomp(self):
@@ -266,23 +264,23 @@ class TestBPODHandles(unittest.TestCase):
             self.my_BPOD.compute_decomp(self.direct_vec_handles, 
                 self.adjoint_vec_handles)
         
-        N.testing.assert_allclose(self.my_BPOD.Hankel_mat,
+        np.testing.assert_allclose(self.my_BPOD.Hankel_mat,
             self.Hankel_mat_true, rtol=tol)
 
         num_sing_vals = len(self.sing_vals_true)
-        N.testing.assert_allclose(self.my_BPOD.L_sing_vecs[:,:num_sing_vals],
+        np.testing.assert_allclose(self.my_BPOD.L_sing_vecs[:,:num_sing_vals],
             self.L_sing_vecs_true, rtol=tol, atol=tol)
         
-        N.testing.assert_allclose(self.my_BPOD.R_sing_vecs[:,:num_sing_vals],
+        np.testing.assert_allclose(self.my_BPOD.R_sing_vecs[:,:num_sing_vals],
             self.R_sing_vecs_true, rtol=tol, atol=tol)
-        N.testing.assert_allclose(self.my_BPOD.sing_vals[:num_sing_vals],
+        np.testing.assert_allclose(self.my_BPOD.sing_vals[:num_sing_vals],
             self.sing_vals_true, rtol=tol, atol=tol)
         
-        N.testing.assert_allclose(L_sing_vecs_return[:,:num_sing_vals],
+        np.testing.assert_allclose(L_sing_vecs_return[:,:num_sing_vals],
             self.L_sing_vecs_true, rtol=tol, atol=tol)
-        N.testing.assert_allclose(R_sing_vecs_return[:,:num_sing_vals],
+        np.testing.assert_allclose(R_sing_vecs_return[:,:num_sing_vals],
             self.R_sing_vecs_true, rtol=tol, atol=tol)
-        N.testing.assert_allclose(sing_vals_return[:num_sing_vals],
+        np.testing.assert_allclose(sing_vals_return[:num_sing_vals],
             self.sing_vals_true, rtol=tol, atol=tol)
         
 
@@ -311,12 +309,12 @@ class TestBPODHandles(unittest.TestCase):
 
         for mode_index, mode_handle in enumerate(direct_mode_handles):
             mode = mode_handle.get()
-            N.testing.assert_allclose(mode, 
+            np.testing.assert_allclose(mode, 
                 self.direct_mode_array[:,self.mode_nums[mode_index]], atol=atol)
             
         for mode_index, mode_handle in enumerate(adjoint_mode_handles):
             mode = mode_handle.get()
-            N.testing.assert_allclose(mode, 
+            np.testing.assert_allclose(mode, 
                 self.adjoint_mode_array[:,self.mode_nums[mode_index]], atol=atol)
             
         for direct_mode_index, direct_handle in \

@@ -12,11 +12,11 @@ from shutil import rmtree
 import argparse
 import cPickle
 import time as T
-import numpy as N
+import numpy as np
 import cProfile
-import modred as MR
+import modred as mr
 
-_parallel = MR.parallel_default_instance
+_parallel = mr.parallel_default_instance
 
 parser = argparse.ArgumentParser(description='Get directory in which to ' +\
     'save data.')
@@ -47,12 +47,12 @@ def generate_vecs(vec_dir, num_states, vec_handles):
     proc_vec_num_asignments = \
         _parallel.find_assignments(range(num_vecs))[_parallel.getRank()]
     for vec_num in proc_vec_num_asignments:
-        vec = N.random.random(num_states)
+        vec = np.random.random(num_states)
         save_vec(vec, vec_dir + vec_name%vec_num)
     """
     if _parallel.is_rank_zero():
         for handle in vec_handles:
-            handle.put(N.random.random(num_states))
+            handle.put(np.random.random(num_states))
     
     _parallel.barrier()
 
@@ -64,14 +64,14 @@ def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node,
     
     Remember that rows correspond to adjoint modes and cols to direct modes
     """
-    col_vec_handles = [MR.VecHandlePickle(join(data_dir, col_vec_name%col_num))
+    col_vec_handles = [mr.VecHandlePickle(join(data_dir, col_vec_name%col_num))
         for col_num in range(num_cols)]
-    row_vec_handles = [MR.VecHandlePickle(join(data_dir, row_vec_name%row_num))
+    row_vec_handles = [mr.VecHandlePickle(join(data_dir, row_vec_name%row_num))
         for row_num in range(num_rows)]
     
     generate_vecs(data_dir, num_states, row_vec_handles+col_vec_handles)
     
-    my_VS = MR.VectorSpaceHandles(N.vdot, max_vecs_per_node=max_vecs_per_node,
+    my_VS = mr.VectorSpaceHandles(np.vdot, max_vecs_per_node=max_vecs_per_node,
         verbosity=verbosity) 
     
     prof = cProfile.Profile()
@@ -89,12 +89,12 @@ def symmetric_inner_product_mat(num_states, num_vecs, max_vecs_per_node,
     """
     Computes symmetric inner product matrix from known vecs (as in POD).
     """    
-    vec_handles = [MR.VecHandlePickle(join(data_dir, row_vec_name%row_num))
+    vec_handles = [mr.VecHandlePickle(join(data_dir, row_vec_name%row_num))
         for row_num in range(num_vecs)]
     
     generate_vecs(data_dir, num_states, vec_handles)
     
-    my_VS = MR.VectorSpaceHandles(N.vdot, max_vecs_per_node=max_vecs_per_node,
+    my_VS = mr.VectorSpaceHandles(np.vdot, max_vecs_per_node=max_vecs_per_node,
         verbosity=verbosity) 
     
     prof = cProfile.Profile()
@@ -115,16 +115,16 @@ def lin_combine(num_states, num_bases, num_products, max_vecs_per_node,
     num_products is the resulting number of vecs
     """
 
-    basis_handles = [MR.VecHandlePickle(join(data_dir, basis_name%basis_num))
+    basis_handles = [mr.VecHandlePickle(join(data_dir, basis_name%basis_num))
         for basis_num in range(num_bases)]
-    product_handles = [MR.VecHandlePickle(join(data_dir, 
+    product_handles = [mr.VecHandlePickle(join(data_dir, 
         product_name%product_num))
         for product_num in range(num_products)]
 
     generate_vecs(data_dir, num_states, basis_handles)
-    my_VS = MR.VectorSpaceHandles(N.vdot, max_vecs_per_node=max_vecs_per_node,
+    my_VS = mr.VectorSpaceHandles(np.vdot, max_vecs_per_node=max_vecs_per_node,
         verbosity=verbosity)
-    coeff_mat = N.random.random((num_bases, num_products))
+    coeff_mat = np.random.random((num_bases, num_products))
     _parallel.barrier()
 
     prof = cProfile.Profile()

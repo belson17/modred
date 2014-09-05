@@ -1,36 +1,36 @@
-import numpy as N
-import modred as MR
+import numpy as np
+import modred as mr
 from custom_vector import CustomVector, CustomVecHandle, inner_product
 
 
 # Define snapshot handles.
-direct_snapshots = [CustomVecHandle('direct_snap%d.pkl' % i, scale=N.pi)
+direct_snapshots = [CustomVecHandle('direct_snap%d.pkl' % i, scale=np.pi)
     for i in range(10)]
-adjoint_snapshots = [CustomVecHandle('adjoint_snap%d.pkl' % i, scale=N.pi)
+adjoint_snapshots = [CustomVecHandle('adjoint_snap%d.pkl' % i, scale=np.pi)
     for i in range(10)]
     
 # Arbitrary data.
-parallel = MR.parallel_default_instance
+parallel = mr.parallel_default_instance
 nx = 50
 ny = 30
 nz = 20
-x = N.linspace(0, 1, nx)
-y = N.logspace(1, 2, ny)
-z = N.linspace(0, 1, nz)**2
+x = np.linspace(0, 1, nx)
+y = np.logspace(1, 2, ny)
+z = np.linspace(0, 1, nz)**2
 if parallel.is_rank_zero():
     for snap in direct_snapshots + adjoint_snapshots:
-        snap.put(CustomVector([x, y, z], N.random.random((nx, ny, nz))))
+        snap.put(CustomVector([x, y, z], np.random.random((nx, ny, nz))))
 parallel.barrier()
 
 # Compute and save Balanced POD modes.
-my_BPOD = MR.BPODHandles(inner_product)
+my_BPOD = mr.BPODHandles(inner_product)
 my_BPOD.sanity_check(direct_snapshots[0])
 L_sing_vecs, sing_vals, R_sing_vecs = \
     my_BPOD.compute_decomp(direct_snapshots, adjoint_snapshots)
 
 # less than 10% error
-sing_vals_norm = sing_vals / N.sum(sing_vals)
-num_modes = N.nonzero(N.cumsum(sing_vals_norm) > 0.9)[0][0] + 1
+sing_vals_norm = sing_vals / np.sum(sing_vals)
+num_modes = np.nonzero(np.cumsum(sing_vals_norm) > 0.9)[0][0] + 1
 mode_nums = range(num_modes)
 
 direct_modes = [CustomVecHandle('direct_mode%d.pkl'%i) for i in mode_nums] 

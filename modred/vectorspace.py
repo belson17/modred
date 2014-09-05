@@ -2,7 +2,7 @@
 import sys  
 import copy
 import time as T
-import numpy as N
+import numpy as np
 
 import util
 from parallel import parallel_default_instance
@@ -20,7 +20,7 @@ class VectorSpaceMatrices(object):
     def __init__(self, weights=None):
         self.weights = weights
         if self.weights is not None:
-            self.weights = N.array(self.weights).squeeze()
+            self.weights = np.array(self.weights).squeeze()
         if self.weights is None:
             VectorSpaceMatrices.compute_inner_product_mat = \
                 VectorSpaceMatrices._IP_no_weights
@@ -28,17 +28,17 @@ class VectorSpaceMatrices(object):
             VectorSpaceMatrices.compute_inner_product_mat = \
                 VectorSpaceMatrices._IP_1D_weights
         elif self.weights.ndim == 2:
-            self.weights = N.mat(self.weights)
+            self.weights = np.mat(self.weights)
             VectorSpaceMatrices.compute_inner_product_mat = \
                 VectorSpaceMatrices._IP_2D_weights
         else:
             raise ValueError('Weights must be None, 1D, or 2D')
     def _IP_no_weights(self, vecs1, vecs2):
-        return N.mat(vecs1).H * N.mat(vecs2)
+        return np.mat(vecs1).H * np.mat(vecs2)
     def _IP_1D_weights(self, vecs1, vecs2):
-        return N.mat((N.array(vecs1).conj().T * self.weights).dot(vecs2))
+        return np.mat((np.array(vecs1).conj().T * self.weights).dot(vecs2))
     def _IP_2D_weights(self, vecs1, vecs2):
-        return N.mat(vecs1).H * self.weights * N.mat(vecs2)
+        return np.mat(vecs1).H * self.weights * np.mat(vecs2)
     def __eq__(self, other):
         if type(other) == type(self):
             return smart_eq(self.weights, other.weights)
@@ -47,7 +47,7 @@ class VectorSpaceMatrices(object):
     
     def lin_combine(self, basis_vecs, coeff_mat,
         coeff_mat_col_indices=None):
-        return N.mat(basis_vecs) * N.mat(coeff_mat[:,coeff_mat_col_indices])
+        return np.mat(basis_vecs) * np.mat(coeff_mat[:,coeff_mat_col_indices])
     
     def compute_symmetric_inner_product_mat(self, vecs):
         return self.compute_inner_product_mat(vecs, vecs)
@@ -172,8 +172,8 @@ class VectorSpaceHandles(object):
             raise ValueError('Original vec modified by combo of mult/add!') 
         
         #vecSub = 3.5*test_vec - test_vec
-        #N.testing.assert_array_almost_equal(vecSub,2.5*test_vec)
-        #N.testing.assert_array_almost_equal(test_vec,vec_copy)
+        #np.testing.assert_array_almost_equal(vecSub,2.5*test_vec)
+        #np.testing.assert_array_almost_equal(test_vec,vec_copy)
         self.print_msg('Passed the sanity check')
 
 
@@ -289,9 +289,9 @@ class VectorSpaceHandles(object):
         # These variables are the number of iters through loops that retrieve
         # ("get") row and column vecs.
         num_row_get_loops = \
-            int(N.ceil(max_num_row_tasks*1./num_rows_per_proc_chunk))
+            int(np.ceil(max_num_row_tasks*1./num_rows_per_proc_chunk))
         num_col_get_loops = \
-            int(N.ceil(max_num_col_tasks*1./num_cols_per_proc_chunk))
+            int(np.ceil(max_num_col_tasks*1./num_cols_per_proc_chunk))
         if num_row_get_loops > 1:
             self.print_msg('Warning: The column vecs, of which '
                     'there are %d, will be retrieved %d times each. Increase '
@@ -338,7 +338,7 @@ class VectorSpaceHandles(object):
         # concatenating chunks of the IPmats.
         # The efficiency is not an issue, the size of the mats
         # are small compared to the size of the vecs for large data.
-        IP_mat = N.mat(N.zeros((num_rows, num_cols), dtype=IP_type))
+        IP_mat = np.mat(np.zeros((num_rows, num_cols), dtype=IP_type))
         for row_get_index in xrange(num_row_get_loops):
             if len(row_tasks[rank]) > 0:
                 start_row_index = min(row_tasks[rank][0] + 
@@ -408,7 +408,7 @@ class VectorSpaceHandles(object):
                                     col_vec)
                         if (T.time() - self.prev_print_time) > \
                             self.print_interval:
-                            num_completed_IPs = (N.abs(IP_mat)>0).sum()
+                            num_completed_IPs = (np.abs(IP_mat)>0).sum()
                             percent_completed_IPs = (100. * num_completed_IPs*
                                 _parallel.get_num_MPI_workers()) / (
                                 num_cols*num_rows)
@@ -474,7 +474,7 @@ class VectorSpaceHandles(object):
         num_rows_per_chunk = num_rows_per_proc_chunk * _parallel.get_num_procs()
 
         # <num_row_chunks> is the number of sets that must be computed.
-        num_row_chunks = int(N.ceil(num_vecs * 1. / num_rows_per_chunk)) 
+        num_row_chunks = int(np.ceil(num_vecs * 1. / num_rows_per_chunk)) 
         if num_row_chunks > 1:
             self.print_msg('Warning: The vecs, of which '
                 'there are %d, will be retrieved %d times each. Increase '
@@ -516,7 +516,7 @@ class VectorSpaceHandles(object):
         # assembling small chunks. This is done for the triangular portions. 
         # For the rectangular portions, the inner product mat is filled 
         # in directly.
-        IP_mat = N.mat(N.zeros((num_vecs, num_vecs), dtype=IP_type))
+        IP_mat = np.mat(np.zeros((num_vecs, num_vecs), dtype=IP_type))
         for start_row_index in xrange(0, num_vecs, num_rows_per_chunk):
             end_row_index = min(num_vecs, start_row_index + num_rows_per_chunk)
             proc_row_tasks_all = _parallel.find_assignments(range(
@@ -556,7 +556,7 @@ class VectorSpaceHandles(object):
             # Number of square chunks to fill in is n * (n-1) / 2.  At each
             # iteration we fill in n of them, so we need (n-1) / 2 
             # iterations (round up).  
-            for set_index in xrange(int(N.ceil((num_active_procs - 1.) / 2))):
+            for set_index in xrange(int(np.ceil((num_active_procs - 1.) / 2))):
                 # The current proc is "sender"
                 my_rank = _parallel.get_rank()
                 my_row_indices = proc_row_tasks
@@ -571,7 +571,7 @@ class VectorSpaceHandles(object):
                 source_rank = (my_rank - set_index - 1) % num_active_procs
                 
                 # Find the maximum number of sends/recv to be done by any proc
-                max_num_to_send = int(N.ceil(1. * max([len(tasks) for \
+                max_num_to_send = int(np.ceil(1. * max([len(tasks) for \
                     tasks in proc_row_tasks_all]) /\
                     num_cols_per_proc_chunk))
                 """
@@ -585,7 +585,7 @@ class VectorSpaceHandles(object):
                     raise ValueError('Number of rows assigned does not ' +\
                         'match number of vecs in memory.')
                 if my_num_rows > 0 and my_num_rows < max_num_to_send:
-                    my_row_indices += [N.nan] * (max_num_to_send - my_num_rows) 
+                    my_row_indices += [np.nan] * (max_num_to_send - my_num_rows) 
                     row_vecs += [[]] * (max_num_to_send - my_num_rows)
                 """
                 for send_index in xrange(max_num_to_send):
@@ -627,7 +627,7 @@ class VectorSpaceHandles(object):
                                     col_vec)
                             if (T.time() - self.prev_print_time) > \
                                 self.print_interval:
-                                num_completed_IPs = (N.abs(IP_mat)>0).sum()
+                                num_completed_IPs = (np.abs(IP_mat)>0).sum()
                                 percent_completed_IPs = \
                                     (100.*2*num_completed_IPs * \
                                     _parallel.get_num_MPI_workers())/\
@@ -706,7 +706,7 @@ class VectorSpaceHandles(object):
                                     row_vecs[row_index - proc_row_tasks[0]],
                                     col_vec)
                         if (T.time() - self.prev_print_time) > self.print_interval:
-                            num_completed_IPs = (N.abs(IP_mat)>0).sum()
+                            num_completed_IPs = (np.abs(IP_mat)>0).sum()
                             percent_completed_IPs = (100.*2*num_completed_IPs *
                                 _parallel.get_num_MPI_workers())/(num_vecs**2)
                             self.print_msg(('Completed %.1f%% of inner ' + 
@@ -725,13 +725,13 @@ class VectorSpaceHandles(object):
         # the lower triangular portion (computed there).  For the case where
         # the inner product is not perfectly symmetric, this will select the
         # computation done in the upper triangular portion.
-        mask = N.multiply(IP_mat == 0, IP_mat.T != 0)
+        mask = np.multiply(IP_mat == 0, IP_mat.T != 0)
         
         # Collect values below diagonal
-        IP_mat += N.multiply(N.triu(IP_mat.T, 1), mask)
+        IP_mat += np.multiply(np.triu(IP_mat.T, 1), mask)
         
         # Symmetrize matrix
-        IP_mat = N.triu(IP_mat) + N.triu(IP_mat, 1).T
+        IP_mat = np.triu(IP_mat) + np.triu(IP_mat, 1).T
         
         percent_completed_IPs = 100.
         self.print_msg(('Completed %.1f%% of inner ' + 
@@ -835,9 +835,9 @@ class VectorSpaceHandles(object):
         # These variables are the number of iters through loops that retrieve 
         # ("get")
         # and "put" basis and sum vecs.
-        num_basis_get_iters = int(N.ceil(
+        num_basis_get_iters = int(np.ceil(
             max_num_basis_tasks*1./num_bases_per_proc_chunk))
-        num_sum_put_iters = int(N.ceil(
+        num_sum_put_iters = int(np.ceil(
             max_num_sum_tasks*1./num_sums_per_proc_chunk))
         if num_sum_put_iters > 1:
             self.print_msg('Warning: The basis vecs, ' 

@@ -5,17 +5,14 @@ import unittest
 import os
 from os.path import join
 from shutil import rmtree
-import numpy as N
+import numpy as np
 
-import helper
-helper.add_to_path(join(join(os.path.dirname(os.path.abspath(__file__)), 
-    '..', 'src')))
-import parallel as parallel_mod
+import modred.parallel as parallel_mod
 _parallel = parallel_mod.parallel_default_instance
 
-import ltigalerkinproj as LGP
-import util
-import vectors as V
+import modred.ltigalerkinproj as LGP
+from modred import util
+import modred.vectors as V
 
 class TestLTIGalerkinProjectionBase(unittest.TestCase):
     def setUp(self):
@@ -36,17 +33,17 @@ class TestLTIGalerkinProjectionBase(unittest.TestCase):
         A_reduced_path = join(self.test_dir, 'A.txt')
         B_reduced_path = join(self.test_dir, 'B.txt')
         C_reduced_path = join(self.test_dir, 'C.txt')
-        A = _parallel.call_and_bcast(N.random.random, ((10,10)))
-        B = _parallel.call_and_bcast(N.random.random, ((1,10)))
-        C = _parallel.call_and_bcast(N.random.random, ((10,2)))
+        A = _parallel.call_and_bcast(np.random.random, ((10,10)))
+        B = _parallel.call_and_bcast(np.random.random, ((1,10)))
+        C = _parallel.call_and_bcast(np.random.random, ((10,2)))
         LTI_proj = LGP.LTIGalerkinProjectionBase()
         LTI_proj.A_reduced = A.copy()
         LTI_proj.B_reduced = B.copy()
         LTI_proj.C_reduced = C.copy()
         LTI_proj.put_model(A_reduced_path, B_reduced_path, C_reduced_path)
-        N.testing.assert_equal(util.load_array_text(A_reduced_path), A)
-        N.testing.assert_equal(util.load_array_text(B_reduced_path), B)
-        N.testing.assert_equal(util.load_array_text(C_reduced_path), C)
+        np.testing.assert_equal(util.load_array_text(A_reduced_path), A)
+        np.testing.assert_equal(util.load_array_text(B_reduced_path), B)
+        np.testing.assert_equal(util.load_array_text(C_reduced_path), C)
 
 
 
@@ -80,45 +77,45 @@ class TestLTIGalerkinProjectionMatrices(unittest.TestCase):
     def generate_data_set(self, num_basis_vecs, num_adjoint_basis_vecs,
         num_states, num_inputs, num_outputs):
         """Generates random data, saves, and computes true reduced A,B,C."""
-        self.basis_vecs = _parallel.call_and_bcast(N.random.random, 
+        self.basis_vecs = _parallel.call_and_bcast(np.random.random, 
             (num_states, num_basis_vecs))
-        self.adjoint_basis_vecs = _parallel.call_and_bcast(N.random.random, 
+        self.adjoint_basis_vecs = _parallel.call_and_bcast(np.random.random, 
             (num_states, num_adjoint_basis_vecs))
-        self.A_array = _parallel.call_and_bcast(N.random.random, 
+        self.A_array = _parallel.call_and_bcast(np.random.random, 
             (num_states, num_states))
-        self.B_array = _parallel.call_and_bcast(N.random.random, 
+        self.B_array = _parallel.call_and_bcast(np.random.random, 
             (num_states, num_inputs))
-        self.C_array = _parallel.call_and_bcast(N.random.random, 
+        self.C_array = _parallel.call_and_bcast(np.random.random, 
             (num_outputs, num_states))
             
-        self.A_on_basis_vecs = N.dot(self.A_array, self.basis_vecs)
+        self.A_on_basis_vecs = np.dot(self.A_array, self.basis_vecs)
         self.B_on_standard_basis_array = self.B_array
         self.C_on_basis_vecs = self.C_array.dot(self.basis_vecs).squeeze()
 
         _parallel.barrier()
         
-        self.A_true = N.dot(self.adjoint_basis_vecs.T, 
-            N.dot(self.A_array, self.basis_vecs))
-        self.B_true = N.dot(self.adjoint_basis_vecs.T, self.B_array)
-        self.C_true = N.dot(self.C_array, self.basis_vecs)
-        self.proj_mat = N.linalg.inv(N.dot(self.adjoint_basis_vecs.T,
+        self.A_true = np.dot(self.adjoint_basis_vecs.T, 
+            np.dot(self.A_array, self.basis_vecs))
+        self.B_true = np.dot(self.adjoint_basis_vecs.T, self.B_array)
+        self.C_true = np.dot(self.C_array, self.basis_vecs)
+        self.proj_mat = np.linalg.inv(np.dot(self.adjoint_basis_vecs.T,
             self.basis_vecs))
-        self.A_true_nonorth = N.dot(self.proj_mat, self.A_true)
-        self.B_true_nonorth = N.dot(self.proj_mat, self.B_true)
+        self.A_true_nonorth = np.dot(self.proj_mat, self.A_true)
+        self.B_true_nonorth = np.dot(self.proj_mat, self.B_true)
         
         
     #@unittest.skip('testing others')
     def test_reduce_A(self):
         """Reduction of A matrix for Matrix, LookUp operators and in_memory."""
         A_returned = self.LTI_proj.reduce_A(self.A_on_basis_vecs)
-        N.testing.assert_allclose(A_returned, self.A_true)
+        np.testing.assert_allclose(A_returned, self.A_true)
         
         # Precomputed operations A object with vec handles, non-orthonormal modes
         LTI_proj = LGP.LTIGalerkinProjectionMatrices(self.basis_vecs,
             self.adjoint_basis_vecs, is_basis_orthonormal=False)
         A_returned = LTI_proj.reduce_A(self.A_on_basis_vecs)
-        N.testing.assert_allclose(LTI_proj._proj_mat, self.proj_mat)
-        N.testing.assert_allclose(A_returned, self.A_true_nonorth)
+        np.testing.assert_allclose(LTI_proj._proj_mat, self.proj_mat)
+        np.testing.assert_allclose(A_returned, self.A_true_nonorth)
         
         
         
@@ -126,12 +123,12 @@ class TestLTIGalerkinProjectionMatrices(unittest.TestCase):
     def test_reduce_B(self):
         """Given modes, test reduced B matrix"""
         B_returned = self.LTI_proj.reduce_B(self.B_on_standard_basis_array)
-        N.testing.assert_allclose(B_returned, self.B_true)
+        np.testing.assert_allclose(B_returned, self.B_true)
         
         LTI_proj = LGP.LTIGalerkinProjectionMatrices(self.basis_vecs, 
             self.adjoint_basis_vecs, is_basis_orthonormal=False)
         B_returned = LTI_proj.reduce_B(self.B_on_standard_basis_array)
-        N.testing.assert_allclose(B_returned, self.B_true_nonorth)
+        np.testing.assert_allclose(B_returned, self.B_true_nonorth)
         
         
         
@@ -139,20 +136,20 @@ class TestLTIGalerkinProjectionMatrices(unittest.TestCase):
     def test_reduce_C(self):
         """Test that, given modes, can find correct C matrix"""
         C_returned = self.LTI_proj.reduce_C(self.C_on_basis_vecs)
-        N.testing.assert_allclose(C_returned, self.C_true)
+        np.testing.assert_allclose(C_returned, self.C_true)
     
     
     def test_compute_model(self):
         A,B,C = self.LTI_proj.compute_model(self.A_on_basis_vecs,
             self.B_on_standard_basis_array, self.C_on_basis_vecs)
-        # No test, just check it runs. Results are checked in other tests.
+        # np. test, just check it runs. Results are checked in other tests.
         
         
     def test_adjoint_basis_vec_optional(self):
         """Test that adjoint modes default to direct modes"""
         no_adjoints_LTI_proj = LGP.LTIGalerkinProjectionMatrices(
             self.basis_vecs, is_basis_orthonormal=True)
-        N.testing.assert_equal(no_adjoints_LTI_proj.adjoint_basis_vecs, 
+        np.testing.assert_equal(no_adjoints_LTI_proj.adjoint_basis_vecs, 
             self.basis_vecs)
 
 
@@ -185,7 +182,7 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
         self.generate_data_set(self.num_basis_vecs, self.num_adjoint_basis_vecs,
             self.num_states, self.num_inputs, self.num_outputs)
         
-        self.LTI_proj = LGP.LTIGalerkinProjectionHandles(N.vdot, 
+        self.LTI_proj = LGP.LTIGalerkinProjectionHandles(np.vdot, 
             self.basis_vec_handles,
             self.adjoint_basis_vec_handles, is_basis_orthonormal=True, verbosity=0)
             
@@ -218,27 +215,27 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
             V.VecHandleArrayText(self.C_on_basis_vec_path%i)
             for i in range(self.num_basis_vecs)]
             
-        self.basis_vec_array = _parallel.call_and_bcast(N.random.random, 
+        self.basis_vec_array = _parallel.call_and_bcast(np.random.random, 
             (num_states, num_basis_vecs))
-        self.adjoint_basis_vec_array = _parallel.call_and_bcast(N.random.random, 
+        self.adjoint_basis_vec_array = _parallel.call_and_bcast(np.random.random, 
             (num_states, num_adjoint_basis_vecs))
-        self.A_array = _parallel.call_and_bcast(N.random.random, 
+        self.A_array = _parallel.call_and_bcast(np.random.random, 
             (num_states, num_states))
-        self.B_array = _parallel.call_and_bcast(N.random.random, 
+        self.B_array = _parallel.call_and_bcast(np.random.random, 
             (num_states, num_inputs))
-        self.C_array = _parallel.call_and_bcast(N.random.random, 
+        self.C_array = _parallel.call_and_bcast(np.random.random, 
             (num_outputs, num_states))
             
         self.basis_vecs = [self.basis_vec_array[:, i].squeeze()
             for i in range(num_basis_vecs)]
         self.adjoint_basis_vecs = [self.adjoint_basis_vec_array[:, i].squeeze()
             for i in range(num_adjoint_basis_vecs)]
-        self.A_on_basis_vecs = [N.dot(self.A_array, basis_vec).squeeze() 
+        self.A_on_basis_vecs = [np.dot(self.A_array, basis_vec).squeeze() 
             for basis_vec in self.basis_vecs]
         self.B_on_basis = [self.B_array[:, i].squeeze()
             for i in range(self.num_inputs)]
-        self.C_on_basis_vecs = [N.array(
-            N.dot(self.C_array, basis_vec).squeeze(), ndmin=1)
+        self.C_on_basis_vecs = [np.array(
+            np.dot(self.C_array, basis_vec).squeeze(), ndmin=1)
             for basis_vec in self.basis_vecs]
 
         if _parallel.is_rank_zero():
@@ -256,14 +253,14 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
                 handle.put(vec)
         _parallel.barrier()
         
-        self.A_true = N.dot(self.adjoint_basis_vec_array.T, 
-            N.dot(self.A_array, self.basis_vec_array))
-        self.B_true = N.dot(self.adjoint_basis_vec_array.T, self.B_array)
-        self.C_true = N.dot(self.C_array, self.basis_vec_array)
-        self.proj_mat = N.linalg.inv(N.dot(self.adjoint_basis_vec_array.T,
+        self.A_true = np.dot(self.adjoint_basis_vec_array.T, 
+            np.dot(self.A_array, self.basis_vec_array))
+        self.B_true = np.dot(self.adjoint_basis_vec_array.T, self.B_array)
+        self.C_true = np.dot(self.C_array, self.basis_vec_array)
+        self.proj_mat = np.linalg.inv(np.dot(self.adjoint_basis_vec_array.T,
             self.basis_vec_array))
-        self.A_true_nonorth = N.dot(self.proj_mat, self.A_true)
-        self.B_true_nonorth = N.dot(self.proj_mat, self.B_true)
+        self.A_true_nonorth = np.dot(self.proj_mat, self.A_true)
+        self.B_true_nonorth = np.dot(self.proj_mat, self.B_true)
         
         
     #@unittest.skip('testing others')
@@ -281,8 +278,8 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
         LGP.compute_derivs_handles(self.basis_vec_handles, 
             self.A_on_basis_vec_handles, deriv_handles, dt)
         derivs_loaded = [v.get() for v in deriv_handles]
-        derivs_loaded = map(N.squeeze, derivs_loaded)
-        map(N.testing.assert_allclose, derivs_loaded, true_derivs)
+        derivs_loaded = map(np.squeeze, derivs_loaded)
+        map(np.testing.assert_allclose, derivs_loaded, true_derivs)
         
         
     #@unittest.skip('testing others')
@@ -290,15 +287,15 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
         """Reduction of A matrix for Matrix, LookUp operators and in_memory."""
         # Precomputed operations A object with vec handles
         A_returned = self.LTI_proj.reduce_A(self.A_on_basis_vec_handles)
-        N.testing.assert_allclose(A_returned, self.A_true)
+        np.testing.assert_allclose(A_returned, self.A_true)
         
         # Precomputed operations A object with vec handles, non-orthonormal modes
-        LTI_proj = LGP.LTIGalerkinProjectionHandles(N.vdot, 
+        LTI_proj = LGP.LTIGalerkinProjectionHandles(np.vdot, 
             self.basis_vec_handles,
             self.adjoint_basis_vec_handles, is_basis_orthonormal=False, verbosity=0)
         A_returned = LTI_proj.reduce_A(self.A_on_basis_vec_handles)
-        N.testing.assert_allclose(LTI_proj._proj_mat, self.proj_mat)
-        N.testing.assert_allclose(A_returned, self.A_true_nonorth)
+        np.testing.assert_allclose(LTI_proj._proj_mat, self.proj_mat)
+        np.testing.assert_allclose(A_returned, self.A_true_nonorth)
         
         
         
@@ -306,13 +303,13 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
     def test_reduce_B(self):
         """Given modes, test reduced B matrix, orthogonal and non-orthogonal."""
         B_returned = self.LTI_proj.reduce_B(self.B_on_standard_basis_handles)
-        N.testing.assert_allclose(B_returned, self.B_true)
+        np.testing.assert_allclose(B_returned, self.B_true)
         
-        LTI_proj = LGP.LTIGalerkinProjectionHandles(N.vdot,
+        LTI_proj = LGP.LTIGalerkinProjectionHandles(np.vdot,
             self.basis_vec_handles, self.adjoint_basis_vec_handles,
             is_basis_orthonormal=False, verbosity=0)
         B_returned = LTI_proj.reduce_B(self.B_on_standard_basis_handles)
-        N.testing.assert_allclose(B_returned, self.B_true_nonorth)
+        np.testing.assert_allclose(B_returned, self.B_true_nonorth)
         
         
         
@@ -320,14 +317,14 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
     def test_reduce_C(self):
         """Test that, given modes, can find correct C matrix"""
         C_returned = self.LTI_proj.reduce_C(self.C_on_basis_vecs)
-        N.testing.assert_allclose(C_returned, self.C_true)
+        np.testing.assert_allclose(C_returned, self.C_true)
             
         
     def test_adjoint_basis_vec_optional(self):
         """Test that adjoint modes default to direct modes"""
-        no_adjoints_LTI_proj = LGP.LTIGalerkinProjectionHandles(N.vdot, 
+        no_adjoints_LTI_proj = LGP.LTIGalerkinProjectionHandles(np.vdot, 
             self.basis_vec_handles, is_basis_orthonormal=True, verbosity=0)
-        N.testing.assert_equal(no_adjoints_LTI_proj.adjoint_basis_vec_handles, 
+        np.testing.assert_equal(no_adjoints_LTI_proj.adjoint_basis_vec_handles, 
             self.basis_vec_handles)
 
 

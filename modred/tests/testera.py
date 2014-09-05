@@ -5,16 +5,14 @@ import unittest
 import os
 from os.path import join
 from shutil import rmtree
-import numpy as N
+import numpy as np
 
-import helper
-helper.add_to_path(join(join(os.path.dirname(os.path.abspath(__file__)), 
-    '..', 'src')))
-import parallel as parallel_mod
+
+import modred.parallel as parallel_mod
 _parallel = parallel_mod.parallel_default_instance
 
-import era
-import util
+from modred import era
+from modred import util
 
 
 def make_time_steps(num_steps, interval):
@@ -31,9 +29,9 @@ def make_time_steps(num_steps, interval):
     if num_steps % 2 != 0:
         raise ValueError('num_steps, %d, must be even'%num_steps)
     interval = int(interval)
-    time_steps = N.zeros(num_steps, dtype=int)
-    time_steps[::2] = interval*N.arange(num_steps/2)
-    time_steps[1::2] = 1 + interval*N.arange(num_steps/2)
+    time_steps = np.zeros(num_steps, dtype=int)
+    time_steps[::2] = interval*np.arange(num_steps/2)
+    time_steps[1::2] = 1 + interval*np.arange(num_steps/2)
     return time_steps
 
 @unittest.skipIf(_parallel.is_distributed(), 'Only test ERA in serial')
@@ -66,9 +64,9 @@ class testERA(unittest.TestCase):
                 for num_time_steps in [4, 10, 12]:
                     sample_interval = 2
                     # P=2 format [0, 1, 2, 3, ...]
-                    dt_system = N.random.random()
+                    dt_system = np.random.random()
                     dt_sample = sample_interval*dt_system                
-                    outputs = N.random.random((num_time_steps, num_outputs, 
+                    outputs = np.random.random((num_time_steps, num_outputs, 
                         num_inputs))
                     time_steps = make_time_steps(num_time_steps, 
                         sample_interval)
@@ -79,13 +77,13 @@ class testERA(unittest.TestCase):
                     #self.assertEqual(dt_system_computed, dt_system)
                     num_time_steps_true = (num_time_steps - 1)*2
                     time_steps_true = make_time_steps(num_time_steps_true, 1)
-                    outputs_true = N.zeros((num_time_steps_true, num_outputs, 
+                    outputs_true = np.zeros((num_time_steps_true, num_outputs, 
                         num_inputs))
                     outputs_true[::2] = outputs[:-1]
                     outputs_true[1::2] = outputs[1:]
-                    N.testing.assert_allclose(time_steps_computed, 
+                    np.testing.assert_allclose(time_steps_computed, 
                         time_steps_true)
-                    N.testing.assert_allclose(outputs_computed, outputs_true)
+                    np.testing.assert_allclose(outputs_computed, outputs_true)
                     
                     # Test that if there is a wrong time value, get an error
                     time_values[num_time_steps/2] = -1
@@ -120,21 +118,21 @@ class testERA(unittest.TestCase):
                     
                     for row in range(myERA.mc):
                         for col in range(myERA.mo):
-                            N.testing.assert_allclose(
+                            np.testing.assert_allclose(
                                 H[row*num_outputs:(row+1)*num_outputs,
                                     col*num_inputs:(col+1)*num_inputs],
                                 H[col*num_outputs:(col+1)*num_outputs,
                                     row*num_inputs:(row+1)*num_inputs])
-                            N.testing.assert_allclose(
+                            np.testing.assert_allclose(
                                 Hp[row*num_outputs:(row+1)*num_outputs,
                                     col*num_inputs:(col+1)*num_inputs],
                                 Hp[col*num_outputs:(col+1)*num_outputs,
                                     row*num_inputs:(row+1)*num_inputs])
-                            N.testing.assert_allclose(
+                            np.testing.assert_allclose(
                                 H[row*num_outputs:(row+1)*num_outputs,
                                     col*num_inputs:(col+1)*num_inputs],
                                 C*(A**time_steps[(row+col)*2])*B)
-                            N.testing.assert_allclose(
+                            np.testing.assert_allclose(
                                 Hp[row*num_outputs:(row+1)*num_outputs,
                                     col*num_inputs:(col+1)*num_inputs],
                                 C*(A**time_steps[(row+col)*2 + 1])*B)
@@ -182,33 +180,33 @@ class testERA(unittest.TestCase):
                     
                     # Flatten vecs into 2D X and Y mats: 
                     # [B AB A**PB A**(P+1)B ...]
-                    #direct_vecs_flat = N.mat(
+                    #direct_vecs_flat = np.mat(
                     #    direct_vecs.swapaxes(0,1).reshape((num_states_model,-1)))
                     
                     # Exact grammians from Lyapunov eqn solve
                     #gram_cont = util.solve_Lyapunov(A, B*B.H)
                     #gram_obs = util.solve_Lyapunov(A.H, C.H*C)
-                    #print N.sort(N.linalg.eig(gram_cont)[0])[::-1]
+                    #print np.sort(np.linalg.eig(gram_cont)[0])[::-1]
                     #print sing_vals
-                    #N.testing.assert_allclose(gram_cont.diagonal(), 
+                    #np.testing.assert_allclose(gram_cont.diagonal(), 
                     #    sing_vals, atol=.1, rtol=.1)
-                    #N.testing.assert_allclose(gram_obs.diagonal(), 
+                    #np.testing.assert_allclose(gram_obs.diagonal(), 
                     #   sing_vals, atol=.1, rtol=.1)
-                    #N.testing.assert_allclose(N.sort(N.linalg.eig(
+                    #np.testing.assert_allclose(np.sort(np.linalg.eig(
                     #   gram_cont)[0])[::-1], sing_vals,
                     #    atol=.1, rtol=.1)
-                    #N.testing.assert_allclose(N.sort(N.linalg.eig(
+                    #np.testing.assert_allclose(np.sort(np.linalg.eig(
                     #   gram_obs)[0])[::-1], sing_vals,
                     #    atol=.1, rtol=.1)
                     
                     # Check that the diagonals are largest entry on each row
-                    #self.assertTrue((N.max(N.abs(gram_cont),axis=1) == 
-                    #    N.abs(gram_cont.diagonal())).all())
-                    #self.assertTrue((N.max(N.abs(gram_obs),axis=1) == 
-                    #    N.abs(gram_obs.diagonal())).all())
+                    #self.assertTrue((np.max(np.abs(gram_cont),axis=1) == 
+                    #    np.abs(gram_cont.diagonal())).all())
+                    #self.assertTrue((np.max(np.abs(gram_obs),axis=1) == 
+                    #    np.abs(gram_obs.diagonal())).all())
                     
                     # Check the ROM Markov params match the full plant's
-                    Markovs_model = N.zeros(Markovs.shape)
+                    Markovs_model = np.zeros(Markovs.shape)
                     for ti, tv in enumerate(time_steps):
                         Markovs_model[ti] = C * (A**tv) * B
                         #print 'computing ROM Markov param at time step %d'%tv
@@ -228,13 +226,13 @@ class testERA(unittest.TestCase):
                             PLT.legend(['ROM','Plant','Dense plant'])
                         PLT.show()
                     """
-                    N.testing.assert_allclose(Markovs_model, Markovs, rtol=0.5, 
+                    np.testing.assert_allclose(Markovs_model, Markovs, rtol=0.5, 
                         atol=0.5)
-                    N.testing.assert_allclose(
+                    np.testing.assert_allclose(
                         util.load_array_text(A_path_computed), A)
-                    N.testing.assert_allclose(
+                    np.testing.assert_allclose(
                         util.load_array_text(B_path_computed), B)
-                    N.testing.assert_allclose(
+                    np.testing.assert_allclose(
                         util.load_array_text(C_path_computed), C)
         
 if __name__ == '__main__':

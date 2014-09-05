@@ -1,5 +1,5 @@
 
-import numpy as N
+import numpy as np
 from vectorspace import VectorSpaceMatrices, VectorSpaceHandles
 import util
 from parallel import parallel_default_instance
@@ -61,12 +61,12 @@ def compute_DMD_matrices_snaps_method(vecs, mode_indices, adv_vecs=None,
         if vecs.shape != adv_vecs.shape:
             raise ValueError(('vecs and adv_vecs are not the same shape.'))
         # Compute the correlation matrix from the unadvanced snapshots only.
-        correlation_mat = N.mat(vec_space.compute_symmetric_inner_product_mat(
+        correlation_mat = np.mat(vec_space.compute_symmetric_inner_product_mat(
             vecs))
     
     correlation_mat_evals, correlation_mat_evecs = util.eigh(correlation_mat, 
         is_positive_definite=True)
-    correlation_mat_evals_sqrt = N.mat(N.diag(correlation_mat_evals**-0.5))
+    correlation_mat_evals_sqrt = np.mat(np.diag(correlation_mat_evals**-0.5))
  
     # Compute low-order linear map for sequential or non-sequential case.
     # Sequential snapshot set. Takes advantage of the fact that the
@@ -86,14 +86,14 @@ def compute_DMD_matrices_snaps_method(vecs, mode_indices, adv_vecs=None,
             correlation_mat_evals_sqrt
     
     # Compute eigendecomposition of low-order linear map.
-    ritz_vals, low_order_evecs = N.linalg.eig(low_order_linear_map)
+    ritz_vals, low_order_evecs = np.linalg.eig(low_order_linear_map)
     build_coeffs = correlation_mat_evecs *\
         correlation_mat_evals_sqrt * low_order_evecs *\
-        N.diag(N.array(N.array(N.linalg.inv(
+        np.diag(np.array(np.array(np.linalg.inv(
         low_order_evecs.H * low_order_evecs) * low_order_evecs.H *\
         correlation_mat_evals_sqrt * correlation_mat_evecs.H * 
         correlation_mat[:, 0]).squeeze(), ndmin=1))
-    mode_norms = N.diag(build_coeffs.H * correlation_mat * build_coeffs).real
+    mode_norms = np.diag(build_coeffs.H * correlation_mat * build_coeffs).real
     if (mode_norms < 0).any():
         print ('Warning: mode norms has negative values. This is often happens '
             'when the rank of the vector matrix is much less than the number '
@@ -170,14 +170,14 @@ def compute_DMD_matrices_direct_method(vecs, mode_indices,
         if adv_vecs is not None:
             adv_vecs_weighted = adv_vecs
     elif inner_product_weights.ndim == 1:
-        sqrt_weights = N.mat(N.diag(inner_product_weights**0.5))
+        sqrt_weights = np.mat(np.diag(inner_product_weights**0.5))
         vecs_weighted = sqrt_weights * vecs
         if adv_vecs is not None:
             adv_vecs_weighted = sqrt_weights * adv_vecs
     elif inner_product_weights.ndim == 2:
         if inner_product_weights.shape[0] > 500:
             print 'Warning: Cholesky decomposition could be time consuming.'
-        sqrt_weights = N.mat(N.linalg.cholesky(inner_product_weights)).H
+        sqrt_weights = np.mat(np.linalg.cholesky(inner_product_weights)).H
         vecs_weighted = sqrt_weights * vecs
         if adv_vecs is not None:
             adv_vecs_weighted = sqrt_weights * adv_vecs
@@ -189,13 +189,13 @@ def compute_DMD_matrices_direct_method(vecs, mode_indices,
         U, sing_vals, correlation_mat_evecs = util.svd(vecs_weighted[:,:-1])
         correlation_mat_evals = sing_vals**2
         correlation_mat = correlation_mat_evecs * \
-            N.mat(N.diag(correlation_mat_evals)) * correlation_mat_evecs.H
+            np.mat(np.diag(correlation_mat_evals)) * correlation_mat_evecs.H
         last_col = U.H * vecs_weighted[:,-1]
-        correlation_mat_evals_sqrt = N.mat(N.diag(sing_vals**-1.0))
+        correlation_mat_evals_sqrt = np.mat(np.diag(sing_vals**-1.0))
         correlation_mat = correlation_mat_evecs * \
-            N.mat(N.diag(correlation_mat_evals)) * correlation_mat_evecs.H
+            np.mat(np.diag(correlation_mat_evals)) * correlation_mat_evecs.H
 
-        low_order_linear_map = N.mat(N.concatenate(
+        low_order_linear_map = np.mat(np.concatenate(
             (correlation_mat_evals_sqrt * correlation_mat_evecs.H * \
             correlation_mat[:, 1:], last_col), axis=1)) * \
             correlation_mat_evecs * correlation_mat_evals_sqrt
@@ -203,22 +203,22 @@ def compute_DMD_matrices_direct_method(vecs, mode_indices,
         if vecs.shape != adv_vecs.shape:
             raise ValueError(('vecs and adv_vecs are not the same shape.'))
         U, sing_vals, correlation_mat_evecs = util.svd(vecs_weighted)
-        correlation_mat_evals_sqrt = N.mat(N.diag(sing_vals**-1.0))
+        correlation_mat_evals_sqrt = np.mat(np.diag(sing_vals**-1.0))
         low_order_linear_map = U.H * adv_vecs_weighted * \
             correlation_mat_evecs * correlation_mat_evals_sqrt   
         correlation_mat_evals = sing_vals**2
         correlation_mat = correlation_mat_evecs * \
-            N.mat(N.diag(correlation_mat_evals)) * correlation_mat_evecs.H
+            np.mat(np.diag(correlation_mat_evals)) * correlation_mat_evecs.H
 
     # Compute eigendecomposition of low-order linear map.
-    ritz_vals, low_order_evecs = N.linalg.eig(low_order_linear_map)
+    ritz_vals, low_order_evecs = np.linalg.eig(low_order_linear_map)
     build_coeffs = correlation_mat_evecs *\
         correlation_mat_evals_sqrt * low_order_evecs *\
-        N.diag(N.array(N.array(N.linalg.inv(
+        np.diag(np.array(np.array(np.linalg.inv(
         low_order_evecs.H * low_order_evecs) * low_order_evecs.H *\
         correlation_mat_evals_sqrt * correlation_mat_evecs.H * 
         correlation_mat[:, 0]).squeeze(), ndmin=1))
-    mode_norms = N.diag(build_coeffs.H * correlation_mat * build_coeffs).real
+    mode_norms = np.diag(build_coeffs.H * correlation_mat * build_coeffs).real
     if (mode_norms < 0).any():
         print ('Warning: mode norms has negative values. This is often happens '
             'when the rank of the vector matrix is much less than the number '
@@ -296,9 +296,9 @@ class DMDHandles(object):
     def get_decomp(self, ritz_vals_source, mode_norms_source, 
         build_coeffs_source):
         """Retrieves the decomposition matrices from sources."""        
-        self.ritz_vals = N.squeeze(N.array(
+        self.ritz_vals = np.squeeze(np.array(
             _parallel.call_and_bcast(self.get_mat, ritz_vals_source)))
-        self.mode_norms = N.squeeze(N.array(
+        self.mode_norms = np.squeeze(np.array(
             _parallel.call_and_bcast(self.get_mat, mode_norms_source)))
         self.build_coeffs = _parallel.call_and_bcast(self.get_mat, 
             build_coeffs_source)
@@ -337,17 +337,17 @@ class DMDHandles(object):
     def _compute_eigen_decomp(self):
         """Computes eigen decomposition of low-order linear map and associated 
         DMD matrices."""
-        correlation_mat_evals_sqrt = N.mat(N.diag(
+        correlation_mat_evals_sqrt = np.mat(np.diag(
             self.correlation_mat_evals**-0.5))
         self.ritz_vals, low_order_evecs = _parallel.call_and_bcast(
-            N.linalg.eig, self.low_order_linear_map)
+            np.linalg.eig, self.low_order_linear_map)
         self.build_coeffs = self.correlation_mat_evecs *\
             correlation_mat_evals_sqrt * low_order_evecs *\
-            N.diag(N.array(N.array(_parallel.call_and_bcast(N.linalg.inv, 
+            np.diag(np.array(np.array(_parallel.call_and_bcast(np.linalg.inv, 
             low_order_evecs.H * low_order_evecs) * low_order_evecs.H *\
             correlation_mat_evals_sqrt * self.correlation_mat_evecs.H * 
             self.correlation_mat[:, 0]).squeeze(), ndmin=1))
-        self.mode_norms = N.diag(self.build_coeffs.H * 
+        self.mode_norms = np.diag(self.build_coeffs.H * 
             self.correlation_mat * self.build_coeffs).real
 
     def sanity_check(self, test_vec_handle):
@@ -414,7 +414,7 @@ class DMDHandles(object):
         self.correlation_mat_evals, self.correlation_mat_evecs = \
             _parallel.call_and_bcast(util.eigh, self.correlation_mat, 
             is_positive_definite=True)
-        correlation_mat_evals_sqrt = N.mat(N.diag(
+        correlation_mat_evals_sqrt = np.mat(np.diag(
             self.correlation_mat_evals**-0.5))
         
         # Compute low-order linear map for sequential snapshot set.  This takes

@@ -3,21 +3,19 @@
 
 import unittest
 import os
-import numpy as N
+import numpy as np
 from os.path import join
 from shutil import rmtree
 import copy
 
-import helper
-helper.add_to_path(join(join(os.path.dirname(os.path.abspath(__file__)), 
-    '..', 'src')))
-import parallel as parallel_mod
+
+import modred.parallel as parallel_mod
 _parallel = parallel_mod.parallel_default_instance
 
-from pod import *
-from vectorspace import *
-import vectors as V
-import util
+from modred.pod import *
+from modred.vectorspace import *
+import modred.vectors as V
+from modred import util
 
 
 
@@ -29,19 +27,19 @@ class TestPODArraysFunctions(unittest.TestCase):
         self.num_states = 30                     
 
     def test_compute_modes(self):
-        ws = N.identity(self.num_states)
+        ws = np.identity(self.num_states)
         tol = 1e-6
-        weights_full = N.mat(N.random.random((self.num_states, self.num_states)))
-        weights_full = N.triu(weights_full) + N.triu(weights_full, 1).H
+        weights_full = np.mat(np.random.random((self.num_states, self.num_states)))
+        weights_full = np.triu(weights_full) + np.triu(weights_full, 1).H
         weights_full = weights_full*weights_full
-        weights_diag = N.random.random(self.num_states)
+        weights_diag = np.random.random(self.num_states)
         weights_list = [None, weights_diag, weights_full]
-        vec_array = N.random.random((self.num_states, self.num_vecs))
+        vec_array = np.random.random((self.num_states, self.num_vecs))
         for weights in weights_list:
             IP = VectorSpaceMatrices(weights=weights).compute_inner_product_mat
             correlation_mat_true = IP(vec_array, vec_array)
             eigen_vals_true, eigen_vecs_true = util.eigh(correlation_mat_true)
-            build_coeff_mat_true = eigen_vecs_true * N.mat(N.diag(
+            build_coeff_mat_true = eigen_vecs_true * np.mat(np.diag(
                 eigen_vals_true**-0.5))
             modes_true = vec_array.dot(build_coeff_mat_true)
             
@@ -49,18 +47,18 @@ class TestPODArraysFunctions(unittest.TestCase):
                 compute_POD_matrices_snaps_method(vec_array, self.mode_indices, 
                 inner_product_weights=weights, return_all=True)
             
-            N.testing.assert_allclose(eigen_vals, eigen_vals_true, rtol=tol)
-            N.testing.assert_allclose(eigen_vecs, eigen_vecs_true)
-            N.testing.assert_allclose(correlation_mat, correlation_mat_true)
-            N.testing.assert_allclose(modes, modes_true[:,self.mode_indices])
+            np.testing.assert_allclose(eigen_vals, eigen_vals_true, rtol=tol)
+            np.testing.assert_allclose(eigen_vecs, eigen_vecs_true)
+            np.testing.assert_allclose(correlation_mat, correlation_mat_true)
+            np.testing.assert_allclose(modes, modes_true[:,self.mode_indices])
                         
             modes, eigen_vals, eigen_vecs = \
                 compute_POD_matrices_direct_method(vec_array, self.mode_indices, 
                 inner_product_weights=weights, return_all=True)
             
-            N.testing.assert_allclose(eigen_vals, eigen_vals_true)
-            N.testing.assert_allclose(N.abs(eigen_vecs), N.abs(eigen_vecs_true))
-            N.testing.assert_allclose(N.abs(modes), N.abs(modes_true[:,self.mode_indices]))
+            np.testing.assert_allclose(eigen_vals, eigen_vals_true)
+            np.testing.assert_allclose(np.abs(eigen_vecs), np.abs(eigen_vecs_true))
+            np.testing.assert_allclose(np.abs(modes), np.abs(modes_true[:,self.mode_indices]))
             
             
 
@@ -75,7 +73,7 @@ class TestPODHandles(unittest.TestCase):
         self.mode_indices = [2, 4, 3, 6]
         self.num_vecs = 10
         self.num_states = 30
-        self.vec_array = _parallel.call_and_bcast(N.random.random, 
+        self.vec_array = _parallel.call_and_bcast(np.random.random, 
             (self.num_states, self.num_vecs))
         self.correlation_mat_true = self.vec_array.conj().transpose().dot(
             self.vec_array)
@@ -83,15 +81,15 @@ class TestPODHandles(unittest.TestCase):
         self.eigen_vals_true, self.eigen_vecs_true = \
             _parallel.call_and_bcast(util.eigh, self.correlation_mat_true)
 
-        self.mode_array = N.dot(self.vec_array, N.dot(self.eigen_vecs_true,
-            N.diag(self.eigen_vals_true**-0.5)))
+        self.mode_array = np.dot(self.vec_array, np.dot(self.eigen_vecs_true,
+            np.diag(self.eigen_vals_true**-0.5)))
         self.vec_path = join(self.test_dir, 'vec_%03d.txt')
         self.vec_handles = [V.VecHandleArrayText(self.vec_path%i)
             for i in range(self.num_vecs)]
         for vec_index, handle in enumerate(self.vec_handles):
             handle.put(self.vec_array[:, vec_index])
         
-        self.my_POD = PODHandles(N.vdot, verbosity=0)
+        self.my_POD = PODHandles(np.vdot, verbosity=0)
         _parallel.barrier()
 
 
@@ -110,11 +108,11 @@ class TestPODHandles(unittest.TestCase):
         num_vecs = 10
         num_states = 30
         correlation_mat_true = _parallel.call_and_bcast(
-            N.random.random, ((num_vecs, num_vecs)))
+            np.random.random, ((num_vecs, num_vecs)))
         eigen_vals_true = _parallel.call_and_bcast(
-            N.random.random, num_vecs)
+            np.random.random, num_vecs)
         eigen_vecs_true = _parallel.call_and_bcast(
-            N.random.random, ((num_states, num_vecs)))
+            np.random.random, ((num_states, num_vecs)))
         my_POD = PODHandles(None, verbosity=0)
         my_POD.correlation_mat = correlation_mat_true
         my_POD.eigen_vals = eigen_vals_true
@@ -131,10 +129,10 @@ class TestPODHandles(unittest.TestCase):
         POD_load.get_decomp(eigen_vecs_path, eigen_vals_path)
         correlation_mat_loaded = util.load_array_text(correlation_mat_path)
 
-        N.testing.assert_allclose(correlation_mat_loaded, 
+        np.testing.assert_allclose(correlation_mat_loaded, 
             correlation_mat_true)
-        N.testing.assert_allclose(POD_load.eigen_vecs, eigen_vecs_true)
-        N.testing.assert_allclose(POD_load.eigen_vals, eigen_vals_true)
+        np.testing.assert_allclose(POD_load.eigen_vecs, eigen_vecs_true)
+        np.testing.assert_allclose(POD_load.eigen_vals, eigen_vals_true)
 
      
      
@@ -191,16 +189,16 @@ class TestPODHandles(unittest.TestCase):
         eigen_vecs_returned, eigen_vals_returned = \
             self.my_POD.compute_decomp(self.vec_handles)
                         
-        N.testing.assert_allclose(self.my_POD.correlation_mat, 
+        np.testing.assert_allclose(self.my_POD.correlation_mat, 
             self.correlation_mat_true, rtol=tol)
-        N.testing.assert_allclose(self.my_POD.eigen_vecs, 
+        np.testing.assert_allclose(self.my_POD.eigen_vecs, 
             self.eigen_vecs_true, rtol=tol)
-        N.testing.assert_allclose(self.my_POD.eigen_vals, 
+        np.testing.assert_allclose(self.my_POD.eigen_vals, 
             self.eigen_vals_true, rtol=tol)
           
-        N.testing.assert_allclose(eigen_vecs_returned, 
+        np.testing.assert_allclose(eigen_vecs_returned, 
             self.eigen_vecs_true, rtol=tol)
-        N.testing.assert_allclose(eigen_vals_returned, 
+        np.testing.assert_allclose(eigen_vals_returned, 
             self.eigen_vals_true, rtol=tol)
 
         
@@ -218,7 +216,7 @@ class TestPODHandles(unittest.TestCase):
                 
         for mode_index, mode_handle in enumerate(mode_handles):
             mode = mode_handle.get()
-            N.testing.assert_allclose(mode.squeeze(), 
+            np.testing.assert_allclose(mode.squeeze(), 
                 self.mode_array[:,self.mode_indices[mode_index]])
         
         for mode_index1, handle1 in enumerate(mode_handles):
