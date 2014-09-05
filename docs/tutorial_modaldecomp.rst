@@ -115,7 +115,7 @@ To run this example in parallel is easy.
 The only complication is the data must be saved by only one processor, and 
 moving these lines inside an ``if`` block solves this::
   
-  parallel = MR.parallel_default_instance
+  parallel = mr.parallel_default_instance
   if parallel.is_rank_zero():
       # Loops that call handles.put
       pass
@@ -128,7 +128,7 @@ To run this, where the above script is saved as ``main_bpod.py``, execute::
   mpiexec -n 8 python main_bpod.py
 
 It is rare to need to handle parallelization yourself, but if you do, 
-you should use the provided ``MR.parallel_default_instance`` instance
+you should use the provided ``mr.parallel_default_instance`` instance
 as above.
 Also provided are member functions ``parallel.get_rank()`` and 
 ``parallel.get_num_procs()`` (see :py:mod:`parallel` for details).
@@ -180,8 +180,8 @@ is first shifting then scaling: ``(vec - base_vec)*scale``.
 
 This examples uses quadrature weights, where each vector is weighted.
 It also shows how to load vectors in one format (pickle, via
-``MR.VecHandlePickle``) 
-and save modes in another (text, via ``MR.VecHandleArrayText``).
+``mr.VecHandlePickle``) 
+and save modes in another (text, via ``mr.VecHandleArrayText``).
 
 .. literalinclude:: ../examples/tutorial_ex5.py
 
@@ -217,7 +217,7 @@ Instances of ``CustomVector`` meet the requirements for a vector object: vector 
 ``__add__`` and scalar multiplication ``__mul__`` are defined, and 
 the objects are compatible with an inner product function such as
 ``inner_product(v1, v2)``.
-Note that ``CustomVector`` inherits from a base class ``MR.Vector``.
+Note that ``CustomVector`` inherits from a base class ``mr.Vector``.
 This is not required, but is recommended, as the base class provides
 some useful additional methods.
 The member function ``inner_product`` is useful, but not required.
@@ -226,7 +226,7 @@ a 3D arbitrary cartesian grid
 (:py:class:`vectors.InnerProductTrapz`).
 
 The class ``CustomVecHandle`` inherits from a base class
-``MR.VecHandle``, and defines methods ``_get`` and ``_put``, which
+``mr.VecHandle``, and defines methods ``_get`` and ``_put``, which
 load and save vectors from/to Pickle files.  Note the leading
 underscore: the functions ``get`` and ``put`` (without leading
 underscore) are defined in the ``VecHandle`` base class, and take care

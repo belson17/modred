@@ -65,7 +65,7 @@ and the mathematical sense that modes live in the same vector space as vectors.
 Base class
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 We provide a useful base class for all user-defined vectors to inherit from,
-``MR.Vector``.
+``mr.Vector``.
 It isn't required to inherit from it, but encouraged 
 because it defines a few useful special functions and has some
 error checking.
@@ -128,11 +128,11 @@ Base class
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 We provide a useful base class for all user-defined vector handles
 to inherit from.
-An example of a user-defined vector handle that inherits from ``MR.VecHandle``
+An example of a user-defined vector handle that inherits from ``mr.VecHandle``
 is provided in the tutorial.
 This isn't required, but strongly encouraged because it contains extra
 functionality.
-The ``MR.VecHandle`` constructor accepts two additional arguments, a 
+The ``mr.VecHandle`` constructor accepts two additional arguments, a 
 base vector handle ``base_handle`` and a scaling ``scale``. 
 This allows the ``get`` function to retrieve a vector, subtract a base vector
 (for example an equilibrium or mean), scale (for example by a quadrature weight),
@@ -147,8 +147,8 @@ One might be concerned that the base class is reloading the base vector
 at each call of ``get``, but this is avoidable. 
 As long as the ``base_handle`` you give each vector handle instance is equal
 (with respect to ``==``), then the base vector is loaded on the first 
-call of ``get`` and stored as ``MR.VecHandle.cached_base_vec``, which is used
-by all instances of classes derived from ``MR.VecHandle``. 
+call of ``get`` and stored as ``mr.VecHandle.cached_base_vec``, which is used
+by all instances of classes derived from ``mr.VecHandle``. 
 
 If you're curious, feel free to take a look at it in the :mod:`vectors` module
 (click on the [source] link on the right side).
