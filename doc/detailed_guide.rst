@@ -65,7 +65,7 @@ and the mathematical sense that modes live in the same vector space as vectors.
 Base class
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 We provide a useful base class for all user-defined vectors to inherit from,
-``MR.Vector``.
+``mr.Vector``.
 It isn't required to inherit from it, but encouraged 
 because it defines a few useful special functions and has some
 error checking.
@@ -128,11 +128,11 @@ Base class
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 We provide a useful base class for all user-defined vector handles
 to inherit from.
-An example of a user-defined vector handle that inherits from ``MR.VecHandle``
+An example of a user-defined vector handle that inherits from ``mr.VecHandle``
 is provided in the tutorial.
 This isn't required, but strongly encouraged because it contains extra
 functionality.
-The ``MR.VecHandle`` constructor accepts two additional arguments, a 
+The ``mr.VecHandle`` constructor accepts two additional arguments, a 
 base vector handle ``base_handle`` and a scaling ``scale``. 
 This allows the ``get`` function to retrieve a vector, subtract a base vector
 (for example an equilibrium or mean), scale (for example by a quadrature weight),
@@ -147,8 +147,8 @@ One might be concerned that the base class is reloading the base vector
 at each call of ``get``, but this is avoidable. 
 As long as the ``base_handle`` you give each vector handle instance is equal
 (with respect to ``==``), then the base vector is loaded on the first 
-call of ``get`` and stored as ``MR.VecHandle.cached_base_vec``, which is used
-by all instances of classes derived from ``MR.VecHandle``. 
+call of ``get`` and stored as ``mr.VecHandle.cached_base_vec``, which is used
+by all instances of classes derived from ``mr.VecHandle``. 
 
 If you're curious, feel free to take a look at it in the :mod:`vectors` module
 (click on the [source] link on the right side).
@@ -192,7 +192,7 @@ Example
 An example of a custom class for vectors and vector handles is shown
 below:
 
-.. literalinclude:: ../examples/custom_vector.py
+.. literalinclude:: ../modred/examples/custom_vector.py
 
 For an example using this class, see the tutorial in :ref:`sec_modaldecomp`.
 
@@ -203,15 +203,15 @@ Summary and next steps
 Summarizing, to use modred on arbitrary data, define
 
 1. A vector object that has:
-  1. Vector addition ("+", ``__add__``)
-  2. Scalar multiplication ("*", ``__mul__``)
-  3. Optional: inherits from :py:class:`vectors.Vector`.
+   1. Vector addition ("+", ``__add__``),
+   2. Scalar multiplication ("*", ``__mul__``),
+   3. Optional: inherits from :py:class:`vectors.Vector`.
 2. Function ``inner_product(vec1, vec2)``.
 3. A vector handle class that has:
-  1. Member function ``get()`` which returns a vector handle.
-  2. Member function ``put(vec)`` where ``vec`` is a vector handle.
-  3. Optionally inherits from :py:class:`vectors.VecHandle`. If so, 
-     member function names in 1 and 2 change to ``_get`` and ``_put``.
+   1. Member function ``get()`` which returns a vector handle.
+   2. Member function ``put(vec)`` where ``vec`` is a vector handle.
+   3. Optionally inherits from :py:class:`vectors.VecHandle`. If so, 
+   member function names in 1 and 2 change to ``_get`` and ``_put``.
 
 Then you can get started using any of the modal decomposition classes!
 Before writing your own classes, check out :py:mod:`vectors`, which

@@ -2,6 +2,30 @@
 Release notes
 =============
 
+-----------
+modred 1.1a
+-----------
+Done by Pierre Augier (pa371 @ damtp.cam.ac.uk). The 'a' means
+alpha. It is a testing version.
+
+**New features and improvements**
+
+* None
+
+**Bug fixes**
+
+* A bug in the function ``modred.util.impulse``.
+
+**Interface changes**
+
+* None
+
+**Internal changes**
+
+* The packaging has been improved.
+
+* Ported to python >= 3.3 using `python-future
+  <http://python-future.org/>`_.
 
 ------------
 modred 1.0.2

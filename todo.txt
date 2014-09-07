@@ -1,40 +1,42 @@
 #### Important ####
 
-Clean up docstrings so it's all on the same level. 
-Either include math in docstrings or don't.
-Either use matrix or vector space notation, maybe depending on arrays or
-handles implementations.
-Maybe include an "algorithms" section like matlab.
+Clean up docstrings so it's all on the same level.  Either include
+math in docstrings or don't.  Either use matrix or vector space
+notation, maybe depending on arrays or handles implementations.  Maybe
+include an "algorithms" section like matlab.
 
 Allow for larger col chunks if extra memory.
 
-Remove requirements for having arguments be lists. This is not pythonic.
+Remove requirements for having arguments be lists. This is not
+pythonic.
 
-Generalize the parallelization so that users can have parallel Vector classes.
-That is, modred would work in units of larger groups of processors/nodes, 
-MPI communicators, and the lower level user-implemented parts would operate
-within one of these communicators. The user-defined Vector class could then
-have its memory distributed amongst multiple nodes within one communicator.
-This would completely eliminate any size restrictions on the data and make
-modred amazingly useful for huge datasets. It wouldn't be that hard either,
-one needs to generalize the node/processor current paradigm to communicators, and 
-mpi4py already has the hard stuff implemented. 
+Generalize the parallelization so that users can have parallel Vector
+classes.  That is, modred would work in units of larger groups of
+processors/nodes, MPI communicators, and the lower level
+user-implemented parts would operate within one of these
+communicators. The user-defined Vector class could then have its
+memory distributed amongst multiple nodes within one communicator.
+This would completely eliminate any size restrictions on the data and
+make modred amazingly useful for huge datasets. It wouldn't be that
+hard either, one needs to generalize the node/processor current
+paradigm to communicators, and mpi4py already has the hard stuff
+implemented.
 
 #### Less important ####
 
-Make the formatting at line breaks better, do not break at '.'s. Talk to Clancy
-about possible solutions to our many line breaks.
-Find a better, more natural, way to deal with line continuation/breaks. As it is,
-the code is chopped to bits and hard to read.
-It's completely imposed and unnatural currently.
+Make the formatting at line breaks better, do not break at '.'s. Talk
+to Clancy about possible solutions to our many line breaks.  Find a
+better, more natural, way to deal with line continuation/breaks. As it
+is, the code is chopped to bits and hard to read.  It's completely
+imposed and unnatural currently.
 
-Make a style guide for future developers. 
+Make a style guide for future developers.
 
-Automatically detect the max_vecs_per_node. 
-Or in the future, max_vecs_per_communicator.
-This would require some fancier
-things, like determining the available RAM and the size of a vector object. It
-might not be possible since some memory is used by the vector objects when
-doing inner products, etc. We could leave a safety factor though, and maybe
-leave space for 1-2 vecs/modes for scratch space for the user's functions. 
+Automatically detect the max_vecs_per_node.  Or in the future,
+max_vecs_per_communicator.  This would require some fancier things,
+like determining the available RAM and the size of a vector object. It
+might not be possible since some memory is used by the vector objects
+when doing inner products, etc. We could leave a safety factor though,
+and maybe leave space for 1-2 vecs/modes for scratch space for the
+user's functions.
 

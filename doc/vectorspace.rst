@@ -1,6 +1,6 @@
 VectorSpace 
 ********************* 
 
-.. automodule:: vectorspace
+.. automodule:: modred.vectorspace
    :members:
 

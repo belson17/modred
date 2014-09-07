@@ -1,6 +1,6 @@
 OKID 
 ***** 
 
-.. automodule:: okid
+.. automodule:: modred.okid
    :members:
 

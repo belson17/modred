@@ -1,6 +1,6 @@
 DMD 
 ********** 
 
-.. automodule:: dmd
+.. automodule:: modred.dmd
    :members:
 

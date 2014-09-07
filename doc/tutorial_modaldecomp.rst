@@ -23,7 +23,7 @@ Example 1 -- All data in a matrix
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A simple way to find POD modes is:
 
-.. literalinclude:: ../examples/tutorial_ex1.py
+.. literalinclude:: ../modred/examples/tutorial_ex1.py
 
 Let's walk through the important steps.
 First, we create an array of random data.
@@ -49,7 +49,7 @@ inner product weights.
 The weights also can, more generally, be a matrix
 The vectors are again represented as columns of a matrix.
 
-.. literalinclude:: ../examples/tutorial_ex2.py
+.. literalinclude:: ../modred/examples/tutorial_ex2.py
 
 This function takes the SVD of :math:`W^{1/2} X`, 
 and we refer to this as the "direct method" to distinguish it from the
@@ -71,7 +71,7 @@ if the data is too large to all fit in memory simultaneously.
 The following example computes direct and adjoint modes using Balanced
 POD (see Chapter 5 of [HLBR]_):
 
-.. literalinclude:: ../examples/tutorial_ex3.py
+.. literalinclude:: ../modred/examples/tutorial_ex3.py
 
 First, we create lists ``direct_snapshots`` and
 ``adjoint_snapshots``.
@@ -115,7 +115,7 @@ To run this example in parallel is easy.
 The only complication is the data must be saved by only one processor, and 
 moving these lines inside an ``if`` block solves this::
   
-  parallel = MR.parallel_default_instance
+  parallel = mr.parallel_default_instance
   if parallel.is_rank_zero():
       # Loops that call handles.put
       pass
@@ -128,7 +128,7 @@ To run this, where the above script is saved as ``main_bpod.py``, execute::
   mpiexec -n 8 python main_bpod.py
 
 It is rare to need to handle parallelization yourself, but if you do, 
-you should use the provided ``MR.parallel_default_instance`` instance
+you should use the provided ``mr.parallel_default_instance`` instance
 as above.
 Also provided are member functions ``parallel.get_rank()`` and 
 ``parallel.get_num_procs()`` (see :py:mod:`parallel` for details).
@@ -150,7 +150,7 @@ The object ``weighted_IP`` is callable (it has a special
 method ``__call__``) so it acts as the inner product the usual
 way: ``value = weighted_IP(vec1, vec2)``.
 
-.. literalinclude:: ../examples/tutorial_ex4.py
+.. literalinclude:: ../modred/examples/tutorial_ex4.py
 
 Also shown in this example is the useful ``put_decomp``, which, by default 
 saves the arrays associated with the decomposition to text files.
@@ -180,10 +180,10 @@ is first shifting then scaling: ``(vec - base_vec)*scale``.
 
 This examples uses quadrature weights, where each vector is weighted.
 It also shows how to load vectors in one format (pickle, via
-``MR.VecHandlePickle``) 
-and save modes in another (text, via ``MR.VecHandleArrayText``).
+``mr.VecHandlePickle``) 
+and save modes in another (text, via ``mr.VecHandleArrayText``).
 
-.. literalinclude:: ../examples/tutorial_ex5.py
+.. literalinclude:: ../modred/examples/tutorial_ex5.py
 
 At the end of this example, we use an instance of the low-level 
 class 
@@ -211,13 +211,13 @@ There are two important new features of this example: a custom vector class
 ``CustomVecHandle``.  These definitions may be collected together in a
 file, for instance called ``custom_vector.py``:
 
-.. literalinclude:: ../examples/custom_vector.py
+.. literalinclude:: ../modred/examples/custom_vector.py
 
 Instances of ``CustomVector`` meet the requirements for a vector object: vector addition
 ``__add__`` and scalar multiplication ``__mul__`` are defined, and 
 the objects are compatible with an inner product function such as
 ``inner_product(v1, v2)``.
-Note that ``CustomVector`` inherits from a base class ``MR.Vector``.
+Note that ``CustomVector`` inherits from a base class ``mr.Vector``.
 This is not required, but is recommended, as the base class provides
 some useful additional methods.
 The member function ``inner_product`` is useful, but not required.
@@ -226,7 +226,7 @@ a 3D arbitrary cartesian grid
 (:py:class:`vectors.InnerProductTrapz`).
 
 The class ``CustomVecHandle`` inherits from a base class
-``MR.VecHandle``, and defines methods ``_get`` and ``_put``, which
+``mr.VecHandle``, and defines methods ``_get`` and ``_put``, which
 load and save vectors from/to Pickle files.  Note the leading
 underscore: the functions ``get`` and ``put`` (without leading
 underscore) are defined in the ``VecHandle`` base class, and take care
@@ -238,7 +238,7 @@ is covered in :ref:`sec_details`.
 
 Here's an example using these classes:
 
-.. literalinclude:: ../examples/tutorial_ex6.py
+.. literalinclude:: ../modred/examples/tutorial_ex6.py
 
 This example is similar to previous ones, but some aspects are worth
 pointing out.

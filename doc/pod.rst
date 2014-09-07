@@ -1,5 +1,5 @@
 POD 
 ********** 
 
-.. automodule:: pod
+.. automodule:: modred.pod
    :members:

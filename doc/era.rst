@@ -1,6 +1,6 @@
 ERA 
 **** 
 
-.. automodule:: era
+.. automodule:: modred.era
    :members:
 
