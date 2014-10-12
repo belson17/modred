@@ -27,7 +27,7 @@ def flatten_list(my_list):
     """Flatten a list of lists into a single list."""
     return [num for elem in my_list for num in elem]
     
-def save_array_text(array, file_name, delimiter=' '):
+def save_array_text(array, file_name, delimiter=None):
     """Saves a 1D or 2D array or matrix to a text file.
     
     Args:
@@ -36,7 +36,7 @@ def save_array_text(array, file_name, delimiter=' '):
         ``file_name``: Path to save to, string.
         
     Kwargs:   
-        ``delimeter``: Delimeter in file, default is a whitespace.
+        ``delimeter``: Delimeter in file, default is same as ``numpy.savetxt``.
     
     Format of saved files is::
       
@@ -67,13 +67,15 @@ def save_array_text(array, file_name, delimiter=' '):
     np.savetxt(file_name, array_save.view(float), delimiter=delimiter)
     
     
-def load_array_text(file_name, delimiter=' ', is_complex=False):
+def load_array_text(file_name, delimiter=None, is_complex=False):
     """Loads a text file, returns an array.
     
     Args:
         ``file_name``: Name of file to load.
     
     Kwargs:
+        ``delimiter``: Delimiter in file. Default is same as ``numpy.loadtxt``.
+
         ``is_complex``: Bool, if the data saved is complex then use ``True``.
     
     Returns:
