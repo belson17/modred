@@ -193,6 +193,60 @@ def eigh(mat, tol=1e-12, is_positive_definite=False):
     return evals, evecs
 
 
+def eig_biorthog(mat, scale_choice='left'):
+    """Wrapper for ``numpy.linalg.eig`` that returns both left and right
+    eigenvectors. Eigenvalues and eigenvectors are sorted so that the left and
+    right eigenvector matrices are orthogonal.
+
+    Args:
+        ``mat``: To take eigen decomposition of.
+       
+    Kwargs:
+        ``scale_choice'': Determines whether 'left' (default) or 'right'
+        eigenvectors will be scaled to yield a biorthogonal set.  The other 
+        eigenvectors will be left unscaled, leaving them with unit norms.
+
+    Returns:
+        ``evals``: Eigenvalues in a 1D array.
+        
+        ``R_evecs``: Right eigenvectors, columns of matrix/array, sorted by 
+        evals.
+
+        ``L_evecs``: Left eigenvectors, columns of matrix/array, sorted by 
+        evals.
+    """
+    # Compute eigendecompositions
+    R_evals, R_evecs= np.linalg.eig(mat)
+    L_evals_conj, L_evecs= np.linalg.eig(mat.conj().T)
+    L_evals = L_evals_conj.conj()
+
+    # Sort the evals
+    R_sort_indices = np.argsort(R_evals)
+    L_sort_indices = np.argsort(L_evals)
+    R_evals = R_evals[R_sort_indices]
+    L_evals = L_evals[L_sort_indices]
+    L_evals_conj = L_evals.conj()
+
+    # Check that evals are the same
+    if not np.allclose(L_evals, R_evals, rtol=1e-12, atol=1e-15):
+        raise ValueError('Left and right eigenvalues do not match.')
+
+    # Sort the evecs
+    R_evecs = R_evecs[:, R_sort_indices]
+    L_evecs = L_evecs[:, L_sort_indices]
+
+    # Scale the evecs to get a biorthogonal set
+    scale_factors = np.diag(np.dot(L_evecs.conj().T, R_evecs)) 
+    if scale_choice.lower() == 'left':
+        L_evecs /= scale_factors.conj()
+    elif scale_choice.lower() == 'right':
+        R_evecs /= scale_factors
+    else:
+        raise ValueError('Invalid scale choice.  Must be LEFT or RIGHT.')
+
+    return R_evals, R_evecs, L_evecs 
+
+
 def get_file_list(directory, file_extension=None):
     """Returns list of files in ``directory`` with ``file_extension``."""
     files = os.listdir(directory)
