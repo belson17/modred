@@ -151,7 +151,7 @@ class TestBPODHandles(unittest.TestCase):
             self.direct_vec_array)
     
         self.L_sing_vecs_true, self.sing_vals_true, self.R_sing_vecs_true = \
-            _parallel.call_and_bcast(util.svd, self.Hankel_mat_true, tol=1e-10)
+            _parallel.call_and_bcast(util.svd, self.Hankel_mat_true, atol=1e-10)
         
         self.direct_mode_array = self.direct_vec_array * \
             np.mat(self.R_sing_vecs_true) * \
