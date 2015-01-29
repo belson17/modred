@@ -9,6 +9,7 @@ import numpy as np
 
 class UndefinedError(Exception): pass
 
+
 def make_mat(array):
     """Makes 1D or 2D array into matrix. 1D arrays become mats with one col."""
     if array.ndim == 1:
@@ -63,8 +64,10 @@ def save_array_text(array, file_name, delimiter=None):
         array_save = array_save.reshape((-1, 1))
     elif array_save.ndim > 2:
         raise RuntimeError('Cannot save an array with >2 dimensions')
-
-    np.savetxt(file_name, array_save.view(float), delimiter=delimiter)
+    if delimiter is not None:
+        np.savetxt(file_name, array_save.view(float), delimiter=delimiter)
+    else:
+        np.savetxt(file_name, array_save.view(float))
     
     
 def load_array_text(file_name, delimiter=None, is_complex=False):
@@ -122,14 +125,17 @@ class InnerProductBlock(object):
         return mat
         
     
-def svd(mat, tol=1e-13):
+def svd(mat, atol=1e-13, rtol=None):
     """Wrapper for numpy's SVD, U E V^* = mat. 
     
     Args:
         ``mat``: Array or matrix to take SVD of.
     
     Kwargs:
-        ``tol``: Level at which singular values are truncated.
+        ``atol``: Level at which singular values are truncated.
+
+        ``rtol``: Maximum relative difference between largest and smallest singular values.
+        Smaller ones are truncated.
     
     Returns:
         ``U``: Matrix of left singular vectors.
@@ -138,15 +144,20 @@ def svd(mat, tol=1e-13):
         
         ``V``: Matrix of right singular vectors.
     
-    Truncates ``U``, ``E``, and ``V`` such that there are no singular values
-    smaller than ``tol``.
+    Truncates ``U``, ``E``, and ``V`` such that the singular values
+    obey both ``atol`` and ``rtol``.
     """
     U, E, V_comp_conj = np.linalg.svd(np.mat(mat), full_matrices=0)
     V = np.mat(V_comp_conj).H
     U = np.mat(U)
     
     # Only return sing vals above the tolerance
-    num_nonzeros = (abs(E) > tol).sum()
+    num_nonzeros_atol = (abs(E) > atol).sum()
+    if rtol is not None:
+        num_nonzeros_rtol = (abs(E[:num_nonzeros_atol])/abs(E[0]) > rtol).sum()
+        num_nonzeros = min(num_nonzeros_atol, num_nonzeros_rtol)
+    else:
+        num_nonzeros = num_nonzeros_atol
     if num_nonzeros > 0:
         U = U[:, :num_nonzeros]
         V = V[:, :num_nonzeros]
@@ -489,7 +500,7 @@ def impulse(A, B, C, num_time_steps=None):
 
 
 
-def load_signals(signal_path, delimiter=' '):
+def load_signals(signal_path, delimiter=None):
     """Loads signals from text files with columns [t signal1 signal2 ...].     
     
     Args:
@@ -521,7 +532,7 @@ def load_signals(signal_path, delimiter=' '):
 
 
 
-def load_multiple_signals(signal_paths, delimiter=' '):
+def load_multiple_signals(signal_paths, delimiter=None):
     """Loads multiple signal files w/columns [t channel1 channel2 ...].
     
     Args:
