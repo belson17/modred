@@ -127,6 +127,46 @@ class TestUtil(unittest.TestCase):
                             self.assertTrue(self._is_unitary(L_sing_vecs))
                             self.assertTrue(self._is_unitary(R_sing_vecs))
     
+
+    @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
+    def test_eig_biorthog(self):
+        rtol = 1e-10
+        atol = 1e-14
+        num_rows = 100 
+        mat = np.random.random((num_rows, num_rows))
+        for scale_choice in ['left', 'right']:
+            evals, R_evecs, L_evecs = util.eig_biorthog(
+                mat, scale_choice=scale_choice)
+       
+            # Check eigenvector/eigenvalue relationship
+            np.testing.assert_allclose(
+                np.dot(mat, R_evecs), 
+                np.dot(R_evecs, np.diag(evals)),
+                rtol=rtol, atol=atol)
+            np.testing.assert_allclose(
+                np.dot(L_evecs.conj().T, mat), 
+                np.dot(np.diag(evals), L_evecs.conj().T),
+                rtol=rtol, atol=atol)
+
+            # Check biorthogonality (use different atol because comparing some
+            # values to a nominal value of 0)
+            ip_mat = np.dot(L_evecs.conj().T, R_evecs)
+            np.testing.assert_allclose(ip_mat, np.eye(num_rows),
+                rtol=rtol, atol=1e-12)
+
+            # Check for unit norms
+            if scale_choice == 'left':
+                unit_evecs = R_evecs
+            elif scale_choice == 'right':
+                unit_evecs = L_evecs
+            np.testing.assert_allclose(
+                np.sqrt(np.sum(unit_evecs * unit_evecs.conj(), axis=0)), 
+                np.ones(evals.size))
+
+        # Check that error is raised for invalid scale choice
+        self.assertRaises(
+            ValueError, util.eig_biorthog, mat, **{'scale_choice':'invalid'})
+
         
     @unittest.skipIf(_parallel.is_distributed(), 'Only load data in serial')
     def test_load_impulse_outputs(self):
