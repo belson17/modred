@@ -43,7 +43,7 @@ from .util import (
     save_array_text, impulse, solve_Lyapunov_iterative,
     load_array_text, balanced_truncation, get_data_members,
     flatten_list, make_mat, load_multiple_signals,
-    make_list, UndefinedError, InnerProductBlock,
+    make_iterable, UndefinedError, InnerProductBlock,
     svd, lsim, load_signals, eigh, drss, Hankel, rss, sum_lists,
     get_file_list, solve_Lyapunov_direct, smart_eq, sum_arrays
 )

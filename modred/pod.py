@@ -292,7 +292,7 @@ class PODHandles(object):
             when calling ``compute_decomp``.
         """
         if vec_handles is not None:
-            self.vec_handles = util.make_list(vec_handles)
+            self.vec_handles = util.make_iterable(vec_handles)
         build_coeff_mat = self._compute_build_coeff_mat()
         self.vec_space.lin_combine(modes, self.vec_handles, build_coeff_mat, 
             coeff_mat_col_indices=mode_indices)

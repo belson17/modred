@@ -261,7 +261,7 @@ class BPODHandles(object):
           Optional if already given when calling :py:meth:`compute_decomp`. 
         """
         if direct_vec_handles is not None:
-            self.direct_vec_handles = util.make_list(direct_vec_handles)
+            self.direct_vec_handles = util.make_iterable(direct_vec_handles)
         if self.direct_vec_handles is None:
             raise util.UndefinedError('direct_vec_handles undefined')
             
@@ -289,7 +289,7 @@ class BPODHandles(object):
           Optional if already given when calling :py:meth:`compute_decomp`.
         """
         if adjoint_vec_handles is not None:
-            self.adjoint_vec_handles = util.make_list(adjoint_vec_handles)
+            self.adjoint_vec_handles = util.make_iterable(adjoint_vec_handles)
         if self.adjoint_vec_handles is None:
             raise util.UndefinedError('adjoint_vec_handles undefined')
         

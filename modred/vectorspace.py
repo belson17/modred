@@ -249,8 +249,8 @@ class VectorSpaceHandles(object):
         appears in the scaling in the quadratic term).
         """
         self._check_inner_product()
-        row_vec_handles = util.make_list(row_vec_handles)
-        col_vec_handles = util.make_list(col_vec_handles)
+        row_vec_handles = util.make_iterable(row_vec_handles)
+        col_vec_handles = util.make_iterable(col_vec_handles)
             
         num_cols = len(col_vec_handles)
         num_rows = len(row_vec_handles)
@@ -461,7 +461,7 @@ class VectorSpaceHandles(object):
         :py:meth:`compute_inner_product_mat`.
         """
         self._check_inner_product()
-        vec_handles = util.make_list(vec_handles)
+        vec_handles = util.make_iterable(vec_handles)
  
         num_vecs = len(vec_handles)        
         
@@ -787,8 +787,8 @@ class VectorSpaceHandles(object):
         :math:`n_p` is number of processors, :math:`max` = 
         ``max_vecs_per_node``.
         """
-        sum_vec_handles = util.make_list(sum_vec_handles)
-        basis_vec_handles = util.make_list(basis_vec_handles)
+        sum_vec_handles = util.make_iterable(sum_vec_handles)
+        basis_vec_handles = util.make_iterable(basis_vec_handles)
         num_bases = len(basis_vec_handles)
         num_sums = len(sum_vec_handles)
         if coeff_mat_col_indices is not None:

@@ -16,13 +16,23 @@ def make_mat(array):
         array = array.reshape((array.shape[0], 1))
     return np.mat(array)
 
+def make_iterable(arg):
+    """Checks arg is iterable. If not, makes it a 1-element list. If iterable, retuns arg."""
+    try:
+        iterator = iter(arg)
+        return arg
+    except TypeError:
+        return [arg]
 
+
+"""
 def make_list(arg):
-    """Returns the argument as a list. If already a list, ``arg`` is returned.
-    """
+    #Returns the argument as a list. If already a list, ``arg`` is returned.
+    #
     if not isinstance(arg, list):
         arg = [arg]
     return arg
+"""
     
 def flatten_list(my_list):
     """Flatten a list of lists into a single list."""
