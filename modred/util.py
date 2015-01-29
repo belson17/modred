@@ -63,8 +63,10 @@ def save_array_text(array, file_name, delimiter=None):
         array_save = array_save.reshape((-1, 1))
     elif array_save.ndim > 2:
         raise RuntimeError('Cannot save an array with >2 dimensions')
-
-    np.savetxt(file_name, array_save.view(float), delimiter=delimiter)
+    if delimiter is None:
+        np.savetxt(file_name, array_save.view(float))
+    else:
+        np.savetxt(file_name, array_save.view(float), delimiter=delimiter)
     
     
 def load_array_text(file_name, delimiter=None, is_complex=False):
