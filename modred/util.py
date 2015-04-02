@@ -173,30 +173,31 @@ def eigh(mat, tol=1e-12, is_positive_definite=False):
             returned.
     
     Returns:
-        ``evals``: Eigenvalues in a 1D array, sorted in descending order.
+        ``eigvals``: Eigenvalues in a 1D array, sorted in descending order.
         
-        ``evecs``: Eigenvectors, columns of matrix/array, sorted by evals.
+        ``eigvecs``: Eigenvectors, columns of matrix/array, sorted by eigvals.
     """
-    evals, evecs = np.linalg.eigh(mat)
+    eigvals, eigvecs = np.linalg.eigh(mat)
 
-    # Sort the vecs and evals by eval magnitude
-    sort_indices = np.argsort(np.abs(evals))[::-1]
-    evals = evals[sort_indices]
-    evecs = evecs[:, sort_indices]
+    # Sort the vecs and eigvals by eigval magnitude
+    sort_indices = np.argsort(np.abs(eigvals))[::-1]
+    eigvals = eigvals[sort_indices]
+    eigvecs = eigvecs[:, sort_indices]
 
     # Filter small and negative eigenvalues, if necessary
     if tol is not None:
         # Adjust tolerance for pos def case if there are
         # negative eigenvalues and the most negative one has magnitude greater
         # than the tolerance.
-        if is_positive_definite and evals.min() < 0 and abs(evals.min()) > tol:
-            tol = abs(evals.min())
-        num_nonzeros = (abs(evals) > tol).sum()
-        evals = evals[:num_nonzeros]
-        evecs = evecs[:,:num_nonzeros]    
-    return evals, evecs
+        if is_positive_definite and eigvals.min() < 0 and abs(eigvals.min()) > tol:
+            tol = abs(eigvals.min())
+        num_nonzeros = (abs(eigvals) > tol).sum()
+        eigvals = eigvals[:num_nonzeros]
+        eigvecs = eigvecs[:,:num_nonzeros]    
+    return eigvals, eigvecs
 
 
+# TODO: Allow user to pass in tolerances (Brandt)
 def eig_biorthog(mat, scale_choice='left'):
     """Wrapper for ``numpy.linalg.eig`` that returns both left and right
     eigenvectors. Eigenvalues and eigenvectors are sorted so that the left and
@@ -211,44 +212,44 @@ def eig_biorthog(mat, scale_choice='left'):
         eigenvectors will be left unscaled, leaving them with unit norms.
 
     Returns:
-        ``evals``: Eigenvalues in a 1D array.
+        ``eigvals``: Eigenvalues in a 1D array.
         
-        ``R_evecs``: Right eigenvectors, columns of matrix/array, sorted by 
-        evals.
+        ``R_eigvecs``: Right eigenvectors, columns of matrix/array, sorted by 
+        eigvals.
 
-        ``L_evecs``: Left eigenvectors, columns of matrix/array, sorted by 
-        evals.
+        ``L_eigvecs``: Left eigenvectors, columns of matrix/array, sorted by 
+        eigvals.
     """
     # Compute eigendecompositions
-    R_evals, R_evecs= np.linalg.eig(mat)
-    L_evals_conj, L_evecs= np.linalg.eig(mat.conj().T)
-    L_evals = L_evals_conj.conj()
+    R_eigvals, R_eigvecs = np.linalg.eig(mat)
+    L_eigvals_conj, L_eigvecs = np.linalg.eig(mat.conj().T)
+    L_eigvals = L_eigvals_conj.conj()
 
-    # Sort the evals
-    R_sort_indices = np.argsort(R_evals)
-    L_sort_indices = np.argsort(L_evals)
-    R_evals = R_evals[R_sort_indices]
-    L_evals = L_evals[L_sort_indices]
-    L_evals_conj = L_evals.conj()
+    # Sort the eigvals
+    R_sort_indices = np.argsort(R_eigvals)
+    L_sort_indices = np.argsort(L_eigvals)
+    R_eigvals = R_eigvals[R_sort_indices]
+    L_eigvals = L_eigvals[L_sort_indices]
+    L_eigvals_conj = L_eigvals.conj()
 
-    # Check that evals are the same
-    if not np.allclose(L_evals, R_evals, rtol=1e-12, atol=1e-15):
+    # Check that eigvals are the same
+    if not np.allclose(L_eigvals, R_eigvals, rtol=1e-12, atol=1e-15):
         raise ValueError('Left and right eigenvalues do not match.')
 
-    # Sort the evecs
-    R_evecs = R_evecs[:, R_sort_indices]
-    L_evecs = L_evecs[:, L_sort_indices]
+    # Sort the eigvecs
+    R_eigvecs = R_eigvecs[:, R_sort_indices]
+    L_eigvecs = L_eigvecs[:, L_sort_indices]
 
-    # Scale the evecs to get a biorthogonal set
-    scale_factors = np.diag(np.dot(L_evecs.conj().T, R_evecs)) 
+    # Scale the eigvecs to get a biorthogonal set
+    scale_factors = np.diag(np.dot(L_eigvecs.conj().T, R_eigvecs)) 
     if scale_choice.lower() == 'left':
-        L_evecs /= scale_factors.conj()
+        L_eigvecs /= scale_factors.conj()
     elif scale_choice.lower() == 'right':
-        R_evecs /= scale_factors
+        R_eigvecs /= scale_factors
     else:
         raise ValueError('Invalid scale choice.  Must be LEFT or RIGHT.')
 
-    return R_evals, R_evecs, L_evecs 
+    return R_eigvals, R_eigvecs, L_eigvecs 
 
 
 def get_file_list(directory, file_extension=None):

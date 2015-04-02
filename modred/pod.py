@@ -27,11 +27,11 @@ def compute_POD_matrices_snaps_method(vecs, mode_indices,
     Returns:
         ``modes``: Matrix with requested modes as columns.
         
-        ``eigen_vals``: 1D array of eigenvalues.
+        ``eigvals``: 1D array of eigenvalues.
         
         If ``return_all`` is true, also returns:
         
-        ``eigen_vecs``: Matrix of eigenvectors of correlation matrix.
+        ``eigvecs``: Matrix of eigenvectors of correlation matrix.
         
         ``correlation_mat``: Matrix of inner products of all vecs in ``vecs``.
                 
@@ -58,16 +58,16 @@ def compute_POD_matrices_snaps_method(vecs, mode_indices,
     vecs = util.make_mat(vecs)
     correlation_mat = \
         vec_space.compute_symmetric_inner_product_mat(vecs)
-    eigen_vals, eigen_vecs = util.eigh(correlation_mat, 
+    eigvals, eigvecs = util.eigh(correlation_mat, 
         is_positive_definite=True)
     # compute modes
-    build_coeff_mat = eigen_vecs * np.mat(np.diag(eigen_vals**-0.5))
+    build_coeff_mat = eigvecs * np.mat(np.diag(eigvals**-0.5))
     modes = vec_space.lin_combine(vecs,
         build_coeff_mat, coeff_mat_col_indices=mode_indices)
     if return_all:
-        return modes, eigen_vals, eigen_vecs, correlation_mat
+        return modes, eigvals, eigvecs, correlation_mat
     else:
-        return modes, eigen_vals
+        return modes, eigvals
 
 def compute_POD_matrices_direct_method(vecs, mode_indices,
     inner_product_weights=None, return_all=False):
@@ -88,13 +88,13 @@ def compute_POD_matrices_direct_method(vecs, mode_indices,
     Returns:
         ``modes``: Matrix with requested modes as columns.
         
-        ``eigen_vals``: 1D array of eigenvalues. 
+        ``eigvals``: 1D array of eigenvalues. 
             These are the eigenvalues of the correlation matrix (:math:`X^* W X`), 
             and are also the squares of the singular values of :math:`X`. 
         
         If ``return_all`` is true, also returns:
                
-        ``eigen_vecs``: Matrix of eigenvectors.
+        ``eigvecs``: Matrix of eigenvectors.
             These are the eigenvectors of correlation matrix (:math:`X^* W X`),
             and are also the right singular vectors of :math:`X`.
                 
@@ -104,8 +104,8 @@ def compute_POD_matrices_direct_method(vecs, mode_indices,
     2. Modes are :math:`W^{-1/2} U`
     
     where :math:`X`, :math:`W`, :math:`E`, :math:`V`, correspond to 
-    ``vecs``, ``inner_product_weights``, ``eigen_vals**0.5``, 
-    and ``eigen_vecs``, respectively.
+    ``vecs``, ``inner_product_weights``, ``eigvals**0.5``, 
+    and ``eigvecs``, respectively.
        
     Since this method does not square the vectors and singular values,
     it is more accurate than taking the eigen decomposition of :math:`X^* W X`,
@@ -117,13 +117,13 @@ def compute_POD_matrices_direct_method(vecs, mode_indices,
         raise RuntimeError('Cannot run in parallel.')
     vecs = util.make_mat(vecs)
     if inner_product_weights is None:
-        modes, sing_vals, eigen_vecs = util.svd(vecs)
+        modes, sing_vals, eigvecs = util.svd(vecs)
         modes = modes[:, mode_indices]
     
     elif inner_product_weights.ndim == 1:
         sqrt_weights = inner_product_weights**0.5
         vecs_weighted = np.mat(np.diag(sqrt_weights)) * vecs
-        modes_weighted, sing_vals, eigen_vecs = util.svd(vecs_weighted)
+        modes_weighted, sing_vals, eigvecs = util.svd(vecs_weighted)
         modes = np.mat(np.diag(sqrt_weights**-1.0))*modes_weighted[:,mode_indices]
             
     elif inner_product_weights.ndim == 2:
@@ -131,17 +131,17 @@ def compute_POD_matrices_direct_method(vecs, mode_indices,
             print('Warning: Cholesky decomposition could be time consuming.')
         sqrt_weights = np.linalg.cholesky(inner_product_weights).H
         vecs_weighted = sqrt_weights * vecs
-        modes_weighted, sing_vals, eigen_vecs = util.svd(vecs_weighted)
+        modes_weighted, sing_vals, eigvecs = util.svd(vecs_weighted)
         modes = np.linalg.solve(sqrt_weights, modes_weighted[:, mode_indices])
         #inv_sqrt_weights = np.linalg.inv(sqrt_weights)
         #modes = inv_sqrt_weights.dot(modes_weighted[:, mode_indices])
     
-    eigen_vals = sing_vals**2
+    eigvals = sing_vals**2
     
     if return_all:
-        return modes, eigen_vals, eigen_vecs
+        return modes, eigvals, eigvecs
     else:
-        return modes, eigen_vals
+        return modes, eigvals
     
 
 
@@ -181,8 +181,8 @@ class PODHandles(object):
         self.get_mat = get_mat
         self.put_mat = put_mat
         self.verbosity = verbosity
-        self.eigen_vecs = None
-        self.eigen_vals = None
+        self.eigvecs = None
+        self.eigvals = None
 
         self.vec_space = VectorSpaceHandles(inner_product=inner_product,
             max_vecs_per_node=max_vecs_per_node,
@@ -190,29 +190,29 @@ class PODHandles(object):
         self.vec_handles = None
         self.correlation_mat = None
 
-    def get_decomp(self, eigen_vecs_source, eigen_vals_source):
+    def get_decomp(self, eigvecs_source, eigvals_source):
         """Gets the decomposition matrices from sources (memory or file)."""
-        self.eigen_vecs = _parallel.call_and_bcast(self.get_mat,
-            eigen_vecs_source)
-        self.eigen_vals = np.squeeze(np.array(_parallel.call_and_bcast(
-            self.get_mat, eigen_vals_source)))
+        self.eigvecs = _parallel.call_and_bcast(self.get_mat,
+            eigvecs_source)
+        self.eigvals = np.squeeze(np.array(_parallel.call_and_bcast(
+            self.get_mat, eigvals_source)))
 
-    def put_decomp(self, eigen_vecs_dest, eigen_vals_dest):
+    def put_decomp(self, eigvecs_dest, eigvals_dest):
         """Put the decomposition matrices to file or memory."""
         # Don't check if rank is zero because the following methods do.
-        self.put_eigen_vecs(eigen_vecs_dest)
-        self.put_eigen_vals(eigen_vals_dest)
+        self.put_eigvecs(eigvecs_dest)
+        self.put_eigvals(eigvals_dest)
 
-    def put_eigen_vecs(self, dest):
+    def put_eigvecs(self, dest):
         """Put eigenvectors to ``dest``."""
         if _parallel.is_rank_zero():
-            self.put_mat(self.eigen_vecs, dest)
+            self.put_mat(self.eigvecs, dest)
         _parallel.barrier()
 
-    def put_eigen_vals(self, dest):
+    def put_eigvals(self, dest):
         """Put eigenvalues to ``dest``."""
         if _parallel.is_rank_zero():
-            self.put_mat(self.eigen_vals, dest)
+            self.put_mat(self.eigvals, dest)
         _parallel.barrier()
 
     def put_correlation_mat(self, dest):
@@ -224,11 +224,11 @@ class PODHandles(object):
     def _compute_build_coeff_mat(self):
         """Compute transformation matrix (:math:`T`) from vectors to modes.
         Helper for ``compute_modes`` and ``compute_modes_and_return``."""
-        if self.eigen_vecs is None:
-            raise util.UndefinedError('Must define self.eigen_vecs')
-        if self.eigen_vals is None:
-            raise util.UndefinedError('Must define self.eigen_vals')
-        build_coeff_mat = np.dot(self.eigen_vecs, np.diag(self.eigen_vals**-0.5))
+        if self.eigvecs is None:
+            raise util.UndefinedError('Must define self.eigvecs')
+        if self.eigvals is None:
+            raise util.UndefinedError('Must define self.eigvals')
+        build_coeff_mat = np.dot(self.eigvecs, np.diag(self.eigvals**-0.5))
         return build_coeff_mat
 
 
@@ -254,7 +254,7 @@ class PODHandles(object):
           POD.compute_modes(range(10), modes, vec_handles=vec_handles)
         
         """
-        self.eigen_vals, self.eigen_vecs = _parallel.call_and_bcast(
+        self.eigvals, self.eigvecs = _parallel.call_and_bcast(
             util.eigh, self.correlation_mat, is_positive_definite=True)
         
     def compute_decomp(self, vec_handles):
@@ -264,19 +264,19 @@ class PODHandles(object):
             ``vec_handles``: List of vector handles.
 
         Returns:
-            ``eigen_vec_handles``: Matrix with eigenvectors as columns.
+            ``eigenvec_handles``: Matrix with eigenvectors as columns.
 
-            ``eigen_vals``: 1D array of eigenvalues.
+            ``eigvals``: 1D array of eigenvalues.
         """
         self.vec_handles = vec_handles
         self.correlation_mat = self.vec_space.\
             compute_symmetric_inner_product_mat(self.vec_handles)
         #self.correlation_mat = self.vec_space.\
         #    compute_inner_product_mat(self.vec_handles, self.vec_handles)
-        #self.eigen_vals, self.eigen_vecs = _parallel.call_and_bcast(
+        #self.eigvals, self.eigvecs = _parallel.call_and_bcast(
         #    util.eigh, self.correlation_mat, is_positive_definite=True)
         self.compute_eigendecomp()
-        return self.eigen_vecs, self.eigen_vals
+        return self.eigvecs, self.eigvals
 
     def compute_modes(self, mode_indices, modes, vec_handles=None):
         """Computes the modes and calls ``put`` on the mode handles.

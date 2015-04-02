@@ -96,33 +96,33 @@ class TestUtil(unittest.TestCase):
         num_rows = 100 
         mat = np.random.random((num_rows, num_rows))
         for scale_choice in ['left', 'right']:
-            evals, R_evecs, L_evecs = util.eig_biorthog(
+            eigvals, R_eigvecs, L_eigvecs = util.eig_biorthog(
                 mat, scale_choice=scale_choice)
        
             # Check eigenvector/eigenvalue relationship
             np.testing.assert_allclose(
-                np.dot(mat, R_evecs), 
-                np.dot(R_evecs, np.diag(evals)),
+                np.dot(mat, R_eigvecs), 
+                np.dot(R_eigvecs, np.diag(eigvals)),
                 rtol=rtol, atol=atol)
             np.testing.assert_allclose(
-                np.dot(L_evecs.conj().T, mat), 
-                np.dot(np.diag(evals), L_evecs.conj().T),
+                np.dot(L_eigvecs.conj().T, mat), 
+                np.dot(np.diag(eigvals), L_eigvecs.conj().T),
                 rtol=rtol, atol=atol)
 
             # Check biorthogonality (use different atol because comparing some
             # values to a nominal value of 0)
-            ip_mat = np.dot(L_evecs.conj().T, R_evecs)
+            ip_mat = np.dot(L_eigvecs.conj().T, R_eigvecs)
             np.testing.assert_allclose(ip_mat, np.eye(num_rows),
                 rtol=rtol, atol=1e-12)
 
             # Check for unit norms
             if scale_choice == 'left':
-                unit_evecs = R_evecs
+                unit_eigvecs = R_eigvecs
             elif scale_choice == 'right':
-                unit_evecs = L_evecs
+                unit_eigvecs = L_eigvecs
             np.testing.assert_allclose(
-                np.sqrt(np.sum(unit_evecs * unit_evecs.conj(), axis=0)), 
-                np.ones(evals.size))
+                np.sqrt(np.sum(unit_eigvecs * unit_eigvecs.conj(), axis=0)), 
+                np.ones(eigvals.size))
 
         # Check that error is raised for invalid scale choice
         self.assertRaises(
