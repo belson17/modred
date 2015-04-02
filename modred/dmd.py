@@ -378,12 +378,9 @@ class DMDHandles(object):
             ``build_coeffs_proj``: Matrix of build coefficients for projected 
             DMD modes.
         """
-        if vec_handles is not None:
-            self.vec_handles = util.make_list(vec_handles)
-        if self.vec_handles is None:
-            raise util.UndefinedError('vec_handles is not given')
+        self.vec_handles = vec_handles
         if adv_vec_handles is not None:
-            self.adv_vec_handles = util.make_list(adv_vec_handles)
+            self.adv_vec_handles = adv_vec_handles
             if len(self.vec_handles) != len(self.adv_vec_handles):
                 raise ValueError(('Number of vec_handles and adv_vec_handles'
                     ' is not equal.'))            
@@ -456,7 +453,7 @@ class DMDHandles(object):
 
         # If advanced vec handles are passed in, set the internal attribute,
         if adv_vec_handles is not None:
-            self.adv_vec_handles = util.make_list(adv_vec_handles)
+            self.adv_vec_handles = adv_vec_handles
 
         # If the internal attribute is set, then compute the modes
         if self.adv_vec_handles is not None:
@@ -492,7 +489,7 @@ class DMDHandles(object):
         if self.build_coeffs_proj is None:
             raise util.UndefinedError('self.build_coeffs_proj is undefined.')
         if vec_handles is not None:
-            self.vec_handles = util.make_list(vec_handles)
+            self.vec_handles = vec_handles
 
         # For sequential data, the user will provide a list vec_handles that
         # whose length is one larger than the number of rows of the 
