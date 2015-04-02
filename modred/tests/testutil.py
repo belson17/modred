@@ -63,31 +63,44 @@ class TestUtil(unittest.TestCase):
                                 mat_read = np.squeeze(mat_read)
                             np.testing.assert_allclose(mat_read, mat)#,rtol=tol)
                           
-                          
+
+    def _is_unitary(self, M):
+        """Returns true/false"""
+        if M.shape[0] >= M.shape[1]:
+            identity_comp_1 = np.mat(M).H * np.mat(M) 
+            np.testing.assert_allclose(identity_comp_1, np.identity(identity_comp_1.shape[0]), atol=1e-12)
+        if M.shape[0] <= M.shape[1]:
+            identity_comp_2 = np.mat(M) * np.mat(M).H
+            np.testing.assert_allclose(identity_comp_2, np.identity(identity_comp_2.shape[0]), atol=1e-12)
+
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_svd(self):
-        num_internals_list = [10, 50]
         num_rows_list = [3, 5, 40]
-        num_cols_list = [1, 9, 70]
+        num_cols_list = [1, 9, 50]
+        atols = [1e-6, 1e-9, None]
+        rtols = [1e-8, None]
         for num_rows in num_rows_list:
             for num_cols in num_cols_list:
-                for num_internals in num_internals_list:
-                    left_mat = np.mat(np.random.random((num_rows, num_internals)))
-                    right_mat = np.mat(np.random.random((num_internals, num_cols)))
-                    full_mat = left_mat*right_mat
-                    L_sing_vecs, sing_vals, R_sing_vecs = util.svd(full_mat)
-                    
-                    U, E, V_comp_conj = np.linalg.svd(full_mat, full_matrices=0)
-                    V = np.mat(V_comp_conj).H
-                    if num_internals < num_rows or num_internals < num_cols:
-                        U = U[:,:num_internals]
-                        V = V[:,:num_internals]
-                        E = E[:num_internals]
-          
-                    np.testing.assert_allclose(L_sing_vecs, U)
-                    np.testing.assert_allclose(sing_vals, E)
-                    np.testing.assert_allclose(R_sing_vecs, V)
-   
+                for atol in atols:
+                    for rtol in rtols:
+                        full_mat = np.random.random((num_rows, num_cols))
+                        if atol and rtol:
+                            L_sing_vecs, sing_vals, R_sing_vecs = util.svd(full_mat, atol=atol, rtol=rtol)
+                            self.assertTrue(abs(sing_vals[-1]) > atol)
+                            self.assertTrue(abs(sing_vals[0])/abs(sing_vals[-1]) > rtol)
+                        elif atol:
+                            L_sing_vecs, sing_vals, R_sing_vecs = util.svd(full_mat, atol=atol)
+                            self.assertTrue(abs(sing_vals[-1]) > atol)
+                        elif rtol:
+                            L_sing_vecs, sing_vals, R_sing_vecs = util.svd(full_mat, rtol=rtol)
+                            self.assertTrue(abs(sing_vals[0])/abs(sing_vals[-1]) > rtol)
+                        else:
+                            L_sing_vecs, sing_vals, R_sing_vecs = util.svd(full_mat)
+                            reconstructed_full_mat = L_sing_vecs.dot(np.diag(sing_vals)).dot(R_sing_vecs.T.conj())
+                            np.testing.assert_allclose(reconstructed_full_mat, full_mat)
+                            self._is_unitary(L_sing_vecs)
+                            self._is_unitary(R_sing_vecs)
+    
 
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_eig_biorthog(self):
