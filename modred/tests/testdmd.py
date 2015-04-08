@@ -31,25 +31,49 @@ class TestDMDArraysFunctions(unittest.TestCase):
         self.num_states = 12
 
 
-    def _helper_compute_DMD_from_data(self, vecs, adv_vecs,
-        inner_product):
+    def _helper_compute_DMD_from_data(
+        self, vecs, adv_vecs, inner_product):
         correlation_mat = inner_product(vecs, vecs)
         V, Sigma, dummy = util.svd(correlation_mat) # dummy = W.
-        U = vecs.dot(V).dot(np.diag(Sigma**-0.5))
-        eigvals, W = np.linalg.eig(inner_product(
-            U, adv_vecs).dot(V).dot(np.diag(Sigma**-0.5)))
-        W = np.mat(W)
-        modes = U.dot(W)
-        scaling = np.linalg.lstsq(modes, vecs[:, 0])[0]
-        scaling = np.mat(np.diag(np.array(scaling).squeeze()))
-        modes = modes.dot(scaling)
-        build_coeffs = V.dot(np.diag(Sigma**-0.5)).dot(W).dot(scaling)
-        mode_norms = np.diag(inner_product(modes, modes)).real
-        return eigvals, modes, build_coeffs, mode_norms
+        U = vecs.dot(V).dot(np.diag(Sigma ** -0.5))
+        A_tilde = inner_product(
+            U, adv_vecs).dot(V).dot(np.diag(Sigma ** -0.5))
+        eigvals, W, Z = util.eig_biorthog(
+            A_tilde, scale_choice='left')
+        build_coeffs_proj = V.dot(np.diag(Sigma ** -0.5)).dot(W)
+        build_coeffs_exact = (
+            V.dot(np.diag(Sigma ** -0.5)).dot(W).dot(np.diag(eigvals ** -1.)))
+        modes_proj = vecs.dot(build_coeffs_proj)
+        modes_exact = adv_vecs.dot(build_coeffs_exact)
+        spectral_coeffs = np.linalg.lstsq(modes_proj, vecs[:, 0])[0]
+        return (
+            modes_exact, modes_proj, eigvals, spectral_coeffs, 
+            build_coeffs_exact, build_coeffs_proj) 
+
+
+    def _helper_test_mat_to_sign(
+        self, true_vals, test_vals, rtol=1e-12, atol=1e-16):
+        # Check that shapes are the same
+        self.assertEqual(len(true_vals.shape), len(test_vals.shape))
+        for shape_idx in xrange(len(true_vals.shape)):
+            self.assertEqual(
+                true_vals.shape[shape_idx], test_vals.shape[shape_idx])
+
+        # Check values column by columns.  To allow for matrices or arrays,
+        # turn columns into arrays and squeeze them (forcing 1D arrays).  This
+        # avoids failures due to trivial shape mismatches.
+        for col_idx in xrange(true_vals.shape[1]):
+            true_col = np.array(true_vals[:, col_idx]).squeeze()
+            test_col = np.array(test_vals[:, col_idx]).squeeze()
+            self.assertTrue(
+                np.allclose(true_col, test_col, rtol=rtol, atol=atol) 
+                or
+                np.allclose(-true_col, test_col, rtol=rtol, atol=atol))
 
 
     def test_all(self):
-        tol = 1e-8
+        rtol = 1e-8
+        atol = 1e-15
         mode_indices = [2, 0, 3]
         weights_full = np.mat(
             np.random.random((self.num_states, self.num_states)))
@@ -61,59 +85,98 @@ class TestDMDArraysFunctions(unittest.TestCase):
             IP = VectorSpaceMatrices(weights=weights).compute_inner_product_mat
             vecs = np.random.random((self.num_states, self.num_vecs))
 
-            # Compute true DMD modes from data for a sequential dataset
-            eigvals_true, eigvecs_true, build_coeffs_true, mode_norms_true=\
-                self._helper_compute_DMD_from_data(vecs[:, :-1], vecs[:, 1:], IP)
+            # Test DMD for a sequential dataset
+            (modes_exact_true, modes_proj_true, eigvals_true, spectral_coeffs_true,
+                build_coeffs_exact_true, build_coeffs_proj_true) = (
+                self._helper_compute_DMD_from_data(vecs[:, :-1], vecs[:, 1:], IP))
 
-            # Compute modes and compare to true modes
-            modes, eigvals, mode_norms, build_coeffs = \
+            # Test method of snapshots, allowing for sign difference in modes, 
+            # build coeffs, and spectral coeffs
+            (modes_exact, modes_proj, eigvals, spectral_coeffs, 
+                build_coeffs_exact, build_coeffs_proj) = (
                 compute_DMD_matrices_snaps_method(vecs, mode_indices, 
-                inner_product_weights=weights, return_all=True)
-            np.testing.assert_allclose(mode_norms, mode_norms_true, rtol=tol)
-            np.testing.assert_allclose(eigvals, eigvals_true, rtol=tol)
-            np.testing.assert_allclose(build_coeffs, build_coeffs_true, rtol=tol)
-            np.testing.assert_allclose(modes, eigvecs_true[:, mode_indices], 
-                rtol=tol)
+                inner_product_weights=weights, return_all=True))
+            np.testing.assert_allclose(eigvals, eigvals_true, rtol=rtol, atol=atol)
+            self._helper_test_mat_to_sign(
+                np.mat(spectral_coeffs), np.mat(spectral_coeffs_true), rtol=rtol, 
+                atol=atol)
+            self._helper_test_mat_to_sign(
+                modes_exact, modes_exact_true[:, mode_indices], rtol=rtol, 
+                atol=atol)
+            self._helper_test_mat_to_sign(
+                modes_proj, modes_proj_true[:, mode_indices], rtol=rtol, atol=atol)
+            self._helper_test_mat_to_sign(
+                build_coeffs_exact, build_coeffs_exact_true, rtol=rtol, atol=atol)
+            self._helper_test_mat_to_sign(
+                build_coeffs_proj, build_coeffs_proj_true, rtol=rtol, atol=atol)
             
-            modes, eigvals, mode_norms, build_coeffs = \
+            # Test direct method, allowing for sign difference in modes, build
+            # coeffs, and spectral coeffs
+            (modes_exact, modes_proj, eigvals, spectral_coeffs, 
+                build_coeffs_exact, build_coeffs_proj) = (
                 compute_DMD_matrices_direct_method(vecs, mode_indices, 
-                inner_product_weights=weights, return_all=True)
-            np.testing.assert_allclose(mode_norms, mode_norms_true, rtol=tol)
-            np.testing.assert_allclose(eigvals, eigvals_true, rtol=tol)
-            np.testing.assert_allclose(build_coeffs, build_coeffs_true, rtol=tol)
-            np.testing.assert_allclose(modes, eigvecs_true[:, mode_indices], 
-                rtol=tol)
-            
-           
+                inner_product_weights=weights, return_all=True))
+            np.testing.assert_allclose(eigvals, eigvals_true, rtol=rtol, atol=atol)
+            self._helper_test_mat_to_sign(
+                np.mat(spectral_coeffs), np.mat(spectral_coeffs_true), rtol=rtol, 
+                atol=atol)
+            self._helper_test_mat_to_sign(
+                build_coeffs_proj, build_coeffs_proj_true, rtol=rtol, atol=atol)
+            self._helper_test_mat_to_sign(
+                build_coeffs_exact, build_coeffs_exact_true, rtol=rtol,
+                atol=atol)
+            self._helper_test_mat_to_sign(
+                modes_proj, modes_proj_true[:, mode_indices], rtol=rtol, atol=atol)
+            self._helper_test_mat_to_sign(
+                modes_exact, modes_exact_true[:, mode_indices], rtol=rtol, 
+                atol=atol)
+                       
             # Generate data for a non-sequential dataset
             adv_vecs = np.random.random((self.num_states, self.num_vecs))
 
             # Compute true DMD modes from data for a non-sequential dataset
-            eigvals_true, eigvecs_true, build_coeffs_true, mode_norms_true =\
-                self._helper_compute_DMD_from_data(vecs, adv_vecs, IP)
-            # Compare computed modes to truth
-            modes, eigvals, mode_norms, build_coeffs = \
-                compute_DMD_matrices_snaps_method(vecs, mode_indices, 
-                adv_vecs=adv_vecs, inner_product_weights=weights, 
-                return_all=True)
-            np.testing.assert_allclose(modes, eigvecs_true[:, mode_indices], 
-                rtol=tol)
-            np.testing.assert_allclose(eigvals, eigvals_true, rtol=tol)
-            np.testing.assert_allclose(build_coeffs, build_coeffs_true, rtol=tol)
-            np.testing.assert_allclose(mode_norms, mode_norms_true, rtol=tol)
+            (modes_exact_true, modes_proj_true, eigvals_true, spectral_coeffs_true,
+                build_coeffs_exact_true, build_coeffs_proj_true) = (
+                self._helper_compute_DMD_from_data(vecs, adv_vecs, IP))
             
-            modes, eigvals, mode_norms, build_coeffs = \
-                compute_DMD_matrices_direct_method(
-                vecs, mode_indices, adv_vecs=adv_vecs, 
-                inner_product_weights=weights, return_all=True)
-            np.testing.assert_allclose(eigvals, eigvals_true, rtol=tol)
-            np.testing.assert_allclose(modes, eigvecs_true[:, mode_indices], 
-                rtol=tol)
-            np.testing.assert_allclose(build_coeffs, build_coeffs_true, rtol=tol)
-            np.testing.assert_allclose(mode_norms, mode_norms_true, rtol=tol)
+            # Compare computed modes to truth
+            (modes_exact, modes_proj, eigvals, spectral_coeffs, 
+                build_coeffs_exact, build_coeffs_proj) = (
+                compute_DMD_matrices_snaps_method(vecs, mode_indices, 
+                adv_vecs=adv_vecs, inner_product_weights=weights, return_all=True))
+            np.testing.assert_allclose(eigvals, eigvals_true, rtol=rtol, atol=atol)
+            self._helper_test_mat_to_sign(
+                np.mat(spectral_coeffs), np.mat(spectral_coeffs_true), rtol=rtol, 
+                atol=atol)
+            self._helper_test_mat_to_sign(
+                build_coeffs_proj, build_coeffs_proj_true, rtol=rtol, atol=atol)
+            self._helper_test_mat_to_sign(
+                build_coeffs_exact, build_coeffs_exact_true, rtol=rtol,
+                atol=atol)
+            self._helper_test_mat_to_sign(
+                modes_proj, modes_proj_true[:, mode_indices], rtol=rtol, atol=atol)
+            self._helper_test_mat_to_sign(
+                modes_exact, modes_exact_true[:, mode_indices], rtol=rtol, 
+                atol=atol)
 
-
-    
+            (modes_exact, modes_proj, eigvals, spectral_coeffs, 
+                build_coeffs_exact, build_coeffs_proj) = (
+                compute_DMD_matrices_direct_method(vecs, mode_indices, 
+                adv_vecs=adv_vecs, inner_product_weights=weights, return_all=True))
+            np.testing.assert_allclose(eigvals, eigvals_true, rtol=rtol, atol=atol)
+            self._helper_test_mat_to_sign(
+                np.mat(spectral_coeffs), np.mat(spectral_coeffs_true), rtol=rtol, 
+                atol=atol)
+            self._helper_test_mat_to_sign(
+                build_coeffs_proj, build_coeffs_proj_true, rtol=rtol, atol=atol)
+            self._helper_test_mat_to_sign(
+                build_coeffs_exact, build_coeffs_exact_true, rtol=rtol,
+                atol=atol)
+            self._helper_test_mat_to_sign(
+                modes_proj, modes_proj_true[:, mode_indices], rtol=rtol, atol=atol)
+            self._helper_test_mat_to_sign(
+                modes_exact, modes_exact_true[:, mode_indices], rtol=rtol, 
+                atol=atol)
 
            
 #@unittest.skip('others')

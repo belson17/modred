@@ -59,6 +59,7 @@ def compute_DMD_matrices_snaps_method(vecs, mode_indices, adv_vecs=None,
         expanded_correlation_mat = \
             vec_space.compute_symmetric_inner_product_mat(vecs)
         correlation_mat = expanded_correlation_mat[:-1, :-1]
+        cross_correlation_mat = expanded_correlation_mat[:-1, 1:]
     # Non-sequential data
     else:
         adv_vecs = util.make_mat(adv_vecs)
@@ -67,62 +68,57 @@ def compute_DMD_matrices_snaps_method(vecs, mode_indices, adv_vecs=None,
         # Compute the correlation matrix from the unadvanced snapshots only.
         correlation_mat = np.mat(vec_space.compute_symmetric_inner_product_mat(
             vecs))
+        cross_correlation_mat = np.mat(vec_space.compute_inner_product_mat(
+            vecs, adv_vecs))
     
+    # TODO: add tols (Brandt)
     correlation_mat_eigvals, correlation_mat_eigvecs = util.eigh(correlation_mat, 
         is_positive_definite=True)
-    correlation_mat_eigvals_sqrt = np.mat(np.diag(correlation_mat_eigvals**-0.5))
+    correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(
+        correlation_mat_eigvals**-0.5))
  
     # Compute low-order linear map for sequential or non-sequential case.
-    # Sequential snapshot set. Takes advantage of the fact that the
-    # the unadvanced and advanced vectors are the same except for first
-    # and last entries.
-    if adv_vecs is None:
-        low_order_linear_map = correlation_mat_eigvals_sqrt * \
-            correlation_mat_eigvecs.H * \
-            expanded_correlation_mat[:-1, 1:] * \
-            correlation_mat_eigvecs * correlation_mat_eigvals_sqrt
-    # Non-sequential snapshot set.
-    else: 
-        low_order_linear_map = correlation_mat_eigvals_sqrt *\
-            correlation_mat_eigvecs.H *\
-            vec_space.compute_inner_product_mat(vecs,
-            adv_vecs) * correlation_mat_eigvecs *\
-            correlation_mat_eigvals_sqrt
+    low_order_linear_map = (
+        correlation_mat_eigvals_sqrt_inv * correlation_mat_eigvecs.H * 
+        cross_correlation_mat * correlation_mat_eigvecs * 
+        correlation_mat_eigvals_sqrt_inv)
     
     # Compute eigendecomposition of low-order linear map.
-    eigvals, low_order_eigvecs = np.linalg.eig(low_order_linear_map)
-    build_coeffs = correlation_mat_eigvecs *\
-        correlation_mat_eigvals_sqrt * low_order_eigvecs *\
-        np.diag(np.array(np.array(np.linalg.inv(
-        low_order_eigvecs.H * low_order_eigvecs) * low_order_eigvecs.H *\
-        correlation_mat_eigvals_sqrt * correlation_mat_eigvecs.H * 
-        correlation_mat[:, 0]).squeeze(), ndmin=1))
-    mode_norms = np.diag(build_coeffs.H * correlation_mat * build_coeffs).real
-    if (mode_norms < 0).any():
-        print ('Warning: mode norms has negative values. This is often happens '
-            'when the rank of the vector matrix is much less than the number '
-            'of columns. Try using fewer vectors (fewer columns).')
+    eigvals, R_low_order_eigvecs, L_low_order_eigvecs = util.eig_biorthog(
+        low_order_linear_map, scale_choice='left')
+    build_coeffs_proj = (
+        correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv * 
+        R_low_order_eigvecs)
+    build_coeffs_exact = build_coeffs_proj * np.mat(np.diag(eigvals ** -1.))
+    spectral_coeffs = np.array(
+        L_low_order_eigvecs.H *
+        np.mat(np.diag(np.sqrt(correlation_mat_eigvals))) *
+        correlation_mat_eigvecs[0, :].T).squeeze()
+
     # For sequential data, user must provide one more vec than columns of 
     # build_coeffs. 
-    if vecs.shape[1] - build_coeffs.shape[0] == 1:
-        modes = vec_space.lin_combine(vecs[:, :-1], 
-            build_coeffs, coeff_mat_col_indices=mode_indices)
-    # For sequential data, user must provide as many vecs as columns of 
+    if vecs.shape[1] - build_coeffs_exact.shape[0] == 1:
+        exact_modes = vec_space.lin_combine(vecs[:, 1:], 
+            build_coeffs_exact, coeff_mat_col_indices=mode_indices)
+        proj_modes = vec_space.lin_combine(vecs[:, :-1], 
+            build_coeffs_proj, coeff_mat_col_indices=mode_indices)
+    # For non-sequential data, user must provide as many vecs as columns of 
     # build_coeffs. 
-    elif vecs.shape[1] == build_coeffs.shape[0]:
-        modes = vec_space.lin_combine(vecs, 
-            build_coeffs, coeff_mat_col_indices=mode_indices)
+    elif vecs.shape[1] == build_coeffs_exact.shape[0]:
+        exact_modes = vec_space.lin_combine(
+            adv_vecs, build_coeffs_exact, coeff_mat_col_indices=mode_indices)
+        proj_modes = vec_space.lin_combine(
+            vecs, build_coeffs_proj, coeff_mat_col_indices=mode_indices)
     else:
         raise ValueError(('Number of cols in vecs does not match '
             'number of rows in build_coeffs matrix.'))
     
     if return_all:
-        return modes, eigvals, mode_norms, build_coeffs    
+        return (
+            exact_modes, proj_modes, eigvals, spectral_coeffs, 
+            build_coeffs_exact, build_coeffs_proj)
     else:
-        return modes, eigvals, mode_norms
-
-
-
+        return exact_modes, proj_modes, eigvals, spectral_coeffs
 
 
 def compute_DMD_matrices_direct_method(vecs, mode_indices, 
@@ -190,66 +186,67 @@ def compute_DMD_matrices_direct_method(vecs, mode_indices,
     # advantage of the fact that for a sequential dataset, the unadvanced
     # and advanced vectors overlap.
     if adv_vecs is None:        
-        U, sing_vals, correlation_mat_eigvecs = util.svd(vecs_weighted[:,:-1])
-        correlation_mat_eigvals = sing_vals**2
-        correlation_mat = correlation_mat_eigvecs * \
-            np.mat(np.diag(correlation_mat_eigvals)) * correlation_mat_eigvecs.H
+        # TODO: Add tols (Brandt)
+        U, sing_vals, correlation_mat_eigvecs = util.svd(vecs_weighted[:, :-1])
+        correlation_mat_eigvals = sing_vals ** 2.
+        correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(sing_vals ** -1.))
+        correlation_mat = (
+            correlation_mat_eigvecs * 
+            np.mat(np.diag(correlation_mat_eigvals)) * 
+            correlation_mat_eigvecs.H)
         last_col = U.H * vecs_weighted[:,-1]
-        correlation_mat_eigvals_sqrt = np.mat(np.diag(sing_vals**-1.0))
-        correlation_mat = correlation_mat_eigvecs * \
-            np.mat(np.diag(correlation_mat_eigvals)) * correlation_mat_eigvecs.H
-
         low_order_linear_map = np.mat(np.concatenate(
-            (correlation_mat_eigvals_sqrt * correlation_mat_eigvecs.H * \
+            (correlation_mat_eigvals_sqrt_inv * correlation_mat_eigvecs.H * \
             correlation_mat[:, 1:], last_col), axis=1)) * \
-            correlation_mat_eigvecs * correlation_mat_eigvals_sqrt
+            correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv
     else: 
         if vecs.shape != adv_vecs.shape:
             raise ValueError(('vecs and adv_vecs are not the same shape.'))
+        # TODO: Add tols (Brandt)
         U, sing_vals, correlation_mat_eigvecs = util.svd(vecs_weighted)
-        correlation_mat_eigvals_sqrt = np.mat(np.diag(sing_vals**-1.0))
-        low_order_linear_map = U.H * adv_vecs_weighted * \
-            correlation_mat_eigvecs * correlation_mat_eigvals_sqrt   
-        correlation_mat_eigvals = sing_vals**2
-        correlation_mat = correlation_mat_eigvecs * \
-            np.mat(np.diag(correlation_mat_eigvals)) * correlation_mat_eigvecs.H
-
+        correlation_mat_eigvals = sing_vals ** 2
+        correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(sing_vals ** -1.))
+        low_order_linear_map = (
+            U.H * adv_vecs_weighted * 
+            correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv)
+        
     # Compute eigendecomposition of low-order linear map.
-    eigvals, low_order_eigvecs = np.linalg.eig(low_order_linear_map)
-    build_coeffs = correlation_mat_eigvecs *\
-        correlation_mat_eigvals_sqrt * low_order_eigvecs *\
-        np.diag(np.array(np.array(np.linalg.inv(
-        low_order_eigvecs.H * low_order_eigvecs) * low_order_eigvecs.H *\
-        correlation_mat_eigvals_sqrt * correlation_mat_eigvecs.H * 
-        correlation_mat[:, 0]).squeeze(), ndmin=1))
-    mode_norms = np.diag(build_coeffs.H * correlation_mat * build_coeffs).real
-    if (mode_norms < 0).any():
-        print ('Warning: mode norms has negative values. This is often happens '
-            'when the rank of the vector matrix is much less than the number '
-            'of columns. Try using fewer vectors (fewer columns).')
-    # For sequential data, the user will provide a vecs 
-    # whose length is one larger than the number of columns of the 
-    # build_coeffs matrix. 
-    if vecs.shape[1] - build_coeffs.shape[0] == 1:
-        modes = vec_space.lin_combine(vecs[:, :-1], 
-            build_coeffs, coeff_mat_col_indices=mode_indices)
-    # For a non-sequential dataset, user provides vecs
-    # whose length is equal to the number of columns of build_coeffs
-    elif vecs.shape[1] == build_coeffs.shape[0]:
-        modes = vec_space.lin_combine(vecs, 
-            build_coeffs, coeff_mat_col_indices=mode_indices)
-    # Raise an error if number of handles isn't one of the two cases above.
+    eigvals, R_low_order_eigvecs, L_low_order_eigvecs = util.eig_biorthog(
+        low_order_linear_map, scale_choice='left')
+    build_coeffs_proj = (
+        correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv *
+        R_low_order_eigvecs) 
+    build_coeffs_exact = build_coeffs_proj * np.mat(np.diag(eigvals ** -1.))
+    spectral_coeffs = np.array(
+        L_low_order_eigvecs.H *
+        np.mat(np.diag(np.sqrt(correlation_mat_eigvals))) * 
+        correlation_mat_eigvecs[0, :].T).squeeze()
+
+    # For sequential data, user must provide one more vec than columns of 
+    # build_coeffs. 
+    if vecs.shape[1] - build_coeffs_exact.shape[0] == 1:
+        exact_modes = vec_space.lin_combine(vecs[:, 1:], 
+            build_coeffs_exact, coeff_mat_col_indices=mode_indices)
+        proj_modes = vec_space.lin_combine(vecs[:, :-1], 
+            build_coeffs_proj, coeff_mat_col_indices=mode_indices)
+    # For sequential data, user must provide as many vecs as columns of 
+    # build_coeffs. 
+    elif vecs.shape[1] == build_coeffs_exact.shape[0]:
+        exact_modes = vec_space.lin_combine(
+            adv_vecs, build_coeffs_exact, coeff_mat_col_indices=mode_indices)
+        proj_modes = vec_space.lin_combine(
+            vecs, build_coeffs_proj, coeff_mat_col_indices=mode_indices)
     else:
         raise ValueError(('Number of cols in vecs does not match '
             'number of rows in build_coeffs matrix.'))
     
     if return_all:
-        return modes, eigvals, mode_norms, build_coeffs    
+        return (
+            exact_modes, proj_modes, eigvals, spectral_coeffs, 
+            build_coeffs_exact, build_coeffs_proj)
     else:
-        return modes, eigvals, mode_norms
-    
+        return exact_modes, proj_modes, eigvals, spectral_coeffs
 
-         
 
 class DMDHandles(object):
     """Dynamic Mode Decomposition/Koopman Mode Decomposition for large data.
@@ -341,6 +338,7 @@ class DMDHandles(object):
     def _compute_eigen_decomp(self):
         """Computes eigen decomposition of low-order linear map and associated 
         DMD matrices."""
+        # TODO: tols go in here (Brandt)
         self.eigvals, self.R_low_order_eigvecs, self.L_low_order_eigvecs = (
             _parallel.call_and_bcast(util.eig_biorthog, 
             self.low_order_linear_map, **{'scale_choice':'left'}))
@@ -409,23 +407,24 @@ class DMDHandles(object):
                 self.vec_space.compute_inner_product_mat(
                 self.vec_handles, self.adv_vec_handles)
         # Compute eigendecomposition of correlation matrix
+        # TODO: tols go in here (Brandt)
         self.correlation_mat_eigvals, self.correlation_mat_eigvecs = \
             _parallel.call_and_bcast(util.eigh, self.correlation_mat, 
             is_positive_definite=True)
-        correlation_mat_eigvals_sqrt = np.mat(np.diag(
+        correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(
             self.correlation_mat_eigvals ** -0.5))
         
         # Compute low-order linear map 
-        self.low_order_linear_map = (correlation_mat_eigvals_sqrt *
+        self.low_order_linear_map = (correlation_mat_eigvals_sqrt_inv *
             self.correlation_mat_eigvecs.H * self.cross_correlation_mat * 
-            self.correlation_mat_eigvecs * correlation_mat_eigvals_sqrt)
+            self.correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv)
         
         # Compute eigendecomposition of low-order linear map.
         self._compute_eigen_decomp()
 
         # Build modes using natural mode scalings
         self.build_coeffs_proj = (
-            self.correlation_mat_eigvecs * correlation_mat_eigvals_sqrt *
+            self.correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv *
             self.R_low_order_eigvecs)
         self.build_coeffs_exact = (
             self.build_coeffs_proj * np.mat(np.diag(self.eigvals ** -1.)))
