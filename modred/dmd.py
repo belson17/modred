@@ -335,6 +335,16 @@ class DMDHandles(object):
             self.put_mat(self.correlation_mat, dest)
         _parallel.barrier()
 
+    # TODO: Brandt, need to put similar methods in the other classes?  And test
+    # them too.
+    def put_proj_coeffs(self, dest, adv_dest):
+        """Puts projection coefficients to ``dest``, advanced projection
+        coefficients to ``adv_dest``."""
+        if _parallel.is_rank_zero():
+            self.put_mat(self.proj_coeffs, dest)
+            self.put_mat(self.adv_proj_coeffs, adv_dest)
+        _parallel.barrier()
+
     def _compute_eigen_decomp(self):
         """Computes eigen decomposition of low-order linear map and associated 
         DMD matrices."""
