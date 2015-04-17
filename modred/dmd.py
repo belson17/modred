@@ -335,6 +335,12 @@ class DMDHandles(object):
             self.put_mat(self.correlation_mat, dest)
         _parallel.barrier()
 
+    def put_spectral_coeffs(self, dest):
+        """Puts the spectral coefficients to ``dest``."""
+        if _parallel.is_rank_zero():
+            self.put_mat(self.spectral_coeffs, dest)
+        _parallel.barrier()
+    
     # TODO: Brandt, need to put similar methods in the other classes?  And test
     # them too.
     def put_proj_coeffs(self, dest, adv_dest):
