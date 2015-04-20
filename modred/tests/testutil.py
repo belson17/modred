@@ -109,18 +109,24 @@ class TestUtil(unittest.TestCase):
         num_rows = 100 
         mat = np.random.random((num_rows, num_rows))
         for scale_choice in ['left', 'right']:
-            eigvals, R_eigvecs, L_eigvecs = util.eig_biorthog(
+            R_eigvals, R_eigvecs, L_eigvals, L_eigvecs = util.eig_biorthog(
                 mat, scale_choice=scale_choice)
        
-            # Check eigenvector/eigenvalue relationship
+            # Check eigenvector/eigenvalue relationship (use right eigenvalues
+            # only)
             np.testing.assert_allclose(
                 np.dot(mat, R_eigvecs), 
-                np.dot(R_eigvecs, np.diag(eigvals)),
+                np.dot(R_eigvecs, np.diag(R_eigvals)),
                 rtol=rtol, atol=atol)
             np.testing.assert_allclose(
                 np.dot(L_eigvecs.conj().T, mat), 
-                np.dot(np.diag(eigvals), L_eigvecs.conj().T),
+                np.dot(np.diag(R_eigvals), L_eigvecs.conj().T),
                 rtol=rtol, atol=atol)
+
+            # Check that left and right eigenvalues match 
+            np.testing.assert_allclose(
+                R_eigvals, L_eigvals, rtol=rtol, atol=atol)
+
 
             # Check biorthogonality (use different atol because comparing some
             # values to a nominal value of 0)
@@ -135,7 +141,7 @@ class TestUtil(unittest.TestCase):
                 unit_eigvecs = L_eigvecs
             np.testing.assert_allclose(
                 np.sqrt(np.sum(unit_eigvecs * unit_eigvecs.conj(), axis=0)), 
-                np.ones(eigvals.size))
+                np.ones(R_eigvals.size))
 
         # Check that error is raised for invalid scale choice
         self.assertRaises(

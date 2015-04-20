@@ -251,9 +251,10 @@ def eig_biorthog(mat, scale_choice='left'):
     L_eigvals = L_eigvals[L_sort_indices]
     L_eigvals_conj = L_eigvals.conj()
 
-    # Check that eigvals are the same
+    # Check that eigvals are the same.  
     if not np.allclose(L_eigvals, R_eigvals, rtol=1e-12, atol=1e-15):
-        raise ValueError('Left and right eigenvalues do not match.')
+        print('Warning: left and right eigenvalues are not close with atol = '
+            '1e-15, rtol = 1e-12.')
 
     # Sort the eigvecs
     R_eigvecs = R_eigvecs[:, R_sort_indices]
@@ -268,7 +269,7 @@ def eig_biorthog(mat, scale_choice='left'):
     else:
         raise ValueError('Invalid scale choice.  Must be LEFT or RIGHT.')
 
-    return R_eigvals, R_eigvecs, L_eigvecs 
+    return R_eigvals, R_eigvecs, L_eigvals, L_eigvecs 
 
 
 def get_file_list(directory, file_extension=None):

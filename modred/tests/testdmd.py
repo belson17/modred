@@ -38,7 +38,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
         U = vecs.dot(V).dot(np.diag(Sigma ** -0.5))
         A_tilde = inner_product(
             U, adv_vecs).dot(V).dot(np.diag(Sigma ** -0.5))
-        eigvals, W, Z = util.eig_biorthog(
+        eigvals, W, L_eigvals, Z = util.eig_biorthog(
             A_tilde, scale_choice='left')
         build_coeffs_proj = V.dot(np.diag(Sigma ** -0.5)).dot(W)
         build_coeffs_exact = (
@@ -226,9 +226,10 @@ class TestDMDHandles(unittest.TestCase):
             'build_coeffs_proj': None, 'correlation_mat': None,
             'cross_correlation_mat': None, 'correlation_mat_eigvals': None,
             'correlation_mat_eigvecs': None, 'low_order_linear_map': None,
-            'L_low_order_eigvecs': None, 'R_low_order_eigvecs': None,
-            'spectral_coeffs': None, 'proj_coeffs': None, 'adv_proj_coeffs':
-            None, 'vec_handles': None, 'adv_vec_handles': None, 'vec_space':
+            'eigvals': None, 'L_eigvals': None, 'L_low_order_eigvecs': None,
+            'R_low_order_eigvecs': None, 'spectral_coeffs': None,
+            'proj_coeffs': None, 'adv_proj_coeffs': None, 'vec_handles': None,
+            'adv_vec_handles': None, 'vec_space':
             VectorSpaceHandles(my_IP, verbosity=0)}
         
         # Get default data member values
@@ -320,8 +321,8 @@ class TestDMDHandles(unittest.TestCase):
         # Compute eigendecomposition of low order linear operator
         A_tilde = inner_product(U_list, adv_vecs).dot(
             correlation_mat_eigvecs).dot(np.diag(correlation_mat_eigvals ** -0.5))
-        eigvals, R_low_order_eigvecs, L_low_order_eigvecs = util.eig_biorthog(
-            A_tilde, scale_choice='left')
+        eigvals, R_low_order_eigvecs, L_eigvals, L_low_order_eigvecs =\
+            util.eig_biorthog(A_tilde, scale_choice='left')
         R_low_order_eigvecs = np.mat(R_low_order_eigvecs)
         L_low_order_eigvecs = np.mat(L_low_order_eigvecs)
 
