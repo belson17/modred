@@ -63,13 +63,22 @@ class TestUtil(unittest.TestCase):
                                 mat_read = np.squeeze(mat_read)
                             np.testing.assert_allclose(mat_read, mat)#,rtol=tol)
                           
-                          
-    """
+
+    # def _is_unitary(self, M):
+    #     """Returns true/false"""
+    #     if M.shape[0] >= M.shape[1]:
+    #         identity_comp_1 = np.mat(M).H * np.mat(M) 
+    #         np.testing.assert_allclose(identity_comp_1, np.identity(identity_comp_1.shape[0]), atol=1e-12)
+    #     if M.shape[0] <= M.shape[1]:
+    #         identity_comp_2 = np.mat(M) * np.mat(M).H
+    #         np.testing.assert_allclose(identity_comp_2, np.identity(identity_comp_2.shape[0]), atol=1e-12)
+
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_svd(self):
-        num_internals_list = [10, 50]
         num_rows_list = [3, 5, 40]
-        num_cols_list = [1, 9, 70]
+        num_cols_list = [1, 9, 50]
+        atols = [1e-6, 1e-9, None]
+        rtols = [1e-8, None]
         for num_rows in num_rows_list:
             for num_cols in num_cols_list:
                 for num_internals in num_internals_list:
@@ -88,7 +97,6 @@ class TestUtil(unittest.TestCase):
                     np.testing.assert_allclose(L_sing_vecs, U)
                     np.testing.assert_allclose(sing_vals, E)
                     np.testing.assert_allclose(R_sing_vecs, V)
-    """
 
     def _is_unitary(self, M):
         """Returns true/false"""
@@ -120,7 +128,7 @@ class TestUtil(unittest.TestCase):
                             L_sing_vecs, sing_vals, R_sing_vecs = util.svd(full_mat, rtol=rtol)
                             self.assertTrue(abs(sing_vals[0])/abs(sing_vals[-1]) > rtol)
                         else:
-                            print num_rows, num_cols, atol, rtol
+                            #print num_rows, num_cols, atol, rtol
                             L_sing_vecs, sing_vals, R_sing_vecs = util.svd(full_mat)
                             reconstructed_full_mat = L_sing_vecs.dot(np.diag(sing_vals)).dot(R_sing_vecs.T.conj())
                             np.testing.assert_allclose(reconstructed_full_mat, full_mat)
@@ -135,33 +143,39 @@ class TestUtil(unittest.TestCase):
         num_rows = 100 
         mat = np.random.random((num_rows, num_rows))
         for scale_choice in ['left', 'right']:
-            evals, R_evecs, L_evecs = util.eig_biorthog(
+            R_eigvals, R_eigvecs, L_eigvals, L_eigvecs = util.eig_biorthog(
                 mat, scale_choice=scale_choice)
        
-            # Check eigenvector/eigenvalue relationship
+            # Check eigenvector/eigenvalue relationship (use right eigenvalues
+            # only)
             np.testing.assert_allclose(
-                np.dot(mat, R_evecs), 
-                np.dot(R_evecs, np.diag(evals)),
+                np.dot(mat, R_eigvecs), 
+                np.dot(R_eigvecs, np.diag(R_eigvals)),
                 rtol=rtol, atol=atol)
             np.testing.assert_allclose(
-                np.dot(L_evecs.conj().T, mat), 
-                np.dot(np.diag(evals), L_evecs.conj().T),
+                np.dot(L_eigvecs.conj().T, mat), 
+                np.dot(np.diag(R_eigvals), L_eigvecs.conj().T),
                 rtol=rtol, atol=atol)
+
+            # Check that left and right eigenvalues match 
+            np.testing.assert_allclose(
+                R_eigvals, L_eigvals, rtol=rtol, atol=atol)
+
 
             # Check biorthogonality (use different atol because comparing some
             # values to a nominal value of 0)
-            ip_mat = np.dot(L_evecs.conj().T, R_evecs)
+            ip_mat = np.dot(L_eigvecs.conj().T, R_eigvecs)
             np.testing.assert_allclose(ip_mat, np.eye(num_rows),
                 rtol=rtol, atol=1e-12)
 
             # Check for unit norms
             if scale_choice == 'left':
-                unit_evecs = R_evecs
+                unit_eigvecs = R_eigvecs
             elif scale_choice == 'right':
-                unit_evecs = L_evecs
+                unit_eigvecs = L_eigvecs
             np.testing.assert_allclose(
-                np.sqrt(np.sum(unit_evecs * unit_evecs.conj(), axis=0)), 
-                np.ones(evals.size))
+                np.sqrt(np.sum(unit_eigvecs * unit_eigvecs.conj(), axis=0)), 
+                np.ones(R_eigvals.size))
 
         # Check that error is raised for invalid scale choice
         self.assertRaises(
