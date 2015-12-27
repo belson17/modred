@@ -77,7 +77,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
         mode_indices = [2, 0, 3]
         weights_full = np.mat(
             np.random.random((self.num_states, self.num_states)))
-        weights_full = np.triu(weights_full) + np.triu(weights_full, 1).H
+        weights_full = np.triu(weights_full) + np.triu(weights_full, 1).conj().T
         weights_full = weights_full*weights_full
         weights_diag = np.random.random(self.num_states)
         weights_list = [None, weights_diag, weights_full]

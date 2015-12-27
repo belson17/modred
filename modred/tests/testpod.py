@@ -26,13 +26,13 @@ class TestPODArraysFunctions(unittest.TestCase):
     def setUp(self):
         self.mode_indices = [2, 4, 6, 3]
         self.num_vecs = 10
-        self.num_states = 30                     
+        self.num_states = 30
 
     def test_compute_modes(self):
         ws = np.identity(self.num_states)
         tol = 1e-6
         weights_full = np.mat(np.random.random((self.num_states, self.num_states)))
-        weights_full = np.triu(weights_full) + np.triu(weights_full, 1).H
+        weights_full = np.triu(weights_full) + np.triu(weights_full, 1).conj().T
         weights_full = weights_full*weights_full
         weights_diag = np.random.random(self.num_states)
         weights_list = [None, weights_diag, weights_full]

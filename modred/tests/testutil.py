@@ -72,7 +72,7 @@ class TestUtil(unittest.TestCase):
     #     if M.shape[0] <= M.shape[1]:
     #         identity_comp_2 = np.mat(M) * np.mat(M).H
     #         np.testing.assert_allclose(identity_comp_2, np.identity(identity_comp_2.shape[0]), atol=1e-12)
-
+    """
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_svd(self):
         num_rows_list = [3, 5, 40]
@@ -97,7 +97,7 @@ class TestUtil(unittest.TestCase):
                     np.testing.assert_allclose(L_sing_vecs, U)
                     np.testing.assert_allclose(sing_vals, E)
                     np.testing.assert_allclose(R_sing_vecs, V)
-
+    """
     def _is_unitary(self, M):
         """Returns true/false"""
         identity_comp_1 = np.mat(M).H * np.mat(M) 
