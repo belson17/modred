@@ -143,7 +143,7 @@ class TestUtil(unittest.TestCase):
         num_rows = 100 
         mat = np.random.random((num_rows, num_rows))
         for scale_choice in ['left', 'right']:
-            R_eigvals, R_eigvecs, L_eigvals, L_eigvecs = util.eig_biorthog(
+            R_eigvals, R_eigvecs, L_eigvecs = util.eig_biorthog(
                 mat, scale_choice=scale_choice)
        
             # Check eigenvector/eigenvalue relationship (use right eigenvalues
@@ -156,11 +156,6 @@ class TestUtil(unittest.TestCase):
                 np.dot(L_eigvecs.conj().T, mat), 
                 np.dot(np.diag(R_eigvals), L_eigvecs.conj().T),
                 rtol=rtol, atol=atol)
-
-            # Check that left and right eigenvalues match 
-            np.testing.assert_allclose(
-                R_eigvals, L_eigvals, rtol=rtol, atol=atol)
-
 
             # Check biorthogonality (use different atol because comparing some
             # values to a nominal value of 0)
