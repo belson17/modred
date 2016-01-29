@@ -144,8 +144,8 @@ def svd(mat, atol=1e-13, rtol=None):
     Kwargs:
         ``atol``: Level at which singular values are truncated.
 
-        ``rtol``: Maximum relative difference between largest and smallest singular values.
-        Smaller ones are truncated.
+        ``rtol``: Maximum relative difference between largest and smallest
+            singular values.  Smaller ones are truncated.
     
     Returns:
         ``U``: Matrix of left singular vectors.
@@ -176,15 +176,18 @@ def svd(mat, atol=1e-13, rtol=None):
     return U, E, V
 
 
-def eigh(mat, tol=1e-12, is_positive_definite=False):
+def eigh(mat, atol=1e-13, rtol=None, is_positive_definite=False):
     """Wrapper for ``numpy.linalg.eigh``. Computes the e-values and vecs of
     Hermitian matrix/array.
     
     Args:
-        ``mat``: To take eigen decomposition of.
+        ``mat``: Array or matrix to take eigendecomposition of.
         
-        ``tol``: Value at which to truncate eigenvalues and vectors.
-            Give ``None`` for no truncation.
+        ``atol``: Value below which eigenvalues (and corresponding 
+            eigenvectors) are truncated.
+        
+        ``rtol``: Maximum relative difference between largest and smallest
+            eigenvalues.  Smaller ones are truncated.
 
         ``is_positive_definite``: If true, matrix being decomposed will be 
             assumed to be positive definite.  Tolerance will be automatically 
@@ -192,27 +195,38 @@ def eigh(mat, tol=1e-12, is_positive_definite=False):
             returned.
     
     Returns:
-        ``eigvals``: Eigenvalues in a 1D array, sorted in descending order.
+        ``eigvals``: Eigenvalues in a 1D array, sorted in descending order (of
+            magnitude).
         
         ``eigvecs``: Eigenvectors, columns of matrix/array, sorted by eigvals.
     """
     eigvals, eigvecs = np.linalg.eigh(mat)
 
-    # Sort the vecs and eigvals by eigval magnitude
+    # Sort the vecs and eigvals by eigval magnitude.  The first element will
+    # have the largest magnitude and the last element will have the smallest
+    # magnitude.
     sort_indices = np.argsort(np.abs(eigvals))[::-1]
     eigvals = eigvals[sort_indices]
     eigvecs = eigvecs[:, sort_indices]
 
-    # Filter small and negative eigenvalues, if necessary
-    if tol is not None:
-        # Adjust tolerance for pos def case if there are
-        # negative eigenvalues and the most negative one has magnitude greater
-        # than the tolerance.
-        if is_positive_definite and eigvals.min() < 0 and abs(eigvals.min()) > tol:
-            tol = abs(eigvals.min())
-        num_nonzeros = (abs(eigvals) > tol).sum()
-        eigvals = eigvals[:num_nonzeros]
-        eigvecs = eigvecs[:,:num_nonzeros]    
+    # Adjust absolute tolerance for positive definite case if there are negative
+    # eigenvalues and the most negative one has magnitude greater than the
+    # given tolerance.  In that case, we assume the given tolerance is too
+    # samll (relative to the accuracy of the computation) and increase it to at
+    # least filter out negative eigenvalues.
+    if is_positive_definite and eigvals.min() < 0 and abs(eigvals.min()) > atol:
+        atol = abs(eigvals.min())
+
+    # Filter out small and negative eigenvalues, if necessary
+    num_nonzeros_atol = (abs(eigvals) > atol).sum()
+    if rtol is not None:
+        num_nonzeros_rtol = (
+            abs(eigvals[:num_nonzeros_atol]) / abs(eigvals[0]) > rtol).sum()
+        num_nonzeros = min(num_nonzeros_atol, num_nonzeros_rtol)
+    else:
+        num_nonzeros = num_nonzeros_atol
+    eigvals = eigvals[:num_nonzeros]
+    eigvecs = eigvecs[:, :num_nonzeros]    
     return eigvals, eigvecs
 
 

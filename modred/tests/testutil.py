@@ -137,6 +137,115 @@ class TestUtil(unittest.TestCase):
     
 
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
+    def test_eigh(self):
+        # Set tolerance for test of eigval/eigvec properties.  Value necessary
+        # for test to pass depends on matrix size, as well as atol and rtol 
+        # values
+        test_tol = 1e-12
+
+        # Generate random matrix
+        num_rows = 100
+
+        # Test tolerances.  Choose an aggressiv to make it likely that
+        # something is actually truncated.  Given the strategy for generating
+        # random matrices used below, in some cases the eigenvalues range only
+        # from 90 to 100.
+        atol_list = [None]
+        #atol_list = [1e-3, None]
+        #rtol_list = [0.0001, None]
+        rtol_list = [None]
+
+        # Test matrices that are and are not positive definite
+        for is_pos_def in [True, False]:
+
+            # Generate random matrix with values between 0 and 1 
+            mat = np.random.random((num_rows, num_rows)) 
+           
+            # Make matrix symmetric.  Note that if the matrix is large, for
+            # some reason an in-place operation causes the operation to fail
+            # (not sure why...).  Values are still between 0 and 1.
+            mat = 0.5 * (mat + mat.T)
+ 
+            # If necessary, make the matrix positive definite by first making
+            # it symmetric (adding the transpose), and then making it
+            # diagonally dominant (each element is less than 1, so add N * I to
+            # make the diagonal dominant).  Here an in-place change seems to be
+            # ok.  
+            if is_pos_def:
+                mat = mat + num_rows * np.eye(num_rows)
+
+                # Make sure matrix is positive definite, otherwise
+                # force test to quit.
+                if np.linalg.eig(mat)[0].min() < 0.:
+                    raise ValueError(
+                        'Failed to generate positive definite matrix '
+                        'for test.')
+ 
+                # Given the way the positive definite matrix is created above,
+                # we have to choose tolerances carefully, otherwise nothing
+                # will be truncated and our test will not really check
+                # anything.  Eigenvalues usually range from 95 to 150.
+                atol_list = [100, None]
+                rtol_list = [.65, None]
+
+            # For non-positive-definite matrices, the eigenvalues generally
+            # range from -3 to 50.  Again, must choose tolerance carefully to
+            # make sure something is actually truncated.
+            else:
+                atol_list = [1, None]
+                rtol_list = [.01, None]
+
+            # Loop through different tolerance values
+            for atol in atol_list:
+                for rtol in rtol_list:
+
+                    # For each case, test that returned values are in fact
+                    # eigenvalues and eigenvectors of the given matrix.  Since
+                    # each pair that is returned (not truncated due to
+                    # tolerances) should have this property, we can test this
+                    # even if tolerances are passed in.  Compare to the zero
+                    # matrix because then we only have to check the absolute
+                    # magnitue of each term, rather than consider relative
+                    # errors with respect to nonzero terms.
+                    eigvals, eigvecs = util.eigh(
+                        mat, rtol=rtol, atol=atol,
+                        is_positive_definite=is_pos_def)
+                    np.testing.assert_allclose(
+                        np.dot(mat, eigvecs) - 
+                        np.dot(eigvecs, np.diag(eigvals)), 
+                        np.zeros(eigvecs.shape),
+                        atol=test_tol)
+
+                    # If either tolerance is nonzero, make sure that something
+                    # is actually truncated, otherwise force test to quit.  To
+                    # do this, make sure the eigvec matrix is not square.
+                    if rtol and eigvecs.shape[1] == num_rows:
+                        raise ValueError(
+                            'Failed to choose relative tolerance that forces '
+                            'truncation.')
+                    if atol and eigvecs.shape[1] == num_rows:
+                        raise ValueError(
+                            'Failed to choose absolute tolerance that forces '
+                            'truncation.')
+
+                    # If the positive definite flag is passed in, make sure the
+                    # returned eigenvalues are all positive
+                    if is_pos_def:
+                        self.assertTrue(eigvals.min() > 0)
+
+                    # If a relative tolerance is passed in, make sure the
+                    # relative tolerance is satisfied.
+                    if rtol:
+                        self.assertTrue(
+                            abs(eigvals).min() / abs(eigvals).max() > rtol)
+
+                    # If an absolute tolerance is passed in, make sure the
+                    # absolute tolerance is satisfied.
+                    if atol:
+                        self.assertTrue(abs(eigvals).min() > atol)
+
+
+    @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_eig_biorthog(self):
         rtol = 1e-10
         atol = 1e-14
