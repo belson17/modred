@@ -38,7 +38,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
         U = vecs.dot(V).dot(np.diag(Sigma ** -0.5))
         A_tilde = inner_product(
             U, adv_vecs).dot(V).dot(np.diag(Sigma ** -0.5))
-        eigvals, W, L_eigvals, Z = util.eig_biorthog(
+        eigvals, W, Z = util.eig_biorthog(
             A_tilde, scale_choice='left')
         build_coeffs_proj = V.dot(np.diag(Sigma ** -0.5)).dot(W)
         build_coeffs_exact = (
@@ -75,10 +75,13 @@ class TestDMDArraysFunctions(unittest.TestCase):
         rtol = 1e-8
         atol = 1e-15
         mode_indices = [2, 0, 3]
+
+        # Generate weight matrices for inner products, which should all be
+        # positive semidefinite.
         weights_full = np.mat(
             np.random.random((self.num_states, self.num_states)))
-        weights_full = np.triu(weights_full) + np.triu(weights_full, 1).conj().T
-        weights_full = weights_full*weights_full
+        weights_full = 0.5 * (weights_full + weights_full.T)
+        weights_full = weights_full + self.num_states * np.eye(self.num_states)
         weights_diag = np.random.random(self.num_states)
         weights_list = [None, weights_diag, weights_full]
         for weights in weights_list:
@@ -321,7 +324,7 @@ class TestDMDHandles(unittest.TestCase):
         # Compute eigendecomposition of low order linear operator
         A_tilde = inner_product(U_list, adv_vecs).dot(
             correlation_mat_eigvecs).dot(np.diag(correlation_mat_eigvals ** -0.5))
-        eigvals, R_low_order_eigvecs, L_eigvals, L_low_order_eigvecs =\
+        eigvals, R_low_order_eigvecs, L_low_order_eigvecs =\
             util.eig_biorthog(A_tilde, scale_choice='left')
         R_low_order_eigvecs = np.mat(R_low_order_eigvecs)
         L_low_order_eigvecs = np.mat(L_low_order_eigvecs)
@@ -589,11 +592,11 @@ class TestDMDHandles(unittest.TestCase):
         # the same data, but in two different ways.
         _parallel.barrier()
         self.my_DMD.compute_decomp(self.vec_handles) 
+        spectral_coeffs_computed = self.my_DMD.compute_spectrum()
         spectral_coeffs = np.array(
             np.linalg.pinv(self.my_DMD.R_low_order_eigvecs) * 
             np.mat(np.diag(np.sqrt(self.my_DMD.correlation_mat_eigvals))) * 
-            self.my_DMD.correlation_mat_eigvecs[0, :].T).squeeze()
-        spectral_coeffs_computed = self.my_DMD.compute_spectrum()
+            np.mat(self.my_DMD.correlation_mat_eigvecs[0, :]).T).squeeze()
         np.testing.assert_allclose(
             spectral_coeffs_computed, spectral_coeffs, rtol=rtol, atol=atol)
 
@@ -612,7 +615,7 @@ class TestDMDHandles(unittest.TestCase):
         spectral_coeffs = np.array(
             np.linalg.pinv(self.my_DMD.R_low_order_eigvecs) * 
             np.mat(np.diag(np.sqrt(self.my_DMD.correlation_mat_eigvals))) * 
-            self.my_DMD.correlation_mat_eigvecs[0, :].T).squeeze()
+            np.mat(self.my_DMD.correlation_mat_eigvecs[0, :]).T).squeeze()
         spectral_coeffs_computed = self.my_DMD.compute_spectrum()
         np.testing.assert_allclose(
             spectral_coeffs_computed, spectral_coeffs, rtol=rtol, atol=atol)

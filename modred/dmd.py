@@ -84,12 +84,12 @@ def compute_DMD_matrices_snaps_method(vecs, mode_indices, adv_vecs=None,
         correlation_mat_eigvals_sqrt_inv)
     
     # Compute eigendecomposition of low-order linear map.
-    R_eigvals, R_low_order_eigvecs, L_eigvals, L_low_order_eigvecs =\
+    eigvals, R_low_order_eigvecs, L_low_order_eigvecs =\
         util.eig_biorthog(low_order_linear_map, scale_choice='left')
     build_coeffs_proj = (
         correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv * 
         R_low_order_eigvecs)
-    build_coeffs_exact = build_coeffs_proj * np.mat(np.diag(R_eigvals ** -1.))
+    build_coeffs_exact = build_coeffs_proj * np.mat(np.diag(eigvals ** -1.))
     spectral_coeffs = np.array(
         L_low_order_eigvecs.H *
         np.mat(np.diag(np.sqrt(correlation_mat_eigvals))) *
@@ -116,7 +116,7 @@ def compute_DMD_matrices_snaps_method(vecs, mode_indices, adv_vecs=None,
     # TODO: (Jon) Should we retunr the left eigenvalues for error checking?
     if return_all:
         return (
-            exact_modes, proj_modes, R_eigvals, spectral_coeffs, 
+            exact_modes, proj_modes, eigvals, spectral_coeffs, 
             build_coeffs_exact, build_coeffs_proj)
     else:
         return exact_modes, proj_modes, eigvals, spectral_coeffs
@@ -212,12 +212,12 @@ def compute_DMD_matrices_direct_method(vecs, mode_indices,
             correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv)
         
     # Compute eigendecomposition of low-order linear map.
-    R_eigvals, R_low_order_eigvecs, L_eigvals, L_low_order_eigvecs =\
+    eigvals, R_low_order_eigvecs, L_low_order_eigvecs =\
         util.eig_biorthog(low_order_linear_map, scale_choice='left')
     build_coeffs_proj = (
         correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv *
         R_low_order_eigvecs) 
-    build_coeffs_exact = build_coeffs_proj * np.mat(np.diag(R_eigvals ** -1.))
+    build_coeffs_exact = build_coeffs_proj * np.mat(np.diag(eigvals ** -1.))
     spectral_coeffs = np.array(
         L_low_order_eigvecs.H *
         np.mat(np.diag(np.sqrt(correlation_mat_eigvals))) * 
@@ -244,7 +244,7 @@ def compute_DMD_matrices_direct_method(vecs, mode_indices,
     # TODO: (Jon) Should we return L_eigvals for error checking?
     if return_all:
         return (
-            exact_modes, proj_modes, R_eigvals, spectral_coeffs, 
+            exact_modes, proj_modes, eigvals, spectral_coeffs, 
             build_coeffs_exact, build_coeffs_proj)
     else:
         return exact_modes, proj_modes, eigvals, spectral_coeffs
@@ -358,8 +358,8 @@ class DMDHandles(object):
         """Computes eigen decomposition of low-order linear map and associated 
         DMD matrices."""
         # TODO: tols go in here (Brandt)
-        (self.eigvals, self.R_low_order_eigvecs, self.L_eigvals, 
-            self.L_low_order_eigvecs) = _parallel.call_and_bcast(
+        self.eigvals, self.R_low_order_eigvecs, self.L_low_order_eigvecs =\
+            _parallel.call_and_bcast(
             util.eig_biorthog, self.low_order_linear_map, 
             **{'scale_choice':'left'})
        
@@ -435,9 +435,11 @@ class DMDHandles(object):
             self.correlation_mat_eigvals ** -0.5))
         
         # Compute low-order linear map 
-        self.low_order_linear_map = (correlation_mat_eigvals_sqrt_inv *
-            self.correlation_mat_eigvecs.H * self.cross_correlation_mat * 
-            self.correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv)
+        self.low_order_linear_map = (
+            correlation_mat_eigvals_sqrt_inv * 
+            self.correlation_mat_eigvecs.conj().T * 
+            self.cross_correlation_mat * self.correlation_mat_eigvecs * 
+            correlation_mat_eigvals_sqrt_inv)
         
         # Compute eigendecomposition of low-order linear map.
         self._compute_eigen_decomp()
@@ -546,7 +548,7 @@ class DMDHandles(object):
         self.spectral_coeffs = np.array(
             self.L_low_order_eigvecs.H *
             np.mat(np.diag(np.sqrt(self.correlation_mat_eigvals))) * 
-            self.correlation_mat_eigvecs[0, :].T).squeeze()
+            np.mat(self.correlation_mat_eigvecs[0, :]).T).squeeze()
         return self.spectral_coeffs
 
 

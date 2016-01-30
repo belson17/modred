@@ -20,13 +20,13 @@ import modred.vectors as V
 from modred import util
 
 
-
 @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
 class TestPODArraysFunctions(unittest.TestCase):
     def setUp(self):
         self.mode_indices = [2, 4, 6, 3]
         self.num_vecs = 10
         self.num_states = 30
+
 
     def test_compute_modes(self):
         ws = np.identity(self.num_states)
@@ -67,8 +67,6 @@ class TestPODArraysFunctions(unittest.TestCase):
             np.testing.assert_allclose(np.abs(eigvecs), np.abs(eigvecs_true))
             np.testing.assert_allclose(
                 np.abs(modes), np.abs(modes_true[:,self.mode_indices]))
-            
-            
 
 
 class TestPODHandles(unittest.TestCase):
@@ -76,7 +74,7 @@ class TestPODHandles(unittest.TestCase):
         self.test_dir = 'DELETE_ME_test_files_pod'
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        if not os.path.isdir(self.test_dir) and _parallel.is_rank_zero():        
+        if not os.path.isdir(self.test_dir) and _parallel.is_rank_zero():       
             os.mkdir(self.test_dir)
         self.mode_indices = [2, 4, 3, 6]
         self.num_vecs = 10
@@ -141,7 +139,6 @@ class TestPODHandles(unittest.TestCase):
             correlation_mat_true)
         np.testing.assert_allclose(POD_load.eigvecs, eigvecs_true)
         np.testing.assert_allclose(POD_load.eigvals, eigvals_true)
-
      
      
     def test_init(self):
@@ -157,7 +154,8 @@ class TestPODHandles(unittest.TestCase):
             'verbosity': 0, 'eigvecs': None, 'eigvals': None,
             'correlation_mat': None, 'vec_handles': None, 'vecs': None,
             'vec_space': VectorSpaceHandles(inner_product=my_IP, verbosity=0)}
-        for k,v in util.get_data_members(PODHandles(my_IP, verbosity=0)).items():
+        for k,v in util.get_data_members(
+            PODHandles(my_IP, verbosity=0)).items():
             self.assertEqual(v, data_members_default[k])
         
         my_POD = PODHandles(my_IP, verbosity=0)
@@ -180,7 +178,8 @@ class TestPODHandles(unittest.TestCase):
             self.assertEqual(v, data_members_modified[k])
             
         max_vecs_per_node = 500
-        my_POD = PODHandles(my_IP, max_vecs_per_node=max_vecs_per_node, verbosity=0)
+        my_POD = PODHandles(
+            my_IP, max_vecs_per_node=max_vecs_per_node, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_space'].max_vecs_per_node = \
             max_vecs_per_node
@@ -209,7 +208,6 @@ class TestPODHandles(unittest.TestCase):
         np.testing.assert_allclose(eigvals_returned, 
             self.eigvals_true, rtol=tol)
 
-        
 
     def test_compute_modes(self):
         mode_path = join(self.test_dir, 'mode_%03d.txt')

@@ -247,61 +247,6 @@ def eig_biorthog(mat, scale_choice='left'):
         eigenvectors will be left unscaled, leaving them with unit norms.
 
     Returns:
-        ``eigvals``: Eigenvalues in a 1D array.
-        
-        ``R_eigvecs``: Right eigenvectors, columns of matrix/array, sorted by 
-        eigvals.
-
-        ``L_eigvecs``: Left eigenvectors, columns of matrix/array, sorted by 
-        eigvals.
-    """
-    # Compute eigendecompositions
-    R_eigvals, R_eigvecs = np.linalg.eig(mat)
-    L_eigvals_conj, L_eigvecs = np.linalg.eig(mat.conj().T)
-    L_eigvals = L_eigvals_conj.conj()
-
-    # Sort the eigvals
-    R_sort_indices = np.argsort(R_eigvals)
-    L_sort_indices = np.argsort(L_eigvals)
-    R_eigvals = R_eigvals[R_sort_indices]
-    L_eigvals = L_eigvals[L_sort_indices]
-    L_eigvals_conj = L_eigvals.conj()
-
-    # Check that eigvals are the same.  
-    if not np.allclose(L_eigvals, R_eigvals, rtol=1e-12, atol=1e-15):
-        print('Warning: left and right eigenvalues are not close with atol = '
-            '1e-15, rtol = 1e-12.')
-
-    # Sort the eigvecs
-    R_eigvecs = R_eigvecs[:, R_sort_indices]
-    L_eigvecs = L_eigvecs[:, L_sort_indices]
-
-    # Scale the eigvecs to get a biorthogonal set
-    scale_factors = np.diag(np.dot(L_eigvecs.conj().T, R_eigvecs)) 
-    if scale_choice.lower() == 'left':
-        L_eigvecs /= scale_factors.conj()
-    elif scale_choice.lower() == 'right':
-        R_eigvecs /= scale_factors
-    else:
-        raise ValueError('Invalid scale choice.  Must be LEFT or RIGHT.')
-
-    return R_eigvals, R_eigvecs, L_eigvals, L_eigvecs 
-
-
-def eig_biorthog(mat, scale_choice='left'):
-    """Wrapper for ``numpy.linalg.eig`` that returns both left and right
-    eigenvectors. Eigenvalues and eigenvectors are sorted so that the left and
-    right eigenvector matrices are orthogonal.
-
-    Args:
-        ``mat``: To take eigen decomposition of.
-       
-    Kwargs:
-        ``scale_choice'': Determines whether 'left' (default) or 'right'
-        eigenvectors will be scaled to yield a biorthogonal set.  The other 
-        eigenvectors will be left unscaled, leaving them with unit norms.
-
-    Returns:
         ``evals``: Eigenvalues in a 1D array.
         
         ``R_evecs``: Right eigenvectors, columns of matrix/array, sorted by 
