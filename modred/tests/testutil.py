@@ -234,8 +234,7 @@ class TestUtil(unittest.TestCase):
 
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_eig_biorthog(self):
-        rtol = 1e-10
-        atol = 1e-14
+        test_tol = 1e-10
         num_rows = 100 
         mat = np.random.random((num_rows, num_rows))
         for scale_choice in ['left', 'right']:
@@ -243,21 +242,25 @@ class TestUtil(unittest.TestCase):
                 mat, scale_choice=scale_choice)
        
             # Check eigenvector/eigenvalue relationship (use right eigenvalues
-            # only)
+            # only).  Test difference so that all values are compared to zeros,
+            # avoiding need to check relative tolerances.
             np.testing.assert_allclose(
-                np.dot(mat, R_eigvecs), 
-                np.dot(R_eigvecs, np.diag(R_eigvals)),
-                rtol=rtol, atol=atol)
+                np.dot(mat, R_eigvecs) - np.dot(R_eigvecs, np.diag(R_eigvals)),
+                np.zeros(mat.shape),
+                atol=test_tol)
             np.testing.assert_allclose(
-                np.dot(L_eigvecs.conj().T, mat), 
+                np.dot(L_eigvecs.conj().T, mat) - 
                 np.dot(np.diag(R_eigvals), L_eigvecs.conj().T),
-                rtol=rtol, atol=atol)
+                np.zeros(mat.shape),
+                atol=test_tol)
 
-            # Check biorthogonality (use different atol because comparing some
-            # values to a nominal value of 0)
+            # Check biorthogonality (take magnitudes since inner products are
+            # complex in general).  Again, take difference so that all test
+            # values should be zero, avoiding need for rtol
             ip_mat = np.dot(L_eigvecs.conj().T, R_eigvecs)
-            np.testing.assert_allclose(ip_mat, np.eye(num_rows),
-                rtol=rtol, atol=1e-12)
+            np.testing.assert_allclose(
+                np.abs(ip_mat) - np.eye(num_rows), np.zeros(ip_mat.shape), 
+                atol=test_tol)
 
             # Check for unit norms
             if scale_choice == 'left':
