@@ -31,9 +31,13 @@ class TestPODArraysFunctions(unittest.TestCase):
     def test_compute_modes(self):
         ws = np.identity(self.num_states)
         tol = 1e-6
-        weights_full = np.mat(np.random.random((self.num_states, self.num_states)))
-        weights_full = np.triu(weights_full) + np.triu(weights_full, 1).conj().T
-        weights_full = weights_full*weights_full
+
+        # Generate different inner product weights.  Each weight matrix should
+        # be positive definite semidefinite.
+        weights_full = np.mat(
+            np.random.random((self.num_states, self.num_states)))
+        weights_full = 0.5 * (weights_full + weights_full.T)
+        weights_full = weights_full + self.num_states * np.eye(self.num_states)
         weights_diag = np.random.random(self.num_states)
         weights_list = [None, weights_diag, weights_full]
         vec_array = np.random.random((self.num_states, self.num_vecs))
@@ -55,12 +59,14 @@ class TestPODArraysFunctions(unittest.TestCase):
             np.testing.assert_allclose(modes, modes_true[:,self.mode_indices])
                         
             modes, eigvals, eigvecs = \
-                compute_POD_matrices_direct_method(vec_array, self.mode_indices, 
-                inner_product_weights=weights, return_all=True)
+                compute_POD_matrices_direct_method(
+                vec_array, self.mode_indices, inner_product_weights=weights, 
+                return_all=True)
             
             np.testing.assert_allclose(eigvals, eigvals_true)
             np.testing.assert_allclose(np.abs(eigvecs), np.abs(eigvecs_true))
-            np.testing.assert_allclose(np.abs(modes), np.abs(modes_true[:,self.mode_indices]))
+            np.testing.assert_allclose(
+                np.abs(modes), np.abs(modes_true[:,self.mode_indices]))
             
             
 
