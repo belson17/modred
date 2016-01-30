@@ -63,77 +63,75 @@ class TestUtil(unittest.TestCase):
                                 mat_read = np.squeeze(mat_read)
                             np.testing.assert_allclose(mat_read, mat)#,rtol=tol)
                           
-
-    # def _is_unitary(self, M):
-    #     """Returns true/false"""
-    #     if M.shape[0] >= M.shape[1]:
-    #         identity_comp_1 = np.mat(M).H * np.mat(M) 
-    #         np.testing.assert_allclose(identity_comp_1, np.identity(identity_comp_1.shape[0]), atol=1e-12)
-    #     if M.shape[0] <= M.shape[1]:
-    #         identity_comp_2 = np.mat(M) * np.mat(M).H
-    #         np.testing.assert_allclose(identity_comp_2, np.identity(identity_comp_2.shape[0]), atol=1e-12)
-    """
+    
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_svd(self):
-        num_rows_list = [3, 5, 40]
-        num_cols_list = [1, 9, 50]
-        atols = [1e-6, 1e-9, None]
-        rtols = [1e-8, None]
-        for num_rows in num_rows_list:
-            for num_cols in num_cols_list:
-                for num_internals in num_internals_list:
-                    left_mat = np.mat(np.random.random((num_rows, num_internals)))
-                    right_mat = np.mat(np.random.random((num_internals, num_cols)))
-                    full_mat = left_mat*right_mat
-                    L_sing_vecs, sing_vals, R_sing_vecs = util.svd(full_mat)
-                    
-                    U, E, V_comp_conj = np.linalg.svd(full_mat, full_matrices=0)
-                    V = np.mat(V_comp_conj).H
-                    if num_internals < num_rows or num_internals < num_cols:
-                        U = U[:,:num_internals]
-                        V = V[:,:num_internals]
-                        E = E[:num_internals]
-          
-                    np.testing.assert_allclose(L_sing_vecs, U)
-                    np.testing.assert_allclose(sing_vals, E)
-                    np.testing.assert_allclose(R_sing_vecs, V)
-    """
-    def _is_unitary(self, M):
-        """Returns true/false"""
-        identity_comp_1 = np.mat(M).H * np.mat(M) 
-        identity_comp_2 = np.mat(M) * np.mat(M).H
-        print identity_comp_1, identity_comp_2
-        return np.allclose(identity_comp_1, np.identity(identity_comp_1.shape[0])) and \
-            np.allclose(identity_comp_2, np.identity(identity_comp_2.shape[0]))
+        # Set tolerance for testing eigval/eigvec property
+        test_tol = 1e-10
 
-    @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
-    def test_svd_new(self):
-        num_rows_list = [3, 5, 40]
-        num_cols_list = [1, 9, 50]
-        atols = [1e-6, 1e-9, None]
-        rtols = [1e-8, None]
+        # Check tall, fat, and square matrices
+        num_rows_list = [100]
+        num_cols_list = [50, 100, 150]
+
+        # Loop through different matrix sizes
         for num_rows in num_rows_list:
             for num_cols in num_cols_list:
-                for atol in atols:
-                    for rtol in rtols:
-                        full_mat = np.random.random((num_rows, num_cols))
-                        if atol and rtol:
-                            L_sing_vecs, sing_vals, R_sing_vecs = util.svd(full_mat, atol=atol, rtol=rtol)
+
+                # Generate a random matrix with elements in [0, 1]
+                mat = np.random.random((num_rows, num_cols))
+
+                # Compute full set of singular values to help choose tolerance
+                # levels that guarantee truncation (otherwise tests won't
+                # actually check those features).
+                sing_vals_full = np.linalg.svd(mat, full_matrices=0)[1]
+                atol_list = [np.median(sing_vals_full), None]
+                rtol_list = [
+                    np.median(sing_vals_full) / np.max(sing_vals_full), None]
+
+                # Loop through different tolerance cases
+                for atol in atol_list:
+                    for rtol in rtol_list:
+                
+                        # For all matrices, check that the output of util.svd
+                        # satisfies the definition of an SVD.  Do this by
+                        # checking eigval/eigvec properties, which must be
+                        # satisfied by the sing vecs and sing vals, even if
+                        # there is truncation.  The fact that the singular
+                        # vectors are eigenvectors of a normal matrix ensures
+                        # that they are unitary, so we don't have to check that
+                        # separately.
+                        L_sing_vecs, sing_vals, R_sing_vecs = util.svd(
+                            mat, atol=atol, rtol=rtol)
+                        np.testing.assert_allclose(
+                            np.dot(np.dot(mat, mat.T), L_sing_vecs) - 
+                            np.dot(L_sing_vecs, np.diag(sing_vals ** 2)), 
+                            np.zeros(L_sing_vecs.shape),
+                            atol=test_tol)
+                        np.testing.assert_allclose(
+                            np.dot(np.dot(mat.T, mat), R_sing_vecs) - 
+                            np.dot(R_sing_vecs, np.diag(sing_vals ** 2)), 
+                            np.zeros(R_sing_vecs.shape),
+                            atol=test_tol)
+                    
+                        # If either tolerance is nonzero, make sure that
+                        # something is actually truncated, otherwise force test
+                        # to quit.  To do this, make sure the eigvec matrix is
+                        # not square.
+                        if rtol and sing_vals.size == sing_vals_full.size:
+                            raise ValueError(
+                                'Failed to choose relative tolerance that '
+                                'forces truncation.')
+                        if atol and sing_vals.size == sing_vals_full.size:
+                            raise ValueError(
+                                'Failed to choose absolute tolerance that '
+                                'forces truncation.')
+
+                        # If necessary, test that tolerances are satisfied
+                        if atol:
                             self.assertTrue(abs(sing_vals[-1]) > atol)
-                            self.assertTrue(abs(sing_vals[0])/abs(sing_vals[-1]) > rtol)
-                        elif atol:
-                            L_sing_vecs, sing_vals, R_sing_vecs = util.svd(full_mat, atol=atol)
-                            self.assertTrue(abs(sing_vals[-1]) > atol)
-                        elif rtol:
-                            L_sing_vecs, sing_vals, R_sing_vecs = util.svd(full_mat, rtol=rtol)
-                            self.assertTrue(abs(sing_vals[0])/abs(sing_vals[-1]) > rtol)
-                        else:
-                            #print num_rows, num_cols, atol, rtol
-                            L_sing_vecs, sing_vals, R_sing_vecs = util.svd(full_mat)
-                            reconstructed_full_mat = L_sing_vecs.dot(np.diag(sing_vals)).dot(R_sing_vecs.T.conj())
-                            np.testing.assert_allclose(reconstructed_full_mat, full_mat)
-                            self.assertTrue(self._is_unitary(L_sing_vecs))
-                            self.assertTrue(self._is_unitary(R_sing_vecs))
+                        if rtol:
+                            self.assertTrue(
+                                abs(sing_vals[0]) / abs(sing_vals[-1]) > rtol)
     
 
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
@@ -145,15 +143,6 @@ class TestUtil(unittest.TestCase):
 
         # Generate random matrix
         num_rows = 100
-
-        # Test tolerances.  Choose an aggressiv to make it likely that
-        # something is actually truncated.  Given the strategy for generating
-        # random matrices used below, in some cases the eigenvalues range only
-        # from 90 to 100.
-        atol_list = [None]
-        #atol_list = [1e-3, None]
-        #rtol_list = [0.0001, None]
-        rtol_list = [None]
 
         # Test matrices that are and are not positive definite
         for is_pos_def in [True, False]:
@@ -181,19 +170,13 @@ class TestUtil(unittest.TestCase):
                         'Failed to generate positive definite matrix '
                         'for test.')
  
-                # Given the way the positive definite matrix is created above,
-                # we have to choose tolerances carefully, otherwise nothing
-                # will be truncated and our test will not really check
-                # anything.  Eigenvalues usually range from 95 to 150.
-                atol_list = [100, None]
-                rtol_list = [.65, None]
-
-            # For non-positive-definite matrices, the eigenvalues generally
-            # range from -3 to 50.  Again, must choose tolerance carefully to
-            # make sure something is actually truncated.
-            else:
-                atol_list = [1, None]
-                rtol_list = [.01, None]
+            # Compute full set of eigenvalues to help choose tolerance levels
+            # that guarantee truncation (otherwise tests won't actually check
+            # those features).
+            eigvals_full = np.linalg.eig(mat)[0]
+            atol_list = [np.median(abs(eigvals_full)), None]
+            rtol_list = [
+                np.median(abs(eigvals_full)) / abs(np.max(eigvals_full)), None]
 
             # Loop through different tolerance values
             for atol in atol_list:
@@ -219,11 +202,11 @@ class TestUtil(unittest.TestCase):
                     # If either tolerance is nonzero, make sure that something
                     # is actually truncated, otherwise force test to quit.  To
                     # do this, make sure the eigvec matrix is not square.
-                    if rtol and eigvecs.shape[1] == num_rows:
+                    if rtol and eigvals.size == eigvals_full.size:
                         raise ValueError(
                             'Failed to choose relative tolerance that forces '
                             'truncation.')
-                    if atol and eigvecs.shape[1] == num_rows:
+                    if atol and eigvals.size == eigvals_full.size:
                         raise ValueError(
                             'Failed to choose absolute tolerance that forces '
                             'truncation.')

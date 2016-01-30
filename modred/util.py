@@ -139,7 +139,7 @@ def svd(mat, atol=1e-13, rtol=None):
     """Wrapper for numpy's SVD, U E V^* = mat. 
     
     Args:
-        ``mat``: Array or matrix to take SVD of.
+        ``mat``: Array or matrix of which to take SVD.
     
     Kwargs:
         ``atol``: Level at which singular values are truncated.
@@ -160,18 +160,20 @@ def svd(mat, atol=1e-13, rtol=None):
     U, E, V_comp_conj = np.linalg.svd(np.mat(mat), full_matrices=0)
     V = np.mat(V_comp_conj).H
     U = np.mat(U)
-    
-    # Only return sing vals above the tolerance
+   
+    # Figure out how many singular values satisfy the tolerances
     num_nonzeros_atol = (abs(E) > atol).sum()
-    if rtol is not None:
-        num_nonzeros_rtol = (abs(E[:num_nonzeros_atol])/abs(E[0]) > rtol).sum()
+    if rtol:
+        num_nonzeros_rtol = (
+            abs(E[:num_nonzeros_atol]) / abs(E[0]) > rtol).sum()
         num_nonzeros = min(num_nonzeros_atol, num_nonzeros_rtol)
     else:
         num_nonzeros = num_nonzeros_atol
-    if num_nonzeros > 0:
-        U = U[:, :num_nonzeros]
-        V = V[:, :num_nonzeros]
-        E = E[:num_nonzeros]
+
+    # Truncate matrices according to tolerances
+    U = U[:, :num_nonzeros]
+    V = V[:, :num_nonzeros]
+    E = E[:num_nonzeros]
 
     return U, E, V
 
