@@ -34,7 +34,8 @@ class TestUtil(unittest.TestCase):
         _parallel.barrier()
         
         
-    @unittest.skipIf(_parallel.is_distributed(), 'Only save/load matrices in serial')
+    @unittest.skipIf(
+        _parallel.is_distributed(), 'Only save/load matrices in serial')
     def test_load_save_array_text(self):
         """Test that can read/write text matrices"""
         #tol = 1e-8
@@ -49,15 +50,18 @@ class TestUtil(unittest.TestCase):
                         for num_cols in cols:
                             mat_real = np.random.random((num_rows, num_cols))
                             if is_complex:
-                                mat_imag = np.random.random((num_rows, num_cols))
+                                mat_imag = np.random.random(
+                                    (num_rows, num_cols))
                                 mat = mat_real + 1J*mat_imag
                             else:
                                 mat = mat_real
                             # Check row and column vectors, no squeeze (1,1)
                             if squeeze and (num_rows > 1 or num_cols > 1):
                                 mat = np.squeeze(mat)
-                            util.save_array_text(mat, mat_path, delimiter=delimiter)
-                            mat_read = util.load_array_text(mat_path, delimiter=delimiter,
+                            util.save_array_text(
+                                mat, mat_path, delimiter=delimiter)
+                            mat_read = util.load_array_text(
+                                mat_path, delimiter=delimiter,
                                 is_complex=is_complex)
                             if squeeze:
                                 mat_read = np.squeeze(mat_read)
@@ -374,13 +378,15 @@ class TestUtil(unittest.TestCase):
                     # Check that can give time_step
                     outputs = util.impulse(A, B, C)
                     num_time_steps = len(outputs)
-                    outputs_true = np.zeros((num_time_steps, num_outputs, num_inputs))
+                    outputs_true = np.zeros(
+                        (num_time_steps, num_outputs, num_inputs))
                     for ti in range(num_time_steps):
                         outputs_true[ti] = C * (A**ti) * B
                     np.testing.assert_allclose(outputs, outputs_true)
                     
                     # Check can give num_time_steps as an argument
-                    outputs = util.impulse(A, B, C, num_time_steps=num_time_steps)
+                    outputs = util.impulse(
+                        A, B, C, num_time_steps=num_time_steps)
                     np.testing.assert_allclose(outputs, outputs_true)
                     
 
