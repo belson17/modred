@@ -8,8 +8,9 @@ from . import util
 from .parallel import parallel_default_instance
 _parallel = parallel_default_instance
 
-def compute_POD_matrices_snaps_method(vecs, mode_indices, 
-    inner_product_weights=None, return_all=False):
+def compute_POD_matrices_snaps_method(
+    vecs, mode_indices, inner_product_weights=None, atol=1e-13, rtol=None,
+    return_all=False):
     """Computes POD modes with data in a matrix using the method of snapshots.
     
     Args:
@@ -21,7 +22,12 @@ def compute_POD_matrices_snaps_method(vecs, mode_indices,
     Kwargs:
         ``inner_product_weights``: 1D array or matrix of inner product weights.
             It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
-        
+
+`       ``atol``: Level at which POD eigenvalues are truncated.
+ 
+        ``rtol``: Maximum relative difference between largest and smallest POD
+            eigenvalues.  Smaller ones are truncated.
+
         ``return_all``: Return more objects, see below. Default is false.
         
     Returns:
@@ -58,8 +64,8 @@ def compute_POD_matrices_snaps_method(vecs, mode_indices,
     vecs = util.make_mat(vecs)
     correlation_mat = \
         vec_space.compute_symmetric_inner_product_mat(vecs)
-    eigvals, eigvecs = util.eigh(correlation_mat, 
-        is_positive_definite=True)
+    eigvals, eigvecs = util.eigh(
+        correlation_mat, atol=atol, rtol=rtol, is_positive_definite=True)
     # compute modes
     build_coeff_mat = eigvecs * np.mat(np.diag(eigvals**-0.5))
     modes = vec_space.lin_combine(vecs,
@@ -69,8 +75,9 @@ def compute_POD_matrices_snaps_method(vecs, mode_indices,
     else:
         return modes, eigvals
 
-def compute_POD_matrices_direct_method(vecs, mode_indices,
-    inner_product_weights=None, return_all=False):
+def compute_POD_matrices_direct_method(
+    vecs, mode_indices, inner_product_weights=None, atol=1e-13, rtol=None, 
+    return_all=False):
     """Computes POD modes with data in a matrix using the direct method.
     
     Args:
@@ -82,7 +89,12 @@ def compute_POD_matrices_direct_method(vecs, mode_indices,
     Kwargs:
         ``inner_product_weights``: 1D array or matrix of inner product weights.
             It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
-        
+       
+        ``atol``: Level at which POD eigenvalues are truncated.
+
+        ``rtol``: Maximum relative difference between largest and smallest
+            POD eigenvalues.  Smaller ones are truncated.
+
         ``return_all``: Return more objects, see below. Default is false.
     
     Returns:
@@ -117,21 +129,24 @@ def compute_POD_matrices_direct_method(vecs, mode_indices,
         raise RuntimeError('Cannot run in parallel.')
     vecs = util.make_mat(vecs)
     if inner_product_weights is None:
-        modes, sing_vals, eigvecs = util.svd(vecs)
+        modes, sing_vals, eigvecs = util.svd(vecs, atol=atol, rtol=rtol)
         modes = modes[:, mode_indices]
     
     elif inner_product_weights.ndim == 1:
         sqrt_weights = inner_product_weights**0.5
         vecs_weighted = np.mat(np.diag(sqrt_weights)) * vecs
-        modes_weighted, sing_vals, eigvecs = util.svd(vecs_weighted)
-        modes = np.mat(np.diag(sqrt_weights**-1.0))*modes_weighted[:,mode_indices]
+        modes_weighted, sing_vals, eigvecs = util.svd(
+            vecs_weighted, atol=atol, rtol=rtol)
+        modes = np.mat(
+            np.diag(sqrt_weights**-1.0)) * modes_weighted[:,mode_indices]
             
     elif inner_product_weights.ndim == 2:
         if inner_product_weights.shape[0] > 500:
             print('Warning: Cholesky decomposition could be time consuming.')
         sqrt_weights = np.linalg.cholesky(inner_product_weights).H
         vecs_weighted = sqrt_weights * vecs
-        modes_weighted, sing_vals, eigvecs = util.svd(vecs_weighted)
+        modes_weighted, sing_vals, eigvecs = util.svd(
+            vecs_weighted, atol=atol, rtol=rtol)
         modes = np.linalg.solve(sqrt_weights, modes_weighted[:, mode_indices])
         #inv_sqrt_weights = np.linalg.inv(sqrt_weights)
         #modes = inv_sqrt_weights.dot(modes_weighted[:, mode_indices])
@@ -243,9 +258,15 @@ class PODHandles(object):
         self.vec_space.sanity_check(test_vec_handle)
 
     
-    def compute_eigendecomp(self):
+    def compute_eigendecomp(self, atol=1e-13, rtol=None):
         """Computes eigendecomp of correlation matrix.
-        
+       
+        Kwargs:
+            ``atol``: Level at which POD eigenvalues are truncated.
+ 
+            ``rtol``: Maximum relative difference between largest and smallest 
+                POD eigenvalues.  Smaller ones are truncated.
+
         Useful if already have correlation mat and don't want to recompute it.
         Usage::
         
@@ -255,13 +276,20 @@ class PODHandles(object):
         
         """
         self.eigvals, self.eigvecs = _parallel.call_and_bcast(
-            util.eigh, self.correlation_mat, is_positive_definite=True)
+            util.eigh, self.correlation_mat, atol=atol, rtol=rtol, 
+            is_positive_definite=True)
         
-    def compute_decomp(self, vec_handles):
+    def compute_decomp(self, vec_handles, atol=1e-13, rtol=None):
         """Computes correlation matrix, :math:`X^*WX` and its eigen decomp.
 
         Args:
             ``vec_handles``: List of vector handles.
+
+        Kwargs:
+            ``atol``: Level at which POD eigenvalues are truncated.
+ 
+            ``rtol``: Maximum relative difference between largest and smallest 
+                POD eigenvalues.  Smaller ones are truncated.
 
         Returns:
             ``eigenvec_handles``: Matrix with eigenvectors as columns.
@@ -275,7 +303,7 @@ class PODHandles(object):
         #    compute_inner_product_mat(self.vec_handles, self.vec_handles)
         #self.eigvals, self.eigvecs = _parallel.call_and_bcast(
         #    util.eigh, self.correlation_mat, is_positive_definite=True)
-        self.compute_eigendecomp()
+        self.compute_eigendecomp(atol=atol, rtol=rtol)
         return self.eigvecs, self.eigvals
 
     def compute_modes(self, mode_indices, modes, vec_handles=None):
