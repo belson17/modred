@@ -7,9 +7,9 @@ from . import util
 from .parallel import parallel_default_instance
 _parallel = parallel_default_instance
 
-def compute_BPOD_matrices(direct_vecs, adjoint_vecs, 
-    direct_mode_indices, adjoint_mode_indices, inner_product_weights=None, 
-    return_all=False):
+def compute_BPOD_matrices(
+    direct_vecs, adjoint_vecs, direct_mode_indices, adjoint_mode_indices,
+    inner_product_weights=None, atol=1e-13, rtol=None, return_all=False):
     """Computes BPOD modes with data in a matrix.
         
     Args:
@@ -28,6 +28,11 @@ def compute_BPOD_matrices(direct_vecs, adjoint_vecs,
             It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
         
         ``return_all``: Return more objects, see below. Default is false.
+
+        ``atol``: Level below which Hankel singular values are truncated.
+ 
+        ``rtol``: Maximum relative difference between largest and smallest 
+            Hankel eigenvalues.  Smaller ones are truncated.
         
     Returns:
         ``direct_modes``: Matrix with direct modes as columns.
@@ -56,12 +61,13 @@ def compute_BPOD_matrices(direct_vecs, adjoint_vecs,
     
     #Hankel_mat = vec_space.compute_inner_product_mat(adjoint_vecs, 
     #    direct_vecs)
-    first_adjoint_all_direct = vec_space.compute_inner_product_mat(adjoint_vecs[:,0], 
-        direct_vecs)
-    all_adjoint_last_direct = vec_space.compute_inner_product_mat(adjoint_vecs, 
-        direct_vecs[:,-1])
+    first_adjoint_all_direct = vec_space.compute_inner_product_mat(
+        adjoint_vecs[:,0], direct_vecs)
+    all_adjoint_last_direct = vec_space.compute_inner_product_mat(
+        adjoint_vecs, direct_vecs[:,-1])
     Hankel_mat = util.Hankel(first_adjoint_all_direct, all_adjoint_last_direct)
-    L_sing_vecs, sing_vals, R_sing_vecs = util.svd(Hankel_mat)
+    L_sing_vecs, sing_vals, R_sing_vecs = util.svd(
+        Hankel_mat, atol=atol, rtol=rtol)
     #print 'diff in Hankels',Hankel_mat - Hankel_mat2
     #Hankel_mat = Hankel_mat2
     sing_vals_sqrt_mat = np.mat(np.diag(sing_vals**-0.5))
@@ -78,11 +84,7 @@ def compute_BPOD_matrices(direct_vecs, adjoint_vecs,
             R_sing_vecs, Hankel_mat
     else:
         return direct_mode_array, adjoint_mode_array, sing_vals
-    
-
-
-
-            
+           
 
 class BPODHandles(object):
     """Balanced Proper Orthogonal Decomposition for large data.
@@ -123,13 +125,14 @@ class BPODHandles(object):
         self.sing_vals = None
         self.Hankel_mat = None
         # Class that contains all of the low-level vec operations
-        self.vec_space = VectorSpaceHandles(inner_product=inner_product, 
-            max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
+        self.vec_space = VectorSpaceHandles(
+            inner_product=inner_product, max_vecs_per_node=max_vecs_per_node,
+            verbosity=verbosity)
         self.direct_vec_handles = None
         self.adjoint_vec_handles = None
 
-    def get_decomp(self, L_sing_vecs_source, sing_vals_source, 
-        R_sing_vecs_source):
+    def get_decomp(
+        self, L_sing_vecs_source, sing_vals_source, R_sing_vecs_source):
         """Gets the decomposition matrices from elsewhere (memory or file).
         
         Args:
@@ -142,12 +145,12 @@ class BPODHandles(object):
             ``R_sing_vecs_source``: Source from which to retrieve right singular
             vectors.
         """
-        self.L_sing_vecs = _parallel.call_and_bcast(self.get_mat, 
-            L_sing_vecs_source)
-        self.sing_vals = np.squeeze(_parallel.call_and_bcast(self.get_mat, 
-            sing_vals_source))
-        self.R_sing_vecs = _parallel.call_and_bcast(self.get_mat, 
-            R_sing_vecs_source)
+        self.L_sing_vecs = _parallel.call_and_bcast(
+            self.get_mat, L_sing_vecs_source)
+        self.sing_vals = np.squeeze(_parallel.call_and_bcast(
+            self.get_mat, sing_vals_source))
+        self.R_sing_vecs = _parallel.call_and_bcast(
+            self.get_mat, R_sing_vecs_source)
     
     def put_Hankel_mat(self, dest):
         """Put Hankel mat to ``dest``."""
@@ -192,7 +195,7 @@ class BPODHandles(object):
         self.put_sing_vals(sing_vals_dest)
         
 
-    def compute_SVD(self):
+    def compute_SVD(self, atol=1e-13, rtol=None):
         """Takes the SVD of the Hankel matrix.
         
         Useful if you already have the Hankel mat and want to skip 
@@ -206,7 +209,8 @@ class BPODHandles(object):
 
         """
         self.L_sing_vecs, self.sing_vals, self.R_sing_vecs = \
-            _parallel.call_and_bcast(util.svd, self.Hankel_mat)
+            _parallel.call_and_bcast(
+            util.svd, self.Hankel_mat, atol=atol, rtol=rtol)
 
         
     def sanity_check(self, test_vec_handle):
@@ -221,7 +225,8 @@ class BPODHandles(object):
         self.vec_space.sanity_check(test_vec_handle)
 
     
-    def compute_decomp(self, direct_vec_handles, adjoint_vec_handles):
+    def compute_decomp(
+        self, direct_vec_handles, adjoint_vec_handles, atol=1e-13, rtol=None):
         """Finds Hankel matrix :math:`H=Y^*X` and its SVD, :math:`UEV^*=H`.
         
         Args:
@@ -230,7 +235,13 @@ class BPODHandles(object):
             
             ``adjoint_vec_handles``: List of handles for adjoint vectors 
             (:math:`Y`).
-        
+       
+        Kwargs:
+            ``atol``: Level below which Hankel singular values are truncated.
+     
+            ``rtol``: Maximum relative difference between largest and smallest 
+                Hankel eigenvalues.  Smaller ones are truncated.
+ 
         Returns:
             ``L_sing_vecs``: Matrix of left singular vectors (:math:`U`).
         
@@ -242,7 +253,7 @@ class BPODHandles(object):
         self.adjoint_vec_handles = adjoint_vec_handles
         self.Hankel_mat = self.vec_space.compute_inner_product_mat(
             self.adjoint_vec_handles, self.direct_vec_handles)
-        self.compute_SVD()
+        self.compute_SVD(atol=atol, rtol=rtol)
         return self.L_sing_vecs, self.sing_vals, self.R_sing_vecs
 
             
@@ -251,14 +262,15 @@ class BPODHandles(object):
         """Computes direct modes and calls ``put`` on them.
         
         Args:
-          ``mode_indices``: List of mode indices, ``range(10)`` or ``[3, 0, 6]``. 
+          ``mode_indices``: List of mode indices, ``range(10)`` or 
+            ``[3, 0, 6]``. 
               
           ``modes``: List of handles for direct modes.
           
         Kwargs:
           ``direct_vec_handles``: List of handles for direct vecs 
-          (:math:`X`). 
-          Optional if already given when calling :py:meth:`compute_decomp`. 
+            (:math:`X`). Optional if already given when calling 
+            :py:meth:`compute_decomp`. 
         """
         if direct_vec_handles is not None:
             self.direct_vec_handles = util.make_iterable(direct_vec_handles)
@@ -266,11 +278,12 @@ class BPODHandles(object):
             raise util.UndefinedError('direct_vec_handles undefined')
             
         self.sing_vals = np.squeeze(np.array(self.sing_vals))
-        build_coeff_mat = np.dot(self.R_sing_vecs, np.diag(self.sing_vals**-0.5))
+        build_coeff_mat = np.dot(
+            self.R_sing_vecs, np.diag(self.sing_vals ** -0.5))
         
-        self.vec_space.lin_combine(modes, self.direct_vec_handles, 
-            build_coeff_mat, coeff_mat_col_indices=mode_indices)
-        
+        self.vec_space.lin_combine(
+            modes, self.direct_vec_handles, build_coeff_mat,
+            coeff_mat_col_indices=mode_indices)
 
             
     def compute_adjoint_modes(self, mode_indices, modes, 
@@ -294,8 +307,10 @@ class BPODHandles(object):
             raise util.UndefinedError('adjoint_vec_handles undefined')
         
         self.sing_vals = np.squeeze(np.array(self.sing_vals))
-        build_coeff_mat = np.dot(self.L_sing_vecs, np.diag(self.sing_vals**-0.5))
+        build_coeff_mat = np.dot(
+            self.L_sing_vecs, np.diag(self.sing_vals ** -0.5))
         
-        self.vec_space.lin_combine(modes, self.adjoint_vec_handles, 
-            build_coeff_mat, coeff_mat_col_indices=mode_indices)
+        self.vec_space.lin_combine(
+            modes, self.adjoint_vec_handles, build_coeff_mat, 
+            coeff_mat_col_indices=mode_indices)
     

@@ -142,7 +142,7 @@ def svd(mat, atol=1e-13, rtol=None):
         ``mat``: Array or matrix of which to take SVD.
     
     Kwargs:
-        ``atol``: Level at which singular values are truncated.
+        ``atol``: Level below which singular values are truncated.
 
         ``rtol``: Maximum relative difference between largest and smallest
             singular values.  Smaller ones are truncated.

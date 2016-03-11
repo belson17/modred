@@ -23,7 +23,7 @@ def compute_POD_matrices_snaps_method(
         ``inner_product_weights``: 1D array or matrix of inner product weights.
             It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
 
-`       ``atol``: Level at which POD eigenvalues are truncated.
+`       ``atol``: Level below which POD eigenvalues are truncated.
  
         ``rtol``: Maximum relative difference between largest and smallest POD
             eigenvalues.  Smaller ones are truncated.
