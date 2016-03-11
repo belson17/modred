@@ -9,8 +9,9 @@ from .parallel import parallel_default_instance
 _parallel = parallel_default_instance
 
 
-def compute_DMD_matrices_snaps_method(vecs, mode_indices, adv_vecs=None,
-    inner_product_weights=None, return_all=False):
+def compute_DMD_matrices_snaps_method(
+    vecs, mode_indices, adv_vecs=None, inner_product_weights=None, atol=1e-13,
+    rtol=None, return_all=False):
     """Dynamic Mode Decomposition/Koopman Mode Decomposition with data in a
     matrix, using method of snapshots.
 
@@ -27,6 +28,11 @@ def compute_DMD_matrices_snaps_method(vecs, mode_indices, adv_vecs=None,
 
         ``inner_product_weights``: 1D or Matrix of inner product weights.
             It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
+        
+        ``atol``: Level below which DMD eigenvalues are truncated.
+ 
+        ``rtol``: Maximum relative difference between largest and smallest 
+            DMD eigenvalues.  Smaller ones are truncated.
 
         ``return_all``: Return more objects, see below. Default is false.
 
@@ -71,11 +77,10 @@ def compute_DMD_matrices_snaps_method(vecs, mode_indices, adv_vecs=None,
         cross_correlation_mat = np.mat(vec_space.compute_inner_product_mat(
             vecs, adv_vecs))
     
-    # TODO: add tols (Brandt)
-    correlation_mat_eigvals, correlation_mat_eigvecs = util.eigh(correlation_mat, 
-        is_positive_definite=True)
+    correlation_mat_eigvals, correlation_mat_eigvecs = util.eigh(
+        correlation_mat, is_positive_definite=True, atol=atol, rtol=rtol)
     correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(
-        correlation_mat_eigvals**-0.5))
+        correlation_mat_eigvals ** -0.5))
  
     # Compute low-order linear map for sequential or non-sequential case.
     low_order_linear_map = (
@@ -113,7 +118,6 @@ def compute_DMD_matrices_snaps_method(vecs, mode_indices, adv_vecs=None,
         raise ValueError(('Number of cols in vecs does not match '
             'number of rows in build_coeffs matrix.'))
    
-    # TODO: (Jon) Should we retunr the left eigenvalues for error checking?
     if return_all:
         return (
             exact_modes, proj_modes, eigvals, spectral_coeffs, 
@@ -122,8 +126,9 @@ def compute_DMD_matrices_snaps_method(vecs, mode_indices, adv_vecs=None,
         return exact_modes, proj_modes, eigvals, spectral_coeffs
 
 
-def compute_DMD_matrices_direct_method(vecs, mode_indices, 
-    adv_vecs=None, inner_product_weights=None, return_all=False):
+def compute_DMD_matrices_direct_method(
+    vecs, mode_indices, adv_vecs=None, inner_product_weights=None, atol=1e-13,
+    rtol=None, return_all=False):
     """Dynamic Mode Decomposition/Koopman Mode Decomposition with data in a
     matrix, using a direct method.
 
@@ -140,6 +145,11 @@ def compute_DMD_matrices_direct_method(vecs, mode_indices,
             
         ``inner_product_weights``: 1D or Matrix of inner product weights.
             It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
+
+        ``atol``: Level below which DMD eigenvalues are truncated.
+ 
+        ``rtol``: Maximum relative difference between largest and smallest 
+            DMD eigenvalues.  Smaller ones are truncated.
 
         ``return_all``: Return more objects, see below. Default is false.
 
@@ -187,8 +197,8 @@ def compute_DMD_matrices_direct_method(vecs, mode_indices,
     # advantage of the fact that for a sequential dataset, the unadvanced
     # and advanced vectors overlap.
     if adv_vecs is None:        
-        # TODO: Add tols (Brandt)
-        U, sing_vals, correlation_mat_eigvecs = util.svd(vecs_weighted[:, :-1])
+        U, sing_vals, correlation_mat_eigvecs = util.svd(
+            vecs_weighted[:, :-1], atol=atol, rtol=rtol)
         correlation_mat_eigvals = sing_vals ** 2.
         correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(sing_vals ** -1.))
         correlation_mat = (
@@ -203,8 +213,8 @@ def compute_DMD_matrices_direct_method(vecs, mode_indices,
     else: 
         if vecs.shape != adv_vecs.shape:
             raise ValueError(('vecs and adv_vecs are not the same shape.'))
-        # TODO: Add tols (Brandt)
-        U, sing_vals, correlation_mat_eigvecs = util.svd(vecs_weighted)
+        U, sing_vals, correlation_mat_eigvecs = util.svd(
+            vecs_weighted, atol=atol, rtol=rtol)
         correlation_mat_eigvals = sing_vals ** 2
         correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(sing_vals ** -1.))
         low_order_linear_map = (
@@ -241,7 +251,6 @@ def compute_DMD_matrices_direct_method(vecs, mode_indices,
         raise ValueError(('Number of cols in vecs does not match '
             'number of rows in build_coeffs matrix.'))
     
-    # TODO: (Jon) Should we return L_eigvals for error checking?
     if return_all:
         return (
             exact_modes, proj_modes, eigvals, spectral_coeffs, 
@@ -354,10 +363,10 @@ class DMDHandles(object):
             self.put_mat(self.adv_proj_coeffs, adv_dest)
         _parallel.barrier()
 
+
     def _compute_eigen_decomp(self):
         """Computes eigen decomposition of low-order linear map and associated 
         DMD matrices."""
-        # TODO: tols go in here (Brandt)
         self.eigvals, self.R_low_order_eigvecs, self.L_low_order_eigvecs =\
             _parallel.call_and_bcast(
             util.eig_biorthog, self.low_order_linear_map, 
@@ -373,8 +382,8 @@ class DMDHandles(object):
         """
         self.vec_space.sanity_check(test_vec_handle)
 
-    # TODO: Allow user to pass in tolerances for eigendecomposition (Brandt)
-    def compute_decomp(self, vec_handles, adv_vec_handles=None):
+    def compute_decomp(
+        self, vec_handles, adv_vec_handles=None, atol=1e-13, rtol=None):
         """Computes decomposition and returns eigen decomposition matrices.
         
         Args:
@@ -384,9 +393,14 @@ class DMDHandles(object):
             ``adv_vec_handles``: List of handles of ``vecs`` advanced in time.
             If not provided, it is assumed that the
             vectors are a sequential time-series. Thus ``vec_handles`` becomes
-            ``vec_handles[:-1]`` and ``adv_vec_handles`` 
-            becomes ``vec_handles[1:]``.
-            
+            ``vec_handles[:-1]`` and ``adv_vec_handles`` becomes 
+            ``vec_handles[1:]``.
+        
+        ``atol``: Level below which DMD eigenvalues are truncated.
+ 
+        ``rtol``: Maximum relative difference between largest and smallest 
+            DMD eigenvalues.  Smaller ones are truncated.
+    
         Returns:
             ``eigvals``: 1D array of DMD eigenvalues.
             
@@ -426,10 +440,11 @@ class DMDHandles(object):
             self.cross_correlation_mat = \
                 self.vec_space.compute_inner_product_mat(
                 self.vec_handles, self.adv_vec_handles)
+
         # Compute eigendecomposition of correlation matrix
-        # TODO: tols go in here (Brandt)
         self.correlation_mat_eigvals, self.correlation_mat_eigvecs = \
-            _parallel.call_and_bcast(util.eigh, self.correlation_mat, 
+            _parallel.call_and_bcast(
+            util.eigh, self.correlation_mat, atol=atol, rtol=None,
             is_positive_definite=True)
         correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(
             self.correlation_mat_eigvals ** -0.5))

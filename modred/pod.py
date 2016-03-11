@@ -90,7 +90,7 @@ def compute_POD_matrices_direct_method(
         ``inner_product_weights``: 1D array or matrix of inner product weights.
             It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
        
-        ``atol``: Level at which POD eigenvalues are truncated.
+        ``atol``: Level below which POD eigenvalues are truncated.
 
         ``rtol``: Maximum relative difference between largest and smallest
             POD eigenvalues.  Smaller ones are truncated.
@@ -101,8 +101,9 @@ def compute_POD_matrices_direct_method(
         ``modes``: Matrix with requested modes as columns.
         
         ``eigvals``: 1D array of eigenvalues. 
-            These are the eigenvalues of the correlation matrix (:math:`X^* W X`), 
-            and are also the squares of the singular values of :math:`X`. 
+            These are the eigenvalues of the correlation matrix 
+            (:math:`X^* W X`), and are also the squares of the singular values 
+            of :math:`X`. 
         
         If ``return_all`` is true, also returns:
                
@@ -262,7 +263,7 @@ class PODHandles(object):
         """Computes eigendecomp of correlation matrix.
        
         Kwargs:
-            ``atol``: Level at which POD eigenvalues are truncated.
+            ``atol``: Level below which POD eigenvalues are truncated.
  
             ``rtol``: Maximum relative difference between largest and smallest 
                 POD eigenvalues.  Smaller ones are truncated.
@@ -286,7 +287,7 @@ class PODHandles(object):
             ``vec_handles``: List of vector handles.
 
         Kwargs:
-            ``atol``: Level at which POD eigenvalues are truncated.
+            ``atol``: Level below which POD eigenvalues are truncated.
  
             ``rtol``: Maximum relative difference between largest and smallest 
                 POD eigenvalues.  Smaller ones are truncated.
