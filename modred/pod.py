@@ -321,3 +321,16 @@ class PODHandles(object):
         build_coeff_mat = self._compute_build_coeff_mat()
         self.vec_space.lin_combine(modes, self.vec_handles, build_coeff_mat, 
             coeff_mat_col_indices=mode_indices)
+
+
+    def compute_proj_coeffs(self):
+        """Computes projection of data vectors onto POD modes.  
+       
+        Returns:
+            ``proj_coeffs``: Matrix of projection coefficients for the vectors.
+
+        """
+        self.proj_coeffs = ( 
+            self.eigvecs * self.eigvals ** 0.5).conj().T
+        return self.proj_coeffs        
+

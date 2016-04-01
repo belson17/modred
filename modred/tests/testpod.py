@@ -237,5 +237,33 @@ class TestPODHandles(unittest.TestCase):
                     self.assertAlmostEqual(IP, 1.)
 
 
+    def test_compute_proj_coeffs(self):
+        rtol = 1e-10
+        atol = 1e-13    
+
+        # Compute true projection coefficients by simply projecting directly
+        # onto the modes.
+        proj_coeffs_true = np.dot(self.mode_array.conj().T, self.vec_array)
+
+        # Initialize the POD object with the known correct decomposition
+        # matrices, to avoid errors in computing those matrices.
+        self.my_POD.eigvecs = self.eigvecs_true
+        self.my_POD.eigvals = self.eigvals_true
+
+        # Compute projection coefficients
+        proj_coeffs = self.my_POD.compute_proj_coeffs()
+
+        # Test values
+        np.testing.assert_allclose(
+            proj_coeffs, proj_coeffs_true, rtol=rtol, atol=atol)
+
+
+
+
+
+
+
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -42,6 +42,11 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
   also be used to truncate the computations and limit the number of modes making
   up the decompositions.
 
+* Added new methods that compute the projection of the original data vectors
+  onto the modes, for POD, BPOD, and DMD, respectively:
+  :py:func:`pod.PODHandles.compute_proj_coeffs`,
+  :py:func:`dmd.DMDHandles.compute_proj_coeffs`,
+
 **Bug fixes**
 
 * Fixed minor bug in the function ``util.impulse``.
@@ -58,6 +63,7 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
 **Interface changes**
 
 * Added the following new methods: 
+  :py:func:`pod.PODHandles.compute_proj_coeffs`,
   :py:func:`dmd.DMDHandles.compute_exact_modes`,
   :py:func:`dmd.DMDHandles.compute_spectrum`,
   :py:func:`dmd.DMDHandles.compute_proj_coeffs`,

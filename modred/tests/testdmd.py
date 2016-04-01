@@ -638,7 +638,7 @@ class TestDMDHandles(unittest.TestCase):
         # computed using a pseudoinverse
         _parallel.barrier()
         self.my_DMD.compute_decomp(self.vec_handles) 
-        proj_coeffs, adv_proj_coeffs= self.my_DMD.compute_proj_coeffs()
+        proj_coeffs, adv_proj_coeffs = self.my_DMD.compute_proj_coeffs()
         adj_modes = (
             np.mat(vec_array[:, :-1]) *
             self.my_DMD.correlation_mat_eigvecs *
