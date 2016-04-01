@@ -1,0 +1,9 @@
+*.so
+*.pyd*
+*.pyc
+*~
+*temp
+
+doc/build
+
+modred.egg-info/
