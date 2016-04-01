@@ -268,8 +268,9 @@ class TestUtil(unittest.TestCase):
             elif scale_choice == 'right':
                 unit_eigvecs = L_eigvecs
             np.testing.assert_allclose(
-                np.sqrt(np.sum(unit_eigvecs * unit_eigvecs.conj(), axis=0)), 
-                np.ones(R_eigvals.size))
+                np.sqrt(np.sum(np.multiply(
+                unit_eigvecs, unit_eigvecs.conj()), axis=0)).squeeze(), 
+                np.ones((1, R_eigvals.size)))
 
         # Check that error is raised for invalid scale choice
         self.assertRaises(
