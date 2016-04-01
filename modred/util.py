@@ -242,7 +242,7 @@ def eig_biorthog(mat, scale_choice='left'):
         ``mat``: To take eigen decomposition of.
        
     Kwargs:
-        ``scale_choice'': Determines whether 'left' (default) or 'right'
+        ``scale_choice``: Determines whether 'left' (default) or 'right'
         eigenvectors will be scaled to yield a biorthogonal set.  The other 
         eigenvectors will be left unscaled, leaving them with unit norms.
 

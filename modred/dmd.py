@@ -363,7 +363,6 @@ class DMDHandles(object):
             self.put_mat(self.adv_proj_coeffs, adv_dest)
         _parallel.barrier()
 
-
     def _compute_eigen_decomp(self):
         """Computes eigen decomposition of low-order linear map and associated 
         DMD matrices."""
@@ -555,7 +554,7 @@ class DMDHandles(object):
         squares projection onto the projected DMD modes.
        
         Returns:
-            ``spectral_coeffs'': 1D array of spectral coefficients.
+            ``spectral_coeffs``: 1D array of spectral coefficients.
 
         """
         # TODO: maybe allow for user to choose which column to spectrum from?
@@ -577,9 +576,9 @@ class DMDHandles(object):
         projected DMD modes.
        
         Returns:
-            ``proj_coeffs'': Matrix of projection coefficients for the vectors.
+            ``proj_coeffs``: Matrix of projection coefficients for the vectors.
 
-            ``adv_proj_coeffs'': Matrix of projection coefficients for the
+            ``adv_proj_coeffs``: Matrix of projection coefficients for the
             vectors advanced in time.
 
         """

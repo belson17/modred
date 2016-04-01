@@ -2,30 +2,112 @@
 Release notes
 =============
 
------------
-modred 1.1a
------------
-Done by Pierre Augier (pa371 @ damtp.cam.ac.uk). The 'a' means
-alpha. It is a testing version.
+------------
+modred 2.0.0
+------------
+
+Main changes are an updated interface for DMD that matches the latest theory
+and support for Python 3.  Python 3 support was primarily implemented by Pierre
+Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
 
 **New features and improvements**
 
-* None
+* Python 3 is now supported!
+
+* DMD implementation now matches newest theory, laid out in a 2014 paper by Tu
+  et al. in the Journal of Computational Dynamics.  Features were only added,
+  i.e., none were removed.  Any DMD computations previously done using modred
+  can be reproduced, though the names of some function calls have changed.
+  Namely, :py:func:`dmd.DMDHandles.compute_proj_modes` replaces
+  :py:func:`dmd.DMDHandles.compute_modes`, and
+  :py:func:`dmd.DMDHandles.put_eig_vals` replaces
+  :py:func:`dmd.DMDHandles.put_ritz_vals`.  Generally, the term "projected
+  modes" has replaced "modes," and similarly "eigenvalues" has replaced "Ritz
+  values."  "Exact modes" are now availble in addition to the projected modes.
+
+  A full list of the new functions consists of:
+  :py:func:`dmd.DMDHandles.compute_exact_modes`,
+  :py:func:`dmd.DMDHandles.compute_proj_modes`,
+  :py:func:`dmd.DMDHandles.compute_spectrum`,
+  :py:func:`dmd.DMDHandles.compute_proj_coeffs`,
+  :py:func:`dmd.DMDHandles.put_spectral_coeffs`,
+  and :py:func:`dmd.DMDHandles.put_eig_vals`.
+
+* Absolute and relative tolerances can now be passed in using the keyword 
+  arguments ``atol`` and ``rtol``, respectively, when calling
+  ``compute_decomp`` in either POD, BPOD, or DMD.  These are then passed on into
+  internal computations of singular value decompositions or eigendecompositions
+  of positive definite matrices.  They allow the user to filter out singular
+  values or eigenvalues that should be considered numerical artifacts.  They can
+  also be used to truncate the computations and limit the number of modes making
+  up the decompositions.
 
 **Bug fixes**
 
-* A bug in the function ``modred.util.impulse``.
+* Fixed minor bug in the function ``util.impulse``.
+
+* Fixed minor bug in ``testvectorspace.py``
+
+* Fixed minor bugs in loading/saving test files, some related to delimiters.
+
+* Fixed bug in ``testutil`` where ``eig_biorthog`` was assuming the wrong number
+  of return values.
+
+* Fixed minor bugs in DMD tests related to casting of matrices/arrays.
 
 **Interface changes**
 
-* None
+* Added the following new methods: 
+  :py:func:`dmd.DMDHandles.compute_exact_modes`,
+  :py:func:`dmd.DMDHandles.compute_spectrum`,
+  :py:func:`dmd.DMDHandles.compute_proj_coeffs`,
+  :py:func:`dmd.DMDHandles.put_spectral_coeffs`,
+
+* :py:func:`dmd.DMDHandles.compute_proj_modes` replaces 
+  :py:func:`dmd.DMDHandles.compute_modes`. 
+
+* :py:func:`dmd.DMDHandles.put_eig_vals` replaces
+  :py:func:`dmd.DMDHandles.put_ritz_vals`.
+
+* Optional ``atol`` and ``rtol`` arguments were added to 
+  :py:func:`pod.PODHandles.compute_decomp`,
+  :py:func:`bpod.BPODHandles.compute_decomp`,
+  :py:func:`dmd.DMDHandles.compute_decomp`,
 
 **Internal changes**
 
+* Added :py:func:`util.eig_biorthog` method to compute both left and right
+  eigenvectors of a matrix, scaled to yield a biorthogonal set.
+
+* Added optional ``atol`` and ``rtol`` arguments to :py:func:`util.svd` and 
+  :py:func:`util.eigh`.
+
+* Updated tests for ``util.svd`` and ``util.eigh``.  Properties of the
+  decompositions are now checked, rather than simply duplicating the
+  computations using built-in numpy methods.  This allows for better testing of
+  truncated decompositions.  Truncation levels are determined during testing, to
+  ensure that truncation actually occurs and is tested.
+
+* Updated tests for ``util.biorthog`` to reduce number of failures.  Some
+  failures are to be expected due to the fact that we test on random data, but
+  these are much less frequent now.
+
+* Changed how positive definite matrices are generated for use as inner product
+  weight matrices.  Previous implementation led to failed tests. 
+
+* Changed default delimiter when loading test arrays to ``None``.
+
+* Improved type checking to allow for any iterable container, not just lists.
+
+* Removed dependencies on ``util.make_list`` where possible.
+
+* Removed some duplicate code in ``util`` module, where ``eig_biorthog`` had
+  been implemented twice.
+
 * The packaging has been improved.
 
-* Ported to python >= 3.3 using `python-future
-  <http://python-future.org/>`_.
+* Ported to python >= 3.3 using `python-future <http://python-future.org/>`_.
+
 
 ------------
 modred 1.0.2
@@ -74,7 +156,6 @@ Small changes mostly related to examples.
 * None
 
 
-
 ------------
 modred 1.0.0
 ------------
@@ -97,11 +178,9 @@ sized data.
 
 * Added balanced truncation :py:meth:`util.balanced_truncation`.
 
-
 **Bug fixes**
 
 * None
-
 
 **Interface changes**
 
@@ -127,14 +206,12 @@ sized data.
   :py:meth:`ltigalerkinproj.LTIGalerkinProjectionHandles.compute_model`.
   The operator classes have been removed.
 
-
 **Internal changes**
 
 * OKID now uses least squares instead of a pseudo-inverse for improved numerical
   stability. 
 
 * Added :py:class:`util.InnerProductBlock` for testing.
-
 
 
 ------------
@@ -148,13 +225,12 @@ None
 
 **Bug fixes**
 
-* Function :py:meth:`util.lsim`, which is only provided for the user's convenience, 
-  is simplified and corrected.
+* Function :py:meth:`util.lsim`, which is only provided for the user's 
+  convenience, is simplified and corrected.
 
 **Interface changes**
 
 * :py:meth:`util.lsim`.
-
 
 **Internal changes**
 
@@ -164,7 +240,8 @@ None
 ------------
 modred 0.3.1
 ------------
-The main change is a bug fix in the ``numpy.eigh`` wrapper, :py:meth:`util.eigh`.
+The main change is a bug fix in the ``numpy.eigh`` wrapper, 
+:py:meth:`util.eigh`.
 
 **New features and improvements**
 
@@ -173,14 +250,13 @@ None
 **Bug fixes**
 
 * The POD and DMD classes now use :py:meth:`util.eigh` with the 
-  ``is_positive_definite`` flag 
-  set to ``True``.  This eliminates the possibility of small negative eigenvalues
-  that sometimes appear due to numerical precision which led to errors.
+  ``is_positive_definite`` flag set to ``True``.  This eliminates the 
+  possibility of small negative eigenvalues that sometimes appear due to 
+  numerical precision which led to errors.
 
 **Interface changes**
 
 None
-
 
 **Internal changes**
 
@@ -197,7 +273,8 @@ modred 0.3.0
 **New features and improvements**
 
 * New class :py:class:`ltigalerkinproj.LTIGalerkinProjection`
-  for LTI Galerkin projections. Replaces and generalizes old class ``BPODLTIROM``.
+  for LTI Galerkin projections. Replaces and generalizes old class 
+  ``BPODLTIROM``.
 
 * Improved print messages to print every 10 seconds and be more informative.
 
@@ -207,21 +284,23 @@ modred 0.3.0
   by POD and DMD) where some very small matrix entries were double the true 
   value. 
 
-* Fixed race condition in :py:meth:`vectorspace.VectorSpace.lin_combine` by adding
-  a barrier.
+* Fixed race condition in :py:meth:`vectorspace.VectorSpace.lin_combine` by 
+  adding a barrier.
   
 **Interface changes**
 
 * Removed class ``BPODLTIROM``.
 
-* Changed order of indices in Markov parameters returned by :py:meth:`okid.OKID`.
+* Changed order of indices in Markov parameters returned by 
+  :py:meth:`okid.OKID`.
 
 * Changed all uses of ``hankel`` to ``Hankel`` to be consistent with naming 
   convention.
   
 **Internal changes**
 
-* Added :py:meth:`parallel.Parallel.call_and_bcast` method to ``Parallel`` class.
+* Added :py:meth:`parallel.Parallel.call_and_bcast` method to ``Parallel`` 
+  class.
 
 * Changed interface of :py:meth:`helper.add_to_path`.
 
@@ -236,6 +315,7 @@ modred 0.2.1
 ------------
 
 No noteworthy changes from v0.2.0, figuring out pypi website.
+
 
 ------------
 modred 0.2.0

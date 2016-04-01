@@ -158,10 +158,6 @@ def compute_POD_matrices_direct_method(
         return modes, eigvals, eigvecs
     else:
         return modes, eigvals
-    
-
-
-
 
 
 class PODHandles(object):
