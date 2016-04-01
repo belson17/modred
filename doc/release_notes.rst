@@ -45,7 +45,9 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
 * Added new methods that compute the projection of the original data vectors
   onto the modes, for POD, BPOD, and DMD, respectively:
   :py:func:`pod.PODHandles.compute_proj_coeffs`,
-  :py:func:`dmd.DMDHandles.compute_proj_coeffs`,
+  :py:func:`bpod.BPODHandles.compute_proj_coeffs`,
+  :py:func:`bpod.BPODHandles.compute_adj_proj_coeffs`,
+  :py:func:`dmd.DMDHandles.compute_proj_coeffs`.
 
 **Bug fixes**
 
@@ -64,10 +66,12 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
 
 * Added the following new methods: 
   :py:func:`pod.PODHandles.compute_proj_coeffs`,
+  :py:func:`bpod.BPODHandles.compute_proj_coeffs`,
+  :py:func:`bpod.BPODHandles.compute_adj_proj_coeffs`,
   :py:func:`dmd.DMDHandles.compute_exact_modes`,
   :py:func:`dmd.DMDHandles.compute_spectrum`,
   :py:func:`dmd.DMDHandles.compute_proj_coeffs`,
-  :py:func:`dmd.DMDHandles.put_spectral_coeffs`,
+  :py:func:`dmd.DMDHandles.put_spectral_coeffs`.
 
 * :py:func:`dmd.DMDHandles.compute_proj_modes` replaces 
   :py:func:`dmd.DMDHandles.compute_modes`. 
@@ -78,7 +82,11 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
 * Optional ``atol`` and ``rtol`` arguments were added to 
   :py:func:`pod.PODHandles.compute_decomp`,
   :py:func:`bpod.BPODHandles.compute_decomp`,
-  :py:func:`dmd.DMDHandles.compute_decomp`,
+  :py:func:`dmd.DMDHandles.compute_decomp`.
+
+* ``util.svd``, ``util.eigh``, and ``util.eig_biorthog`` now consistently return
+  numpy matrices.  Previously, the SVD method returned matrices but the
+  eigendecompositions returned arrays.
 
 **Internal changes**
 

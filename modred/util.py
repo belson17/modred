@@ -200,9 +200,10 @@ def eigh(mat, atol=1e-13, rtol=None, is_positive_definite=False):
         ``eigvals``: Eigenvalues in a 1D array, sorted in descending order (of
             magnitude).
         
-        ``eigvecs``: Eigenvectors, columns of matrix/array, sorted by eigvals.
+        ``eigvecs``: Eigenvectors, columns of matrix, sorted by eigvals.
     """
-    eigvals, eigvecs = np.linalg.eigh(mat)
+    eigvals, eigvecs = np.linalg.eigh(np.mat(mat))
+    eigvecs = np.mat(eigvecs)
 
     # Sort the vecs and eigvals by eigval magnitude.  The first element will
     # have the largest magnitude and the last element will have the smallest
@@ -232,7 +233,6 @@ def eigh(mat, atol=1e-13, rtol=None, is_positive_definite=False):
     return eigvals, eigvecs
 
 
-# TODO: Allow user to pass in tolerances (Brandt)
 def eig_biorthog(mat, scale_choice='left'):
     """Wrapper for ``numpy.linalg.eig`` that returns both left and right
     eigenvectors. Eigenvalues and eigenvectors are sorted so that the left and
@@ -249,16 +249,16 @@ def eig_biorthog(mat, scale_choice='left'):
     Returns:
         ``evals``: Eigenvalues in a 1D array.
         
-        ``R_evecs``: Right eigenvectors, columns of matrix/array, sorted by 
-        evals.
+        ``R_evecs``: Right eigenvectors, columns of matrix, sorted by evals.
 
-        ``L_evecs``: Left eigenvectors, columns of matrix/array, sorted by 
-        evals.
+        ``L_evecs``: Left eigenvectors, columns of matrix, sorted by evals.
     """
     # Compute eigendecompositions
-    R_evals, R_evecs= np.linalg.eig(mat)
-    L_evals_conj, L_evecs= np.linalg.eig(mat.conj().T)
+    R_evals, R_evecs= np.linalg.eig(np.mat(mat))
+    L_evals_conj, L_evecs= np.linalg.eig(np.mat(mat).conj().T)
     L_evals = L_evals_conj.conj()
+    R_evecs = np.mat(R_evecs)
+    L_evecs = np.mat(L_evecs)
 
     # Sort the evals
     R_sort_indices = np.argsort(R_evals)

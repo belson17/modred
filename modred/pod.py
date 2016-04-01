@@ -330,7 +330,7 @@ class PODHandles(object):
             ``proj_coeffs``: Matrix of projection coefficients for the vectors.
 
         """
-        self.proj_coeffs = ( 
-            self.eigvecs * self.eigvals ** 0.5).conj().T
+        self.proj_coeffs = np.mat(np.diag(self.eigvals ** 0.5)) * self.eigvecs.H
         return self.proj_coeffs        
+
 

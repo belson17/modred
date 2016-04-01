@@ -222,8 +222,8 @@ class TestPODHandles(unittest.TestCase):
                 
         for mode_index, mode_handle in enumerate(mode_handles):
             mode = mode_handle.get()
-            np.testing.assert_allclose(mode.squeeze(), 
-                self.mode_array[:,self.mode_indices[mode_index]])
+            np.testing.assert_allclose(
+                mode, self.mode_array[:,self.mode_indices[mode_index]])
         
         for mode_index1, handle1 in enumerate(mode_handles):
             mode1 = handle1.get()
@@ -256,13 +256,6 @@ class TestPODHandles(unittest.TestCase):
         # Test values
         np.testing.assert_allclose(
             proj_coeffs, proj_coeffs_true, rtol=rtol, atol=atol)
-
-
-
-
-
-
-
 
 
 if __name__ == '__main__':

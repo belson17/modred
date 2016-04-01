@@ -317,13 +317,14 @@ class TestDMDHandles(unittest.TestCase):
         correlation_mat = inner_product(vecs, vecs)
         correlation_mat_eigvals, correlation_mat_eigvecs = util.eigh(
             correlation_mat) 
-        U = vec_array.dot(correlation_mat_eigvecs).dot(
+        U = vec_array.dot(np.array(correlation_mat_eigvecs)).dot(
             np.diag(correlation_mat_eigvals ** -0.5))
         U_list = [U[:,i] for i in range(U.shape[1])]
 
         # Compute eigendecomposition of low order linear operator
         A_tilde = inner_product(U_list, adv_vecs).dot(
-            correlation_mat_eigvecs).dot(np.diag(correlation_mat_eigvals ** -0.5))
+            np.array(correlation_mat_eigvecs)).dot(
+            np.diag(correlation_mat_eigvals ** -0.5))
         eigvals, R_low_order_eigvecs, L_low_order_eigvecs =\
             util.eig_biorthog(A_tilde, scale_choice='left')
         R_low_order_eigvecs = np.mat(R_low_order_eigvecs)
@@ -335,7 +336,8 @@ class TestDMDHandles(unittest.TestCase):
             np.diag(correlation_mat_eigvals ** -0.5)).dot(R_low_order_eigvecs))
         build_coeffs_exact = (
             correlation_mat_eigvecs.dot(
-            np.diag(correlation_mat_eigvals ** -0.5)).dot(R_low_order_eigvecs).dot(
+            np.diag(correlation_mat_eigvals ** -0.5)).dot(
+            R_low_order_eigvecs).dot(
             np.diag(eigvals ** -1.)))
  
         # Compute modes
@@ -437,8 +439,8 @@ class TestDMDHandles(unittest.TestCase):
 
         # Check modred against direct computation, for a sequential dataset
         _parallel.barrier()
-        self._helper_check_decomp(eigvals, build_coeffs_exact, build_coeffs_proj,
-            self.vec_handles)
+        self._helper_check_decomp(
+            eigvals, build_coeffs_exact, build_coeffs_proj, self.vec_handles)
 
         # Create more data, to check a non-sequential dataset
         adv_vec_array = _parallel.call_and_bcast(np.random.random, 
@@ -454,8 +456,9 @@ class TestDMDHandles(unittest.TestCase):
 
         # Check modred against direct computation, for a non-sequential dataset
         _parallel.barrier()
-        self._helper_check_decomp(eigvals, build_coeffs_exact, build_coeffs_proj,
-            self.vec_handles, adv_vec_handles=self.adv_vec_handles)
+        self._helper_check_decomp(
+            eigvals, build_coeffs_exact, build_coeffs_proj, self.vec_handles,
+            adv_vec_handles=self.adv_vec_handles)
 
         # Check that if mismatched sets of handles are passed in, an error is
         # raised.

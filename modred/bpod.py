@@ -313,4 +313,33 @@ class BPODHandles(object):
         self.vec_space.lin_combine(
             modes, self.adjoint_vec_handles, build_coeff_mat, 
             coeff_mat_col_indices=mode_indices)
-    
+
+
+    def compute_proj_coeffs(self):
+        """Computes projection of direct vectors onto direct BPOD modes.  
+       
+        Returns:
+            ``proj_coeffs``: Matrix of projection coefficients for the direct 
+              vectors, expressed as a linear combination of the direct BPOD
+              modes.
+
+        """
+        self.proj_coeffs = ( 
+            np.mat(np.diag(self.sing_vals ** 0.5)) * self.R_sing_vecs.H)
+        return self.proj_coeffs        
+
+
+    def compute_adj_proj_coeffs(self):
+        """Computes projection of adjoint vectors onto adjoint BPOD modes.  
+       
+        Returns:
+            ``adj_proj_coeffs``: Matrix of projection coefficients for the
+              adjoint vectors, expressed as a linear combination of the adjoint
+              BPOD modes.
+
+        """
+        self.adj_proj_coeffs = ( 
+            np.mat(np.diag(self.sing_vals ** 0.5)) * self.L_sing_vecs.H)
+        return self.adj_proj_coeffs        
+
+

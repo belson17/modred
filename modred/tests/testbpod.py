@@ -54,7 +54,9 @@ class TestBPODMatrices(unittest.TestCase):
         ws[1,0] = 1.1
         ws[0,1] = 1.1
         weights_list = [None, np.random.random(self.num_states), ws]
-        weights_mats = [np.mat(np.identity(self.num_states)), np.mat(np.diag(weights_list[1])),
+        weights_mats = [
+            np.mat(np.identity(self.num_states)), 
+            np.mat(np.diag(weights_list[1])),
             np.mat(ws)]
         for weights, weights_mat in zip(weights_list, weights_mats):
             A_adjoint = np.linalg.inv(weights_mat) * self.A.H * weights_mat
@@ -85,12 +87,14 @@ class TestBPODMatrices(unittest.TestCase):
             np.testing.assert_allclose(sing_vals, sing_vals_true)
             np.testing.assert_allclose(L_sing_vecs, L_sing_vecs_true)
             np.testing.assert_allclose(R_sing_vecs, R_sing_vecs_true)
-            np.testing.assert_allclose(direct_modes_array, 
-                direct_modes_array_true[:,self.mode_indices], rtol=tol, atol=tol)
-            np.testing.assert_allclose(adjoint_modes_array, 
-                adjoint_modes_array_true[:,self.mode_indices], rtol=tol, atol=tol)
-            
-                        
+            np.testing.assert_allclose(
+                direct_modes_array, 
+                direct_modes_array_true[:,self.mode_indices], 
+                rtol=tol, atol=tol)
+            np.testing.assert_allclose(
+                adjoint_modes_array, 
+                adjoint_modes_array_true[:,self.mode_indices], 
+                rtol=tol, atol=tol)
 
 
 class TestBPODHandles(unittest.TestCase):
@@ -317,8 +321,10 @@ class TestBPODHandles(unittest.TestCase):
             
         for mode_index, mode_handle in enumerate(adjoint_mode_handles):
             mode = mode_handle.get()
-            np.testing.assert_allclose(mode, 
-                self.adjoint_mode_array[:,self.mode_nums[mode_index]], atol=atol)
+            np.testing.assert_allclose(
+                mode, 
+                self.adjoint_mode_array[:,self.mode_nums[mode_index]], 
+                atol=atol)
             
         for direct_mode_index, direct_handle in \
             enumerate(direct_mode_handles):
@@ -333,7 +339,58 @@ class TestBPODHandles(unittest.TestCase):
                     self.assertAlmostEqual(IP, 0., places=6)
                 else:
                     self.assertAlmostEqual(IP, 1., places=6)
-      
+
+ 
+    def test_compute_proj_coeffs(self):
+        # Tests fail if tolerance is too tight, likely due to random nature of
+        # data.  Maximum error (elementwise) seems to come out ~1e-11.
+        rtol = 1e-8
+        atol = 1e-10  
+
+        # Compute true projection coefficients by simply projecting directly
+        # onto the modes.
+        proj_coeffs_true = (
+            self.adjoint_mode_array.H * self.direct_vec_array)
+
+        # Initialize the POD object with the known correct decomposition
+        # matrices, to avoid errors in computing those matrices.
+        self.my_BPOD.R_sing_vecs = self.R_sing_vecs_true
+        self.my_BPOD.L_sing_vecs = self.L_sing_vecs_true
+        self.my_BPOD.sing_vals = self.sing_vals_true
+
+        # Compute projection coefficients
+        proj_coeffs = self.my_BPOD.compute_proj_coeffs()
+
+        # Test values
+        np.testing.assert_allclose(
+            proj_coeffs, proj_coeffs_true, rtol=rtol, atol=atol)
+
+
+    def test_compute_adj_proj_coeffs(self):
+        # Tests fail if tolerance is too tight, likely due to random nature of
+        # data.  Maximum error (elementwise) seems to come out ~1e-11.
+        rtol = 1e-8
+        atol = 1e-10  
+
+        # Compute true projection coefficients by simply projecting directly
+        # onto the modes.
+        adj_proj_coeffs_true = (
+            self.direct_mode_array.H * self.adjoint_vec_array)
+
+        # Initialize the POD object with the known correct decomposition
+        # matrices, to avoid errors in computing those matrices.
+        self.my_BPOD.R_sing_vecs = self.R_sing_vecs_true
+        self.my_BPOD.L_sing_vecs = self.L_sing_vecs_true
+        self.my_BPOD.sing_vals = self.sing_vals_true
+
+        # Compute projection coefficients
+        adj_proj_coeffs = self.my_BPOD.compute_adj_proj_coeffs()
+
+        # Test values
+        np.testing.assert_allclose(
+            adj_proj_coeffs, adj_proj_coeffs_true, rtol=rtol, atol=atol)
+   
+
 if __name__ == '__main__':
     unittest.main()
 
