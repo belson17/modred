@@ -74,6 +74,9 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
   :py:func:`dmd.compute_DMD_matrices_direct_method`, 
   :py:func:`dmd.DMDHandles.compute_decomp`.
 
+* Changed the order of the returned values in
+  :py:func:`bpod.BPODHandles.compute_decomp`.
+
 * Changed the order of the arguments in 
   :py:func:`pod.PODHandles.get_decomp` and
   :py:func:`pod.PODHandles.put_decomp`.

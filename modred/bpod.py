@@ -243,9 +243,9 @@ class BPODHandles(object):
                 Hankel eigenvalues.  Smaller ones are truncated.
  
         Returns:
-            ``L_sing_vecs``: Matrix of left singular vectors (:math:`U`).
-        
             ``sing_vals``: 1D array of singular values (:math:`E`).
+
+            ``L_sing_vecs``: Matrix of left singular vectors (:math:`U`).
             
             ``R_sing_vecs``: Matrix of right singular vectors (:math:`V`).
         """
@@ -254,7 +254,7 @@ class BPODHandles(object):
         self.Hankel_mat = self.vec_space.compute_inner_product_mat(
             self.adjoint_vec_handles, self.direct_vec_handles)
         self.compute_SVD(atol=atol, rtol=rtol)
-        return self.L_sing_vecs, self.sing_vals, self.R_sing_vecs
+        return self.sing_vals, self.L_sing_vecs, self.R_sing_vecs
 
             
     def compute_direct_modes(self, mode_indices, modes, 
