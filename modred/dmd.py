@@ -353,8 +353,6 @@ class DMDHandles(object):
             self.put_mat(self.spectral_coeffs, dest)
         _parallel.barrier()
     
-    # TODO: Brandt, need to put similar methods in the other classes?  And test
-    # them too.
     def put_proj_coeffs(self, dest, adv_dest):
         """Puts projection coefficients to ``dest``, advanced projection
         coefficients to ``adv_dest``."""
