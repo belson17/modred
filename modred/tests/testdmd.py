@@ -219,8 +219,7 @@ class TestDMDHandles(unittest.TestCase):
        
         data_members_default = {
             'put_mat': util.save_array_text, 'get_mat': util.load_array_text,
-            'verbosity': 0, 'eigvals': None, 'build_coeffs_exact': None,
-            'build_coeffs_proj': None, 'correlation_mat': None,
+            'verbosity': 0, 'eigvals': None, 'correlation_mat': None,
             'cross_correlation_mat': None, 'correlation_mat_eigvals': None,
             'correlation_mat_eigvecs': None, 'low_order_linear_map': None,
             'L_low_order_eigvecs': None, 'R_low_order_eigvecs': None,
@@ -489,20 +488,23 @@ class TestDMDHandles(unittest.TestCase):
                 handle.put(np.array(seq_vec_array[:, vec_index]).squeeze())
 
         # Compute DMD directly from data
-        (modes_exact, modes_proj) = (
-            self._helper_compute_DMD_from_data(
-            seq_vec_array, util.InnerProductBlock(np.vdot)))[:2]
+        (modes_exact, modes_proj, spectral_coeffs, eigvals,
+            R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
+            correlation_mat_eigvecs) = self._helper_compute_DMD_from_data(
+            seq_vec_array, util.InnerProductBlock(np.vdot))[:-1]
 
         # Set the build_coeffs attribute of an empty DMD object each time, so
         # that the modred computation uses the same coefficients as the direct
         # computation.
         _parallel.barrier()
-        self.my_DMD.build_coeffs_exact = build_coeffs_exact
-        self.my_DMD.build_coeffs_proj = build_coeffs_proj
+        self.my_DMD.eigvals = eigvals
+        self.my_DMD.R_low_order_eigvecs = R_low_order_eigvecs
+        self.my_DMD.correlation_mat_eigvals = correlation_mat_eigvals
+        self.my_DMD.correlation_mat_eigvecs = correlation_mat_eigvecs
 
         # Generate mode paths for saving modes to disk
         seq_mode_path_list = [
-            mode_path % i for i in range(build_coeffs_exact.shape[1])]
+            mode_path % i for i in range(eigvals.size)]
         seq_mode_indices = range(len(seq_mode_path_list))
 
         # Compute modes by passing in handles
@@ -545,20 +547,24 @@ class TestDMDHandles(unittest.TestCase):
                 adv_handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
 
         # Compute DMD directly from data
-        modes_exact, modes_proj, build_coeffs_exact, build_coeffs_proj = (
-            self._helper_compute_DMD_from_data(
-            vec_array, adv_vec_array, util.InnerProductBlock(np.vdot))[1:5])
+        (modes_exact, modes_proj, spectral_coeffs, eigvals,
+            R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
+            correlation_mat_eigvecs) = self._helper_compute_DMD_from_data(
+            vec_array, util.InnerProductBlock(np.vdot),
+            adv_vec_array=adv_vec_array)[:-1]
 
         # Set the build_coeffs attribute of an empty DMD object each time, so
         # that the modred computation uses the same coefficients as the direct
         # computation.
         _parallel.barrier()
-        self.my_DMD.build_coeffs_exact = build_coeffs_exact
-        self.my_DMD.build_coeffs_proj = build_coeffs_proj
+        self.my_DMD.eigvals = eigvals
+        self.my_DMD.R_low_order_eigvecs = R_low_order_eigvecs
+        self.my_DMD.correlation_mat_eigvals = correlation_mat_eigvals
+        self.my_DMD.correlation_mat_eigvecs = correlation_mat_eigvecs
 
         # Generate mode paths for saving modes to disk
         mode_path_list = [
-            mode_path % i for i in range(build_coeffs_exact.shape[1])]
+            mode_path % i for i in range(eigvals.size)]
         mode_indices = range(len(mode_path_list))
 
         # Compute modes by passing in handles

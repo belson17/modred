@@ -95,6 +95,14 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
 
 **Internal changes**
 
+* In DMD, the build coefficients are no longer considered part of the
+  decomposition and are no longer saved as internal attributes.  Instead, its
+  constituent parts define the decomposition (and are saved as internal
+  attributes).  Thus computation of the build coefficients in DMD has been moved
+  from the ``compute_decomp`` method to the ``compute_exact_modes`` and
+  ``compute_proj_modes`` methods, respectively, which makes more sense
+  mathematically.
+
 * Added :py:func:`util.eig_biorthog` method to compute both left and right
   eigenvectors of a matrix, scaled to yield a biorthogonal set.
 

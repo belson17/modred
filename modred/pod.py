@@ -233,16 +233,6 @@ class PODHandles(object):
             self.put_mat(self.correlation_mat, dest)
         _parallel.barrier()
 
-    def _compute_build_coeff_mat(self):
-        """Compute transformation matrix (:math:`T`) from vectors to modes.
-        Helper for ``compute_modes`` and ``compute_modes_and_return``."""
-        if self.eigvecs is None:
-            raise util.UndefinedError('Must define self.eigvecs')
-        if self.eigvals is None:
-            raise util.UndefinedError('Must define self.eigvals')
-        build_coeff_mat = np.dot(self.eigvecs, np.diag(self.eigvals**-0.5))
-        return build_coeff_mat
-
 
     def sanity_check(self, test_vec_handle):
         """Check user-supplied vector handle.
@@ -318,7 +308,7 @@ class PODHandles(object):
         """
         if vec_handles is not None:
             self.vec_handles = util.make_iterable(vec_handles)
-        build_coeff_mat = self._compute_build_coeff_mat()
+        build_coeff_mat = np.dot(self.eigvecs, np.diag(self.eigvals**-0.5))
         self.vec_space.lin_combine(modes, self.vec_handles, build_coeff_mat, 
             coeff_mat_col_indices=mode_indices)
 

@@ -353,8 +353,6 @@ class DMDHandles(object):
         self.put_mat = put_mat
         self.verbosity = verbosity
         self.eigvals = None
-        self.build_coeffs_exact = None
-        self.build_coeffs_proj = None
         self.correlation_mat = None
         self.cross_correlation_mat = None
         self.correlation_mat_eigvals = None
@@ -521,12 +519,6 @@ class DMDHandles(object):
         # Compute eigendecomposition of low-order linear map.
         self._compute_eigen_decomp()
 
-        # Build modes using natural mode scalings
-        self.build_coeffs_proj = (
-            self.correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv *
-            self.R_low_order_eigvecs)
-        self.build_coeffs_exact = (
-            self.build_coeffs_proj * np.mat(np.diag(self.eigvals ** -1.)))
         return (
             self.eigvals, self.R_low_order_eigvecs,
             self.L_low_order_eigvecs, self.correlation_mat_eigvals,
@@ -547,25 +539,28 @@ class DMDHandles(object):
             ``vec_handles``: List of handles for vecs, can omit if given in
             :py:meth:`compute_decomp`.
         """
-        # Build coefficients must be defined in order to compute modes
-        if self.build_coeffs_exact is None:
-            raise util.UndefinedError('self.build_coeffs_exact is undefined.')
-
         # If advanced vec handles are passed in, set the internal attribute,
         if adv_vec_handles is not None:
             self.adv_vec_handles = adv_vec_handles
 
+        # Compute build coefficient matrix
+        build_coeffs_exact = (
+            self.correlation_mat_eigvecs * 
+            np.mat(np.diag(self.correlation_mat_eigvals ** -0.5)) *
+            self.R_low_order_eigvecs
+            * np.mat(np.diag(self.eigvals ** -1.)))
+
         # If the internal attribute is set, then compute the modes
         if self.adv_vec_handles is not None:
             self.vec_space.lin_combine(mode_handles, self.adv_vec_handles, 
-                self.build_coeffs_exact, coeff_mat_col_indices=mode_indices)
+                build_coeffs_exact, coeff_mat_col_indices=mode_indices)
         # If the internal attribute is not set, then check to see if
         # vec_handles is set.  If so, assume a sequential dataset, in which
         # case adv_vec_handles can be taken from a slice of vec_handles.  
         elif self.vec_handles is not None:
             if len(self.vec_handles) - self.build_coeffs_exact.shape[0] == 1:
                 self.vec_space.lin_combine(mode_handles, self.vec_handles[1:], 
-                    self.build_coeffs_exact, coeff_mat_col_indices=mode_indices)
+                    build_coeffs_exact, coeff_mat_col_indices=mode_indices)
             else:
                 raise(ValueError, ('Number of vec_handles is not correct for a '
                     'sequential dataset.'))
@@ -586,25 +581,29 @@ class DMDHandles(object):
             ``vec_handles``: List of handles for vecs, can omit if given in
             :py:meth:`compute_decomp`.
         """
-        if self.build_coeffs_proj is None:
-            raise util.UndefinedError('self.build_coeffs_proj is undefined.')
         if vec_handles is not None:
             self.vec_handles = vec_handles
+        
+        # Compute build coefficient matrix
+        build_coeffs_proj = (
+            self.correlation_mat_eigvecs * 
+            np.mat(np.diag(self.correlation_mat_eigvals ** -0.5)) *
+            self.R_low_order_eigvecs)
 
         # For sequential data, the user will provide a list vec_handles that
         # whose length is one larger than the number of rows of the 
         # build_coeffs matrix.  This is to be expected, as vec_handles is
         # essentially partitioned into two sets of handles, each of length one
         # less than vec_handles.
-        if len(self.vec_handles) - self.build_coeffs_proj.shape[0] == 1:
+        if len(self.vec_handles) - build_coeffs_proj.shape[0] == 1:
             self.vec_space.lin_combine(mode_handles, self.vec_handles[:-1], 
-                self.build_coeffs_proj, coeff_mat_col_indices=mode_indices)
+                build_coeffs_proj, coeff_mat_col_indices=mode_indices)
         # For a non-sequential dataset, the user will provide a list vec_handles
         # whose length is equal to the number of rows in the build_coeffs
         # matrix.
-        elif len(self.vec_handles) == self.build_coeffs_proj.shape[0]:
+        elif len(self.vec_handles) == build_coeffs_proj.shape[0]:
             self.vec_space.lin_combine(mode_handles, self.vec_handles, 
-                self.build_coeffs_proj, coeff_mat_col_indices=mode_indices)
+                build_coeffs_proj, coeff_mat_col_indices=mode_indices)
         # Otherwise, raise an error, as the number of handles should fit one of
         # the two cases described above.
         else:
