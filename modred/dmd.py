@@ -443,7 +443,7 @@ class DMDHandles(object):
         """Computes decomposition and returns eigen decomposition matrices.
         
         Args:
-            ``vec_handles``: List of handles for the vectors.
+            ``vec_handles``: List of handles for the data vectors.
         
         Kwargs:
             ``adv_vec_handles``: List of handles of ``vecs`` advanced in time.
@@ -460,11 +460,17 @@ class DMDHandles(object):
         Returns:
             ``eigvals``: 1D array of DMD eigenvalues.
             
-            ``build_coeffs_exact``: Matrix of build coefficients for exact DMD 
-            modes.
+            ``R_low_order_eigvecs``: Matrix of right eigenvectors of the
+              low-order linear DMD operator.
 
-            ``build_coeffs_proj``: Matrix of build coefficients for projected 
-            DMD modes.
+            ``L_low_order_eigvecs``: Matrix of left eigenvectors of the
+              low-order linear DMD operator.
+
+            ``correlation_mat_eigvals``: 1D array of eigenvalues of the
+              correlation matrix.
+
+            ``correlation_mat_eigvecs``: Matrix of eigenvectors of the
+              correlation matrix.
         """
         self.vec_handles = vec_handles
         if adv_vec_handles is not None:
@@ -523,8 +529,8 @@ class DMDHandles(object):
             self.build_coeffs_proj * np.mat(np.diag(self.eigvals ** -1.)))
         return (
             self.eigvals, self.R_low_order_eigvecs,
-            self.L_low_order_eigvecs, correlation_mat_eigvals,
-            correlation_mat_eigvecs)
+            self.L_low_order_eigvecs, self.correlation_mat_eigvals,
+            self.correlation_mat_eigvecs)
         
 
     def compute_exact_modes(self, mode_indices, mode_handles, 

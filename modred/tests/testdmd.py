@@ -32,7 +32,10 @@ class TestDMDArraysFunctions(unittest.TestCase):
 
 
     def _helper_compute_DMD_from_data(
-        self, vecs, adv_vecs, inner_product):
+        self, vecs, inner_product, adv_vecs=None):
+        if adv_vecs is None:
+            adv_vecs = vecs[:, 1:]
+            vecs = vecs[:, :-1]
         correlation_mat = inner_product(vecs, vecs)
         cross_correlation_mat = inner_product(vecs, adv_vecs)
         V, Sigma, dummy = util.svd(correlation_mat)     # dummy = V.T 
@@ -77,22 +80,12 @@ class TestDMDArraysFunctions(unittest.TestCase):
         inner_product_weights, rtol, atol, adv_vecs=None):
 
         # Compute reference values for testing DMD computation
-        if adv_vecs is None:
-            (modes_exact_true, modes_proj_true, spectral_coeffs_true,
-                eigvals_true, R_low_order_eigvecs_true,
-                L_low_order_eigvecs_true, correlation_mat_eigvals_true,
-                correlation_mat_eigvecs_true, correlation_mat_true,
-                cross_correlation_mat_true) = (
-                self._helper_compute_DMD_from_data( 
-                vecs[:, :-1], vecs[:, 1:], inner_product))
-        else:
-           (modes_exact_true, modes_proj_true, spectral_coeffs_true, 
-                eigvals_true, R_low_order_eigvecs_true,
-                L_low_order_eigvecs_true, correlation_mat_eigvals_true,
-                correlation_mat_eigvecs_true, correlation_mat_true,
-                cross_correlation_mat_true) = (
-                self._helper_compute_DMD_from_data(
-                vecs, adv_vecs, inner_product))
+        (modes_exact_true, modes_proj_true, spectral_coeffs_true, 
+            eigvals_true, R_low_order_eigvecs_true, L_low_order_eigvecs_true,
+            correlation_mat_eigvals_true, correlation_mat_eigvecs_true,
+            correlation_mat_true, cross_correlation_mat_true) = (
+            self._helper_compute_DMD_from_data(
+            vecs, inner_product, adv_vecs=adv_vecs))
  
         # Compute DMD using modred method of choice
         (modes_exact, modes_proj, spectral_coeffs, eigvals, 
@@ -185,7 +178,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
                 adv_vecs=adv_vecs) 
 
 
-@unittest.skip('others')
+#@unittest.skip('others')
 class TestDMDHandles(unittest.TestCase):
     def setUp(self):
         if not os.access('.', os.W_OK):
@@ -307,8 +300,13 @@ class TestDMDHandles(unittest.TestCase):
             build_coeffs_proj)
 
 
-    def _helper_compute_DMD_from_data(self, vec_array, adv_vec_array,
-        inner_product):
+    def _helper_compute_DMD_from_data(
+        self, vec_array, inner_product, adv_vec_array=None):
+        # Generate adv_vec_array for the case of a sequential dataset
+        if adv_vec_array is None:
+            adv_vec_array = vec_array[:, 1:]
+            vec_array = vec_array[:, :-1]
+
         # Create lists of vecs, advanced vecs for inner product function
         vecs = [vec_array[:, i] for i in range(vec_array.shape[1])]
         adv_vecs = [adv_vec_array[:, i] for i in range(adv_vec_array.shape[1])]
@@ -358,8 +356,9 @@ class TestDMDHandles(unittest.TestCase):
         spectral_coeffs = np.linalg.lstsq(eigvecs, vec_array[:, 0])[0]
 
         return (
-            eigvals, modes_exact, modes_proj, build_coeffs_exact, 
-            build_coeffs_proj, spectral_coeffs, adj_modes)
+            modes_exact, modes_proj, spectral_coeffs, eigvals,
+            R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
+            correlation_mat_eigvecs, adj_modes)
 
     
     def _helper_test_mat_to_sign(
@@ -382,32 +381,53 @@ class TestDMDHandles(unittest.TestCase):
                 np.allclose(-true_col, test_col, rtol=rtol, atol=atol))
 
 
-    def _helper_check_decomp(self, eigvals, build_coeffs_exact, 
-        build_coeffs_proj, vec_handles, adv_vec_handles=None):
+    def _helper_check_decomp(
+        self, vec_array,  vec_handles, adv_vec_array=None,
+        adv_vec_handles=None):
         # Set tolerance.  
         tol = 1e-10
 
+        # Compute reference DMD values
+        (eigvals_true, R_low_order_eigvecs_true, L_low_order_eigvecs_true,
+            correlation_mat_eigvals_true, correlation_mat_eigvecs_true) = (
+            self._helper_compute_DMD_from_data(
+            vec_array, util.InnerProductBlock(np.vdot),
+            adv_vec_array=adv_vec_array))[3:-1]
+
         # Compute DMD using modred
-        (eigvals_returned, build_coeffs_exact_returned, 
-            build_coeffs_proj_returned) = self.my_DMD.compute_decomp(
+        (eigvals_returned,  R_low_order_eigvecs_returned,
+            L_low_order_eigvecs_returned, correlation_mat_eigvals_returned,
+            correlation_mat_eigvecs_returned) = self.my_DMD.compute_decomp(
             vec_handles, adv_vec_handles=adv_vec_handles)
 
         # Test that matrices were correctly computed.  For build coeffs, check
         # column by column, as it is ok to be off by a negative sign.
         np.testing.assert_allclose(
-            self.my_DMD.eigvals, eigvals, rtol=tol)
+            self.my_DMD.eigvals, eigvals_true, rtol=tol)
         self._helper_test_mat_to_sign(
-            self.my_DMD.build_coeffs_exact, build_coeffs_exact, rtol=tol)
+            self.my_DMD.R_low_order_eigvecs, R_low_order_eigvecs_true, rtol=tol)
         self._helper_test_mat_to_sign(
-            self.my_DMD.build_coeffs_proj, build_coeffs_proj, rtol=tol)
+            self.my_DMD.L_low_order_eigvecs, L_low_order_eigvecs_true, rtol=tol)
+        np.testing.assert_allclose(
+            self.my_DMD.correlation_mat_eigvals, correlation_mat_eigvals_true, 
+            rtol=tol)
+        self._helper_test_mat_to_sign(
+            self.my_DMD.correlation_mat_eigvecs, correlation_mat_eigvecs_true, 
+            rtol=tol)
 
         # Test that matrices were correctly returned
         np.testing.assert_allclose(
-            eigvals_returned, eigvals, rtol=tol)
+            eigvals_returned, eigvals_true, rtol=tol)
         self._helper_test_mat_to_sign(
-            build_coeffs_exact_returned, build_coeffs_exact, rtol=tol)
+            R_low_order_eigvecs_returned, R_low_order_eigvecs_true, rtol=tol)
         self._helper_test_mat_to_sign(
-            build_coeffs_proj_returned, build_coeffs_proj, rtol=tol)
+            L_low_order_eigvecs_returned, L_low_order_eigvecs_true, rtol=tol)
+        np.testing.assert_allclose(
+            correlation_mat_eigvals_returned, correlation_mat_eigvals_true, 
+            rtol=tol)
+        self._helper_test_mat_to_sign(
+            correlation_mat_eigvecs_returned, correlation_mat_eigvecs_true, 
+            rtol=tol)
 
 
     def _helper_check_modes(self, modes_true, mode_path_list):
@@ -431,16 +451,9 @@ class TestDMDHandles(unittest.TestCase):
             for vec_index, handle in enumerate(self.vec_handles):
                 handle.put(np.array(vec_array[:, vec_index]).squeeze())
 
-        # Compute DMD directly from data, for a sequential dataset
-        (eigvals, modes_exact, modes_proj, build_coeffs_exact, 
-            build_coeffs_proj) = self._helper_compute_DMD_from_data(
-            vec_array[:, :-1], vec_array[:, 1:], 
-            util.InnerProductBlock(np.vdot))[:5]
-
         # Check modred against direct computation, for a sequential dataset
         _parallel.barrier()
-        self._helper_check_decomp(
-            eigvals, build_coeffs_exact, build_coeffs_proj, self.vec_handles)
+        self._helper_check_decomp(vec_array, self.vec_handles)
 
         # Create more data, to check a non-sequential dataset
         adv_vec_array = _parallel.call_and_bcast(np.random.random, 
@@ -449,15 +462,10 @@ class TestDMDHandles(unittest.TestCase):
             for vec_index, handle in enumerate(self.adv_vec_handles):
                 handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
 
-        # Compute DMD directly from data, for a non-sequential dataset
-        (eigvals, modes_exact, modes_proj, build_coeffs_exact, 
-            build_coeffs_proj) = self._helper_compute_DMD_from_data(
-            vec_array, adv_vec_array, util.InnerProductBlock(np.vdot))[:5]
-
         # Check modred against direct computation, for a non-sequential dataset
         _parallel.barrier()
         self._helper_check_decomp(
-            eigvals, build_coeffs_exact, build_coeffs_proj, self.vec_handles,
+            vec_array, self.vec_handles, adv_vec_array=adv_vec_array,
             adv_vec_handles=self.adv_vec_handles)
 
         # Check that if mismatched sets of handles are passed in, an error is
@@ -481,10 +489,9 @@ class TestDMDHandles(unittest.TestCase):
                 handle.put(np.array(seq_vec_array[:, vec_index]).squeeze())
 
         # Compute DMD directly from data
-        modes_exact, modes_proj, build_coeffs_exact, build_coeffs_proj = (
+        (modes_exact, modes_proj) = (
             self._helper_compute_DMD_from_data(
-            seq_vec_array[:, :-1], seq_vec_array[:, 1:], 
-            util.InnerProductBlock(np.vdot)))[1:5]
+            seq_vec_array, util.InnerProductBlock(np.vdot)))[:2]
 
         # Set the build_coeffs attribute of an empty DMD object each time, so
         # that the modred computation uses the same coefficients as the direct
@@ -636,7 +643,6 @@ class TestDMDHandles(unittest.TestCase):
             for vec_index, handle in enumerate(self.vec_handles):
                 handle.put(np.array(vec_array[:, vec_index]).squeeze())
 
-        # TODO: Change comment, check that matches pseudoinverse?
         # Check that spectral coefficients computed using adjoints match those
         # computed using a pseudoinverse
         _parallel.barrier()
