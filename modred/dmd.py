@@ -486,14 +486,6 @@ class DMDHandles(object):
             self.put_mat(self.adv_proj_coeffs, adv_dest)
         _parallel.barrier()
 
-    def _compute_eigen_decomp(self):
-        """Computes eigen decomposition of low-order linear map and associated 
-        DMD matrices."""
-        self.eigvals, self.R_low_order_eigvecs, self.L_low_order_eigvecs =\
-            _parallel.call_and_bcast(
-            util.eig_biorthog, self.low_order_linear_map, 
-            **{'scale_choice':'left'})
-       
     def sanity_check(self, test_vec_handle):
         """Check user-supplied vector handle.
         
@@ -503,6 +495,48 @@ class DMDHandles(object):
         See :py:meth:`vectorspace.VectorSpaceHandles.sanity_check`.
         """
         self.vec_space.sanity_check(test_vec_handle)
+
+    def compute_eigendecomp(self, atol=1e-13, rtol=None):
+        """Computes eigendecomposition of correlation matrix and low-order 
+        linear DMD map.
+       
+        Kwargs:
+            ``atol``: Level below which correlation matrix eigenvalues are
+              truncated.
+            
+            ``rtol``: Maximum relative difference between largest and smallest
+              correlation matrix eigenvalues.  Smaller ones are truncated. 
+
+        Useful if already have correlation mat and cross-correlation mat and
+        don't want to recompute them.
+        Usage::
+          
+          DMD.correlation_mat = pre_existing_correlation_mat
+          DMD.cross_correlation_mat = pre_existing_cross_correlation_mat
+          DMD.compute_eigendecomp()
+          DMD.compute_exact_modes(
+            mode_idx_list, mode_handles, adv_vec_handles=adv_vec_handles)
+        """
+        # Compute eigendecomposition of correlation matrix
+        self.correlation_mat_eigvals, self.correlation_mat_eigvecs = \
+            _parallel.call_and_bcast(
+            util.eigh, self.correlation_mat, atol=atol, rtol=None,
+            is_positive_definite=True)
+        correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(
+            self.correlation_mat_eigvals ** -0.5))
+        
+        # Compute low-order linear map 
+        self.low_order_linear_map = (
+            correlation_mat_eigvals_sqrt_inv * 
+            self.correlation_mat_eigvecs.conj().T * 
+            self.cross_correlation_mat * self.correlation_mat_eigvecs * 
+            correlation_mat_eigvals_sqrt_inv)
+        
+        # Compute eigendecomposition of low-order linear map
+        self.eigvals, self.R_low_order_eigvecs, self.L_low_order_eigvecs =\
+            _parallel.call_and_bcast(
+            util.eig_biorthog, self.low_order_linear_map, 
+            **{'scale_choice':'left'})
 
     def compute_decomp(
         self, vec_handles, adv_vec_handles=None, atol=1e-13, rtol=None):
@@ -569,23 +603,8 @@ class DMDHandles(object):
                 self.vec_space.compute_inner_product_mat(
                 self.vec_handles, self.adv_vec_handles)
 
-        # Compute eigendecomposition of correlation matrix
-        self.correlation_mat_eigvals, self.correlation_mat_eigvecs = \
-            _parallel.call_and_bcast(
-            util.eigh, self.correlation_mat, atol=atol, rtol=None,
-            is_positive_definite=True)
-        correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(
-            self.correlation_mat_eigvals ** -0.5))
-        
-        # Compute low-order linear map 
-        self.low_order_linear_map = (
-            correlation_mat_eigvals_sqrt_inv * 
-            self.correlation_mat_eigvecs.conj().T * 
-            self.cross_correlation_mat * self.correlation_mat_eigvecs * 
-            correlation_mat_eigvals_sqrt_inv)
-        
         # Compute eigendecomposition of low-order linear map.
-        self._compute_eigen_decomp()
+        self.compute_eigendecomp(atol=atol, rtol=rtol)
 
         return (
             self.eigvals, self.R_low_order_eigvecs,

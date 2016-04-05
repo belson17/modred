@@ -258,7 +258,7 @@ class PODHandles(object):
         self.vec_space.sanity_check(test_vec_handle)
 
     def compute_eigendecomp(self, atol=1e-13, rtol=None):
-        """Computes eigendecomp of correlation matrix.
+        """Computes eigendecomposition of correlation matrix.
        
         Kwargs:
             ``atol``: Level below which POD eigenvalues are truncated.
@@ -271,7 +271,7 @@ class PODHandles(object):
         
           POD.correlation_mat = pre_existing_correlation_mat
           POD.compute_eigendecomp()
-          POD.compute_modes(range(10), modes, vec_handles=vec_handles)
+          POD.compute_modes(range(10), mode_handles, vec_handles=vec_handles)
         
         """
         self.eigvals, self.eigvecs = _parallel.call_and_bcast(

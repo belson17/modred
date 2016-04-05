@@ -49,6 +49,11 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
   :py:func:`bpod.BPODHandles.compute_adj_proj_coeffs`,
   :py:func:`dmd.DMDHandles.compute_proj_coeffs`.
 
+* Added a new function :py:func:`dmd.DMDHandles.compute_eigendecom` so that DMD 
+  computations can be restarted from saved correlation and cross-correlation
+  matrices, rather than having to recompute those matrices, which can be
+  expensive.
+
 **Bug fixes**
 
 * Fixed minor bug in the function ``util.impulse``.
@@ -86,6 +91,7 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
 * Added the following new methods in the updated ``DMDHandles`` class: 
   :py:func:`dmd.DMDHandles.compute_exact_modes`,
   :py:func:`dmd.DMDHandles.compute_spectrum`,
+  :py:func:`dmd.DMDHandles.compute_eigendecomp`,
   :py:func:`dmd.DMDHandles.put_R_low_order_eigvecs`,
   :py:func:`dmd.DMDHandles.put_L_low_order_eigvecs`,
   :py:func:`dmd.DMDHandles.put_correlation_mat_eigvals`,

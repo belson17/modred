@@ -204,8 +204,8 @@ class BPODHandles(object):
         
           my_BPOD.Hankel_mat = pre_existing_Hankel_mat
           my_BPOD.compute_SVD()
-          my_BPOD.compute_direct_modes(range(10), modes, 
-              direct_vec_handles=my_direct_vec_handles)
+          my_BPOD.compute_direct_modes(
+              range(10), mode_handles, direct_vec_handles=direct_vec_handles)
 
         """
         self.L_sing_vecs, self.sing_vals, self.R_sing_vecs = \
