@@ -69,20 +69,39 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
   :py:func:`dmd.compute_DMD_matrices_direct_method`, 
   :py:func:`dmd.DMDHandles.compute_decomp`.
 
-* Added the following new methods: 
+* Changed the order of the arguments in 
+  :py:func:`pod.PODHandles.get_decomp` and
+  :py:func:`pod.PODHandles.put_decomp`.
+
+* Changed the arguments to 
+  :py:func:`dmd.DMDHandles.get_decomp` and
+  :py:func:`dmd.DMDHandles.put_decomp`.
+
+* Added the following new methods that compute projections onto modes: 
   :py:func:`pod.PODHandles.compute_proj_coeffs`,
   :py:func:`bpod.BPODHandles.compute_proj_coeffs`,
-  :py:func:`bpod.BPODHandles.compute_adj_proj_coeffs`,
+  :py:func:`bpod.BPODHandles.compute_adj_proj_coeffs`, and
+  :py:func:`dmd.DMDHandles.compute_proj_coeffs`.
+  
+* Added the following new methods in the updated ``DMDHandles`` class: 
   :py:func:`dmd.DMDHandles.compute_exact_modes`,
   :py:func:`dmd.DMDHandles.compute_spectrum`,
-  :py:func:`dmd.DMDHandles.compute_proj_coeffs`,
-  :py:func:`dmd.DMDHandles.put_spectral_coeffs`.
-
+  :py:func:`dmd.DMDHandles.put_R_low_order_eigvecs`,
+  :py:func:`dmd.DMDHandles.put_L_low_order_eigvecs`,
+  :py:func:`dmd.DMDHandles.put_correlation_mat_eigvals`,
+  :py:func:`dmd.DMDHandles.put_correlation_mat_eigvecs`,
+  :py:func:`dmd.DMDHandles.put_cross_correlation_mat`,
+  :py:func:`dmd.DMDHandles.put_spectral_coeffs`, and
+  :py:func:`dmd.DMDHandles.put_proj_coeffs`.
+  
 * :py:func:`dmd.DMDHandles.compute_proj_modes` replaces 
   :py:func:`dmd.DMDHandles.compute_modes`. 
 
-* :py:func:`dmd.DMDHandles.put_eig_vals` replaces
+* :py:func:`dmd.DMDHandles.put_eigvals` replaces
   :py:func:`dmd.DMDHandles.put_ritz_vals`.
+
+* :py:func:`dmd.DMDHandles.put_build_coeffs` and 
+  :py:func:`dmd.DMDHandles.put_mode_norms` are now deprecated.
 
 * Optional ``atol`` and ``rtol`` arguments were added to 
   :py:func:`pod.PODHandles.compute_decomp`,

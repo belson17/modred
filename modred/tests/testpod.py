@@ -105,7 +105,7 @@ class TestPODHandles(unittest.TestCase):
         _parallel.barrier()
                           
     
-    def test_put_gets(self):
+    def test_puts_gets(self):
         test_dir = 'DELETE_ME_test_files_pod'
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
@@ -119,17 +119,18 @@ class TestPODHandles(unittest.TestCase):
             np.random.random, num_vecs)
         eigvecs_true = _parallel.call_and_bcast(
             np.random.random, ((num_states, num_vecs)))
+
         my_POD = PODHandles(None, verbosity=0)
         my_POD.correlation_mat = correlation_mat_true
         my_POD.eigvals = eigvals_true
         my_POD.eigvecs = eigvecs_true
-        _parallel.barrier()
         
         eigvecs_path = join(test_dir, 'eigvecs.txt')
         eigvals_path = join(test_dir, 'eigvals.txt')
         correlation_mat_path = join(test_dir, 'correlation.txt')
         my_POD.put_decomp(eigvecs_path, eigvals_path)
         my_POD.put_correlation_mat(correlation_mat_path)
+        _parallel.barrier()
         
         POD_load = PODHandles(None, verbosity=0)
         POD_load.get_decomp(eigvecs_path, eigvals_path)

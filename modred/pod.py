@@ -202,29 +202,43 @@ class PODHandles(object):
         self.vec_handles = None
         self.correlation_mat = None
 
-    def get_decomp(self, eigvecs_source, eigvals_source):
-        """Gets the decomposition matrices from sources (memory or file)."""
-        self.eigvecs = _parallel.call_and_bcast(self.get_mat,
-            eigvecs_source)
-        self.eigvals = np.squeeze(np.array(_parallel.call_and_bcast(
-            self.get_mat, eigvals_source)))
+    def get_decomp(self, eigvals_src, eigvecs_src):
+        """Gets the decomposition matrices from sources (memory or file).
+        
+        Args:
+            ``eigvals_src``: Source from which to retrieve the POD
+              eigenvalues.
 
-    def put_decomp(self, eigvecs_dest, eigvals_dest):
-        """Put the decomposition matrices to file or memory."""
+            ``eigvecs_src``: Source from which to retrieve the POD
+              eigenvectors.
+        """
+        self.eigvals = np.squeeze(np.array(_parallel.call_and_bcast(
+            self.get_mat, eigvals_src)))
+        self.eigvecs = _parallel.call_and_bcast(self.get_mat,
+            eigvecs_src)
+        
+    def put_decomp(self, eigvals_dest, eigvecs_dest):
+        """Put the decomposition matrices to destinations (file or memory).
+        
+        Args:
+            ``eigvals_dest``: Destination to which to put the POD eigenvalues.
+
+            ``eigvecs_dest``: Destination to which to put the POD eigenvectors.
+        """
         # Don't check if rank is zero because the following methods do.
         self.put_eigvecs(eigvecs_dest)
         self.put_eigvals(eigvals_dest)
-
-    def put_eigvecs(self, dest):
-        """Put eigenvectors to ``dest``."""
-        if _parallel.is_rank_zero():
-            self.put_mat(self.eigvecs, dest)
-        _parallel.barrier()
 
     def put_eigvals(self, dest):
         """Put eigenvalues to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.eigvals, dest)
+        _parallel.barrier()
+ 
+    def put_eigvecs(self, dest):
+        """Put eigenvectors to ``dest``."""
+        if _parallel.is_rank_zero():
+            self.put_mat(self.eigvecs, dest)
         _parallel.barrier()
 
     def put_correlation_mat(self, dest):
@@ -232,7 +246,6 @@ class PODHandles(object):
         if _parallel.is_rank_zero():
             self.put_mat(self.correlation_mat, dest)
         _parallel.barrier()
-
 
     def sanity_check(self, test_vec_handle):
         """Check user-supplied vector handle.
@@ -244,7 +257,6 @@ class PODHandles(object):
         """
         self.vec_space.sanity_check(test_vec_handle)
 
-    
     def compute_eigendecomp(self, atol=1e-13, rtol=None):
         """Computes eigendecomp of correlation matrix.
        
@@ -284,12 +296,9 @@ class PODHandles(object):
             ``eigvals``: 1D array of eigenvalues.
         """
         self.vec_handles = vec_handles
-        self.correlation_mat = self.vec_space.\
-            compute_symmetric_inner_product_mat(self.vec_handles)
-        #self.correlation_mat = self.vec_space.\
-        #    compute_inner_product_mat(self.vec_handles, self.vec_handles)
-        #self.eigvals, self.eigvecs = _parallel.call_and_bcast(
-        #    util.eigh, self.correlation_mat, is_positive_definite=True)
+        self.correlation_mat = (
+            self.vec_space.compute_symmetric_inner_product_mat(
+            self.vec_handles))
         self.compute_eigendecomp(atol=atol, rtol=rtol)
         return self.eigvecs, self.eigvals
 

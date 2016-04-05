@@ -54,7 +54,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
             modes_exact, modes_proj, spectral_coeffs, eigvals,
             W, Z, Sigma, V, correlation_mat, cross_correlation_mat)
 
-
+        
     def _helper_test_mat_to_sign(
         self, true_vals, test_vals, rtol=1e-12, atol=1e-16):
         # Check that shapes are the same
@@ -96,13 +96,11 @@ class TestDMDArraysFunctions(unittest.TestCase):
             inner_product_weights=inner_product_weights, return_all=True)
         
         # Compare values to reference values, allowing for sign differences in
-        # some cases.  For the low-order eigenvectors, check absolute values,
-        # as the eigenvectors may vary by sign even element-wise.  This is due
-        # to the fact that the low-order linear maps may have sign differences,
-        # as they depend on the correlation matrix eigenvectors, which
-        # themselves may have column-wise sign differences.  In any case, if
-        # the modes and eigenvalues are correct, then the eigenvectors are
-        # almost certainly correct.
+        # some cases.  For the low-order eigenvectors, check that the elements
+        # differ at most by a sign, as the eigenvectors may vary by sign even
+        # element-wise.  This is due to the fact that the low-order linear maps
+        # may have sign differences, as they depend on the correlation matrix
+        # eigenvectors, which themselves may have column-wise sign differences.
         self._helper_test_mat_to_sign(
             modes_exact, modes_exact_true[:, mode_indices], rtol=rtol, 
             atol=atol)
@@ -114,11 +112,13 @@ class TestDMDArraysFunctions(unittest.TestCase):
             rtol=rtol, atol=atol)
         np.testing.assert_allclose(
             eigvals, eigvals_true, rtol=rtol, atol=atol)
-        self._helper_test_mat_to_sign(
-            np.abs(L_low_order_eigvecs), np.abs(L_low_order_eigvecs_true), 
+        np.testing.assert_allclose(
+            np.abs(R_low_order_eigvecs / R_low_order_eigvecs_true), 
+            np.ones(R_low_order_eigvecs.shape), 
             rtol=rtol, atol=atol)
-        self._helper_test_mat_to_sign(
-            np.abs(R_low_order_eigvecs), np.abs(R_low_order_eigvecs_true), 
+        np.testing.assert_allclose(
+            np.abs(L_low_order_eigvecs / L_low_order_eigvecs_true), 
+            np.ones(L_low_order_eigvecs.shape), 
             rtol=rtol, atol=atol)
         np.testing.assert_allclose(
             correlation_mat_eigvals, correlation_mat_eigvals_true, 
@@ -265,38 +265,90 @@ class TestDMDHandles(unittest.TestCase):
 
 
     #@unittest.skip('Testing something else.')
-    def test_gets_puts(self):
+    def test_puts_gets(self):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         test_dir = 'DELETE_ME_test_files_dmd'
         if not os.path.isdir(test_dir) and _parallel.is_rank_zero():
             os.mkdir(test_dir)
         eigvals = _parallel.call_and_bcast(np.random.random, 5)
-        build_coeffs_exact = _parallel.call_and_bcast(np.random.random, (10,10))
-        build_coeffs_proj = _parallel.call_and_bcast(np.random.random, (10,10))
-        
+        R_low_order_eigvecs = _parallel.call_and_bcast(
+            np.random.random, (10,10))
+        L_low_order_eigvecs = _parallel.call_and_bcast(
+            np.random.random, (10,10))
+        correlation_mat_eigvals = _parallel.call_and_bcast(np.random.random, 5)
+        correlation_mat_eigvecs = _parallel.call_and_bcast(
+            np.random.random, (10,10))
+        correlation_mat = _parallel.call_and_bcast(np.random.random, (10,10))
+        cross_correlation_mat = _parallel.call_and_bcast(
+            np.random.random, (10,10))
+        spectral_coeffs = _parallel.call_and_bcast(np.random.random, 5)
+        proj_coeffs = _parallel.call_and_bcast(np.random.random, 5)
+        adv_proj_coeffs = _parallel.call_and_bcast(np.random.random, 5)
+
         my_DMD = DMDHandles(None, verbosity=0)
         my_DMD.eigvals = eigvals
-        my_DMD.build_coeffs_exact = build_coeffs_exact
-        my_DMD.build_coeffs_proj = build_coeffs_proj
+        my_DMD.R_low_order_eigvecs = R_low_order_eigvecs 
+        my_DMD.L_low_order_eigvecs = L_low_order_eigvecs 
+        my_DMD.correlation_mat_eigvals = correlation_mat_eigvals
+        my_DMD.correlation_mat_eigvecs = correlation_mat_eigvecs
+        my_DMD.correlation_mat = correlation_mat
+        my_DMD.cross_correlation_mat = cross_correlation_mat
+        my_DMD.spectral_coeffs = spectral_coeffs
+        my_DMD.proj_coeffs = proj_coeffs
+        my_DMD.adv_proj_coeffs = adv_proj_coeffs
         
         eigvals_path = join(test_dir, 'dmd_eigvals.txt')
-        build_coeffs_exact_path = join(test_dir, 'dmd_build_coeffs_exact.txt')
-        build_coeffs_proj_path = join(test_dir, 'dmd_build_coeffs_proj.txt')
-        
-        my_DMD.put_decomp(eigvals_path, build_coeffs_exact_path, 
-            build_coeffs_proj_path)
+        R_low_order_eigvecs_path = join(test_dir, 'dmd_R_low_order_eigvecs.txt')
+        L_low_order_eigvecs_path = join(test_dir, 'dmd_L_low_order_eigvecs.txt')
+        correlation_mat_eigvals_path = join(
+            test_dir, 'dmd_corr_mat_eigvals.txt')
+        correlation_mat_eigvecs_path = join(
+            test_dir, 'dmd_corr_mat_eigvecs.txt')
+        correlation_mat_path = join(test_dir, 'dmd_corr_mat.txt')
+        cross_correlation_mat_path = join(test_dir, 'dmd_cross_corr_mat.txt')
+        spectral_coeffs_path = join(test_dir, 'dmd_spectral_coeffs.txt')
+        proj_coeffs_path = join(test_dir, 'dmd_proj_coeffs.txt')
+        adv_proj_coeffs_path = join(test_dir, 'dmd_adv_proj_coeffs.txt')
+
+        my_DMD.put_decomp(
+            eigvals_path, R_low_order_eigvecs_path, L_low_order_eigvecs_path,
+            correlation_mat_eigvals_path , correlation_mat_eigvecs_path) 
+        my_DMD.put_correlation_mat(correlation_mat_path)
+        my_DMD.put_cross_correlation_mat(cross_correlation_mat_path)
+        my_DMD.put_spectral_coeffs(spectral_coeffs_path)
+        my_DMD.put_proj_coeffs(proj_coeffs_path, adv_proj_coeffs_path)
         _parallel.barrier()
 
         DMD_load = DMDHandles(None, verbosity=0)
         DMD_load.get_decomp(
-            eigvals_path, build_coeffs_exact_path, build_coeffs_proj_path)
+            eigvals_path, R_low_order_eigvecs_path, L_low_order_eigvecs_path,
+            correlation_mat_eigvals_path, correlation_mat_eigvecs_path)
+        correlation_mat_loaded = util.load_array_text(correlation_mat_path)
+        cross_correlation_mat_loaded = util.load_array_text(
+            cross_correlation_mat_path)
+        spectral_coeffs_loaded = np.squeeze(np.array(
+            util.load_array_text(spectral_coeffs_path)))
+        proj_coeffs_loaded = np.squeeze(np.array(
+            util.load_array_text(proj_coeffs_path)))
+        adv_proj_coeffs_loaded = np.squeeze(np.array(
+            util.load_array_text(adv_proj_coeffs_path)))
 
         np.testing.assert_allclose(DMD_load.eigvals, eigvals)
         np.testing.assert_allclose(
-            DMD_load.build_coeffs_exact, build_coeffs_exact)
-        np.testing.assert_allclose(DMD_load.build_coeffs_proj,
-            build_coeffs_proj)
+            DMD_load.R_low_order_eigvecs, R_low_order_eigvecs)
+        np.testing.assert_allclose(
+            DMD_load.L_low_order_eigvecs, L_low_order_eigvecs)
+        np.testing.assert_allclose(
+            DMD_load.correlation_mat_eigvals, correlation_mat_eigvals)
+        np.testing.assert_allclose(
+            DMD_load.correlation_mat_eigvecs, correlation_mat_eigvecs)
+        np.testing.assert_allclose(correlation_mat_loaded, correlation_mat)
+        np.testing.assert_allclose(
+            cross_correlation_mat_loaded, cross_correlation_mat)
+        np.testing.assert_allclose(spectral_coeffs_loaded, spectral_coeffs)
+        np.testing.assert_allclose(proj_coeffs_loaded, proj_coeffs)
+        np.testing.assert_allclose(adv_proj_coeffs_loaded, adv_proj_coeffs)
 
 
     def _helper_compute_DMD_from_data(
@@ -358,6 +410,23 @@ class TestDMDHandles(unittest.TestCase):
             modes_exact, modes_proj, spectral_coeffs, eigvals,
             R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
             correlation_mat_eigvecs, adj_modes)
+
+    
+    def _helper_test_1D_array_to_sign(
+        self, true_vals, test_vals, rtol=1e-12, atol=1e-16):
+        # Check that shapes are the same
+        self.assertEqual(len(true_vals.shape), 1)
+        self.assertEqual(len(test_vals.shape), 1)
+        self.assertEqual(true_vals.size, test_vals.size)
+
+        # Check values entry by entry.  
+        for idx in xrange(true_vals.size):
+            true_val = true_vals[idx]
+            test_val = test_vals[idx]
+            self.assertTrue(
+                np.allclose(true_val, test_val, rtol=rtol, atol=atol) 
+                or
+                np.allclose(-true_val, test_val, rtol=rtol, atol=atol))
 
     
     def _helper_test_mat_to_sign(
@@ -611,8 +680,8 @@ class TestDMDHandles(unittest.TestCase):
         spectral_coeffs_computed = self.my_DMD.compute_spectrum()
         spectral_coeffs_true = self._helper_compute_DMD_from_data(
             vec_array, util.InnerProductBlock(np.vdot))[2]
-        np.testing.assert_allclose(
-            spectral_coeffs_computed, spectral_coeffs_true, rtol=rtol, 
+        self._helper_test_1D_array_to_sign(
+            spectral_coeffs_true, spectral_coeffs_computed, rtol=rtol, 
             atol=atol)
 
         # Create more data, to check a non-sequential dataset
@@ -631,8 +700,8 @@ class TestDMDHandles(unittest.TestCase):
         spectral_coeffs_true = self._helper_compute_DMD_from_data(
             vec_array, util.InnerProductBlock(np.vdot),
             adv_vec_array=adv_vec_array)[2]
-        np.testing.assert_allclose(
-            spectral_coeffs_computed, spectral_coeffs_true, rtol=rtol, 
+        self._helper_test_1D_array_to_sign(
+            spectral_coeffs_true, spectral_coeffs_computed, rtol=rtol, 
             atol=atol)
 
     
@@ -648,8 +717,10 @@ class TestDMDHandles(unittest.TestCase):
             for vec_index, handle in enumerate(self.vec_handles):
                 handle.put(np.array(vec_array[:, vec_index]).squeeze())
 
-        # Check that spectral coefficients computed using adjoints match those
-        # computed using a pseudoinverse
+        # Check the spectral coefficient values.  Sometimes the values in the
+        # projections are not just scaled by -1 column-wise, but element-wise.
+        # So just test that the projection coefficients differ by sign at most,
+        # element-wise.
         _parallel.barrier()
         self.my_DMD.compute_decomp(self.vec_handles) 
         proj_coeffs, adv_proj_coeffs = self.my_DMD.compute_proj_coeffs()
@@ -658,9 +729,11 @@ class TestDMDHandles(unittest.TestCase):
         proj_coeffs_true = np.dot(adj_modes.conj().T, vec_array[:, :-1])
         adv_proj_coeffs_true = np.dot(adj_modes.conj().T, vec_array[:, 1:])
         np.testing.assert_allclose(
-            proj_coeffs, proj_coeffs_true, rtol=rtol, atol=atol)
+            np.abs(proj_coeffs / proj_coeffs_true), np.ones(proj_coeffs.shape),
+            rtol=rtol, atol=atol)
         np.testing.assert_allclose(
-            adv_proj_coeffs, adv_proj_coeffs_true, rtol=rtol, atol=atol)
+            np.abs(adv_proj_coeffs / adv_proj_coeffs_true),
+            np.ones(adv_proj_coeffs.shape), rtol=rtol, atol=atol)
 
         # Create more data, to check a non-sequential dataset
         adv_vec_array = _parallel.call_and_bcast(np.random.random, 
@@ -669,8 +742,10 @@ class TestDMDHandles(unittest.TestCase):
             for vec_index, handle in enumerate(self.adv_vec_handles):
                 handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
 
-        # Check that spectral coefficients computed using adjoints match those
-        # computed using a pseudoinverse
+        # Check the spectral coefficient values.  Sometimes the values in the
+        # projections are not just scaled by -1 column-wise, but element-wise.
+        # So just test that the projection coefficients differ by sign at most,
+        # element-wise.
         _parallel.barrier()
         self.my_DMD.compute_decomp(
             self.vec_handles, adv_vec_handles=self.adv_vec_handles) 
@@ -681,9 +756,11 @@ class TestDMDHandles(unittest.TestCase):
         proj_coeffs_true = np.dot(adj_modes.conj().T, vec_array)
         adv_proj_coeffs_true = np.dot(adj_modes.conj().T, adv_vec_array)
         np.testing.assert_allclose(
-            proj_coeffs, proj_coeffs_true, rtol=rtol, atol=atol)
+            np.abs(proj_coeffs / proj_coeffs_true), np.ones(proj_coeffs.shape),
+            rtol=rtol, atol=atol)
         np.testing.assert_allclose(
-            adv_proj_coeffs, adv_proj_coeffs_true, rtol=rtol, atol=atol)
+            np.abs(adv_proj_coeffs / adv_proj_coeffs_true),
+            np.ones(adv_proj_coeffs.shape), rtol=rtol, atol=atol)
 
 
 if __name__ == '__main__':

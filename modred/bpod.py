@@ -133,52 +133,28 @@ class BPODHandles(object):
         self.adjoint_vec_handles = None
 
     def get_decomp(
-        self, L_sing_vecs_source, sing_vals_source, R_sing_vecs_source):
-        """Gets the decomposition matrices from elsewhere (memory or file).
+        self, L_sing_vecs_src, sing_vals_src, R_sing_vecs_src):
+        """Gets the decomposition matrices from sources (memory or file).
         
         Args:
-            ``L_sing_vecs_source``: Source from which to retrieve left singular
+            ``L_sing_vecs_src``: Source from which to retrieve left singular
             vectors.
             
-            ``sing_vals_source``: Source from which to retrieve singular
+            ``sing_vals_src``: Source from which to retrieve singular
             values.
             
-            ``R_sing_vecs_source``: Source from which to retrieve right singular
+            ``R_sing_vecs_src``: Source from which to retrieve right singular
             vectors.
         """
         self.L_sing_vecs = _parallel.call_and_bcast(
-            self.get_mat, L_sing_vecs_source)
+            self.get_mat, L_sing_vecs_src)
         self.sing_vals = np.squeeze(_parallel.call_and_bcast(
-            self.get_mat, sing_vals_source))
+            self.get_mat, sing_vals_src))
         self.R_sing_vecs = _parallel.call_and_bcast(
-            self.get_mat, R_sing_vecs_source)
+            self.get_mat, R_sing_vecs_src)
     
-    def put_Hankel_mat(self, dest):
-        """Put Hankel mat to ``dest``."""
-        if _parallel.is_rank_zero():
-            self.put_mat(self.Hankel_mat, dest)
-        _parallel.barrier()
-        
-    def put_L_sing_vecs(self, dest):
-        """Put left singular vectors of SVD to ``dest``."""
-        if _parallel.is_rank_zero():
-            self.put_mat(self.L_sing_vecs, dest)
-        _parallel.barrier()
-        
-    def put_R_sing_vecs(self, dest):
-        """Put right singular vectors of SVD to ``dest``."""
-        if _parallel.is_rank_zero():
-            self.put_mat(self.R_sing_vecs, dest)
-        _parallel.barrier()
-        
-    def put_sing_vals(self, dest):
-        """Put singular values of SVD to ``dest``."""
-        if _parallel.is_rank_zero():
-            self.put_mat(self.sing_vals, dest)
-        _parallel.barrier()
-        
     def put_decomp(self, L_sing_vecs_dest, sing_vals_dest, R_sing_vecs_dest):
-        """Put the decomposition matrices to destinations.
+        """Put the decomposition matrices to destinations (file or memory).
         
         Args:
             ``L_sing_vecs_dest``: Destination to which to put the left singular
@@ -194,8 +170,31 @@ class BPODHandles(object):
         self.put_L_sing_vecs(L_sing_vecs_dest)
         self.put_R_sing_vecs(R_sing_vecs_dest)
         self.put_sing_vals(sing_vals_dest)
-        
 
+    def put_L_sing_vecs(self, dest):
+        """Put left singular vectors of SVD to ``dest``."""
+        if _parallel.is_rank_zero():
+            self.put_mat(self.L_sing_vecs, dest)
+        _parallel.barrier()
+        
+    def put_sing_vals(self, dest):
+        """Put singular values of SVD to ``dest``."""
+        if _parallel.is_rank_zero():
+            self.put_mat(self.sing_vals, dest)
+        _parallel.barrier()
+
+    def put_R_sing_vecs(self, dest):
+        """Put right singular vectors of SVD to ``dest``."""
+        if _parallel.is_rank_zero():
+            self.put_mat(self.R_sing_vecs, dest)
+        _parallel.barrier()
+            
+    def put_Hankel_mat(self, dest):
+        """Put Hankel mat to ``dest``."""
+        if _parallel.is_rank_zero():
+            self.put_mat(self.Hankel_mat, dest)
+        _parallel.barrier()
+   
     def compute_SVD(self, atol=1e-13, rtol=None):
         """Takes the SVD of the Hankel matrix.
         

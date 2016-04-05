@@ -366,22 +366,67 @@ class DMDHandles(object):
         self.vec_handles = None
         self.adv_vec_handles = None
         
-    def get_decomp(self, eigvals_source, build_coeffs_exact_source, 
-        build_coeffs_proj_source):
-        """Retrieves the decomposition matrices from sources."""        
-        self.eigvals = np.squeeze(np.array(
-            _parallel.call_and_bcast(self.get_mat, eigvals_source)))
-        self.build_coeffs_exact = _parallel.call_and_bcast(self.get_mat, 
-            build_coeffs_exact_source)
-        self.build_coeffs_proj = _parallel.call_and_bcast(self.get_mat, 
-            build_coeffs_proj_source)
+    def get_decomp(
+        self, eigvals_src, R_low_order_eigvecs_src, 
+        L_low_order_eigvecs_src, correlation_mat_eigvals_src,
+        correlation_mat_eigvecs_src):
+        """Retrieves the decomposition matrices from sources (memory or file).
+        
+        Args:
+            ``eigvals_src``: Source from which to retrieve the DMD
+              eigenvalues.
 
-    def put_decomp(self, eigvals_dest, build_coeffs_exact_dest, 
-        build_coeffs_proj_dest):
-        """Puts the decomposition matrices in destinations."""
+            ``R_low_order_eigvecs_src``: Source from which to retrieve the right
+              eigenvectors of the low-order linear DMD map.
+            
+            ``L_low_order_eigvecs_src``: Source from wich to retrieve the left 
+              eigenvectors of the low-order linear DMD map.
+
+            ``correlation_mat_eigvals_src``: Source from which to retrieve the 
+              eigenvalues of the correlation matrix.
+
+            ``correlation_mat_eigvecs_src``: Source from which to retrieve the 
+              eigenvectors of the correlation matrix.
+        """        
+        self.eigvals = np.squeeze(np.array(
+            _parallel.call_and_bcast(self.get_mat, eigvals_src)))
+        self.R_low_order_eigvecs = _parallel.call_and_bcast(
+            self.get_mat, R_low_order_eigvecs_src)
+        self.L_low_order_eigvecs = _parallel.call_and_bcast(
+            self.get_mat, L_low_order_eigvecs_src)
+        self.correlation_mat_eigvals = np.squeeze(np.array(
+            _parallel.call_and_bcast(
+            self.get_mat, correlation_mat_eigvals_src)))
+        self.correlation_mat_eigvecs = _parallel.call_and_bcast(
+            self.get_mat, correlation_mat_eigvecs_src)
+
+    def put_decomp(
+        self, eigvals_dest, R_low_order_eigvecs_dest, L_low_order_eigvecs_dest,
+        correlation_mat_eigvals_dest, correlation_mat_eigvecs_dest):
+        """Puts the decomposition matrices to destinations (file or memory).
+
+        Args:
+            ``eigvals_dest``: Destination to which to put the DMD
+              eigenvalues.
+
+            ``R_low_order_eigvecs_dest``: Destination to which to put the right
+              eigenvectors of the low-order linear DMD map.
+           
+            ``L_low_order_eigvecs_dest``: Destination to which to put the left 
+              eigenvectors of the low-order linear DMD map.
+            
+            ``correlation_mat_eigvals_dest``: Destination to which to put the 
+              eigenvalues of the correlation matrix.
+
+            ``correlation_mat_eigvecs_dest``: Destination to which to put the 
+              eigenvectors of the correlation matrix.
+        """
         # Don't check if rank is zero because the following methods do.
         self.put_eigvals(eigvals_dest)
-        self.put_build_coeffs(build_coeffs_exact_dest, build_coeffs_proj_dest)
+        self.put_R_low_order_eigvecs(R_low_order_eigvecs_dest)
+        self.put_L_low_order_eigvecs(L_low_order_eigvecs_dest)
+        self.put_correlation_mat_eigvals(correlation_mat_eigvals_dest)
+        self.put_correlation_mat_eigvecs(correlation_mat_eigvecs_dest)
 
     def put_eigvals(self, dest):
         """Puts the DMD eigenvalues to ``dest``."""
@@ -389,17 +434,42 @@ class DMDHandles(object):
             self.put_mat(self.eigvals, dest)
         _parallel.barrier()
 
-    def put_build_coeffs(self, build_coeffs_exact_dest, build_coeffs_proj_dest):
-        """Puts the build coeffs to ``dest``."""
+    def put_R_low_order_eigvecs(self, dest):
+        """Puts the right eigenvectors of the low-order linear DMD map to 
+        ``dest``."""
         if _parallel.is_rank_zero():
-            self.put_mat(self.build_coeffs_exact, build_coeffs_exact_dest)
-            self.put_mat(self.build_coeffs_proj, build_coeffs_proj_dest)
+            self.put_mat(self.R_low_order_eigvecs, dest)
         _parallel.barrier()
-        
+
+    def put_L_low_order_eigvecs(self, dest):
+        """Puts the left eigenvectors of the low-order linear DMD map to 
+        ``dest``."""
+        if _parallel.is_rank_zero():
+            self.put_mat(self.L_low_order_eigvecs, dest)
+        _parallel.barrier()
+
+    def put_correlation_mat_eigvals(self, dest):
+        """Puts the eigenvalues of the correlation matrix to ``dest``."""
+        if _parallel.is_rank_zero():
+            self.put_mat(self.correlation_mat_eigvals, dest)
+        _parallel.barrier()
+
+    def put_correlation_mat_eigvecs(self, dest):
+        """Puts the eigenvectors of the correlation matrix to ``dest``."""
+        if _parallel.is_rank_zero():
+            self.put_mat(self.correlation_mat_eigvecs, dest)
+        _parallel.barrier()
+
     def put_correlation_mat(self, dest):
         """Puts the correlation mat to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.correlation_mat, dest)
+        _parallel.barrier()
+
+    def put_cross_correlation_mat(self, dest):
+        """Puts the correlation mat to ``dest``."""
+        if _parallel.is_rank_zero():
+            self.put_mat(self.cross_correlation_mat, dest)
         _parallel.barrier()
 
     def put_spectral_coeffs(self, dest):
