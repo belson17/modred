@@ -14,7 +14,7 @@ def compute_POD_matrices_snaps_method(
     """Computes POD modes with data in a matrix using the method of snapshots.
     
     Args:
-        ``vecs``: Matrix of vectors stacked as columns.
+        ``vecs``: Matrix of data vectors stacked as columns.
         
         ``mode_indices``: List of mode indices to compute.
             Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
@@ -81,7 +81,7 @@ def compute_POD_matrices_direct_method(
     """Computes POD modes with data in a matrix using the direct method.
     
     Args:
-        ``vecs``: Matrix of vectors stacked as columns.
+        ``vecs``: Matrix of data vectors stacked as columns.
         
         ``mode_indices``: List of mode indices to compute.
             Examples are ``range(10)`` or ``[3, 0, 6, 8]``.

@@ -34,7 +34,8 @@ class TestDMDArraysFunctions(unittest.TestCase):
     def _helper_compute_DMD_from_data(
         self, vecs, adv_vecs, inner_product):
         correlation_mat = inner_product(vecs, vecs)
-        V, Sigma, dummy = util.svd(correlation_mat) # dummy = W.
+        cross_correlation_mat = inner_product(vecs, adv_vecs)
+        V, Sigma, dummy = util.svd(correlation_mat)     # dummy = V.T 
         U = vecs.dot(V).dot(np.diag(Sigma ** -0.5))
         A_tilde = inner_product(
             U, adv_vecs).dot(V).dot(np.diag(Sigma ** -0.5))
@@ -47,8 +48,8 @@ class TestDMDArraysFunctions(unittest.TestCase):
         modes_exact = adv_vecs.dot(build_coeffs_exact)
         spectral_coeffs = np.linalg.lstsq(modes_proj, vecs[:, 0])[0]
         return (
-            modes_exact, modes_proj, eigvals, spectral_coeffs, 
-            build_coeffs_exact, build_coeffs_proj) 
+            modes_exact, modes_proj, spectral_coeffs, eigvals,
+            W, Z, Sigma, V, correlation_mat, cross_correlation_mat)
 
 
     def _helper_test_mat_to_sign(
@@ -71,6 +72,74 @@ class TestDMDArraysFunctions(unittest.TestCase):
                 np.allclose(-true_col, test_col, rtol=rtol, atol=atol))
 
 
+    def _helper_check_decomp(
+        self, DMD_method, vecs, mode_indices, inner_product, 
+        inner_product_weights, rtol, atol, adv_vecs=None):
+
+        # Compute reference values for testing DMD computation
+        if adv_vecs is None:
+            (modes_exact_true, modes_proj_true, spectral_coeffs_true,
+                eigvals_true, R_low_order_eigvecs_true,
+                L_low_order_eigvecs_true, correlation_mat_eigvals_true,
+                correlation_mat_eigvecs_true, correlation_mat_true,
+                cross_correlation_mat_true) = (
+                self._helper_compute_DMD_from_data( 
+                vecs[:, :-1], vecs[:, 1:], inner_product))
+        else:
+           (modes_exact_true, modes_proj_true, spectral_coeffs_true, 
+                eigvals_true, R_low_order_eigvecs_true,
+                L_low_order_eigvecs_true, correlation_mat_eigvals_true,
+                correlation_mat_eigvecs_true, correlation_mat_true,
+                cross_correlation_mat_true) = (
+                self._helper_compute_DMD_from_data(
+                vecs, adv_vecs, inner_product))
+ 
+        # Compute DMD using modred method of choice
+        (modes_exact, modes_proj, spectral_coeffs, eigvals, 
+            R_low_order_eigvecs, L_low_order_eigvecs,
+            correlation_mat_eigvals, correlation_mat_eigvecs, correlation_mat,
+            cross_correlation_mat) = DMD_method(
+            vecs, mode_indices, adv_vecs=adv_vecs,
+            inner_product_weights=inner_product_weights, return_all=True)
+        
+        # Compare values to reference values, allowing for sign differences in
+        # some cases.  For the low-order eigenvectors, check absolute values,
+        # as the eigenvectors may vary by sign even element-wise.  This is due
+        # to the fact that the low-order linear maps may have sign differences,
+        # as they depend on the correlation matrix eigenvectors, which
+        # themselves may have column-wise sign differences.  In any case, if
+        # the modes and eigenvalues are correct, then the eigenvectors are
+        # almost certainly correct.
+        self._helper_test_mat_to_sign(
+            modes_exact, modes_exact_true[:, mode_indices], rtol=rtol, 
+            atol=atol)
+        self._helper_test_mat_to_sign(
+            modes_proj, modes_proj_true[:, mode_indices], rtol=rtol, 
+            atol=atol)
+        self._helper_test_mat_to_sign(
+            np.mat(spectral_coeffs), np.mat(spectral_coeffs_true), 
+            rtol=rtol, atol=atol)
+        np.testing.assert_allclose(
+            eigvals, eigvals_true, rtol=rtol, atol=atol)
+        self._helper_test_mat_to_sign(
+            np.abs(L_low_order_eigvecs), np.abs(L_low_order_eigvecs_true), 
+            rtol=rtol, atol=atol)
+        self._helper_test_mat_to_sign(
+            np.abs(R_low_order_eigvecs), np.abs(R_low_order_eigvecs_true), 
+            rtol=rtol, atol=atol)
+        np.testing.assert_allclose(
+            correlation_mat_eigvals, correlation_mat_eigvals_true, 
+            rtol=rtol, atol=atol)
+        self._helper_test_mat_to_sign(
+            correlation_mat_eigvecs, correlation_mat_eigvecs_true, 
+            rtol=rtol, atol=atol)
+        np.testing.assert_allclose(
+            correlation_mat, correlation_mat_true, rtol=rtol, atol=atol)
+        np.testing.assert_allclose(
+            cross_correlation_mat, cross_correlation_mat_true, 
+            rtol=rtol, atol=atol)
+
+
     def test_all(self):
         rtol = 1e-8
         atol = 1e-15
@@ -88,115 +157,35 @@ class TestDMDArraysFunctions(unittest.TestCase):
             IP = VectorSpaceMatrices(weights=weights).compute_inner_product_mat
             vecs = np.random.random((self.num_states, self.num_vecs))
 
-            # Test DMD for a sequential dataset
-            (modes_exact_true, modes_proj_true, eigvals_true,
-                spectral_coeffs_true, build_coeffs_exact_true,
-                build_coeffs_proj_true) = (
-                self._helper_compute_DMD_from_data(
-                vecs[:, :-1], vecs[:, 1:], IP))
-
-            # Test method of snapshots, allowing for sign difference in modes, 
-            # build coeffs, and spectral coeffs
-            (modes_exact, modes_proj, eigvals, spectral_coeffs, 
-                build_coeffs_exact, build_coeffs_proj) = (
-                compute_DMD_matrices_snaps_method(vecs, mode_indices, 
-                inner_product_weights=weights, return_all=True))
-            np.testing.assert_allclose(
-                eigvals, eigvals_true, rtol=rtol, atol=atol)
-            self._helper_test_mat_to_sign(
-                np.mat(spectral_coeffs), np.mat(spectral_coeffs_true), 
-                rtol=rtol, atol=atol)
-            self._helper_test_mat_to_sign(
-                modes_exact, modes_exact_true[:, mode_indices], rtol=rtol, 
-                atol=atol)
-            self._helper_test_mat_to_sign(
-                modes_proj, modes_proj_true[:, mode_indices], rtol=rtol, 
-                atol=atol)
-            self._helper_test_mat_to_sign(
-                build_coeffs_exact, build_coeffs_exact_true, rtol=rtol, 
-                atol=atol)
-            self._helper_test_mat_to_sign(
-                build_coeffs_proj, build_coeffs_proj_true, rtol=rtol, atol=atol)
+            # Test DMD for a sequential dataset, method of snapshots
+            self._helper_check_decomp(
+                compute_DMD_matrices_snaps_method,
+                vecs, mode_indices, IP, weights, rtol, atol,
+                adv_vecs=None) 
             
-            # Test direct method, allowing for sign difference in modes, build
-            # coeffs, and spectral coeffs
-            (modes_exact, modes_proj, eigvals, spectral_coeffs, 
-                build_coeffs_exact, build_coeffs_proj) = (
-                compute_DMD_matrices_direct_method(vecs, mode_indices, 
-                inner_product_weights=weights, return_all=True))
-            np.testing.assert_allclose(eigvals, eigvals_true, rtol=rtol, 
-                atol=atol)
-            self._helper_test_mat_to_sign(
-                np.mat(spectral_coeffs), np.mat(spectral_coeffs_true), 
-                rtol=rtol, atol=atol)
-            self._helper_test_mat_to_sign(
-                build_coeffs_proj, build_coeffs_proj_true, rtol=rtol, atol=atol)
-            self._helper_test_mat_to_sign(
-                build_coeffs_exact, build_coeffs_exact_true, rtol=rtol,
-                atol=atol)
-            self._helper_test_mat_to_sign(
-                modes_proj, modes_proj_true[:, mode_indices], rtol=rtol, 
-                atol=atol)
-            self._helper_test_mat_to_sign(
-                modes_exact, modes_exact_true[:, mode_indices], rtol=rtol, 
-                atol=atol)
-                       
+            # Test DMD for a sequential dataset, direct method
+            self._helper_check_decomp(
+                compute_DMD_matrices_direct_method,
+                vecs, mode_indices, IP, weights, rtol, atol,
+                adv_vecs=None) 
+            
             # Generate data for a non-sequential dataset
             adv_vecs = np.random.random((self.num_states, self.num_vecs))
 
-            # Compute true DMD modes from data for a non-sequential dataset
-            (modes_exact_true, modes_proj_true, eigvals_true, 
-                spectral_coeffs_true, build_coeffs_exact_true,
-                build_coeffs_proj_true) = self._helper_compute_DMD_from_data(
-                vecs, adv_vecs, IP)
+            # Test DMD for a sequential dataset, method of snapshots
+            self._helper_check_decomp(
+                compute_DMD_matrices_snaps_method,
+                vecs, mode_indices, IP, weights, rtol, atol,
+                adv_vecs=adv_vecs) 
             
-            # Compare computed modes to truth
-            (modes_exact, modes_proj, eigvals, spectral_coeffs, 
-                build_coeffs_exact, build_coeffs_proj) = (
-                compute_DMD_matrices_snaps_method(vecs, mode_indices, 
-                adv_vecs=adv_vecs, inner_product_weights=weights, 
-                return_all=True))
-            np.testing.assert_allclose(eigvals, eigvals_true, rtol=rtol, 
-                atol=atol)
-            self._helper_test_mat_to_sign(
-                np.mat(spectral_coeffs), np.mat(spectral_coeffs_true), 
-                rtol=rtol, atol=atol)
-            self._helper_test_mat_to_sign(
-                build_coeffs_proj, build_coeffs_proj_true, rtol=rtol, atol=atol)
-            self._helper_test_mat_to_sign(
-                build_coeffs_exact, build_coeffs_exact_true, rtol=rtol,
-                atol=atol)
-            self._helper_test_mat_to_sign(
-                modes_proj, modes_proj_true[:, mode_indices], rtol=rtol, 
-                atol=atol)
-            self._helper_test_mat_to_sign(
-                modes_exact, modes_exact_true[:, mode_indices], rtol=rtol, 
-                atol=atol)
+            # Test DMD for a sequential dataset, direct method
+            self._helper_check_decomp(
+                compute_DMD_matrices_direct_method,
+                vecs, mode_indices, IP, weights, rtol, atol,
+                adv_vecs=adv_vecs) 
 
-            (modes_exact, modes_proj, eigvals, spectral_coeffs, 
-                build_coeffs_exact, build_coeffs_proj) = (
-                compute_DMD_matrices_direct_method(vecs, mode_indices, 
-                adv_vecs=adv_vecs, inner_product_weights=weights, 
-                return_all=True))
-            np.testing.assert_allclose(eigvals, eigvals_true, rtol=rtol, 
-                atol=atol)
-            self._helper_test_mat_to_sign(
-                np.mat(spectral_coeffs), np.mat(spectral_coeffs_true), 
-                rtol=rtol, atol=atol)
-            self._helper_test_mat_to_sign(
-                build_coeffs_proj, build_coeffs_proj_true, rtol=rtol, atol=atol)
-            self._helper_test_mat_to_sign(
-                build_coeffs_exact, build_coeffs_exact_true, rtol=rtol,
-                atol=atol)
-            self._helper_test_mat_to_sign(
-                modes_proj, modes_proj_true[:, mode_indices], rtol=rtol, 
-                atol=atol)
-            self._helper_test_mat_to_sign(
-                modes_exact, modes_exact_true[:, mode_indices], rtol=rtol, 
-                atol=atol)
 
-           
-#@unittest.skip('others')
+@unittest.skip('others')
 class TestDMDHandles(unittest.TestCase):
     def setUp(self):
         if not os.access('.', os.W_OK):
@@ -205,7 +194,6 @@ class TestDMDHandles(unittest.TestCase):
         if not os.path.isdir(self.test_dir) and _parallel.is_rank_zero():
             os.mkdir(self.test_dir)
         
-        # TODO:  randomize size?
         self.num_vecs = 6
         self.num_states = 12
         self.my_DMD = DMDHandles(np.vdot, verbosity=0)
@@ -236,17 +224,15 @@ class TestDMDHandles(unittest.TestCase):
         def my_save(data, fname): pass
         def my_IP(vec1, vec2): pass
        
-        # TODO: adjust this list
         data_members_default = {
             'put_mat': util.save_array_text, 'get_mat': util.load_array_text,
             'verbosity': 0, 'eigvals': None, 'build_coeffs_exact': None,
             'build_coeffs_proj': None, 'correlation_mat': None,
             'cross_correlation_mat': None, 'correlation_mat_eigvals': None,
             'correlation_mat_eigvecs': None, 'low_order_linear_map': None,
-            'eigvals': None, 'L_eigvals': None, 'L_low_order_eigvecs': None,
-            'R_low_order_eigvecs': None, 'spectral_coeffs': None,
-            'proj_coeffs': None, 'adv_proj_coeffs': None, 'vec_handles': None,
-            'adv_vec_handles': None, 'vec_space':
+            'L_low_order_eigvecs': None, 'R_low_order_eigvecs': None,
+            'spectral_coeffs': None, 'proj_coeffs': None, 'adv_proj_coeffs':
+            None, 'vec_handles': None, 'adv_vec_handles': None, 'vec_space':
             VectorSpaceHandles(my_IP, verbosity=0)}
         
         # Get default data member values

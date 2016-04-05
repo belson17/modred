@@ -64,6 +64,11 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
 
 **Interface changes**
 
+* Changed the returned values in
+  :py:func:`dmd.compute_DMD_matrices_snaps_method`, 
+  :py:func:`dmd.compute_DMD_matrices_direct_method`, 
+  :py:func:`dmd.DMDHandles.compute_decomp`.
+
 * Added the following new methods: 
   :py:func:`pod.PODHandles.compute_proj_coeffs`,
   :py:func:`bpod.BPODHandles.compute_proj_coeffs`,

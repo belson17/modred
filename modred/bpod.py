@@ -13,9 +13,10 @@ def compute_BPOD_matrices(
     """Computes BPOD modes with data in a matrix.
         
     Args:
-        ``direct_vecs``: Matrix with direct vecs as columns (:math:`X`).
+        ``direct_vecs``: Matrix with direct data vectors as columns (:math:`X`).
     
-        ``adjoint_vecs``: Matrix with adjoint vecs as columns (:math:`Y`).
+        ``adjoint_vecs``: Matrix with adjoint data vectors as columns 
+          (:math:`Y`).
 
         ``direct_mode_indices``: List of direct mode indices to compute. 
           Examples are ``range(10)`` or ``[3, 0, 6, 8]``. 
