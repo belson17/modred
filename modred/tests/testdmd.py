@@ -609,12 +609,11 @@ class TestDMDHandles(unittest.TestCase):
         _parallel.barrier()
         self.my_DMD.compute_decomp(self.vec_handles) 
         spectral_coeffs_computed = self.my_DMD.compute_spectrum()
-        spectral_coeffs = np.array(
-            np.linalg.pinv(self.my_DMD.R_low_order_eigvecs) * 
-            np.mat(np.diag(np.sqrt(self.my_DMD.correlation_mat_eigvals))) * 
-            np.mat(self.my_DMD.correlation_mat_eigvecs[0, :]).T).squeeze()
+        spectral_coeffs_true = self._helper_compute_DMD_from_data(
+            vec_array, util.InnerProductBlock(np.vdot))[2]
         np.testing.assert_allclose(
-            spectral_coeffs_computed, spectral_coeffs, rtol=rtol, atol=atol)
+            spectral_coeffs_computed, spectral_coeffs_true, rtol=rtol, 
+            atol=atol)
 
         # Create more data, to check a non-sequential dataset
         adv_vec_array = _parallel.call_and_bcast(np.random.random, 
@@ -628,13 +627,13 @@ class TestDMDHandles(unittest.TestCase):
         _parallel.barrier()
         self.my_DMD.compute_decomp(
             self.vec_handles, adv_vec_handles=self.adv_vec_handles) 
-        spectral_coeffs = np.array(
-            np.linalg.pinv(self.my_DMD.R_low_order_eigvecs) * 
-            np.mat(np.diag(np.sqrt(self.my_DMD.correlation_mat_eigvals))) * 
-            np.mat(self.my_DMD.correlation_mat_eigvecs[0, :]).T).squeeze()
         spectral_coeffs_computed = self.my_DMD.compute_spectrum()
+        spectral_coeffs_true = self._helper_compute_DMD_from_data(
+            vec_array, util.InnerProductBlock(np.vdot),
+            adv_vec_array=adv_vec_array)[2]
         np.testing.assert_allclose(
-            spectral_coeffs_computed, spectral_coeffs, rtol=rtol, atol=atol)
+            spectral_coeffs_computed, spectral_coeffs_true, rtol=rtol, 
+            atol=atol)
 
     
     #@unittest.skip('Testing something else.')
@@ -654,11 +653,8 @@ class TestDMDHandles(unittest.TestCase):
         _parallel.barrier()
         self.my_DMD.compute_decomp(self.vec_handles) 
         proj_coeffs, adv_proj_coeffs = self.my_DMD.compute_proj_coeffs()
-        adj_modes = (
-            np.mat(vec_array[:, :-1]) *
-            self.my_DMD.correlation_mat_eigvecs *
-            np.mat(np.diag(self.my_DMD.correlation_mat_eigvals ** -0.5)) *
-            self.my_DMD.L_low_order_eigvecs)
+        adj_modes = self._helper_compute_DMD_from_data(
+            vec_array, util.InnerProductBlock(np.vdot))[-1]
         proj_coeffs_true = np.dot(adj_modes.conj().T, vec_array[:, :-1])
         adv_proj_coeffs_true = np.dot(adj_modes.conj().T, vec_array[:, 1:])
         np.testing.assert_allclose(
@@ -678,11 +674,9 @@ class TestDMDHandles(unittest.TestCase):
         _parallel.barrier()
         self.my_DMD.compute_decomp(
             self.vec_handles, adv_vec_handles=self.adv_vec_handles) 
-        adj_modes = (
-            np.mat(vec_array) *
-            self.my_DMD.correlation_mat_eigvecs *
-            np.mat(np.diag(self.my_DMD.correlation_mat_eigvals ** -0.5)) *
-            self.my_DMD.L_low_order_eigvecs)
+        adj_modes = self._helper_compute_DMD_from_data(
+            vec_array, util.InnerProductBlock(np.vdot),
+            adv_vec_array=adv_vec_array)[-1]
         proj_coeffs, adv_proj_coeffs= self.my_DMD.compute_proj_coeffs()
         proj_coeffs_true = np.dot(adj_modes.conj().T, vec_array)
         adv_proj_coeffs_true = np.dot(adj_modes.conj().T, adv_vec_array)
