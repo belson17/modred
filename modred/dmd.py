@@ -340,10 +340,8 @@ class DMDHandles(object):
     Usage::
     
       myDMD = DMDHandles(my_inner_product)
-      eigvals, build_coeffs_exact, build_coeffs_proj = myDMD.compute_decomp(
-      vec_handles)
+      myDMD.compute_decomp(vec_handles)
       myDMD.compute_modes(range(50), mode_handles)
-    
     """
     def __init__(self, inner_product, 
         get_mat=util.load_array_text, put_mat=util.save_array_text,
