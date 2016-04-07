@@ -75,11 +75,14 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
   :py:func:`dmd.DMDHandles.compute_decomp`.
 
 * Changed the order of the returned values in
+  :py:func:`pod.PODHandles.compute_decomp`.
   :py:func:`bpod.BPODHandles.compute_decomp`.
 
 * Changed the order of the arguments in 
-  :py:func:`pod.PODHandles.get_decomp` and
-  :py:func:`pod.PODHandles.put_decomp`.
+  :py:func:`pod.PODHandles.get_decomp`, 
+  :py:func:`pod.PODHandles.put_decomp`,
+  :py:func:`bpod.BPODHandles.get_decomp`, and 
+  :py:func:`bpod.BPODHandles.put_decomp`.
 
 * Changed the arguments to 
   :py:func:`dmd.DMDHandles.get_decomp` and

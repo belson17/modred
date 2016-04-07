@@ -246,14 +246,14 @@ class TestBPODHandles(unittest.TestCase):
         R_sing_vecs_path = join(test_dir, 'R_sing_vecs.txt')
         sing_vals_path = join(test_dir, 'sing_vals.txt')
         Hankel_mat_path = join(test_dir, 'Hankel_mat.txt')
-        my_BPOD.put_decomp(L_sing_vecs_path, sing_vals_path, R_sing_vecs_path)
+        my_BPOD.put_decomp(sing_vals_path, L_sing_vecs_path, R_sing_vecs_path)
         my_BPOD.put_Hankel_mat(Hankel_mat_path)
         _parallel.barrier()
 
         BPOD_load = BPODHandles(None, verbosity=0)
         
         BPOD_load.get_decomp(
-            L_sing_vecs_path, sing_vals_path, R_sing_vecs_path)
+            sing_vals_path, L_sing_vecs_path, R_sing_vecs_path)
         Hankel_mat_loaded = _parallel.call_and_bcast(
             util.load_array_text, Hankel_mat_path)
 
@@ -381,7 +381,7 @@ class TestBPODHandles(unittest.TestCase):
         self.my_BPOD.sing_vals = self.sing_vals_true
 
         # Compute projection coefficients
-        adj_proj_coeffs = self.my_BPOD.compute_adj_proj_coeffs()
+        adj_proj_coeffs = self.my_BPOD.compute_adjoint_proj_coeffs()
 
         # Test values
         np.testing.assert_allclose(

@@ -321,28 +321,35 @@ def compute_DMD_matrices_direct_method(
 
 
 class DMDHandles(object):
-    """Dynamic Mode Decomposition/Koopman Mode Decomposition for large data.
+    """Dynamic Mode Decomposition implemented for large datasets.
 
     Args:
-        ``inner_product``: Function to compute inner product.
+        ``inner_product``: Function that computes inner product of two vector
+        objects.
         
     Kwargs:        
-        ``put_mat``: Function to put a matrix out of modred.
+        ``put_mat``: Function to put a matrix out of modred, e.g., write it to
+        file.
       	
-      	``get_mat``: Function to get a matrix into modred.
-               
-        ``max_vecs_per_node``: Max number of vectors in memory per node.
+      	``get_mat``: Function to get a matrix into modred, e.g., load it from
+        file.
+        
+        ``max_vecs_per_node``: Max number of vectors that can be stored in 
+        memory, per node.
 
         ``verbosity``: 1 prints progress and warnings, 0 prints almost nothing.
                
-    Computes DMD modes from vecs.
-    It uses :py:class:`vectorspace.VectorSpaceHandles` for low level functions.
+    Computes DMD modes from vector objects (or handles).  It uses
+    :py:class:`vectorspace.VectorSpaceHandles` for low level functions.
 
     Usage::
-    
+
       myDMD = DMDHandles(my_inner_product)
       myDMD.compute_decomp(vec_handles)
       myDMD.compute_modes(range(50), mode_handles)
+
+    See also :func:`compute_DMD_matrices_snaps_method`,
+    :func:`compute_DMD_matrices_direct_method`, and :mod:`vectors`.
     """
     def __init__(self, inner_product, 
         get_mat=util.load_array_text, put_mat=util.save_array_text,
@@ -368,26 +375,25 @@ class DMDHandles(object):
         self.adv_vec_handles = None
         
     def get_decomp(
-        self, eigvals_src, R_low_order_eigvecs_src, 
-        L_low_order_eigvecs_src, correlation_mat_eigvals_src,
-        correlation_mat_eigvecs_src):
-        """Retrieves the decomposition matrices from sources (memory or file).
+        self, eigvals_src, R_low_order_eigvecs_src, L_low_order_eigvecs_src,
+        correlation_mat_eigvals_src, correlation_mat_eigvecs_src):
+        """Gets the decomposition matrices from sources (memory or file).
         
         Args:
-            ``eigvals_src``: Source from which to retrieve the DMD
-              eigenvalues.
+            ``eigvals_src``: Source from which to retrieve eigenvalues of
+            approximating low-order linear map (DMD eigenvalues).
 
-            ``R_low_order_eigvecs_src``: Source from which to retrieve the right
-              eigenvectors of the low-order linear DMD map.
+            ``R_low_order_eigvecs_src``: Source from which to retrieve right
+            eigenvectors of approximating low-order linear DMD map.
             
-            ``L_low_order_eigvecs_src``: Source from wich to retrieve the left 
-              eigenvectors of the low-order linear DMD map.
+            ``L_low_order_eigvecs_src``: Source from which to retrieve left 
+            eigenvectors of approximating low-order linear DMD map.
 
-            ``correlation_mat_eigvals_src``: Source from which to retrieve the 
-              eigenvalues of the correlation matrix.
+            ``correlation_mat_eigvals_src``: Source from which to retrieve 
+            eigenvalues of correlation matrix.
 
-            ``correlation_mat_eigvecs_src``: Source from which to retrieve the 
-              eigenvectors of the correlation matrix.
+            ``correlation_mat_eigvecs_src``: Source from which to retrieve 
+            eigenvectors of correlation matrix.
         """        
         self.eigvals = np.squeeze(np.array(
             _parallel.call_and_bcast(self.get_mat, eigvals_src)))
@@ -407,20 +413,20 @@ class DMDHandles(object):
         """Puts the decomposition matrices to destinations (file or memory).
 
         Args:
-            ``eigvals_dest``: Destination to which to put the DMD
-              eigenvalues.
+            ``eigvals_dest``: Destination to which to put eigenvalues of
+            approximating low-order linear map (DMD eigenvalues).
 
-            ``R_low_order_eigvecs_dest``: Destination to which to put the right
-              eigenvectors of the low-order linear DMD map.
+            ``R_low_order_eigvecs_dest``: Destination to which to put right
+            eigenvectors of approximating low-order linear map.
            
-            ``L_low_order_eigvecs_dest``: Destination to which to put the left 
-              eigenvectors of the low-order linear DMD map.
+            ``L_low_order_eigvecs_dest``: Destination to which to put left 
+            eigenvectors of approximating low-order linear map.
             
-            ``correlation_mat_eigvals_dest``: Destination to which to put the 
-              eigenvalues of the correlation matrix.
+            ``correlation_mat_eigvals_dest``: Destination to which to put 
+            eigenvalues of correlation matrix.
 
-            ``correlation_mat_eigvecs_dest``: Destination to which to put the 
-              eigenvectors of the correlation matrix.
+            ``correlation_mat_eigvecs_dest``: Destination to which to put 
+            eigenvectors of correlation matrix.
         """
         # Don't check if rank is zero because the following methods do.
         self.put_eigvals(eigvals_dest)
@@ -430,51 +436,52 @@ class DMDHandles(object):
         self.put_correlation_mat_eigvecs(correlation_mat_eigvecs_dest)
 
     def put_eigvals(self, dest):
-        """Puts the DMD eigenvalues to ``dest``."""
+        """Puts eigenvalues of approximating low-order-linear map (DMD
+        eigenvalues) to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.eigvals, dest)
         _parallel.barrier()
 
     def put_R_low_order_eigvecs(self, dest):
-        """Puts the right eigenvectors of the low-order linear DMD map to 
+        """Puts right eigenvectors of approximating low-order linear map to
         ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.R_low_order_eigvecs, dest)
         _parallel.barrier()
 
     def put_L_low_order_eigvecs(self, dest):
-        """Puts the left eigenvectors of the low-order linear DMD map to 
+        """Puts left eigenvectors of approximating low-order linear map to 
         ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.L_low_order_eigvecs, dest)
         _parallel.barrier()
 
     def put_correlation_mat_eigvals(self, dest):
-        """Puts the eigenvalues of the correlation matrix to ``dest``."""
+        """Puts eigenvalues of correlation matrix to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.correlation_mat_eigvals, dest)
         _parallel.barrier()
 
     def put_correlation_mat_eigvecs(self, dest):
-        """Puts the eigenvectors of the correlation matrix to ``dest``."""
+        """Puts eigenvectors of correlation matrix to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.correlation_mat_eigvecs, dest)
         _parallel.barrier()
 
     def put_correlation_mat(self, dest):
-        """Puts the correlation mat to ``dest``."""
+        """Puts correlation mat to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.correlation_mat, dest)
         _parallel.barrier()
 
     def put_cross_correlation_mat(self, dest):
-        """Puts the correlation mat to ``dest``."""
+        """Puts cross-correlation mat to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.cross_correlation_mat, dest)
         _parallel.barrier()
 
     def put_spectral_coeffs(self, dest):
-        """Puts the spectral coefficients to ``dest``."""
+        """Puts DMD spectral coefficients to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.spectral_coeffs, dest)
         _parallel.barrier()
@@ -488,35 +495,37 @@ class DMDHandles(object):
         _parallel.barrier()
 
     def sanity_check(self, test_vec_handle):
-        """Check user-supplied vector handle.
+        """Checks that user-supplied vector handle and vector satisfy 
+        requirements.
         
         Args:
-            ``test_vec_handle``: A vector handle.
+            ``test_vec_handle``: A vector handle to test.
         
         See :py:meth:`vectorspace.VectorSpaceHandles.sanity_check`.
         """
         self.vec_space.sanity_check(test_vec_handle)
 
     def compute_eigendecomp(self, atol=1e-13, rtol=None):
-        """Computes eigendecomposition of correlation matrix and low-order 
-        linear DMD map.
+        """Computes eigendecompositions of correlation matrix and approximating 
+        low-order linear map.
        
         Kwargs:
-            ``atol``: Level below which correlation matrix eigenvalues are
-              truncated.
+            ``atol``: Level below which eigenvalues of correlation matrix are
+            truncated.
             
             ``rtol``: Maximum relative difference between largest and smallest
-              correlation matrix eigenvalues.  Smaller ones are truncated. 
+            eigenvalues of correlation matrix.  Smaller ones are truncated. 
 
-        Useful if already have correlation mat and cross-correlation mat and
-        don't want to recompute them.
+        Useful if you already have the correlation matrix and cross-correlation 
+        matrix and want to avoid recomputing them.
+
         Usage::
           
           DMD.correlation_mat = pre_existing_correlation_mat
           DMD.cross_correlation_mat = pre_existing_cross_correlation_mat
           DMD.compute_eigendecomp()
           DMD.compute_exact_modes(
-            mode_idx_list, mode_handles, adv_vec_handles=adv_vec_handles)
+              mode_idx_list, mode_handles, adv_vec_handles=adv_vec_handles)
         """
         # Compute eigendecomposition of correlation matrix
         self.correlation_mat_eigvals, self.correlation_mat_eigvecs = \
@@ -541,37 +550,40 @@ class DMDHandles(object):
 
     def compute_decomp(
         self, vec_handles, adv_vec_handles=None, atol=1e-13, rtol=None):
-        """Computes decomposition and returns eigen decomposition matrices.
+        """Computes eigendecomposition of low-order linear map approximating
+        relationship between vector objects, returning various matrices
+        necessary for computing and characterizing DMD modes.
         
         Args:
-            ``vec_handles``: List of handles for the data vectors.
+            ``vec_handles``: List of handles for vector objects.
         
         Kwargs:
-            ``adv_vec_handles``: List of handles of ``vecs`` advanced in time.
-            If not provided, it is assumed that the
-            vectors are a sequential time-series. Thus ``vec_handles`` becomes
-            ``vec_handles[:-1]`` and ``adv_vec_handles`` becomes 
+            ``adv_vec_handles``: List of handles for vector objects advanced in
+            time.  If not provided, it is assumed that the vector objects
+            describe a sequential time-series. Thus ``vec_handles`` becomes
+            ``vec_handles[:-1]`` and ``adv_vec_handles`` becomes
             ``vec_handles[1:]``.
         
         ``atol``: Level below which DMD eigenvalues are truncated.
  
         ``rtol``: Maximum relative difference between largest and smallest 
-            DMD eigenvalues.  Smaller ones are truncated.
+        DMD eigenvalues.  Smaller ones are truncated.
     
         Returns:
-            ``eigvals``: 1D array of DMD eigenvalues.
+            ``eigvals``: 1D array of eigenvalues of low-order linear map, i.e., 
+            the DMD eigenvalues.
             
-            ``R_low_order_eigvecs``: Matrix of right eigenvectors of the
-              low-order linear DMD operator.
+            ``R_low_order_eigvecs``: Matrix whose columns are right eigenvectors
+            of approximating low-order linear map.
 
-            ``L_low_order_eigvecs``: Matrix of left eigenvectors of the
-              low-order linear DMD operator.
+            ``L_low_order_eigvecs``: Matrix whose columns are left eigenvectors 
+            of approximating low-order linear map.
 
-            ``correlation_mat_eigvals``: 1D array of eigenvalues of the
-              correlation matrix.
+            ``correlation_mat_eigvals``: 1D array of eigenvalues of 
+            correlation matrix.
 
-            ``correlation_mat_eigvecs``: Matrix of eigenvectors of the
-              correlation matrix.
+            ``correlation_mat_eigvecs``: Matrix whose columns are eigenvectors 
+            of correlation matrix.
         """
         self.vec_handles = vec_handles
         if adv_vec_handles is not None:
@@ -614,17 +626,18 @@ class DMDHandles(object):
         
     def compute_exact_modes(self, mode_indices, mode_handles, 
         adv_vec_handles=None):
-        """Computes exact DMD modes and calls ``put`` on them.
+        """Computes exact DMD modes and calls ``put`` on them using mode
+        handles.
         
         Args:
-            ``mode_indices``: List of mode indices, ``range(5)`` or 
-            ``[3, 0, 5]``.
-            
-            ``mode_handles``: List of handles for modes.
+            ``mode_indices``: List of indices describing which exact modes to
+            compute, e.g. ``range(10)`` or ``[3, 0, 5]``.
+
+            ``mode_handles``: List of handles for exact modes to compute.
             
         Kwargs:
-            ``vec_handles``: List of handles for vecs, can omit if given in
-            :py:meth:`compute_decomp`.
+            ``vec_handles``: List of handles for vector objects. Optional if 
+            when calling :py:meth:`compute_decomp`. 
         """
         # If advanced vec handles are passed in, set the internal attribute,
         if adv_vec_handles is not None:
@@ -656,17 +669,18 @@ class DMDHandles(object):
                 'defined.')
 
     def compute_proj_modes(self, mode_indices, mode_handles, vec_handles=None):
-        """Computes projected DMD modes and calls ``put`` on them.
+        """Computes projected DMD modes and calls ``put`` on them using mode
+        handles.
         
         Args:
-            ``mode_indices``: List of mode indices, ``range(5)`` or 
-            ``[3, 0, 5]``.
-            
-            ``mode_handles``: List of handles for modes.
+            ``mode_indices``: List of indices describing which projected modes
+            to compute, e.g. ``range(10)`` or ``[3, 0, 5]``.
+
+            ``mode_handles``: List of handles for projected modes to compute.
             
         Kwargs:
-            ``vec_handles``: List of handles for vecs, can omit if given in
-            :py:meth:`compute_decomp`.
+            ``vec_handles``: List of handles for vector objects. Optional if 
+            when calling :py:meth:`compute_decomp`. 
         """
         if vec_handles is not None:
             self.vec_handles = vec_handles
@@ -698,14 +712,13 @@ class DMDHandles(object):
                 'columns in build_coeffs_proj matrix.'))
 
     def compute_spectrum(self):
-        """Computes DMD spectral coefficients.
-        These coefficients come from projecting the first data vector onto the
-        exact DMD modes, which is analytically equivalent to doing a least
-        squares projection onto the projected DMD modes.
+        """Computes DMD spectral coefficients.  These coefficients come from a
+        biorthogonal projection of the first vector object onto the exact DMD
+        modes, which is analytically equivalent to doing a least-squares
+        projection onto the projected DMD modes.
        
         Returns:
-            ``spectral_coeffs``: 1D array of spectral coefficients.
-
+            ``spectral_coeffs``: 1D array of DMD spectral coefficients.
         """
         # TODO: maybe allow for user to choose which column to spectrum from?
         # ie first, last, or mean?  
@@ -719,17 +732,19 @@ class DMDHandles(object):
     # as a least squares projection onto the projected DMD modes, so there is
     # only one method for computing the projection coefficients.
     def compute_proj_coeffs(self):
-        """Computes projection of data vectors onto DMD modes.  
-        Note that a biorthogonal projection onto the exact DMD modes is
-        analytically equivalent to a least squares projection onto the
-        projected DMD modes.
+        """Computes projection of vector objects onto DMD modes.  Note that a
+        biorthogonal projection onto exact DMD modes is analytically equivalent
+        to a least-squares projection onto projected DMD modes.
        
         Returns:
-            ``proj_coeffs``: Matrix of projection coefficients for the vectors.
+            ``proj_coeffs``: Matrix of projection coefficients for vector
+            objects, expressed as a linear combination of DMD modes.  Columns
+            correspond to vector objects, rows correspond to DMD modes.
 
-            ``adv_proj_coeffs``: Matrix of projection coefficients for the
-            vectors advanced in time.
-
+            ``adv_proj_coeffs``: Matrix of projection coefficients for vector
+            objects advanced in time, expressed as a linear combination of DMD
+            modes.  Columns correspond to vector objects, rows correspond to
+            DMD modes.
         """
         self.proj_coeffs = ( 
             self.L_low_order_eigvecs.H *

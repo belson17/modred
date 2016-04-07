@@ -123,18 +123,18 @@ class TestPODHandles(unittest.TestCase):
         eigvecs_path = join(test_dir, 'eigvecs.txt')
         eigvals_path = join(test_dir, 'eigvals.txt')
         correlation_mat_path = join(test_dir, 'correlation.txt')
-        my_POD.put_decomp(eigvecs_path, eigvals_path)
+        my_POD.put_decomp(eigvals_path, eigvecs_path)
         my_POD.put_correlation_mat(correlation_mat_path)
         _parallel.barrier()
         
         POD_load = PODHandles(None, verbosity=0)
-        POD_load.get_decomp(eigvecs_path, eigvals_path)
+        POD_load.get_decomp(eigvals_path, eigvecs_path)
         correlation_mat_loaded = util.load_array_text(correlation_mat_path)
 
         np.testing.assert_allclose(correlation_mat_loaded, 
             correlation_mat_true)
-        np.testing.assert_allclose(POD_load.eigvecs, eigvecs_true)
         np.testing.assert_allclose(POD_load.eigvals, eigvals_true)
+        np.testing.assert_allclose(POD_load.eigvecs, eigvecs_true)
      
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
@@ -187,7 +187,7 @@ class TestPODHandles(unittest.TestCase):
     def test_compute_decomp(self):
         """Test computation of the correlation mat and SVD matrices."""
         tol = 1e-6
-        eigvecs_returned, eigvals_returned = \
+        eigvals_returned, eigvecs_returned = \
             self.my_POD.compute_decomp(self.vec_handles)
                         
         np.testing.assert_allclose(self.my_POD.correlation_mat, 

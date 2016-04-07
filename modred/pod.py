@@ -164,22 +164,26 @@ def compute_POD_matrices_direct_method(
 
 
 class PODHandles(object):
-    """Proper Orthogonal Decomposition.
+    """Proper Orthogonal Decomposition implemented for large datasets.
 
     Args:
-        ``inner_product``: Function to find inner product of two vector objects.
+        ``inner_product``: Function that computes inner product of two vector
+        objects.
 
     Kwargs:
-        ``put_mat``: Function to put a matrix out of modred.
+        ``put_mat``: Function to put a matrix out of modred, e.g., write it to
+        file.
+      	
+      	``get_mat``: Function to get a matrix into modred, e.g., load it from
+        file.
+        
+        ``max_vecs_per_node``: Max number of vectors that can be stored in 
+        memory, per node.
 
-        ``get_mat``: Function to get a matrix into modred.
+        ``verbosity``: 1 prints progress and warnings, 0 prints almost nothing.
 
-        ``verbosity``: 0 prints almost nothing, 1 prints progress and warnings.
-
-        ``max_vec_handles_per_node``: Max number of vectors in memory per node.
-
-    Computes orthonormal POD modes from vec_handles.
-    It uses :py:class:`vectorspace.VectorSpaceHandles` for low level functions.
+    Computes POD modes from vector objects (or handles).  Uses
+    :py:class:`vectorspace.VectorSpaceHandles` for low level functions.
 
     Usage::
 
@@ -187,8 +191,8 @@ class PODHandles(object):
       myPOD.compute_decomp(vec_handles)
       myPOD.compute_modes(range(10), modes)
 
-    See also :func:`compute_POD_arrays_snaps_meth`, 
-    :func:`compute_POD_arrays_direct_meth`, and :mod:`vectors`.
+    See also :func:`compute_POD_matrices_snaps_method`,
+    :func:`compute_POD_matrices_direct_method`, and :mod:`vectors`.
     """
     def __init__(self, inner_product,
         get_mat=util.load_array_text, put_mat=util.save_array_text,
@@ -209,11 +213,11 @@ class PODHandles(object):
         """Gets the decomposition matrices from sources (memory or file).
         
         Args:
-            ``eigvals_src``: Source from which to retrieve the POD
-              eigenvalues.
+            ``eigvals_src``: Source from which to retrieve eigenvalues of 
+            correlation matrix.
 
-            ``eigvecs_src``: Source from which to retrieve the POD
-              eigenvectors.
+            ``eigvecs_src``: Source from which to retrieve eigenvectors of 
+            correlation matrix.
         """
         self.eigvals = np.squeeze(np.array(_parallel.call_and_bcast(
             self.get_mat, eigvals_src)))
@@ -221,41 +225,50 @@ class PODHandles(object):
             eigvecs_src)
         
     def put_decomp(self, eigvals_dest, eigvecs_dest):
-        """Put the decomposition matrices to destinations (file or memory).
+        """Puts the decomposition matrices to destinations (file or memory).
         
         Args:
-            ``eigvals_dest``: Destination to which to put the POD eigenvalues.
+            ``eigvals_dest``: Destination to which to put eigenvalues of
+            correlation matrix.
 
-            ``eigvecs_dest``: Destination to which to put the POD eigenvectors.
+            ``eigvecs_dest``: Destination to which to put the eigenvectors of
+            correlation matrix.
         """
         # Don't check if rank is zero because the following methods do.
         self.put_eigvecs(eigvecs_dest)
         self.put_eigvals(eigvals_dest)
 
     def put_eigvals(self, dest):
-        """Put eigenvalues to ``dest``."""
+        """Puts eigenvalues of correlation matrix to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.eigvals, dest)
         _parallel.barrier()
  
     def put_eigvecs(self, dest):
-        """Put eigenvectors to ``dest``."""
+        """Puts eigenvectors of correlation matrix to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.eigvecs, dest)
         _parallel.barrier()
 
     def put_correlation_mat(self, dest):
-        """Put correlation matrix to ``dest``."""
+        """Puts correlation matrix to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.correlation_mat, dest)
         _parallel.barrier()
 
+    def put_proj_coeffs(self, dest):
+        """Puts projection coefficients to ``dest``"""
+        if _parallel.is_rank_zero():
+            self.put_mat(self.proj_coeffs, dest)
+        _parallel.barrier()
+
     def sanity_check(self, test_vec_handle):
-        """Check user-supplied vector handle.
-
+        """Checks that user-supplied vector handle and vector satisfy 
+        requirements.
+        
         Args:
-            ``test_vec_handle``: A vector handle.
-
+            ``test_vec_handle``: A vector handle to test.
+        
         See :py:meth:`vectorspace.VectorSpaceHandles.sanity_check`.
         """
         self.vec_space.sanity_check(test_vec_handle)
@@ -264,71 +277,78 @@ class PODHandles(object):
         """Computes eigendecomposition of correlation matrix.
        
         Kwargs:
-            ``atol``: Level below which POD eigenvalues are truncated.
+            ``atol``: Level below which eigenvalues of correlation matrix are 
+            truncated.
  
             ``rtol``: Maximum relative difference between largest and smallest 
-                POD eigenvalues.  Smaller ones are truncated.
+            eigenvalues of correlation matrix.  Smaller ones are truncated.
 
-        Useful if already have correlation mat and don't want to recompute it.
+        Useful if you already have the correlation matrix and to want to avoid
+        recomputing it.
+
         Usage::
         
           POD.correlation_mat = pre_existing_correlation_mat
           POD.compute_eigendecomp()
           POD.compute_modes(range(10), mode_handles, vec_handles=vec_handles)
-        
         """
         self.eigvals, self.eigvecs = _parallel.call_and_bcast(
             util.eigh, self.correlation_mat, atol=atol, rtol=rtol, 
             is_positive_definite=True)
         
     def compute_decomp(self, vec_handles, atol=1e-13, rtol=None):
-        """Computes correlation matrix, :math:`X^*WX` and its eigen decomp.
+        """Computes correlation matrix :math:`X^*WX` and its eigendecomposition.
 
         Args:
-            ``vec_handles``: List of vector handles.
+            ``vec_handles``: List of handles for vector objects.
 
         Kwargs:
-            ``atol``: Level below which POD eigenvalues are truncated.
+            ``atol``: Level below which eigenvalues of correlation matrix are 
+            truncated.
  
             ``rtol``: Maximum relative difference between largest and smallest 
-                POD eigenvalues.  Smaller ones are truncated.
+            eigenvalues of correlation matrix.  Smaller ones are truncated.
 
         Returns:
-            ``eigenvec_handles``: Matrix with eigenvectors as columns.
+            ``eigvals``: 1D array of eigenvalues of correlation matrix.
 
-            ``eigvals``: 1D array of eigenvalues.
+            ``eigvecs``: Matrix whose columns are eigenvectors of correlation
+            matrix.
         """
         self.vec_handles = vec_handles
         self.correlation_mat = (
             self.vec_space.compute_symmetric_inner_product_mat(
             self.vec_handles))
         self.compute_eigendecomp(atol=atol, rtol=rtol)
-        return self.eigvecs, self.eigvals
+        return self.eigvals, self.eigvecs
 
-    def compute_modes(self, mode_indices, modes, vec_handles=None):
-        """Computes the modes and calls ``put`` on the mode handles.
+    def compute_modes(self, mode_indices, mode_handles, vec_handles=None):
+        """Computes POD modes and calls ``put`` on them using mode handles.
 
         Args:
-            ``mode_indices``: List of mode numbers, e.g. ``range(10)`` or 
-            ``[3, 0, 5]``.
+            ``mode_indices``: List of indices describing which modes to
+            compute, e.g. ``range(10)`` or ``[3, 0, 5]``.
 
-            ``modes``: List of handles for modes.
+            ``mode_handles``: List of handles for modes to compute.
 
         Kwargs:
-            ``vec_handles``: List of handles for vectors. Optional if given
-            when calling ``compute_decomp``.
+            ``vec_handles``: List of handles for vector objects. Optional if 
+            when calling :py:meth:`compute_decomp`. 
         """
         if vec_handles is not None:
             self.vec_handles = util.make_iterable(vec_handles)
         build_coeff_mat = np.dot(self.eigvecs, np.diag(self.eigvals**-0.5))
-        self.vec_space.lin_combine(modes, self.vec_handles, build_coeff_mat, 
+        self.vec_space.lin_combine(
+            mode_handles, self.vec_handles, build_coeff_mat,
             coeff_mat_col_indices=mode_indices)
 
     def compute_proj_coeffs(self):
-        """Computes projection of data vectors onto POD modes.  
+        """Computes orthogonal projection of vector objects onto POD modes.
        
         Returns:
-            ``proj_coeffs``: Matrix of projection coefficients for the vectors.
+            ``proj_coeffs``: Matrix of projection coefficients for vector
+            objects, expressed as a linear combination of POD modes.  Columns
+            correspond to vector objects, rows correspond to POD modes.
         """
         self.proj_coeffs = np.mat(np.diag(self.eigvals ** 0.5)) * self.eigvecs.H
         return self.proj_coeffs        
