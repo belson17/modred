@@ -94,6 +94,12 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
   :py:func:`bpod.BPODHandles.compute_adj_proj_coeffs`, and
   :py:func:`dmd.DMDHandles.compute_proj_coeffs`.
   
+* Added the following new methods that save projection coefficients:
+  :py:func:`pod.PODHandles.put_proj_coeffs`,
+  :py:func:`bpod.BPODHandles.put_direct_proj_coeffs`,
+  :py:func:`bpod.BPODHandles.put_adjoint_proj_coeffs`, and
+  :py:func:`dmd.DMDHandles.put_proj_coeffs`.
+
 * Added the following new methods in the updated ``DMDHandles`` class: 
   :py:func:`dmd.DMDHandles.compute_exact_modes`,
   :py:func:`dmd.DMDHandles.compute_spectrum`,
@@ -102,9 +108,8 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
   :py:func:`dmd.DMDHandles.put_L_low_order_eigvecs`,
   :py:func:`dmd.DMDHandles.put_correlation_mat_eigvals`,
   :py:func:`dmd.DMDHandles.put_correlation_mat_eigvecs`,
-  :py:func:`dmd.DMDHandles.put_cross_correlation_mat`,
-  :py:func:`dmd.DMDHandles.put_spectral_coeffs`, and
-  :py:func:`dmd.DMDHandles.put_proj_coeffs`.
+  :py:func:`dmd.DMDHandles.put_cross_correlation_mat`, and
+  :py:func:`dmd.DMDHandles.put_spectral_coeffs`.
   
 * :py:func:`dmd.DMDHandles.compute_proj_modes` replaces 
   :py:func:`dmd.DMDHandles.compute_modes`. 
