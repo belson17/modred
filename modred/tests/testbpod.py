@@ -270,7 +270,7 @@ class TestBPODHandles(unittest.TestCase):
         """Test that can take vecs, compute the Hankel and SVD matrices. """
         tol = 1e-6
         
-        L_sing_vecs_return, sing_vals_return, R_sing_vecs_return = \
+        sing_vals_return, L_sing_vecs_return, R_sing_vecs_return = \
             self.my_BPOD.compute_decomp(self.direct_vec_handles, 
                 self.adjoint_vec_handles)
         
