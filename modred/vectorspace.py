@@ -3,10 +3,10 @@ from __future__ import print_function
 from __future__ import absolute_import
 from future.builtins import range
 from future.builtins import object
-
 import sys
 import copy
 from time import time
+
 import numpy as np
 
 from . import util
@@ -38,12 +38,16 @@ class VectorSpaceMatrices(object):
                 VectorSpaceMatrices._IP_2D_weights
         else:
             raise ValueError('Weights must be None, 1D, or 2D')
+
     def _IP_no_weights(self, vecs1, vecs2):
         return np.mat(vecs1).H * np.mat(vecs2)
+
     def _IP_1D_weights(self, vecs1, vecs2):
         return np.mat((np.array(vecs1).conj().T * self.weights).dot(vecs2))
+
     def _IP_2D_weights(self, vecs1, vecs2):
         return np.mat(vecs1).H * self.weights * np.mat(vecs2)
+
     def __eq__(self, other):
         if type(other) == type(self):
             return smart_eq(self.weights, other.weights)
@@ -64,9 +68,6 @@ class VectorSpaceMatrices(object):
         
     def __ne__(self, other):
         return not self.__eq__(other)
-
-
-
 
 
 class VectorSpaceHandles(object):
@@ -122,13 +123,10 @@ class VectorSpaceHandles(object):
         if self.inner_product is None:
             raise RuntimeError('inner product function is not defined')
         
-    
     def print_msg(self, msg, output_channel=sys.stdout):
         """Print a message from rank 0."""
         if self.verbosity > 0 and _parallel.is_rank_zero():
             print(msg, file=output_channel)
-
-
 
     def sanity_check(self, test_vec_handle):
         """Check user-supplied vec handle and vec objects.
@@ -180,7 +178,6 @@ class VectorSpaceHandles(object):
         #np.testing.assert_array_almost_equal(vecSub,2.5*test_vec)
         #np.testing.assert_array_almost_equal(test_vec,vec_copy)
         self.print_msg('Passed the sanity check')
-
 
     def compute_inner_product_mat(self, row_vec_handles, col_vec_handles):
         """Computes the matrix of inner product combinations between vectors.
@@ -289,8 +286,6 @@ class VectorSpaceHandles(object):
         #num_rows_per_proc_chunk = self.max_vecs_per_proc - \
         #    num_cols_per_proc_chunk
         
-        
-        
         # These variables are the number of iters through loops that retrieve
         # ("get") row and column vecs.
         num_row_get_loops = \
@@ -330,9 +325,6 @@ class VectorSpaceHandles(object):
         self.print_msg('Computing the inner product matrix will take at least '
                     '%.1f minutes' % ((total_IP_time + total_get_time) / 60.))
         del row_vec, col_vec
-
-        
-        
         
         # To find all of the inner product mat chunks, each 
         # processor has a full IP_mat with size
@@ -421,7 +413,6 @@ class VectorSpaceHandles(object):
                                 'products')%percent_completed_IPs, sys.stderr)
                             self.prev_print_time = time()
                         
-                        
                 # Clear the retrieved column vecs after done this pass cycle
                 del col_vecs
             # Completed a chunk of rows and all columns on all processors.
@@ -441,9 +432,6 @@ class VectorSpaceHandles(object):
 
         _parallel.barrier() 
         return IP_mat
-
-        
-        
         
     def compute_symmetric_inner_product_mat(self, vec_handles):
         """Computes an upper-triangular symmetric matrix of inner products.
@@ -485,8 +473,6 @@ class VectorSpaceHandles(object):
                 'there are %d, will be retrieved %d times each. Increase '
                 'number of nodes or max_vecs_per_node to reduce redundant '
                 '"get"s for a speedup.'%(num_vecs,num_row_chunks))
-    
-        
         
         # Estimate the time this will take and determine matrix datatype
         # (real or complex).
@@ -590,7 +576,7 @@ class VectorSpaceHandles(object):
                     raise ValueError('Number of rows assigned does not ' +\
                         'match number of vecs in memory.')
                 if my_num_rows > 0 and my_num_rows < max_num_to_send:
-                    my_row_indices += [np.nan] * (max_num_to_send - my_num_rows) 
+                    my_row_indices += [np.nan] * (max_num_to_send - my_num_rows)
                     row_vecs += [[]] * (max_num_to_send - my_num_rows)
                 """
                 for send_index in range(max_num_to_send):
@@ -616,7 +602,7 @@ class VectorSpaceHandles(object):
                         # The Wait() is very important for the non-
                         # blocking send (though we are unsure why).
                         request = _parallel.comm.isend(col_vecs_send, 
-                            dest=dest_rank, tag=send_tag)                        
+                            dest=dest_rank, tag=send_tag)                       
                         col_vecs_recv = _parallel.comm.recv(source = 
                             source_rank, tag=recv_tag)
                         request.Wait()
@@ -637,12 +623,13 @@ class VectorSpaceHandles(object):
                                     (100.*2*num_completed_IPs * \
                                     _parallel.get_num_MPI_workers())/\
                                     (num_vecs**2)
-                                self.print_msg(('Completed %.1f%% of inner ' + 
-                                    'products')%percent_completed_IPs, sys.stderr)
+                                self.print_msg(
+                                    ('Completed %.1f%% of inner products') % 
+                                    percent_completed_IPs, sys.stderr)
                                 self.prev_print_time = time()
+                    
                     # Sync after send/receive   
                     _parallel.barrier()  
-                
             
             # Fill in the rectangular portion next to each triangle (if nec.).
             # Start at index after last row, continue to last column. This part
@@ -710,13 +697,16 @@ class VectorSpaceHandles(object):
                                     col_vec_index]] = self.inner_product(
                                     row_vecs[row_index - proc_row_tasks[0]],
                                     col_vec)
-                        if (time() - self.prev_print_time) > self.print_interval:
+                        if (
+                            (time() - self.prev_print_time) > 
+                            self.print_interval):
                             num_completed_IPs = (np.abs(IP_mat)>0).sum()
                             percent_completed_IPs = (100.*2*num_completed_IPs *
                                 _parallel.get_num_MPI_workers())/(num_vecs**2)
                             self.print_msg(('Completed %.1f%% of inner ' + 
                                 'products')%percent_completed_IPs, sys.stderr)
                             self.prev_print_time = time()
+
             # Completed a chunk of rows and all columns on all processors.
             # Finished row_vecs loop, delete memory used
             del row_vecs                     
@@ -745,9 +735,6 @@ class VectorSpaceHandles(object):
         
         _parallel.barrier()
         return IP_mat
-        
-
-    
     
     def lin_combine(self, sum_vec_handles, basis_vec_handles, coeff_mat,
         coeff_mat_col_indices=None):
@@ -873,11 +860,12 @@ class VectorSpaceHandles(object):
                         basis_tasks[rank][-1]+1)
                     end_basis_index = min(start_basis_index + 
                         num_bases_per_proc_chunk, basis_tasks[rank][-1]+1)
-                    basis_indices = list(range(start_basis_index, end_basis_index))
+                    basis_indices = list(
+                        range(start_basis_index, end_basis_index))
                 else:
                     basis_indices = []
                 
-                # Pass the basis vecs to proc with rank -> mod(rank+1,num_procs) 
+                # Pass the basis vecs to proc with rank -> mod(rank+1,num_procs)
                 # Must do this for each processor, until data makes a circle
                 basis_vecs_recv = (None, None)
 
@@ -931,12 +919,13 @@ class VectorSpaceHandles(object):
                             else:
                                 sum_layers[sum_index-start_sum_index] += \
                                     sum_layer
-                        if (time() - self.prev_print_time) > self.print_interval:
+                        if (
+                            (time() - self.prev_print_time) > 
+                            self.print_interval):
                             self.print_msg(
                                 'Completed %.1f%% of linear combinations' %
                                 (sum_index*100./len(sum_tasks[rank])))
                             self.prev_print_time = time()
-                        
 
             # Completed this set of sum vecs, puts them to memory or file
             for sum_index in range(start_sum_index, end_sum_index):
@@ -947,7 +936,6 @@ class VectorSpaceHandles(object):
         self.print_msg('Completed %.1f%% of linear combinations' % 100.)
         self.prev_print_time = time()
         _parallel.barrier() 
-        
     
     def __eq__(self, other):
         if type(self) != type(other):

@@ -9,10 +9,12 @@ from future.builtins import str
 from future import standard_library
 standard_library.install_hooks()
 from future.builtins import object
-
 import pickle
+
 import numpy as np
+
 from . import util
+
 
 class VecHandle(object):
     """Recommended base class for vector handles (not required)."""
@@ -42,12 +44,15 @@ class VecHandle(object):
     def put(self, vec):
         """Put a vector to file or memory using the ``_put`` function.""" 
         return self._put(vec)
+
     def _get(self):
         """Subclass must overwrite, retrieves a vector."""
         raise NotImplementedError("must be implemented by subclasses")
+
     def _put(self, vec):
         """Subclass must overwrite, puts a vector."""
         raise NotImplementedError("must be implemented by subclasses")
+
     def __scale_vec(self, vec):
         """Scales the vector by a scalar."""
         if self.scale is not None:
@@ -55,18 +60,20 @@ class VecHandle(object):
         return vec
     
 
-
 class VecHandleInMemory(VecHandle):
     """Gets and puts vectors in memory."""
     def __init__(self, vec=None, base_vec_handle=None, scale=None):
         VecHandle.__init__(self, base_vec_handle, scale)
         self.vec = vec
+
     def _get(self):
         """Returns the vector."""
         return self.vec
+
     def _put(self, vec):
         """Stores the vector, ``vec``."""
         self.vec = vec
+
     def __eq__(self, other):
         if type(other) != type(self):
             return False
@@ -78,12 +85,15 @@ class VecHandleArrayText(VecHandle):
     def __init__(self, vec_path, base_vec_handle=None, scale=None):
         VecHandle.__init__(self, base_vec_handle, scale)
         self.vec_path = vec_path
+
     def _get(self):
         """Loads vector from path."""
         return util.load_array_text(self.vec_path)
+
     def _put(self, vec):
         """Saves vector to path."""
         util.save_array_text(vec, self.vec_path)
+
     def __eq__(self, other):
         if type(other) != type(self):
             return False
@@ -95,15 +105,18 @@ class VecHandlePickle(VecHandle):
     def __init__(self, vec_path, base_vec_handle=None, scale=None):
         VecHandle.__init__(self, base_vec_handle, scale)
         self.vec_path = vec_path
+
     def _get(self):
         """Loads vector from path."""
         with open(self.vec_path, 'rb') as file_obj:
             to_return = pickle.load(file_obj)
         return to_return
+
     def _put(self, vec):
         """Saves vector to path."""
         with open(self.vec_path, 'wb') as file_obj:
             pickle.dump(vec, file_obj)
+
     def __eq__(self, other):
         if type(other) != type(self):
             return False
@@ -140,8 +153,10 @@ class InnerProductTrapz(object):
         if len(grids) == 0:
             raise ValueError('Must supply at least one 1D grid array')
         self.grids = grids
+
     def __call__(self, vec1, vec2):
         return self.inner_product(vec1, vec2)
+
     def inner_product(self, vec1, vec2):
         """Takes the inner product."""
         IP = vec1 * vec2
@@ -158,15 +173,20 @@ class Vector(object):
     def __init__(self):
         """Must overwrite"""
         raise NotImplementedError('constructor must be implemented by subclass')
+
     def __add__(self, other):
         raise NotImplementedError('addition must be implemented by subclass')
+
     def __mul__(self, scalar):
         raise NotImplementedError('multiplication must be implemented by '
             'subclass')
+
     def __rmul__(self, scalar):
         return self.__mul__(scalar)
+
     def __lmul__(self, scalar):
         return self.__mul__(scalar)
+
     def __sub__(self, other):
         return self + other*-1    
 

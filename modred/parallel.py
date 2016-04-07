@@ -5,11 +5,14 @@ from __future__ import absolute_import
 from future.builtins import range
 from future.builtins import object
 import os
+
 import numpy as np
+
 
 class ParallelError(Exception):
     """Parallel related errors"""
     pass
+
     
 class Parallel(object):
     """For parallelization with mpi4py.
@@ -113,7 +116,6 @@ class Parallel(object):
     def get_num_procs(self):
         """Returns the number of processors."""
         return self.get_num_MPI_workers()
-
     
     def find_assignments(self, tasks, task_weights=None):
         """Evenly distributes the tasks by task weights among all MPI workers.
@@ -167,8 +169,6 @@ class Parallel(object):
                 task_assignments.append([])
                 
         return task_assignments
-        
-        
 
     def check_for_empty_tasks(self, task_assignments):
         """Convenience function that checks if empty worker assignments.
@@ -185,7 +185,6 @@ class Parallel(object):
                 empty_tasks = True
         return empty_tasks
 
-    
     def call_and_bcast(self, func, *args, **kwargs):
         """Calls function on rank 0 and broadcasts outputs to all workers.
                

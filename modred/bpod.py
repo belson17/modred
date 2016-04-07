@@ -2,10 +2,12 @@ from __future__ import absolute_import
 from future.builtins import object
 
 import numpy as np
+
 from .vectorspace import VectorSpaceMatrices, VectorSpaceHandles
 from . import util
 from .parallel import parallel_default_instance
 _parallel = parallel_default_instance
+
 
 def compute_BPOD_matrices(
     direct_vecs, adjoint_vecs, direct_mode_indices, adjoint_mode_indices,
@@ -212,7 +214,6 @@ class BPODHandles(object):
             _parallel.call_and_bcast(
             util.svd, self.Hankel_mat, atol=atol, rtol=rtol)
 
-        
     def sanity_check(self, test_vec_handle):
         """Check that user-supplied vector handle and vector satisfy 
         requirements.
@@ -223,7 +224,6 @@ class BPODHandles(object):
         See :py:meth:`vectorspace.VectorSpaceHandles.sanity_check`.
         """
         self.vec_space.sanity_check(test_vec_handle)
-
     
     def compute_decomp(
         self, direct_vec_handles, adjoint_vec_handles, atol=1e-13, rtol=None):
@@ -255,7 +255,6 @@ class BPODHandles(object):
             self.adjoint_vec_handles, self.direct_vec_handles)
         self.compute_SVD(atol=atol, rtol=rtol)
         return self.sing_vals, self.L_sing_vecs, self.R_sing_vecs
-
             
     def compute_direct_modes(self, mode_indices, modes, 
         direct_vec_handles=None):
@@ -284,7 +283,6 @@ class BPODHandles(object):
         self.vec_space.lin_combine(
             modes, self.direct_vec_handles, build_coeff_mat,
             coeff_mat_col_indices=mode_indices)
-
             
     def compute_adjoint_modes(self, mode_indices, modes, 
         adjoint_vec_handles=None):
@@ -314,7 +312,6 @@ class BPODHandles(object):
             modes, self.adjoint_vec_handles, build_coeff_mat, 
             coeff_mat_col_indices=mode_indices)
 
-
     def compute_proj_coeffs(self):
         """Computes projection of direct vectors onto direct BPOD modes.  
        
@@ -327,7 +324,6 @@ class BPODHandles(object):
         self.proj_coeffs = ( 
             np.mat(np.diag(self.sing_vals ** 0.5)) * self.R_sing_vecs.H)
         return self.proj_coeffs        
-
 
     def compute_adj_proj_coeffs(self):
         """Computes projection of adjoint vectors onto adjoint BPOD modes.  

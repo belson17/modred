@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from future.builtins import object
 
 import numpy as np
+
 from .vectorspace import VectorSpaceMatrices, VectorSpaceHandles
 from . import util
 from .parallel import parallel_default_instance
@@ -611,7 +612,6 @@ class DMDHandles(object):
             self.L_low_order_eigvecs, self.correlation_mat_eigvals,
             self.correlation_mat_eigvecs)
         
-
     def compute_exact_modes(self, mode_indices, mode_handles, 
         adv_vec_handles=None):
         """Computes exact DMD modes and calls ``put`` on them.
@@ -697,7 +697,6 @@ class DMDHandles(object):
             raise ValueError(('Number of vec_handles does not match number of '
                 'columns in build_coeffs_proj matrix.'))
 
-
     def compute_spectrum(self):
         """Computes DMD spectral coefficients.
         These coefficients come from projecting the first data vector onto the
@@ -715,7 +714,6 @@ class DMDHandles(object):
             np.mat(np.diag(np.sqrt(self.correlation_mat_eigvals))) * 
             np.mat(self.correlation_mat_eigvecs[0, :]).T).squeeze()
         return self.spectral_coeffs
-
 
     # Note that a biorthogonal projection onto the exact DMD modes is the same
     # as a least squares projection onto the projected DMD modes, so there is

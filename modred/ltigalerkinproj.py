@@ -12,6 +12,7 @@ from .vectorspace import *
 from .parallel import parallel_default_instance
 _parallel = parallel_default_instance
 
+
 def standard_basis(num_dims):
     """Returns list of standard basis vecs of space :math:`R^n`.
     
@@ -23,8 +24,6 @@ def standard_basis(num_dims):
             ``[array([1,0,...]), array([0,1,...]), ...]``.
     """
     return list(np.identity(num_dims))
-
-
 
 def compute_derivs_handles(vec_handles, adv_vec_handles, deriv_vec_handles, dt):
     """Computes 1st-order time derivatives of vectors using handles. 
@@ -57,7 +56,6 @@ def compute_derivs_handles(vec_handles, adv_vec_handles, deriv_vec_handles, dt):
         deriv_vec_handles[i].put((1./dt)*(vec_dt - vec))
     _parallel.barrier()
 
-
 def compute_derivs_matrices(vecs, adv_vecs, dt):
     """Computes 1st-order time derivatives of vectors from data in matrices. 
     
@@ -72,7 +70,6 @@ def compute_derivs_matrices(vecs, adv_vecs, dt):
         ``deriv_vecs``: Matrix of with time-derivs of vectors as cols.
     """
     return (adv_vecs - vecs)/(1.*dt)
-
 
 
 class LTIGalerkinProjectionBase(object):
@@ -114,9 +111,6 @@ class LTIGalerkinProjectionBase(object):
         self.put_B_reduced(B_reduced_dest)
         self.put_C_reduced(C_reduced_dest)
        
-        
-       
-        
 
 class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
     """Computes the reduced-order model matrices for an LTI system, 
@@ -137,8 +131,6 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
             It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
 
         ``put_mat``: Function to put a matrix elsewhere (file or memory).
-        
-        
 
     This class projects discrete or continuous time dynamics onto a set of basis
     vectors, resulting in models. Often the basis vecs are modes from 
@@ -173,7 +165,6 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
                 raise ValueError('Basis vec and adjoint basis vec arrays '+\
                     'are different shapes')
         self.vec_space = VectorSpaceMatrices(weights=inner_product_weights)
-        
 
     def reduce_A(self, A_on_basis_vecs):
         """Computes the continous or discrete time reduced A matrix.
@@ -190,7 +181,6 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
         if not self.is_basis_orthonormal:
             self.A_reduced = self._get_proj_mat() * self.A_reduced
         return self.A_reduced
-        
     
     def reduce_B(self, B_on_standard_basis_array):
         """Computes the reduced B matrix.
@@ -228,9 +218,6 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
             self.B_reduced = self._get_proj_mat() * self.B_reduced
         return self.B_reduced
         
-
-                
-        
     def reduce_C(self, C_on_basis_vecs):
         """Computes the reduced C matrix.
                
@@ -243,7 +230,6 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
         self.C_reduced = np.mat(np.array(C_on_basis_vecs, ndmin=2))
         return self.C_reduced
 
-
     def _get_proj_mat(self):
         """Gets the projection mat, i.e. inv(Psi^* Phi)."""            
         if self._proj_mat is None:
@@ -255,7 +241,6 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
                     self.adjoint_basis_vecs, self.basis_vecs)
             self._proj_mat = np.linalg.inv(IP_mat)
         return self._proj_mat
-        
         
     def compute_model(self, A_on_basis_vecs, B_on_standard_basis_array,
         C_on_basis_vecs):
@@ -278,8 +263,6 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
         self.reduce_C(C_on_basis_vecs)
         return self.A_reduced, self.B_reduced, self.C_reduced
 
-        
-        
 
 class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
     """Computes the reduced-order model matrices from modes for an LTI system,
@@ -338,7 +321,6 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
                     'number of adjoint basis vecs')
         self.vec_space = VectorSpaceHandles(inner_product=inner_product,
             max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
-        
 
     def reduce_A(self, A_on_basis_vec_handles):
         """Computes and returns the continous or discrete time A matrix.
@@ -355,7 +337,6 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
             self.A_reduced = self._get_proj_mat() * self.A_reduced
         return self.A_reduced
         
-    
     def reduce_B(self, B_on_standard_basis_handles):
         """Computes and returns the reduced B matrix.
         
@@ -390,10 +371,7 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
         if not self.is_basis_orthonormal:
             self.B_reduced = self._get_proj_mat() * self.B_reduced
         return self.B_reduced
-        
 
-                
-        
     def reduce_C(self, C_on_basis_vecs):
         """Computes and returns the reduced C matrix.
                
@@ -405,7 +383,6 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
         """
         self.C_reduced = np.mat(np.array(C_on_basis_vecs, ndmin=2).T)
         return self.C_reduced
-    
     
     def compute_model(self, A_on_basis_vec_handles, B_on_standard_basis_handles,
         C_on_basis_vecs):
@@ -427,7 +404,6 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
         self.reduce_B(B_on_standard_basis_handles)
         self.reduce_C(C_on_basis_vecs)
         return self.A_reduced, self.B_reduced, self.C_reduced
-
     
     def _get_proj_mat(self):
         """Gets the projection mat, i.e. ``inv(adjoint_vecs^* direct_vecs)``."""

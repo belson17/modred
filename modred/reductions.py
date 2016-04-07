@@ -14,8 +14,8 @@ custom_comm.reduce(...)
 
 This must be provided with the rest of modaldecomp!
 """
-
 from mpi4py import MPI
+
 
 class Intracomm(MPI.Intracomm):
     """

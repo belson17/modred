@@ -3,10 +3,12 @@ from __future__ import absolute_import
 from future.builtins import object
 
 import numpy as np
+
 from .vectorspace import VectorSpaceMatrices, VectorSpaceHandles
 from . import util
 from .parallel import parallel_default_instance
 _parallel = parallel_default_instance
+
 
 def compute_POD_matrices_snaps_method(
     vecs, mode_indices, inner_product_weights=None, atol=1e-13, rtol=None,
@@ -74,6 +76,7 @@ def compute_POD_matrices_snaps_method(
         return modes, eigvals, eigvecs, correlation_mat
     else:
         return modes, eigvals
+
 
 def compute_POD_matrices_direct_method(
     vecs, mode_indices, inner_product_weights=None, atol=1e-13, rtol=None, 
@@ -321,13 +324,11 @@ class PODHandles(object):
         self.vec_space.lin_combine(modes, self.vec_handles, build_coeff_mat, 
             coeff_mat_col_indices=mode_indices)
 
-
     def compute_proj_coeffs(self):
         """Computes projection of data vectors onto POD modes.  
        
         Returns:
             ``proj_coeffs``: Matrix of projection coefficients for the vectors.
-
         """
         self.proj_coeffs = np.mat(np.diag(self.eigvals ** 0.5)) * self.eigvecs.H
         return self.proj_coeffs        

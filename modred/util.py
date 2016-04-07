@@ -2,10 +2,11 @@
 from __future__ import print_function
 from future.builtins import range
 from future.builtins import object
-
 import inspect
 import os
+
 import numpy as np
+
 
 class UndefinedError(Exception): pass
 
@@ -157,6 +158,7 @@ def smart_eq(arg1, arg2):
     if isinstance(eq, np.ndarray):
         return eq.all()
     return eq
+
     
 class InnerProductBlock(object):
     """Only used in tests. Takes inner product of all vectors."""
@@ -171,6 +173,7 @@ class InnerProductBlock(object):
             for j in range(n2):
                 mat[i,j] = self.inner_product(vecs1[i], vecs2[j])
         return mat
+
 
 def svd(mat, atol=1e-13, rtol=None):
     """Wrapper for numpy's SVD, U E V^* = mat. 
@@ -320,6 +323,7 @@ def eig_biorthog(mat, scale_choice='left'):
         raise ValueError('Invalid scale choice.  Must be LEFT or RIGHT.')
 
     return R_evals, R_evecs, L_evecs 
+
 
 def solve_Lyapunov_direct(A, Q):
     """Solves discrete Lyapunov equation AXA' - X + Q = 0 for X given A and Q.

@@ -4,7 +4,9 @@ from __future__ import print_function
 from __future__ import absolute_import
 from future.builtins import range
 from future.builtins import object
+
 import numpy as np
+
 from . import util
 
 
@@ -50,7 +52,6 @@ def make_sampled_format(times, Markovs, dt_tol=1e-6):
     time_steps_corr[1::2] = time_steps[1:]
     return time_steps_corr, Markovs_corr
 
-
 def compute_ERA_model(Markovs, num_states):
     """Convenience function to find ERA A, B, and C matrices w/default settings.
     
@@ -78,7 +79,6 @@ def compute_ERA_model(Markovs, num_states):
     """
     my_ERA = ERA()
     return my_ERA.compute_model(Markovs, num_states)
-
 
 
 class ERA(object):
@@ -122,7 +122,6 @@ class ERA(object):
     :py:func:`util.load_multiple_signals`
     are often useful.
     """
-    
     def __init__(self, put_mat=util.save_array_text, mc=None, mo=None,
         verbosity=1):
         """Constructor """
@@ -144,8 +143,6 @@ class ERA(object):
         self.Hankel_mat2 = None
         self.num_Markovs = None
         self.Markovs = None
-     
-            
     
     def compute_model(self, Markovs, num_states, mc=None, mo=None):
         """Computes the A, B, and C LTI ROM matrices.
@@ -161,7 +158,8 @@ class ERA(object):
             ``mc``: Number of Markov parameters for controllable dimension.
         
             ``mo``: Number of Markov parameters for observable dimension.
-                       Default is mc and mo equal and maximal for a balanced model.
+                       Default is mc and mo equal and maximal for a balanced 
+                       model.
         
         Assembles the Hankel matrices from self.Markovs and takes SVD.
         
@@ -200,7 +198,6 @@ class ERA(object):
             print('Warning: Unstable eigenvalues of reduced A matrix')
             print('eig vals are', np.linalg.eigvals(self.A))
         return self.A, self.B, self.C
-          
  
     def put_model(self, A_dest, B_dest, C_dest):
         """Puts the A, B, and C LTI matrices to destinations.
@@ -233,7 +230,6 @@ class ERA(object):
     def put_sing_vals(self, sing_vals_dest):
         """Puts the singular values to ``sing_vals_dest``."""
         self.put_mat(self.sing_vals, sing_vals_dest)
-      
  
     def _set_Markovs(self, Markovs):
         """Sets the Markov params to ``self.Markovs`` and error checks.
@@ -261,7 +257,6 @@ class ERA(object):
         if self.num_time_steps % 2 != 0:
             self.num_time_steps -= 1
             self.Markovs = self.Markovs[:-1]
- 
  
     def _assemble_Hankel(self):
         """Assembles and sets ``self.Hankel_mat`` and ``self.Hankel_mat2``

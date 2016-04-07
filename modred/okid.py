@@ -3,7 +3,6 @@ from future.builtins import range
 
 import numpy as np
 
-# test None
 
 def OKID(inputs, outputs, num_Markovs):
     """Approximates the Markov paramters from arbitrary inputs and outputs.
@@ -11,7 +10,8 @@ def OKID(inputs, outputs, num_Markovs):
     Args:
         ``inputs``: Array of input signals, with dimensions ``[input, time]``.
         
-        ``outputs``: Array of output signals, with dimensions ``[output, time]``.
+        ``outputs``: Array of output signals, with dimensions 
+          ``[output, time]``.
         
         ``num_Markovs``: Integer number of Markov parameters to estimate.
             
@@ -27,10 +27,11 @@ def OKID(inputs, outputs, num_Markovs):
     - If necessary, artificially append your data with zero input and 
       exponentially decaying output.
     - Estimate ``num_Markovs`` <= half of the number of samples.
-      Estimating too many Markov params can result in spurious oscillations.       
+      Estimating too many Markov params can result in spurious oscillations.    
     - Data with more than one input tends to be harder to work with. 
     """    
-    # Some internal comments and variables refer to textbook (J.-np. Juang 1994).
+    # Some internal comments and variables refer to textbook (J.-np. Juang
+    # 1994).
     # Force arrays to be 2 dimensional
     if inputs.ndim == 1:
         inputs = inputs.reshape((1, inputs.shape[0]))
