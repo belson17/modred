@@ -9,7 +9,6 @@ import numpy as np
 
 class UndefinedError(Exception): pass
 
-
 def make_mat(array):
     """Makes 1D or 2D array into matrix. 1D arrays become mats with one col."""
     if array.ndim == 1:
@@ -17,13 +16,13 @@ def make_mat(array):
     return np.mat(array)
 
 def make_iterable(arg):
-    """Checks arg is iterable. If not, makes it a 1-element list. If iterable, retuns arg."""
+    """Checks arg is iterable. If not, makes it a 1-element list. If iterable, 
+    retuns arg."""
     try:
         iterator = iter(arg)
         return arg
     except TypeError:
         return [arg]
-
 
 """
 def make_list(arg):
@@ -79,7 +78,6 @@ def save_array_text(array, file_name, delimiter=None):
     else:
         np.savetxt(file_name, array_save.view(float), delimiter=delimiter)
     
-    
 def load_array_text(file_name, delimiter=None, is_complex=False):
     """Loads a text file, returns an array.
     
@@ -118,7 +116,47 @@ def load_array_text(file_name, delimiter=None, is_complex=False):
     # Cast as an array, copies to make it C-contiguous memory
     return np.array(array.view(dtype))
 
+def get_file_list(directory, file_extension=None):
+    """Returns list of files in ``directory`` with ``file_extension``."""
+    files = os.listdir(directory)
+    if file_extension is not None:
+        if len(file_extension) == 0:
+            print('Warning: gave an empty file extension')
+        filtered_files = []
+        for f in files:
+            if f[-len(file_extension):] == file_extension:
+                filtered_files.append(f)
+        return filtered_files
+    else:
+        return files
 
+def get_data_members(obj):
+    """Returns a dictionary containing data members of ``obj``."""
+    data_members = {}
+    for name in dir(obj):
+        value = getattr(obj, name)
+        if not name.startswith('__') and not inspect.ismethod(value):
+            data_members[name] = value
+    return data_members
+
+def sum_arrays(arr1, arr2):
+    """Used for allreduce command."""
+    return arr1 + arr2
+
+def sum_lists(list1, list2):
+    """Sum the elements of each list, return a new list.
+    
+    This function is used in MPI reduce commands, but could be used
+    elsewhere too."""
+    assert len(list1) == len(list2)
+    return [list1[i] + list2[i] for i in range(len(list1))]
+ 
+def smart_eq(arg1, arg2):
+    """Checks if equal, accounting for numpy's ``==`` not returning a bool."""
+    eq = (arg1 == arg2)
+    if isinstance(eq, np.ndarray):
+        return eq.all()
+    return eq
     
 class InnerProductBlock(object):
     """Only used in tests. Takes inner product of all vectors."""
@@ -133,8 +171,7 @@ class InnerProductBlock(object):
             for j in range(n2):
                 mat[i,j] = self.inner_product(vecs1[i], vecs2[j])
         return mat
-        
-    
+
 def svd(mat, atol=1e-13, rtol=None):
     """Wrapper for numpy's SVD, U E V^* = mat. 
     
@@ -176,7 +213,6 @@ def svd(mat, atol=1e-13, rtol=None):
     E = E[:num_nonzeros]
 
     return U, E, V
-
 
 def eigh(mat, atol=1e-13, rtol=None, is_positive_definite=False):
     """Wrapper for ``numpy.linalg.eigh``. Computes the e-values and vecs of
@@ -232,7 +268,6 @@ def eigh(mat, atol=1e-13, rtol=None, is_positive_definite=False):
     eigvecs = eigvecs[:, :num_nonzeros]    
     return eigvals, eigvecs
 
-
 def eig_biorthog(mat, scale_choice='left'):
     """Wrapper for ``numpy.linalg.eig`` that returns both left and right
     eigenvectors. Eigenvalues and eigenvectors are sorted so that the left and
@@ -286,46 +321,6 @@ def eig_biorthog(mat, scale_choice='left'):
 
     return R_evals, R_evecs, L_evecs 
 
-
-def get_file_list(directory, file_extension=None):
-    """Returns list of files in ``directory`` with ``file_extension``."""
-    files = os.listdir(directory)
-    if file_extension is not None:
-        if len(file_extension) == 0:
-            print('Warning: gave an empty file extension')
-        filtered_files = []
-        for f in files:
-            if f[-len(file_extension):] == file_extension:
-                filtered_files.append(f)
-        return filtered_files
-    else:
-        return files
-
-
-def get_data_members(obj):
-    """Returns a dictionary containing data members of ``obj``."""
-    data_members = {}
-    for name in dir(obj):
-        value = getattr(obj, name)
-        if not name.startswith('__') and not inspect.ismethod(value):
-            data_members[name] = value
-    return data_members
-
-
-def sum_arrays(arr1, arr2):
-    """Used for allreduce command."""
-    return arr1 + arr2
-
-    
-def sum_lists(list1, list2):
-    """Sum the elements of each list, return a new list.
-    
-    This function is used in MPI reduce commands, but could be used
-    elsewhere too."""
-    assert len(list1) == len(list2)
-    return [list1[i] + list2[i] for i in range(len(list1))]
-
-
 def solve_Lyapunov_direct(A, Q):
     """Solves discrete Lyapunov equation AXA' - X + Q = 0 for X given A and Q.
     
@@ -347,7 +342,6 @@ def solve_Lyapunov_direct(A, Q):
     X = X_flat.reshape((A.shape))
     return X
 
-
 def solve_Lyapunov_iterative(A, Q, max_iters=10000, tol=1e-8):
     """Solves discrete Lyapunov equation AXA' - X + Q = 0 for X given A and Q.
 
@@ -365,7 +359,8 @@ def solve_Lyapunov_iterative(A, Q, max_iters=10000, tol=1e-8):
         raise ValueError('A and Q must have the same shape.')
     
     if np.amax(np.abs(np.linalg.eig(A)[0])) > 1.:
-        raise ValueError('A must have stable eigenvalues (in the unit circle).') 
+        raise ValueError(
+            'A must have stable eigenvalues (in the unit circle).') 
     
     X = np.copy(Q)
     AP = np.copy(A)
@@ -384,7 +379,6 @@ def solve_Lyapunov_iterative(A, Q, max_iters=10000, tol=1e-8):
     if iter >= max_iters:
         print('Warning: did not converge to solution. Error is %f.'%error)
     return X
-
 
 def balanced_truncation(A, B, C, order=None, return_sing_vals=False,
     iterative_solver=True):
@@ -426,8 +420,6 @@ def balanced_truncation(A, B, C, order=None, return_sing_vals=False,
         return A_bal_trunc, B_bal_trunc, C_bal_trunc, E
     else:
         return A_bal_trunc, B_bal_trunc, C_bal_trunc
-    
-
 
 def drss(num_states, num_inputs, num_outputs):
     """Generates a discrete-time random state space system.
@@ -474,7 +466,6 @@ def rss(num_states, num_inputs, num_outputs):
     B = np.random.random((num_states, num_inputs))
     C = np.random.random((num_outputs, num_states))
     return A, B, C
-        
         
 def lsim(A, B, C, inputs, initial_condition=None):
     """Simulates a discrete time system with arbitrary inputs. 
@@ -528,7 +519,6 @@ def lsim(A, B, C, inputs, initial_condition=None):
         outputs[ti] = np.dot(C_arr, state)
         state = np.dot(A_arr, state) + np.dot(B_arr, inputs[ti])
     return outputs
-
     
 def impulse(A, B, C, num_time_steps=None):
     """Generates impulse response outputs for a discrete-time system.
@@ -579,8 +569,6 @@ def impulse(A, B, C, num_time_steps=None):
             A_powers = np.dot(A_powers, A_arr) 
     return outputs
 
-
-
 def load_signals(signal_path, delimiter=None):
     """Loads signals from text files with columns [t signal1 signal2 ...].     
     
@@ -610,8 +598,6 @@ def load_signals(signal_path, delimiter=None):
     if signals.ndim == 1:
         signals = signals.reshape((signals.shape[0], 1))
     return time_values, signals
-
-
 
 def load_multiple_signals(signal_paths, delimiter=None):
     """Loads multiple signal files w/columns [t channel1 channel2 ...].
@@ -649,16 +635,7 @@ def load_multiple_signals(signal_paths, delimiter=None):
         all_signals[path_num] = signals 
 
     return time_values, all_signals
-
-
-def smart_eq(arg1, arg2):
-    """Checks if equal, accounting for numpy's ``==`` not returning a bool."""
-    eq = (arg1 == arg2)
-    if isinstance(eq, np.ndarray):
-        return eq.all()
-    return eq
         
-
 def Hankel(first_row, last_col=None):
     """
     Construct a Hankel matrix.
