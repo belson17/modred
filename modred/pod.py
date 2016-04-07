@@ -13,35 +13,38 @@ _parallel = parallel_default_instance
 def compute_POD_matrices_snaps_method(
     vecs, mode_indices, inner_product_weights=None, atol=1e-13, rtol=None,
     return_all=False):
-    """Computes POD modes with data in a matrix using the method of snapshots.
+    """Computes POD modes using data stored in a matrix, using the method of
+    snapshots.
     
     Args:
-        ``vecs``: Matrix of data vectors stacked as columns.
-        
-        ``mode_indices``: List of mode indices to compute.
-            Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
+       ``vecs``: Matrix whose columns are data vectors (:math:`X`).
 
+       ``mode_indices``: List of indices describing which modes to compute.
+       Examples are ``range(10)`` or ``[3, 0, 6, 8]``. 
+ 
     Kwargs:
         ``inner_product_weights``: 1D array or matrix of inner product weights.
-            It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
-
-`       ``atol``: Level below which POD eigenvalues are truncated.
+        Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
+        
+        ``atol``: Level below which eigenvalues of correlation matrix are 
+        truncated.
  
-        ``rtol``: Maximum relative difference between largest and smallest POD
-            eigenvalues.  Smaller ones are truncated.
+        ``rtol``: Maximum relative difference between largest and smallest 
+        eigenvalues of correlation matrix.  Smaller ones are truncated.
 
-        ``return_all``: Return more objects, see below. Default is false.
+        ``return_all``: Return more objects; see below. Default is false.
         
     Returns:
-        ``modes``: Matrix with requested modes as columns.
-        
-        ``eigvals``: 1D array of eigenvalues.
+        ``modes``: Matrix whose columns are POD modes.
+
+        ``eigvals``: 1D array of eigenvalues of correlation matrix (:math:`E`).
         
         If ``return_all`` is true, also returns:
         
-        ``eigvecs``: Matrix of eigenvectors of correlation matrix.
+        ``eigvecs``: Matrix wholse columns are eigenvectors of correlation 
+        matrix (:math:`U`).
         
-        ``correlation_mat``: Matrix of inner products of all vecs in ``vecs``.
+        ``correlation_mat``: Correlation matrix (:math:`X^* W X`).
                 
     The algorithm is
     
@@ -49,13 +52,13 @@ def compute_POD_matrices_snaps_method(
     2. Coefficient matrix :math:`T = U E^{-1/2}`
     3. Modes are :math:`X T`
     
-    where :math:`X`, :math:`W`, :math:`X^* W X`, and :math:`T` correspond to 
-    ``vecs``, ``inner_product_weights``, ``correlation_mat``, 
-    and ``build_coeff_mat``, respectively.
+    where :math:`X`, :math:`W`, :math:`X^* W X`, and :math:`T` correspond to
+    ``vecs``, ``inner_product_weights``, ``correlation_mat``, and
+    ``build_coeff_mat``, respectively.
        
     Since this method "squares" the vector array and thus its singular values,
     it is slightly less accurate than taking the SVD of :math:`X` directly,
-    as in :py:func:`compute_POD_arrays_direct_method`. 
+    as in :py:func:`compute_POD_matrices_direct_method`. 
     However, this method is faster when :math:`X` has more rows than columns, 
     i.e. there are more elements in each vector than there are vectors.
     """
@@ -81,53 +84,54 @@ def compute_POD_matrices_snaps_method(
 def compute_POD_matrices_direct_method(
     vecs, mode_indices, inner_product_weights=None, atol=1e-13, rtol=None, 
     return_all=False):
-    """Computes POD modes with data in a matrix using the direct method.
+    """Computes POD modes using data stored in a matrix, using direct method.
     
     Args:
-        ``vecs``: Matrix of data vectors stacked as columns.
-        
-        ``mode_indices``: List of mode indices to compute.
-            Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
+       ``vecs``: Matrix whose columns are data vectors (:math:`X`).
 
+       ``mode_indices``: List of indices describing which modes to compute.
+       Examples are ``range(10)`` or ``[3, 0, 6, 8]``. 
+ 
     Kwargs:
         ``inner_product_weights``: 1D array or matrix of inner product weights.
-            It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
-       
-        ``atol``: Level below which POD eigenvalues are truncated.
+        Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
+        
+        ``atol``: Level below which eigenvalues of correlation matrix are 
+        truncated.
+ 
+        ``rtol``: Maximum relative difference between largest and smallest 
+        eigenvalues of correlation matrix.  Smaller ones are truncated.
 
-        ``rtol``: Maximum relative difference between largest and smallest
-            POD eigenvalues.  Smaller ones are truncated.
-
-        ``return_all``: Return more objects, see below. Default is false.
-    
+        ``return_all``: Return more objects; see below. Default is false.
+        
     Returns:
-        ``modes``: Matrix with requested modes as columns.
-        
-        ``eigvals``: 1D array of eigenvalues. 
-            These are the eigenvalues of the correlation matrix 
-            (:math:`X^* W X`), and are also the squares of the singular values 
-            of :math:`X`. 
-        
+        ``modes``: Matrix whose columns are POD modes.
+
+        ``eigvals``: 1D array of eigenvalues of correlation matrix (:math:`E`),
+        which are the squares of the singular values of the data matrix 
+        (:math:`X`). 
+ 
         If ``return_all`` is true, also returns:
-               
-        ``eigvecs``: Matrix of eigenvectors.
-            These are the eigenvectors of correlation matrix (:math:`X^* W X`),
-            and are also the right singular vectors of :math:`X`.
+        
+        ``eigvecs``: Matrix wholse columns are eigenvectors of correlation 
+        matrix (:math:`U`), which are also the right singular vectors of the
+        data matrix (:math:`X`).
                 
     The algorithm is
     
-    1. SVD :math:`U E V^* = W^{1/2} X`
+    1. SVD :math:`U S V^* = W^{1/2} X`
     2. Modes are :math:`W^{-1/2} U`
     
-    where :math:`X`, :math:`W`, :math:`E`, :math:`V`, correspond to 
+    where :math:`X`, :math:`W`, :math:`S`, :math:`V`, correspond to 
     ``vecs``, ``inner_product_weights``, ``eigvals**0.5``, 
     and ``eigvecs``, respectively.
        
-    Since this method does not square the vectors and singular values,
-    it is more accurate than taking the eigen decomposition of :math:`X^* W X`,
-    as in the method of snapshots (:py:func:`compute_POD_arrays_direct_method`). 
-    However, this method is slower when :math:`X` has more rows than columns, 
-    i.e. there are fewer vectors than elements in each vector.
+    Since this method does not square the vectors and singular values, it is
+    more accurate than taking the eigendecomposition of the correlation matrix
+    :math:`X^* W X`, as in the method of snapshots
+    (:py:func:`compute_POD_matrices_snaps_method`).  However, this method is
+    slower when :math:`X` has more rows than columns, i.e. there are fewer
+    vectors than elements in each vector.
     """
     if _parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')

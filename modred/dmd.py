@@ -13,66 +13,69 @@ _parallel = parallel_default_instance
 def compute_DMD_matrices_snaps_method(
     vecs, mode_indices, adv_vecs=None, inner_product_weights=None, atol=1e-13,
     rtol=None, return_all=False):
-    """Dynamic Mode Decomposition/Koopman Mode Decomposition with data in a
-    matrix, using method of snapshots.
+    """Computes DMD modes using data stored in matrices, using method of
+    snapshots.
 
     Args:
-        ``vecs``: Matrix with vectors as columns.
-    
-        ``mode_indices``: List of mode numbers, ``range(10)`` or ``[3, 0, 5]``.
+        ``vecs``: Matrix whose columns are data vectors.
+
+        ``mode_indices``: List of indices describing which modes to compute.
+        Examples are ``range(10)`` or ``[3, 0, 6, 8]``. 
     
     Kwargs:
-        ``adv_vecs``: Matrix with ``vecs`` advanced in time as columns.
-          If not provided, then it is assumed that the vectors are a 
-          sequential time-series. Thus ``vecs`` becomes ``vecs[:-1]`` and
-          ``adv_vecs`` becomes ``vecs[1:]``.
+        ``adv_vecs``: Matrix whose columns are data vectors advanced in time.
+        If not provided, then it is assumed that the vectors describe a
+        sequential time-series. Thus ``vecs`` becomes ``vecs[:, :-1]`` and
+        ``adv_vecs`` becomes ``vecs[:, 1:]``.
 
         ``inner_product_weights``: 1D array or matrix of inner product weights.
-          It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
+        Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
         
-        ``atol``: Level below which DMD eigenvalues are truncated.
+        ``atol``: Level below which eigenvalues of correlation matrix are 
+        truncated.
  
         ``rtol``: Maximum relative difference between largest and smallest 
-          DMD eigenvalues.  Smaller ones are truncated.
+        eigenvalues of correlation matrix.  Smaller ones are truncated.
 
         ``return_all``: Return more objects, see below. Default is false.
 
     Returns:
-        ``exact_modes``: Matrix with requested exact DMD modes as columns.
+        ``exact_modes``: Matrix whose columns are exact DMD modes.
 
-        ``proj_modes``: Matrix with requested projected DMD modes as columns.
+        ``proj_modes``: Matrix whose columns are projected DMD modes.
 
-        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on a
-          projection of the first data vector.
+        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on 
+        projection of first data vector.
 
-        ``eigvals``: 1D array of DMD eigenvalues.
+        ``eigvals``: 1D array of eigenvalues of approximating low-order linear
+        map (DMD eigenvalues).
                 
         If ``return_all`` is true, also returns:
         
-        ``R_low_order_eigvecs``: Matrix of right eigenvectors of the low-order
-          linear DMD operator.
+        ``R_low_order_eigvecs``: Matrix of right eigenvectors of approximating
+        low-order linear map.
 
-        ``L_low_order_eigvecs``: Matrix of left eigenvectors of the low-order
-          linear DMD operator.
+        ``L_low_order_eigvecs``: Matrix of left eigenvectors of approximating
+        low-order linear map.
 
-        ``correlation_mat_eigvals``: 1D array of eigenvalues of the 
-          correlation matrix.
+        ``correlation_mat_eigvals``: 1D array of eigenvalues of 
+        correlation matrix.
 
-        ``correlation_mat_eigvecs``: Matrix of eigenvectors of the 
-          correlation matrix.
+        ``correlation_mat_eigvecs``: Matrix of eigenvectors of 
+        correlation matrix.
 
-        ``correlation_mat``: Matrix whose elements are inner products of each
-          data vector with each other data vector.
+        ``correlation_mat``: Correlation matrix; elements are inner products of
+        data vectors with each other.
 
-        ``cross_correlation_mat``: Matrix whos elements are inner products of 
-          each data vector with each advanced data vector.  Going down rows,
-          the data vector changes; going across columns the advanced data
-          vector changes.
+        ``cross_correlation_mat``: Cross-correlation matrix; elements are inner
+        products of data vectors with data vectors advanced in time. Going down
+        rows, the data vector changes; going across columns the advanced data
+        vector changes.
    
     This uses the method of snapshots, which is faster than the direct method
-    (in :py:func:`compute_DMD_matrices_direct_method`)
-    when the ``vecs`` has more rows than columns (more elements in a vector
-    than number of vectors). However, it "squares" this matrix and its singular
+    (see :py:func:`compute_DMD_matrices_direct_method`) when ``vecs`` has more
+    rows than columns, i.e., when there are more elements in a vector than
+    there are vectors. However, it "squares" this matrix and its singular
     values, making it slightly less accurate than the direct method."""
     if _parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
@@ -152,66 +155,62 @@ def compute_DMD_matrices_snaps_method(
 def compute_DMD_matrices_direct_method(
     vecs, mode_indices, adv_vecs=None, inner_product_weights=None, atol=1e-13,
     rtol=None, return_all=False):
-    """Dynamic Mode Decomposition/Koopman Mode Decomposition with data in a
-    matrix, using a direct method.
+    """Computes DMD modes using data stored in matrices, using direct method. 
 
     Args:
-        ``vecs``: Matrix with vectors as columns.
-    
-        ``mode_indices``: List of mode numbers, ``range(10)`` or ``[3, 0, 5]``.
-    
-    Kwargs:
-        ``adv_vecs``: Matrix with ``vecs`` advanced in time as columns.
-            If not provided, then it is assumed that the vectors are a 
-            sequential time-series. Thus ``vecs`` becomes ``vecs[:-1]`` and
-            ``adv_vecs`` becomes ``vecs[1:]``.
-            
-        ``inner_product_weights``: 1D array or matrix of inner product weights.
-            It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
+        ``vecs``: Matrix whose columns are data vectors.
 
-        ``atol``: Level below which DMD eigenvalues are truncated.
+        ``mode_indices``: List of indices describing which modes to compute.
+        Examples are ``range(10)`` or ``[3, 0, 6, 8]``. 
+   
+    Kwargs:
+        ``adv_vecs``: Matrix whose columns are data vectors advanced in time.
+        If not provided, then it is assumed that the vectors describe a
+        sequential time-series. Thus ``vecs`` becomes ``vecs[:, :-1]`` and
+        ``adv_vecs`` becomes ``vecs[:, 1:]``.
+
+        ``inner_product_weights``: 1D array or matrix of inner product weights.
+        Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
+        
+        ``atol``: Level below which eigenvalues of correlation matrix are 
+        truncated.
  
         ``rtol``: Maximum relative difference between largest and smallest 
-            DMD eigenvalues.  Smaller ones are truncated.
+        eigenvalues of correlation matrix.  Smaller ones are truncated.
 
         ``return_all``: Return more objects, see below. Default is false.
-
+ 
     Returns:
-        ``exact_modes``: Matrix with requested exact DMD modes as columns.
 
-        ``proj_modes``: Matrix with requested projected DMD modes as columns.
+        ``exact_modes``: Matrix whose columns are exact DMD modes.
 
-        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on a
-            projection of the first data vector.
+        ``proj_modes``: Matrix whose columns are projected DMD modes.
 
-        ``eigvals``: 1D array of DMD eigenvalues.
-        
+        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on 
+        projection of first data vector.
+
+        ``eigvals``: 1D array of eigenvalues of approximating low-order linear
+        map (DMD eigenvalues).
+                
         If ``return_all`` is true, also returns:
         
-        ``R_low_order_eigvecs``: Matrix of right eigenvectors of the low-order
-            linear DMD operator.
+        ``R_low_order_eigvecs``: Matrix of right eigenvectors of approximating
+        low-order linear map.
 
-        ``L_low_order_eigvecs``: Matrix of left eigenvectors of the low-order
-            linear DMD operator.
+        ``L_low_order_eigvecs``: Matrix of left eigenvectors of approximating
+        low-order linear map.
 
-        ``correlation_mat_eigvals``: 1D array of eigenvalues of the 
-            correlation matrix.
+        ``correlation_mat_eigvals``: 1D array of eigenvalues of correlation
+        matrix, which are the squares of the singular values of the data matrix 
 
-        ``correlation_mat_eigvecs``: Matrix of eigenvectors of the 
-            correlation matrix.
+        ``correlation_mat_eigvecs``: Matrix of eigenvectors of correlation
+        matrix, which are also the right singular vectors of the data matrix.
 
-        ``correlation_mat``: Matrix whose elements are inner products of each
-            data vector with each other data vector.
-
-        ``cross_correlation_mat``: Matrix whos elements are inner products of 
-            each data vector with each advanced data vector.  Going down rows,
-            the data vector changes; going across columns the advanced data
-            vector changes.
-        
     This method does not square the matrix of vectors as in the method of
-    snapshots (:py:func:`compute_DMD_matrices_snaps_method`). It's slightly 
-    more accurate, but slower when the number of elements in a vector is 
-    more than the number of vectors (more rows than columns in ``vecs``).
+    snapshots (:py:func:`compute_DMD_matrices_snaps_method`). It's slightly
+    more accurate, but slower when the number of elements in a vector is more
+    than the number of vectors, i.e.,  when ``vecs`` has more rows than
+    columns. 
     """
     if _parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
@@ -254,13 +253,6 @@ def compute_DMD_matrices_direct_method(
             (correlation_mat_eigvals_sqrt_inv * correlation_mat_eigvecs.H * \
             correlation_mat[:, 1:], last_col), axis=1)) * \
             correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv
-
-        # If returning full set of data, compute cross-correlation mat
-        # explicitly
-        if return_all:
-            cross_correlation_mat = np.concatenate(
-                (correlation_mat[:, 1:], 
-                vecs_weighted[:, :-1].H * vecs_weighted[:, -1]), axis=1)
     else: 
         if vecs.shape != adv_vecs.shape:
             raise ValueError(('vecs and adv_vecs are not the same shape.'))
@@ -271,16 +263,7 @@ def compute_DMD_matrices_direct_method(
         low_order_linear_map = (
             U.H * adv_vecs_weighted * 
             correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv)
-
-        # If returning full set of data, compute correlation mat and cross-
-        # correlation mat explicitly
-        if return_all:
-            correlation_mat = (
-                correlation_mat_eigvecs * 
-                np.mat(np.diag(correlation_mat_eigvals)) * 
-                correlation_mat_eigvecs.H)
-            cross_correlation_mat = vecs_weighted.H * adv_vecs_weighted
-
+        
     # Compute eigendecomposition of low-order linear map.
     eigvals, R_low_order_eigvecs, L_low_order_eigvecs =\
         util.eig_biorthog(low_order_linear_map, scale_choice='left')
@@ -315,7 +298,7 @@ def compute_DMD_matrices_direct_method(
         return (
             exact_modes, proj_modes, spectral_coeffs, eigvals,
             R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
-            correlation_mat_eigvecs, correlation_mat, cross_correlation_mat)
+            correlation_mat_eigvecs)
     else:
         return exact_modes, proj_modes, eigvals, spectral_coeffs
 

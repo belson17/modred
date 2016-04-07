@@ -12,45 +12,47 @@ _parallel = parallel_default_instance
 def compute_BPOD_matrices(
     direct_vecs, adjoint_vecs, direct_mode_indices, adjoint_mode_indices,
     inner_product_weights=None, atol=1e-13, rtol=None, return_all=False):
-    """Computes BPOD modes with data in a matrix.
+    """Computes BPOD modes using data stored in matrices, using method of
+    snapshots.
         
     Args:
-        ``direct_vecs``: Matrix with direct data vectors as columns (:math:`X`).
+        ``direct_vecs``: Matrix whose columns are direct data vectors 
+        (:math:`X`).
     
-        ``adjoint_vecs``: Matrix with adjoint data vectors as columns 
-          (:math:`Y`).
+        ``adjoint_vecs``: Matrix whose columns are adjoint data vectors 
+        (:math:`Y`).
 
-        ``direct_mode_indices``: List of direct mode indices to compute. 
-          Examples are ``range(10)`` or ``[3, 0, 6, 8]``. 
+        ``direct_mode_indices``: List of indices describing which direct modes
+        to compute.  Examples are ``range(10)`` or ``[3, 0, 6, 8]``. 
 
-        ``adjoint_mode_indices``: List of adjoint mode indices to compute. 
-          Examples are ``range(10)`` or ``[3, 0, 6, 8]``. 
+        ``adjoint_mode_indices``: List of indices describing which adjoint
+        modes to compute.  Examples are ``range(10)`` or ``[3, 0, 6, 8]``. 
 
     Kwargs:
         ``inner_product_weights``: 1D array or matrix of inner product weights.
-            It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
+        Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
         
-        ``return_all``: Return more objects, see below. Default is false.
-
         ``atol``: Level below which Hankel singular values are truncated.
  
         ``rtol``: Maximum relative difference between largest and smallest 
-            Hankel eigenvalues.  Smaller ones are truncated.
+        Hankel singular values.  Smaller ones are truncated.
+
+        ``return_all``: Return more objects; see below. Default is false.
         
     Returns:
-        ``direct_modes``: Matrix with direct modes as columns.
+        ``direct_modes``: Matrix whose columns are direct modes.
         
-        ``adjoint_modes``: Matrix with adjoint modes as columns.
+        ``adjoint_modes``: Matrix whose columns are adjoint modes.
 
-        ``sing_vals``: 1D array of singular values of Hankel mat (:math:`E`).
+        ``sing_vals``: 1D array of Hankel singular values (:math:`E`).
         
         If ``return_all`` is true, then also returns:
         
-        ``L_sing_vecs``: Matrix of left singular vectors of Hankel mat 
-        (:math:`U`).
+        ``L_sing_vecs``: Matrix whose columns are left singular vectors of
+        Hankel matrix (:math:`U`).
     
-        ``R_sing_vecs``: Matrix of right singular vectors of Hankel mat
-        (:math:`V`).
+        ``R_sing_vecs``: Matrix whose columns are right singular vectors of
+        Hankel matrix (:math:`V`).
 
         ``Hankel_mat``: Hankel matrix (:math:`Y^* W X`).
         
