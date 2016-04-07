@@ -69,7 +69,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
                 np.allclose(-true_col, test_col, rtol=rtol, atol=atol))
 
     def _helper_check_decomp(
-        self, DMD_method, vecs, mode_indices, inner_product, 
+        self, method_type, vecs, mode_indices, inner_product, 
         inner_product_weights, rtol, atol, adv_vecs=None):
 
         # Compute reference values for testing DMD computation
@@ -81,13 +81,24 @@ class TestDMDArraysFunctions(unittest.TestCase):
             vecs, inner_product, adv_vecs=adv_vecs))
  
         # Compute DMD using modred method of choice
-        (modes_exact, modes_proj, spectral_coeffs, eigvals, 
-            R_low_order_eigvecs, L_low_order_eigvecs,
-            correlation_mat_eigvals, correlation_mat_eigvecs, correlation_mat,
-            cross_correlation_mat) = DMD_method(
-            vecs, mode_indices, adv_vecs=adv_vecs,
-            inner_product_weights=inner_product_weights, return_all=True)
-        
+        if method_type == 'snaps':
+            (modes_exact, modes_proj, spectral_coeffs, eigvals, 
+                R_low_order_eigvecs, L_low_order_eigvecs,
+                correlation_mat_eigvals, correlation_mat_eigvecs, 
+                correlation_mat, cross_correlation_mat) = (
+                compute_DMD_matrices_snaps_method(
+                vecs, mode_indices, adv_vecs=adv_vecs,
+                inner_product_weights=inner_product_weights, return_all=True))
+        elif method_type == 'direct':
+            (modes_exact, modes_proj, spectral_coeffs, eigvals, 
+                R_low_order_eigvecs, L_low_order_eigvecs,
+                correlation_mat_eigvals, correlation_mat_eigvecs) = (
+                compute_DMD_matrices_direct_method(
+                vecs, mode_indices, adv_vecs=adv_vecs,
+                inner_product_weights=inner_product_weights, return_all=True))
+        else:
+            raise ValueError('Invalid DMD matrix method.')
+
         # Compare values to reference values, allowing for sign differences in
         # some cases.  For the low-order eigenvectors, check that the elements
         # differ at most by a sign, as the eigenvectors may vary by sign even
@@ -119,11 +130,12 @@ class TestDMDArraysFunctions(unittest.TestCase):
         self._helper_test_mat_to_sign(
             correlation_mat_eigvecs, correlation_mat_eigvecs_true, 
             rtol=rtol, atol=atol)
-        np.testing.assert_allclose(
-            correlation_mat, correlation_mat_true, rtol=rtol, atol=atol)
-        np.testing.assert_allclose(
-            cross_correlation_mat, cross_correlation_mat_true, 
-            rtol=rtol, atol=atol)
+        if method_type == 'snaps':
+            np.testing.assert_allclose(
+                correlation_mat, correlation_mat_true, rtol=rtol, atol=atol)
+            np.testing.assert_allclose(
+                cross_correlation_mat, cross_correlation_mat_true, 
+                rtol=rtol, atol=atol)
 
     def test_all(self):
         rtol = 1e-8
@@ -144,14 +156,12 @@ class TestDMDArraysFunctions(unittest.TestCase):
 
             # Test DMD for a sequential dataset, method of snapshots
             self._helper_check_decomp(
-                compute_DMD_matrices_snaps_method,
-                vecs, mode_indices, IP, weights, rtol, atol,
+                'snaps', vecs, mode_indices, IP, weights, rtol, atol,
                 adv_vecs=None) 
             
             # Test DMD for a sequential dataset, direct method
             self._helper_check_decomp(
-                compute_DMD_matrices_direct_method,
-                vecs, mode_indices, IP, weights, rtol, atol,
+                'direct', vecs, mode_indices, IP, weights, rtol, atol,
                 adv_vecs=None) 
             
             # Generate data for a non-sequential dataset
@@ -159,14 +169,12 @@ class TestDMDArraysFunctions(unittest.TestCase):
 
             # Test DMD for a sequential dataset, method of snapshots
             self._helper_check_decomp(
-                compute_DMD_matrices_snaps_method,
-                vecs, mode_indices, IP, weights, rtol, atol,
+                'snaps', vecs, mode_indices, IP, weights, rtol, atol,
                 adv_vecs=adv_vecs) 
             
             # Test DMD for a sequential dataset, direct method
             self._helper_check_decomp(
-                compute_DMD_matrices_direct_method,
-                vecs, mode_indices, IP, weights, rtol, atol,
+                'direct', vecs, mode_indices, IP, weights, rtol, atol,
                 adv_vecs=adv_vecs) 
 
 
