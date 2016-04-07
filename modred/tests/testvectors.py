@@ -1,18 +1,17 @@
 #!/usr/bin/env python
 """Test vectors module"""
 from __future__ import division
-
 import unittest
 import os
 from os.path import join
 from shutil import rmtree
-import numpy as np
 
+import numpy as np
 
 import modred.parallel as parallel_mod
 parallel = parallel_mod.parallel_default_instance
-
 import modred.vectors as V
+
 
 @unittest.skipIf(parallel.is_distributed(), 'np. need to test in parallel')
 class TestVectors(unittest.TestCase):
@@ -111,8 +110,6 @@ class TestVectors(unittest.TestCase):
             self.assertNotEqual(vec_handle1, vec_handle3)
             self.assertNotEqual(vec_handle1, vec_handle4)
             
-        
-        
     def test_IP_trapz(self):
         """Test trapezoidal rule inner product for 2nd-order convergence"""
         # Known inner product of x**2 + 1.2y**2 and x**2 over interval
@@ -133,7 +130,6 @@ class TestVectors(unittest.TestCase):
         convergence = (np.log(ip_error[1]) - np.log(ip_error[0]))/ \
             (np.log(num_points_list[1]) - np.log(num_points_list[0]))
         self.assertTrue(convergence < -1.9)
-                
 
 
 if __name__ == '__main__':

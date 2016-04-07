@@ -9,6 +9,7 @@ from future.builtins import object
 import numpy as np
 import matplotlib.pyplot as PLT
 
+
 class Scaling(object):
     """Struct for each case"""
     def __init__(self):
@@ -20,6 +21,7 @@ class Scaling(object):
         self.recvs = 0
         self.barriers = 0
         self.workers = 0
+
 
 def lin():
     """Scaling of lin_combine on lonestar, max procs/node (12)"""
@@ -155,7 +157,6 @@ def lin():
     s.workers = 240
     cases.append(s)
 
-
     s = Scaling()
     s.total = 18944.590
     s.loads = 2543.070
@@ -165,7 +166,6 @@ def lin():
     s.barriers = 6553.161
     s.workers = 288
     cases.append(s)
-    
     
     workers = np.array([c.workers for c in cases])
     
@@ -200,7 +200,6 @@ def lin():
             s.workers, s.total, s.loads, s.loads/s.total, (s.sends+s.recvs), 
             (s.sends+s.recvs)/s.total, s.barriers, s.barriers/s.total))
     
-    
     # Time spent breakdown
     """
     PLT.figure()
@@ -228,9 +227,6 @@ def lin():
     PLT.savefig('lin_combine_time_n1.eps')
     """
     PLT.show()
-    
-
-    
 
 def ips():
     """
@@ -310,7 +306,6 @@ def ips():
     s.workers = 192
     cases.append(s)
     
-    
     s = Scaling()
     s.total = 33431.981
     s.loads = 1267.041
@@ -319,7 +314,6 @@ def ips():
     s.barriers = 5608.543
     s.workers = 288
     cases.append(s)
-    
     
     workers = np.array([c.workers for c in cases])
     
@@ -337,7 +331,8 @@ def ips():
     width = .4
     PLT.hold(True)
     #PLT.plot(workers, workers,'k-')
-    PLT.plot(workers, [cases[0].total*cases[0].workers/c.total for c in cases],'ro-')
+    PLT.plot(
+        workers, [cases[0].total*cases[0].workers/c.total for c in cases],'ro-')
     PLT.xlabel('Workers')
     PLT.ylabel('Speedup')
     PLT.grid(True)
@@ -353,7 +348,6 @@ def ips():
             s.workers, s.total, s.loads, s.loads/s.total, s.ips, s.ips/s.total,
             s.sendrecvs, s.sendrecvs/s.total, s.barriers, s.barriers/s.total))
     
-    
     # Time spent breakdown
     """
     PLT.figure()
@@ -363,23 +357,24 @@ def ips():
     for c in cases:
         bottom = 0
         top = c.sends + c.recvs + c.barriers
-        PLT.bar(c.workers-width/2, top-bottom, width=width,bottom=bottom,color='r')
+        PLT.bar(
+            c.workers-width/2, top-bottom, width=width,bottom=bottom,color='r')
         
         bottom = top
         top += c.loads
-        PLT.bar(c.workers-width/2, top-bottom, width=width,bottom=bottom,color='g')
+        PLT.bar(
+            c.workers-width/2, top-bottom, width=width,bottom=bottom,color='g')
         
         bottom = top
         top = c.total
-        PLT.bar(c.workers-width/2, top-bottom, width=width,bottom=bottom,color='k')
+        PLT.bar(
+            c.workers-width/2, top-bottom, width=width,bottom=bottom,color='k')
     PLT.legend(['Linear','Measured','Send/Recvs','Loads','Other'])
     PLT.xlabel('Workers')
     PLT.ylabel('Time [s]')
     PLT.savefig('lin_combine_time_n1.eps')
     """
     PLT.show()
-    
-    
     
     
 if __name__ == '__main__':

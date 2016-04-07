@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 """Test util module"""
 from future.builtins import range
-
 import unittest
 # For deleting directories and their contents
 from shutil import rmtree 
 import os
 from os.path import join
+
 import numpy as np
 
 import modred.parallel as parallel_mod
@@ -32,7 +32,6 @@ class TestUtil(unittest.TestCase):
         if _parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
         _parallel.barrier()
-        
         
     @unittest.skipIf(
         _parallel.is_distributed(), 'Only save/load matrices in serial')
@@ -66,7 +65,6 @@ class TestUtil(unittest.TestCase):
                             if squeeze:
                                 mat_read = np.squeeze(mat_read)
                             np.testing.assert_allclose(mat_read, mat)#,rtol=tol)
-                          
     
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_svd(self):
@@ -137,7 +135,6 @@ class TestUtil(unittest.TestCase):
                             self.assertTrue(
                                 abs(sing_vals[0]) / abs(sing_vals[-1]) > rtol)
     
-
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_eigh(self):
         # Set tolerance for test of eigval/eigvec properties.  Value necessary
@@ -231,7 +228,6 @@ class TestUtil(unittest.TestCase):
                     if atol:
                         self.assertTrue(abs(eigvals).min() > atol)
 
-
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_eig_biorthog(self):
         test_tol = 1e-10
@@ -275,7 +271,6 @@ class TestUtil(unittest.TestCase):
         # Check that error is raised for invalid scale choice
         self.assertRaises(
             ValueError, util.eig_biorthog, mat, **{'scale_choice':'invalid'})
-
         
     @unittest.skipIf(_parallel.is_distributed(), 'Only load data in serial')
     def test_load_impulse_outputs(self):
@@ -328,7 +323,6 @@ class TestUtil(unittest.TestCase):
         X_computed_mats = util.solve_Lyapunov_iterative(np.mat(A), np.mat(Q))
         np.testing.assert_allclose(X_computed_mats, X_true)    
     
-    
     @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
     def test_balanced_truncation(self):
         """Test balanced system is close to original."""
@@ -342,7 +336,6 @@ class TestUtil(unittest.TestCase):
                     yr = util.impulse(Ar, Br, Cr, num_time_steps=num_time_steps)
                     np.testing.assert_allclose(yr, y, rtol=1e-5)
     
-    
     @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
     def test_drss(self):
         """Test drss gives correct mat dimensions and stable dynamics."""
@@ -355,22 +348,21 @@ class TestUtil(unittest.TestCase):
                     self.assertEqual(C.shape, (num_outputs, num_states))
                     self.assertTrue(np.amax(np.abs(np.linalg.eig(A)[0])) < 1)
     
-    
     @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
     def test_lsim(self):
         """Test that lsim has right shapes, does not test result"""
         for num_states in [1, 4, 9]:
             for num_inputs in [1, 2, 4]:
                 for num_outputs in [1, 2, 3, 5]:
-                    #print 'num_states %d, num_inputs %d, num_outputs %d'%(num_states, num_inputs, num_outputs)
+                    #print (
+                    #    'num_states %d, num_inputs %d, 
+                    #    num_outputs %d'%(num_states, num_inputs, num_outputs)
                     A, B, C = util.drss(num_states, num_inputs, num_outputs)
                     #print 'Shape of C is',C.shape
                     nt = 5
                     inputs = np.random.random((nt, num_inputs))
                     outputs = util.lsim(A, B, C, inputs)
                     self.assertEqual(outputs.shape, (nt, num_outputs))
-                    
-                    
 
     @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
     def test_impulse(self):
@@ -392,7 +384,6 @@ class TestUtil(unittest.TestCase):
                     outputs = util.impulse(
                         A, B, C, num_time_steps=num_time_steps)
                     np.testing.assert_allclose(outputs, outputs_true)
-                    
 
     def test_Hankel(self):
         """Test forming Hankel matrix from first row and last column."""
@@ -410,6 +401,7 @@ class TestUtil(unittest.TestCase):
                             Hankel_true[r,c] = last_col[r+c-num_cols+1]
                 Hankel_comp = util.Hankel(first_row, last_col)
                 np.testing.assert_equal(Hankel_comp, Hankel_true)
+
 
 if __name__ == '__main__':
     unittest.main()

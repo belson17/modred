@@ -5,7 +5,6 @@ Examples are used with ../examples/Makefile."""
 from __future__ import absolute_import
 from past.builtins import execfile
 from future.builtins import range
-
 import unittest
 import os, sys
 from os.path import join
@@ -13,6 +12,7 @@ from shutil import rmtree
 
 import modred.parallel as parallel_mod
 _parallel = parallel_mod.parallel_default_instance
+
 
 # Directory we start from, absolute path.
 running_dir = os.getcwd()
@@ -46,6 +46,7 @@ def printing(on):
         (sys.stdout,sys.stderr,sys.stdin,sys.__stdout__,sys.__stderr__, \
         sys.__stdin__) = old_printers
 """     
+
 
 class TestExamples(unittest.TestCase):
     def setUp(self):
@@ -99,8 +100,6 @@ class TestExamples(unittest.TestCase):
         time = B.symmetric_inner_product_mat(num_states, num_rows, 
             max_vecs_per_node, verbosity=0)
         self.assertEqual(type(time), float)
-        
-        
         
 
 if __name__ == '__main__':

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 """Helper script for looking at the scaling and profiling in parallel.
 
 Give this script a number of processors and optionally a number of lines of
@@ -7,9 +6,9 @@ stats to print, e.g. ``python load_prof_parallel.py 24 40``
 """
 from __future__ import print_function
 from future.builtins import range
-
 import sys
 import pstats as P
+
 
 prof_path = 'lincomb_r%d.prof'
 

@@ -1,7 +1,7 @@
 """ This module collects all of the tests and runs them"""
-
 import os
 import unittest
+
 
 # Check if we have discover function, if not use unittest2 
 # This might be compatible with some python versions < 2.7
@@ -19,6 +19,7 @@ def run():
         #, top_level_dir='../')
     unittest.TextTestRunner(buffer=True).run(test_suites)
     #parallel.barrier()
+
 
 if __name__ == '__main__':
     run()

@@ -2,17 +2,15 @@
 """Test era module"""
 from __future__ import division
 from future.builtins import range
-
 import unittest
 import os
 from os.path import join
 from shutil import rmtree
-import numpy as np
 
+import numpy as np
 
 import modred.parallel as parallel_mod
 _parallel = parallel_mod.parallel_default_instance
-
 from modred import era
 from modred import util
 
@@ -36,9 +34,9 @@ def make_time_steps(num_steps, interval):
     time_steps[1::2] = 1 + interval*np.arange(num_steps/2)
     return time_steps
 
+
 @unittest.skipIf(_parallel.is_distributed(), 'Only test ERA in serial')
 class testERA(unittest.TestCase):
-    
     def setUp(self):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
@@ -50,7 +48,6 @@ class testERA(unittest.TestCase):
     def tearDown(self):
         """Deletes all of the matrices created by the tests"""
         rmtree(self.test_dir, ignore_errors=True)
-    
     
     #@unittest.skip('Testing others')
     def test_make_sampled_format(self):
@@ -91,7 +88,6 @@ class testERA(unittest.TestCase):
                     time_values[num_time_steps/2] = -1
                     self.assertRaises(ValueError, era.make_sampled_format, 
                         time_values, outputs)
-    
                         
     #@unittest.skip("testing others")
     def test_assemble_Hankel(self):
@@ -139,8 +135,6 @@ class testERA(unittest.TestCase):
                                     col*num_inputs:(col+1)*num_inputs],
                                 C*(A**time_steps[(row+col)*2 + 1])*B)
 
-    
-    
     #@unittest.skip('testing others')
     def test_compute_model(self):
         """
@@ -183,7 +177,8 @@ class testERA(unittest.TestCase):
                     # Flatten vecs into 2D X and Y mats: 
                     # [B AB A**PB A**(P+1)B ...]
                     #direct_vecs_flat = np.mat(
-                    #    direct_vecs.swapaxes(0,1).reshape((num_states_model,-1)))
+                    #    direct_vecs.swapaxes(0,1).reshape(
+                    #    (num_states_model,-1)))
                     
                     # Exact grammians from Lyapunov eqn solve
                     #gram_cont = util.solve_Lyapunov(A, B*B.H)
@@ -228,14 +223,15 @@ class testERA(unittest.TestCase):
                             PLT.legend(['ROM','Plant','Dense plant'])
                         PLT.show()
                     """
-                    np.testing.assert_allclose(Markovs_model, Markovs, rtol=0.5, 
-                        atol=0.5)
+                    np.testing.assert_allclose(
+                        Markovs_model, Markovs, rtol=0.5, atol=0.5)
                     np.testing.assert_allclose(
                         util.load_array_text(A_path_computed), A)
                     np.testing.assert_allclose(
                         util.load_array_text(B_path_computed), B)
                     np.testing.assert_allclose(
                         util.load_array_text(C_path_computed), C)
+
         
 if __name__ == '__main__':
     unittest.main()

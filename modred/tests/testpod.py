@@ -2,18 +2,16 @@
 """Test POD module"""
 from __future__ import division
 from future.builtins import range
-
 import unittest
 import os
-import numpy as np
 from os.path import join
 from shutil import rmtree
 import copy
 
+import numpy as np
 
 import modred.parallel as parallel_mod
 _parallel = parallel_mod.parallel_default_instance
-
 from modred.pod import *
 from modred.vectorspace import *
 import modred.vectors as V
@@ -26,7 +24,6 @@ class TestPODArraysFunctions(unittest.TestCase):
         self.mode_indices = [2, 4, 6, 3]
         self.num_vecs = 10
         self.num_states = 30
-
 
     def test_compute_modes(self):
         ws = np.identity(self.num_states)
@@ -98,12 +95,10 @@ class TestPODHandles(unittest.TestCase):
         self.my_POD = PODHandles(np.vdot, verbosity=0)
         _parallel.barrier()
 
-
     def tearDown(self):
         _parallel.barrier()
         _parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
         _parallel.barrier()
-                          
     
     def test_puts_gets(self):
         test_dir = 'DELETE_ME_test_files_pod'
@@ -140,7 +135,6 @@ class TestPODHandles(unittest.TestCase):
             correlation_mat_true)
         np.testing.assert_allclose(POD_load.eigvecs, eigvecs_true)
         np.testing.assert_allclose(POD_load.eigvals, eigvals_true)
-     
      
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
@@ -189,7 +183,6 @@ class TestPODHandles(unittest.TestCase):
             _parallel.get_num_procs()
         for k,v in util.get_data_members(my_POD).items():
             self.assertEqual(v, data_members_modified[k])
-            
         
     def test_compute_decomp(self):
         """Test computation of the correlation mat and SVD matrices."""
@@ -208,7 +201,6 @@ class TestPODHandles(unittest.TestCase):
             self.eigvecs_true, rtol=tol)
         np.testing.assert_allclose(eigvals_returned, 
             self.eigvals_true, rtol=tol)
-
 
     def test_compute_modes(self):
         mode_path = join(self.test_dir, 'mode_%03d.txt')
@@ -236,7 +228,6 @@ class TestPODHandles(unittest.TestCase):
                     self.assertAlmostEqual(IP, 0.)
                 else:
                     self.assertAlmostEqual(IP, 1.)
-
 
     def test_compute_proj_coeffs(self):
         rtol = 1e-10

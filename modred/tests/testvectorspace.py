@@ -2,7 +2,6 @@
 """Test vectorspace module"""
 from __future__ import division
 from future.builtins import range
-
 import os
 from os.path import join
 from shutil import rmtree
@@ -10,11 +9,11 @@ import copy
 import random
 #import inspect #makes it possible to find information about a function
 import unittest
+
 import numpy as np
 
 import modred.parallel as parallel_mod
 _parallel = parallel_mod.parallel_default_instance
-
 from modred.vectorspace import *
 import modred.vectors as V
 import modred.util
@@ -30,7 +29,8 @@ class TestVectorSpaceHandles(unittest.TestCase):
             os.mkdir(self.test_dir)
 
         self.max_vecs_per_proc = 10
-        self.total_num_vecs_in_mem = _parallel.get_num_procs() * self.max_vecs_per_proc
+        self.total_num_vecs_in_mem = (
+            _parallel.get_num_procs() * self.max_vecs_per_proc)
 
         self.my_vec_ops = VectorSpaceHandles(inner_product=np.vdot, verbosity=0)
         self.my_vec_ops.max_vecs_per_proc = self.max_vecs_per_proc
@@ -44,12 +44,10 @@ class TestVectorSpaceHandles(unittest.TestCase):
             'verbosity': 0, 'print_interval': 10, 'prev_print_time': 0.}        
         _parallel.barrier()
 
-
     def tearDown(self):
         _parallel.barrier()
         _parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
         _parallel.barrier()
- 
  
     #@unittest.skip('testing other things')
     def test_init(self):
@@ -66,8 +64,6 @@ class TestVectorSpaceHandles(unittest.TestCase):
         data_members['max_vecs_per_proc'] = max_vecs_per_node * \
             _parallel.get_num_nodes() // _parallel.get_num_procs()
         self.assertEqual(util.get_data_members(my_VS), data_members)
-
-        
 
     #@unittest.skip('testing other things')
     def test_sanity_check(self):
@@ -113,8 +109,6 @@ class TestVectorSpaceHandles(unittest.TestCase):
         self.assertRaises(ValueError, my_VS.sanity_check, 
             V.VecHandleInMemory(my_sanity_add_vec))
                 
-        
-        
     def generate_vecs_modes(self, num_states, num_vecs, num_modes):
         """Generates random vecs and finds the modes. 
         
@@ -132,8 +126,6 @@ class TestVectorSpaceHandles(unittest.TestCase):
         vec_array = np.mat(np.random.random((num_states, num_vecs)))
         mode_array = vec_array*build_coeff_mat
         return vec_array, mode_indices, build_coeff_mat, mode_array 
-        
-    
     
     #@unittest.skip('testing other things')
     def test_lin_combine(self):
@@ -209,8 +201,6 @@ class TestVectorSpaceHandles(unittest.TestCase):
        
         _parallel.barrier()
     
-    
-    
     #@unittest.skip('testing others')
     @unittest.skipIf(_parallel.is_distributed(), 'Serial only')
     def test_compute_inner_product_mat_types(self):
@@ -253,8 +243,6 @@ class TestVectorSpaceHandles(unittest.TestCase):
                     row_vec_handles)
             self.assertEqual(inner_product_mat.dtype, dtype)
             self.assertEqual(symm_inner_product_mat.dtype, dtype)
-
-
 
     #@unittest.skip('testing other things')
     def test_compute_inner_product_mats(self):
@@ -310,7 +298,6 @@ class TestVectorSpaceHandles(unittest.TestCase):
                         row_vec_handles)
                 row_vecs = [row_vec_array[:,i] for i in range(num_row_vecs)]
                 np.testing.assert_allclose(product_computed, product_true)
-                
                 
                         
 if __name__=='__main__':

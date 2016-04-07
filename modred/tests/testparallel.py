@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """ Test the parallel module"""
 from __future__ import print_function
-
 import unittest
 import copy
 import os
@@ -9,6 +8,7 @@ from os.path import join
 
 import modred.parallel as parallel_mod
 parallel = parallel_mod.parallel_default_instance
+
 
 try: 
     from mpi4py import MPI
@@ -21,7 +21,6 @@ except ImportError:
 
 
 class TestParallel(unittest.TestCase):
-
     def setUp(self):
         try:
             from mpi4py import MPI
@@ -33,11 +32,9 @@ class TestParallel(unittest.TestCase):
             self.rank = 0
         self.my_parallel = parallel_mod.Parallel()
         
-        
     def tearDown(self):
         if distributed:
             MPI.COMM_WORLD.Barrier()
-        
         
     def test_sync(self):
         """
@@ -46,13 +43,12 @@ class TestParallel(unittest.TestCase):
         pass
         # not sure how to test this
         
-        
     def test_init(self):
         """Test that the MPI object uses arguments correctly.
         """
-        self.assertEqual(self.my_parallel._num_MPI_workers, self.num_MPI_workers)
+        self.assertEqual(
+            self.my_parallel._num_MPI_workers, self.num_MPI_workers)
         self.assertEqual(self.my_parallel._rank, self.rank)
-             
              
     def test_find_assignments(self):
         """Tests that the correct processor assignments are determined
@@ -106,7 +102,6 @@ class TestParallel(unittest.TestCase):
         self.assertEqual(self.my_parallel.find_assignments(tasks, 
             task_weights=task_weights), correct_assignments)
         self.assertEqual(task_weights, copy_task_weights)
-
 
     def test_call_and_bcast(self):
         """Call a function on rank zero and bcast outputs to all MPI workers."""

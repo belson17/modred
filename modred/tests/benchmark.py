@@ -16,9 +16,12 @@ from shutil import rmtree
 import argparse
 import pickle
 import time as T
-import numpy as np
 import cProfile
+
+import numpy as np
+
 import modred as mr
+
 
 _parallel = mr.parallel_default_instance
 
@@ -60,7 +63,6 @@ def generate_vecs(vec_dir, num_states, vec_handles):
     
     _parallel.barrier()
 
-
 def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node, 
     verbosity=1):
     """
@@ -87,7 +89,6 @@ def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node,
 
     return total_time
     
-    
 def symmetric_inner_product_mat(num_states, num_vecs, max_vecs_per_node, 
     verbosity=1):
     """
@@ -108,7 +109,6 @@ def symmetric_inner_product_mat(num_states, num_vecs, max_vecs_per_node,
     prof.dump_stats('IP_symmetric_mat_r%d.prof'%_parallel.get_rank())
 
     return total_time
-
 
 def lin_combine(num_states, num_bases, num_products, max_vecs_per_node,
     verbosity=1):
@@ -139,12 +139,10 @@ def lin_combine(num_states, num_bases, num_products, max_vecs_per_node,
     prof.dump_stats('lincomb_r%d.prof'%_parallel.get_rank())
     return total_time
     
-    
 def clean_up():
     _parallel.barrier()
     if _parallel.is_rank_zero():
         rmtree(data_dir)
-
 
 def main():
     #method_to_test = 'lin_combine'

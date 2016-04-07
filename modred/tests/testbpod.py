@@ -3,18 +3,16 @@
 from __future__ import division
 from future.builtins import zip
 from future.builtins import range
-
 import unittest
 import copy
 import os
 from os.path import join
 from shutil import rmtree
-import numpy as np
 
+import numpy as np
 
 import modred.parallel as parallel_mod
 _parallel = parallel_mod.parallel_default_instance
-
 from modred.bpod import *
 from modred.vectorspace import *
 from modred import util
@@ -44,7 +42,6 @@ class TestBPODMatrices(unittest.TestCase):
         #    (self.num_states, self.num_direct_vec_handles))
         #self.adjoint_vecs = _parallel.call_and_bcast(np.random.random,
         #    (self.num_states, self.num_adjoint_vec_handles)) 
-        
         
     def test_compute_modes(self):
         """Test computing modes in serial and parallel."""
@@ -169,7 +166,7 @@ class TestBPODHandles(unittest.TestCase):
 
     def tearDown(self):
         _parallel.barrier()
-        _parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)       
+        _parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
         _parallel.barrier()
         
     def test_init(self):
@@ -292,7 +289,6 @@ class TestBPODHandles(unittest.TestCase):
             self.R_sing_vecs_true, rtol=tol, atol=tol)
         np.testing.assert_allclose(sing_vals_return[:num_sing_vals],
             self.sing_vals_true, rtol=tol, atol=tol)
-        
 
     #@unittest.skip('testing others')
     def test_compute_modes(self):
@@ -342,7 +338,6 @@ class TestBPODHandles(unittest.TestCase):
                     self.assertAlmostEqual(IP, 0., places=6)
                 else:
                     self.assertAlmostEqual(IP, 1., places=6)
-
  
     def test_compute_proj_coeffs(self):
         # Tests fail if tolerance is too tight, likely due to random nature of
@@ -367,7 +362,6 @@ class TestBPODHandles(unittest.TestCase):
         # Test values
         np.testing.assert_allclose(
             proj_coeffs, proj_coeffs_true, rtol=rtol, atol=atol)
-
 
     def test_compute_adj_proj_coeffs(self):
         # Tests fail if tolerance is too tight, likely due to random nature of
