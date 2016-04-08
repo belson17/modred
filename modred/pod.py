@@ -229,13 +229,13 @@ class PODHandles(object):
             eigvecs_src)
         
     def put_decomp(self, eigvals_dest, eigvecs_dest):
-        """Puts the decomposition matrices to destinations (file or memory).
+        """Puts the decomposition matrices in destinations (file or memory).
         
         Args:
-            ``eigvals_dest``: Destination to which to put eigenvalues of
+            ``eigvals_dest``: Destination in which to put eigenvalues of
             correlation matrix.
 
-            ``eigvecs_dest``: Destination to which to put the eigenvectors of
+            ``eigvecs_dest``: Destination in which to put the eigenvectors of
             correlation matrix.
         """
         # Don't check if rank is zero because the following methods do.

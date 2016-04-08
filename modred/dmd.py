@@ -393,22 +393,22 @@ class DMDHandles(object):
     def put_decomp(
         self, eigvals_dest, R_low_order_eigvecs_dest, L_low_order_eigvecs_dest,
         correlation_mat_eigvals_dest, correlation_mat_eigvecs_dest):
-        """Puts the decomposition matrices to destinations (file or memory).
+        """Puts the decomposition matrices in destinations (file or memory).
 
         Args:
-            ``eigvals_dest``: Destination to which to put eigenvalues of
+            ``eigvals_dest``: Destination in which to put eigenvalues of
             approximating low-order linear map (DMD eigenvalues).
 
-            ``R_low_order_eigvecs_dest``: Destination to which to put right
+            ``R_low_order_eigvecs_dest``: Destination in which to put right
             eigenvectors of approximating low-order linear map.
            
-            ``L_low_order_eigvecs_dest``: Destination to which to put left 
+            ``L_low_order_eigvecs_dest``: Destination in which to put left 
             eigenvectors of approximating low-order linear map.
             
-            ``correlation_mat_eigvals_dest``: Destination to which to put 
+            ``correlation_mat_eigvals_dest``: Destination in which to put 
             eigenvalues of correlation matrix.
 
-            ``correlation_mat_eigvecs_dest``: Destination to which to put 
+            ``correlation_mat_eigvecs_dest``: Destination in which to put 
             eigenvectors of correlation matrix.
         """
         # Don't check if rank is zero because the following methods do.

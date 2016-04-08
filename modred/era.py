@@ -14,25 +14,26 @@ def make_sampled_format(times, Markovs, dt_tol=1e-6):
     """Converts samples at [0 1 2 ...] into samples at [0 1 1 2 2 3 ...].
         
     Args:
-        ``times``: an array of time values or time steps.
+        ``times``: Array of time values or time step indices.
         
-        ``Markovs``: Array of Markov params w/indices [time, output, input].
-            ``Markovs[i]`` is the Markov parameter C A**i B.
+        ``Markovs``: Array of Markov parameters with indices [time, output,
+        input]. ``Markovs[i]`` is the Markov parameter :math:`C A^i B`.
     
     Kwargs:
         ``dt_tol``: Allowable deviation from uniform time steps.
     
     Returns:
-        ``time_steps``: Array of integer time steps, [0 1 1 2 2 3 ...].
+        ``time_steps``: Array of time step indices, [0 1 1 2 2 3 ...].
         
-        ``Markovs``: Output array at the time steps.
+        ``Markovs``: Output array at the time step indices.
         
-        ``dt``: The time interval between each time step.
+        ``dt``: Time interval between each time step.
     
-    Takes a series of data at times dt*[0 1 2 3 ...] and duplicates entries
-    so that the result is sampled at dt*[0 1 1 2 2 3 ...]. 
-    When the second format is used in ERA, the resulting model has a time step
-    of dt rather than 2*dt. 
+    Takes a series of data at times :math:`dt*[0 1 2 3 ...]` and duplicates
+    entries so that the result is sampled at :math:`dt*[0 1 1 2 2 3 ...]`.
+    When the second format is used in the eigensystem realization algorithm
+    (ERA), the resulting model has a time step of :math:`dt` rather than
+    :math:`2*dt`. 
     """
     num_time_steps, num_Markovs, num_inputs = Markovs.shape
     if num_time_steps != times.shape[0]:
@@ -53,45 +54,59 @@ def make_sampled_format(times, Markovs, dt_tol=1e-6):
     return time_steps_corr, Markovs_corr
 
 def compute_ERA_model(Markovs, num_states):
-    """Convenience function to find ERA A, B, and C matrices w/default settings.
+    """Convenience function to compute linear time-invariant (LTI)
+    reduced-order model (ROM) matrices A, B, and C using the eigensystem
+    realization algorithm (ERA) with default settings.
     
     Args:
-        ``Markovs``: Array of Markov params w/indices [time, output, input].
-            ``Markovs[i]`` is the Markov parameter C A**i B.
-            
-        ``num_states``: Number of states of model.
+        ``Markovs``: Array of Markov parameters with indices [time, output,
+        input]. ``Markovs[i]`` is the Markov parameter :math:`C A^i B`.
+                
+        ``num_states``: Number of states in reduced-order model.
     
     Returns:
-        ``A``: Reduced array/matrix.
-        ``B``: Reduced array/matrix.
-        ``C``: Reduced array/matrix.
+        ``A``: A matrix of reduced-order model.
+
+        ``B``: B matrix of reduced-order model.
+
+        ``C``: C matrix of reduced-order model.
     
     Usage::
      
       # Obtain ``Markovs`` array w/indicies [time, output, input]
       num_states = 20
       A, B, C = compute_ERA_model(Markovs, num_states)
-        
-    Markov params are defined as [CB, CAB, CA**PB, CA**(P+1)B, ...]
     
-    The functions :py:func:`util.load_signals` and 
-    :py:func:`util.load_multiple_signals` are often useful.
+    Notes:
+
+    - Markov parameters are defined as 
+      :math:`[CB, CAB, CA^PB, CA^(P+1)B, ...]`
+    
+    - The functions :py:func:`util.load_signals` and
+      :py:func:`util.load_multiple_signals` are often useful.
     """
     my_ERA = ERA()
     return my_ERA.compute_model(Markovs, num_states)
 
 
 class ERA(object):
-    """Forms ERA ROM for discrete-time system from impulse output data. 
+    """Eigensystem realization algorithm (ERA), implemented for discrete-time
+    systems.
     
     Kwargs:
-        ``put_mat``: Put matrix function. Default is save to text file.
+        ``put_mat``: Function to put a matrix out of modred, e.g., write it to
+        file.
     
-        ``mc``: Number of Markov parameters for controllable dim of Hankel mat.
+        ``mc``: Number of Markov parameters for controllable dimension of
+        Hankel matrix.
             
-        ``mo``: Number of Markov parameters for observable dim of Hankel mat.
-            
-        ``verbosity``: 0 prints almost nothing, 1 prints progress and warnings
+        ``mo``: Number of Markov parameters for observable dimension of Hankel
+        matrix.
+        
+        ``verbosity``: 1 prints progress and warnings, 0 prints almost nothing.
+
+    Computes reduced-order model (ROM) of a discrete-time system, using output
+    data from an impulse response. 
 
     Simple usage::
       
@@ -106,25 +121,26 @@ class ERA(object):
       myERA = ERA()
       myERA.compute_model(Markovs, 50)
       myERA.put_model('A.txt', 'B.txt', 'C.txt')
-    
-    Default values of ``mc`` and ``mo`` are equal and maximal
-    for a balanced model.
+   
+    Notes:
+
+    - Default values of ``mc`` and ``mo`` are equal and maximal for a balanced
+      model.
         
-    The Markov parameters are to be given in the time-sampled format:
-    dt*[0, 1, P, P+1, 2P, 2P+1, ... ]
+    - The Markov parameters are to be given in the time-sampled format:
+      :math:`dt*[0, 1, P, P+1, 2P, 2P+1, ... ]`
     
-    The special case where P=2 results in, 
-    dt*[0, 1, 2, 3, ... ], see :py:func:`make_sampled_format`.
+    - The special case where :math:`P=2` results in 
+      :math:`dt*[0, 1, 2, 3, ... ]`, see :py:func:`make_sampled_format`.
     
-    See convenience function :py:func:`compute_ERA_model`.
-    
-    The functions :py:func:`util.load_signals` and 
-    :py:func:`util.load_multiple_signals`
-    are often useful.
+    - The functions :py:func:`util.load_signals` and
+      :py:func:`util.load_multiple_signals` are often useful.
+
+    - See convenience function :py:func:`compute_ERA_model`.
     """
     def __init__(self, put_mat=util.save_array_text, mc=None, mo=None,
         verbosity=1):
-        """Constructor """
+        """Constructor"""
         self.put_mat = put_mat
         self.mc = mc
         self.mo = mo
@@ -145,31 +161,32 @@ class ERA(object):
         self.Markovs = None
     
     def compute_model(self, Markovs, num_states, mc=None, mo=None):
-        """Computes the A, B, and C LTI ROM matrices.
+        """Computes the A, B, and C matrices of the linear time-invariant (LTI)
+        reduced-order model (ROM).
 
         Args:
-            ``Markovs``: Array of Markov params w/indices [time, output, input] 
-                ``Markovs[i]`` is the Markov parameter C A**i B.
+            ``Markovs``: Array of Markov parameters with indices [time, output,
+            input]. ``Markovs[i]`` is the Markov parameter :math:`C A^i B`.
                 
-            ``num_states``: Number of states to be found for the model.
-            
+            ``num_states``: Number of states in reduced-order model.
             
         Kwargs:
-            ``mc``: Number of Markov parameters for controllable dimension.
+            ``mc``: Number of Markov parameters for controllable dimension of
+            Hankel matrix.
+            
+            ``mo``: Number of Markov parameters for observable dimension of
+            Hankel matrix.
         
-            ``mo``: Number of Markov parameters for observable dimension.
-                       Default is mc and mo equal and maximal for a balanced 
-                       model.
+        Assembles the Hankel matrices from self.Markovs and computes a singular
+        value decomposition. Uses the results to form the A, B, and C matrices.
         
-        Assembles the Hankel matrices from self.Markovs and takes SVD.
-        
-        Default values of ``mc`` and ``mo`` are equal and maximal
+        Note that the default values of ``mc`` and ``mo`` are equal and maximal
         for a balanced model.            
         
         Tip: For discrete time systems the impulse is applied over a time
-        interval dt and so has a time-integral 1*dt rather than 1. 
-        This means the reduced B matrix is "off" by a factor of dt. 
-        You can account for this by multiplying B by dt.
+        interval :math:`dt` and so has a time-integral :math:`1*dt` rather than
+        :math:`1`.  This means the reduced B matrix is "off" by a factor of
+        :math:`dt`.  You can account for this by multiplying B by :math:`dt`.
         """
         #SVD is ``L_sing_vecs*np.mat(np.diag(sing_vals))*\
         #    R_sing_vecs.H = Hankel_mat``
@@ -200,14 +217,15 @@ class ERA(object):
         return self.A, self.B, self.C
  
     def put_model(self, A_dest, B_dest, C_dest):
-        """Puts the A, B, and C LTI matrices to destinations.
+        """Puts the A, B, and C matrices of the linear time-invariant (LTI)
+        reduced-order model (ROM) in destinations (file or memory).
 
         Args:        
-            ``A_dest``: Destination of A matrix, arg for ``put_mat``.
+            ``A_dest``: Destination in which to put A matrix.
             
-            ``B_dest``: Destination of B matrix, arg for ``put_mat``.
+            ``B_dest``: Destination in which to put B matrix.
             
-            ``C_dest``: Destination of C matrix, arg for ``put_mat``.
+            ``C_dest``: Destination in which to put C matrix.
         """  
         self.put_mat(self.A, A_dest)
         self.put_mat(self.B, B_dest)
@@ -218,9 +236,27 @@ class ERA(object):
             print(B_dest)
             print(C_dest)
       
-    def put_decomp(self, Hankel_mat_dest, Hankel_mat2_dest, L_sing_vecs_dest, 
-        sing_vals_dest, R_sing_vecs_dest):
-        """Puts the decomposition and Hankel matrices to destinations."""
+    def put_decomp(
+        self, sing_vals_dest, L_sing_vecs_dest, R_sing_vecs_dest,
+        Hankel_mat_dest, Hankel_mat2_dest):
+        """Puts the decomposition matrices and Hankel matrices in destinations
+        (file or memory).
+       
+        Args:        
+            ``sing_vals_dest``: Destination in which to put Hankel singular
+            values.
+
+            ``L_sing_vecs_dest``: Destination in which to put left singular
+            vectors of Hankel matrix.
+            
+            ``R_sing_vecs_dest``: Destination in which to put right singular
+            vectors of Hankel matrix.
+            
+            ``Hankel_mat_dest``: Destination in which to put Hankel matrix.
+
+            ``Hankel_mat2_dest``: Destination in which to put second Hankel
+            matrix.
+        """
         self.put_mat(self.Hankel_mat, Hankel_mat_dest)
         self.put_mat(self.Hankel_mat2, Hankel_mat2_dest)
         self.put_mat(self.L_sing_vecs, L_sing_vecs_dest)

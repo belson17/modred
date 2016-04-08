@@ -162,16 +162,16 @@ class BPODHandles(object):
             self.get_mat, R_sing_vecs_src)
     
     def put_decomp(self, sing_vals_dest, L_sing_vecs_dest, R_sing_vecs_dest):
-        """Puts the decomposition matrices to destinations (file or memory).
+        """Puts the decomposition matrices in destinations (file or memory).
         
         Args:
-            ``sing_vals_dest``: Destination to which to put Hankel singular
+            ``sing_vals_dest``: Destination in which to put Hankel singular
             values.
 
-            ``L_sing_vecs_dest``: Destination to which to put left singular
+            ``L_sing_vecs_dest``: Destination in which to put left singular
             vectors of Hankel matrix.
            
-            ``R_sing_vecs_dest``: Destination to which to put right singular
+            ``R_sing_vecs_dest``: Destination in which to put right singular
             vectors of Hankel matrix.
         """
         # Don't check if rank is zero because the following methods do.

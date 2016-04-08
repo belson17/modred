@@ -81,8 +81,9 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
 * Changed the order of the arguments in 
   :py:func:`pod.PODHandles.get_decomp`, 
   :py:func:`pod.PODHandles.put_decomp`,
-  :py:func:`bpod.BPODHandles.get_decomp`, and 
-  :py:func:`bpod.BPODHandles.put_decomp`.
+  :py:func:`bpod.BPODHandles.get_decomp`, 
+  :py:func:`bpod.BPODHandles.put_decomp`, and
+  :py:func:`era.ERA.put_decomp`.
 
 * Changed the arguments to 
   :py:func:`dmd.DMDHandles.get_decomp` and
