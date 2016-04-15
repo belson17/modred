@@ -26,10 +26,11 @@ class VecHandle(object):
         self.scale = scale
     
     def get(self):
-        """Get a vector, using the private ``_get`` function.  If available,
-        the base vector will be subtracted from the specified vector.  Then, if
-        a scale factor is specified, the base-subtracted vector will be scaled.
-        The scaled, base-subtracted vector is then returned."""
+        """Get a vector, using the private (user-overwritten) ``_get``
+        function.  If available, the base vector will be subtracted from the
+        specified vector.  Then, if a scale factor is specified, the
+        base-subtracted vector will be scaled.  The scaled, base-subtracted
+        vector is then returned."""
         vec = self._get()
         if self.__base_vec_handle is None:
             return self.__scale_vec(vec)
@@ -42,7 +43,8 @@ class VecHandle(object):
         return self.__scale_vec(vec - base_vec)
         
     def put(self, vec):
-        """Put a vector to file or memory using the ``_put`` function.""" 
+        """Put a vector to file or memory using the private (user-overwritten)
+        ``_put`` function.""" 
         return self._put(vec)
 
     def _get(self):
@@ -61,7 +63,7 @@ class VecHandle(object):
     
 
 class VecHandleInMemory(VecHandle):
-    """Gets and puts vectors in memory."""
+    """Gets and puts vectors from/in memory."""
     def __init__(self, vec=None, base_vec_handle=None, scale=None):
         VecHandle.__init__(self, base_vec_handle, scale)
         self.vec = vec
@@ -81,7 +83,7 @@ class VecHandleInMemory(VecHandle):
         
         
 class VecHandleArrayText(VecHandle):
-    """Gets and puts array vector objects to text files."""
+    """Gets and puts array vector objects from/in text files."""
     def __init__(self, vec_path, base_vec_handle=None, scale=None):
         VecHandle.__init__(self, base_vec_handle, scale)
         self.vec_path = vec_path
@@ -101,7 +103,7 @@ class VecHandleArrayText(VecHandle):
         
 
 class VecHandlePickle(VecHandle):
-    """Gets and puts any vector object to pickle files."""
+    """Gets and puts any vector object from/in pickle files."""
     def __init__(self, vec_path, base_vec_handle=None, scale=None):
         VecHandle.__init__(self, base_vec_handle, scale)
         self.vec_path = vec_path
@@ -129,12 +131,12 @@ def inner_product_array_uniform(vec1, vec2):
 
 
 class InnerProductTrapz(object):
-    """Inner product of n-dim arrays on grid using the trapezoidal rule.
+    """Callable that computes inner product of n-dimensional arrays defined on
+    a spatial grid, using the trapezoidal rule.
     
     Args:
-        ``grids``: 1D arrays of grid points, in the order of the dims.
-            x_grid: 1D array of grid points in x-dimension;
-            y_grid: 1D array of grid points in y-dimension; ...
+        ``*grids``: 1D arrays of grid points, in the order of the spatial
+        dimensions.  
     
     Usage::
       
@@ -147,7 +149,6 @@ class InnerProductTrapz(object):
       v1 = np.random.random((nx,ny))
       v2 = np.random.random((nx,ny))
       IP_v1_v2 = my_trapz(v1, v2)
-    
     """
     def __init__(self, *grids):
         if len(grids) == 0:
@@ -158,7 +159,7 @@ class InnerProductTrapz(object):
         return self.inner_product(vec1, vec2)
 
     def inner_product(self, vec1, vec2):
-        """Takes the inner product."""
+        """Computes inner product."""
         IP = vec1 * vec2
         for grid in reversed(self.grids):
             if not isinstance(grid, np.ndarray):
