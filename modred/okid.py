@@ -5,20 +5,21 @@ import numpy as np
 
 
 def OKID(inputs, outputs, num_Markovs):
-    """Approximates the Markov paramters from arbitrary inputs and outputs.
+    """Approximates Markov paramters using arbitrary input and output data.
     
     Args:
-        ``inputs``: Array of input signals, with dimensions ``[input, time]``.
+        ``inputs``: Array of input signals. Each row corresponds to a different
+        input, each each column to a different time.
         
-        ``outputs``: Array of output signals, with dimensions 
-          ``[output, time]``.
+        ``outputs``: Array of output signals. Each row corresponds to a
+        different output, each each column to a different time.
         
-        ``num_Markovs``: Integer number of Markov parameters to estimate.
+        ``num_Markovs``: Number of Markov parameters to estimate.
             
     Returns:
-        ``Markovs_est``: Array of Markov params, dimensions 
-        ``[time, output, input]``.
-        Thus, ``Markovs_est[ti]`` is the Markov param at time index ``ti``.
+        ``Markovs_est``: Array of Markov paramemters. Array dimensions
+        correspond to times, outputs, and inputs, respectively.  Thus
+        ``Markovs_est[ti]`` is the Markov parameter at time index ``ti``.
     
     OKID can be sensitive to the choice of parameters. A few tips:
 
@@ -26,8 +27,9 @@ def OKID(inputs, outputs, num_Markovs):
       parameters might grow rather than decay at large times.
     - If necessary, artificially append your data with zero input and 
       exponentially decaying output.
-    - Estimate ``num_Markovs`` <= half of the number of samples.
-      Estimating too many Markov params can result in spurious oscillations.    
+    - Set ``num_Markovs`` less than or equal to half of the number of samples
+      (:math:`num_Markovs <= num_samples / 2`).  Estimating too many Markov
+      parameters can produce spurious oscillations.    
     - Data with more than one input tends to be harder to work with. 
     """    
     # Some internal comments and variables refer to textbook (J.-np. Juang

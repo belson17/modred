@@ -221,11 +221,14 @@ class ERA(object):
         reduced-order model (ROM) in destinations (file or memory).
 
         Args:        
-            ``A_dest``: Destination in which to put A matrix.
+            ``A_dest``: Destination in which to put A matrix of reduced-order
+            model.
             
-            ``B_dest``: Destination in which to put B matrix.
+            ``B_dest``: Destination in which to put B matrix of reduced-order
+            model.
             
-            ``C_dest``: Destination in which to put C matrix.
+            ``C_dest``: Destination in which to put C matrix of reduced-order
+            model.
         """  
         self.put_mat(self.A, A_dest)
         self.put_mat(self.B, B_dest)

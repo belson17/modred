@@ -14,33 +14,33 @@ _parallel = parallel_default_instance
 
 
 def standard_basis(num_dims):
-    """Returns list of standard basis vecs of space :math:`R^n`.
+    """Returns list of standard basis vectors of space :math:`R^n`.
     
     Args:
-        ``num_dims``: Integer number of dimensions.
+        ``num_dims``: Number of dimensions.
     
     Returns:
-        ``basis``: The standard basis as a list of 1D arrays.
-            ``[array([1,0,...]), array([0,1,...]), ...]``.
+        ``basis``: The standard basis as a list of 1D arrays
+        ``[array([1,0,...]), array([0,1,...]), ...]``.
     """
     return list(np.identity(num_dims))
 
 def compute_derivs_handles(vec_handles, adv_vec_handles, deriv_vec_handles, dt):
-    """Computes 1st-order time derivatives of vectors using handles. 
+    """Computes 1st-order time derivatives of vector objects, using handles. 
 
     Args:
-        ``vec_handles``: List of vec handles.
+        ``vec_handles``: List of handles for vector objects.
 
-        ``adv_vec_handles``: List of vec handles for vecs advanced
-        ``dt`` in time.
+        ``adv_vec_handles``: List of handles for vector objects advanced
+        :math:`dt` in time.
 
-        ``deriv_vec_handles``: List of vec handles for time
-        derivatives of vecs.
+        ``deriv_vec_handles``: List of handles for time
+        derivatives of vector objects.
 
-        ``dt``: Time step of ``adv_vec_handles``
+        ``dt``: Time step, corresponding to time advanced between
+        ``vec_handles`` and ``adv_vec_handles``
 
-    Computes d(``vec``)/dt =  ( ``vec``\(t=dt) -  ``vec``\(t=0) ) / dt.
-
+    Computes d(``vec``)/dt = ( ``vec``\(t=dt) -  ``vec``\(t=0) ) / dt.
     """
     num_vecs = len(vec_handles)
     if num_vecs != len(adv_vec_handles) or \
@@ -57,17 +57,21 @@ def compute_derivs_handles(vec_handles, adv_vec_handles, deriv_vec_handles, dt):
     _parallel.barrier()
 
 def compute_derivs_matrices(vecs, adv_vecs, dt):
-    """Computes 1st-order time derivatives of vectors from data in matrices. 
+    """Computes 1st-order time derivatives using data stored in matrices. 
     
     Args:
-        ``vecs``: Matrix with vectors as columns.
+        ``vecs``: Matrix whose columns are data vectors.
+
+        ``adv_vecs``: Matrix whose columns are data vectors advanced in time.
         
-        ``adv_vecs``: Matrix with time-advanced vectors as columns.
-        
-        ``dt``: Time step between ``vecs`` and ``adv_vecs``.
+        ``dt``: Time step, corresponding to time advanced between
+        ``vec_handles`` and ``adv_vec_handles``
                 
     Returns:
-        ``deriv_vecs``: Matrix of with time-derivs of vectors as cols.
+        ``deriv_vecs``: Matrix whose columns are time derivatives of data 
+        vectors.
+
+    Computes d(``vec``)/dt = ( ``vec``\(t=dt) -  ``vec``\(t=0) ) / dt.
     """
     return (adv_vecs - vecs)/(1.*dt)
 
@@ -83,29 +87,32 @@ class LTIGalerkinProjectionBase(object):
         self.C_reduced = None
 
     def put_A_reduced(self, dest):
-        """Put reduced A matrix to ``dest``."""
+        """Puts A matrix of reduced-order model to ``dest``."""
         _parallel.call_from_rank_zero(self.put_mat, self.A_reduced, dest)
         _parallel.barrier()
         
     def put_B_reduced(self, dest):
-        """Put reduced B matrix to ``dest``."""
+        """Puts B matrix of reduced-order model to ``dest``."""
         _parallel.call_from_rank_zero(self.put_mat, self.B_reduced, dest)
         _parallel.barrier()
         
     def put_C_reduced(self, dest):
-        """Put reduced C matrix to ``dest``."""
+        """Puts C matrix of reduced-order model to ``dest``."""
         _parallel.call_from_rank_zero(self.put_mat, self.C_reduced, dest)
         _parallel.barrier()
         
     def put_model(self, A_reduced_dest, B_reduced_dest, C_reduced_dest):
-        """Put reduced A, B, and C matrices to destinations.
+        """Puts A, B, and C matrices of reduced-order model in destinations.
         
         Args:
-            ``A_reduced_dest``: Destination for ``A_reduced``.
+            ``A_reduced_dest``: Destination in which to put A matrix of
+            reduced-order model.
             
-            ``B_reduced_dest``: Destination for ``B_reduced``.
-            
-            ``C_reduced_dest``: Destination for ``C_reduced``.
+            ``B_reduced_dest``: Destination in which to put B matrix of
+            reduced-order model.
+
+            ``C_reduced_dest``: Destination in which to put B matrix of
+            reduced-order model.
         """
         self.put_A_reduced(A_reduced_dest)
         self.put_B_reduced(B_reduced_dest)
@@ -113,38 +120,38 @@ class LTIGalerkinProjectionBase(object):
        
 
 class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
-    """Computes the reduced-order model matrices for an LTI system, 
-    with data in matrices.
+    """Computes A, B, and C matrices of reduced-order model (ROM) of a linear
+    time-invariant (LTI) system, from data stored in matrices.
     
     Args:
-        ``basis_vecs``: Matrix with basis vectors as columns. 
+        ``basis_vecs``: Matrix whose columns are basis vectors. 
     
     Kwargs:
-        ``adjoint_basis_vec_handles``: Matrix with adjoint vectors as columns.
-            If not given, then ``basis_vecs`` is used.
+        ``adjoint_basis_vec_handles``: Matrix whose columns are adjoint basis
+        vectors.  If not given, then assumed to be the same as ``basis_vecs``. 
     
-        ``is_basis_orthonormal``: Bool for bi-orthonormality of the basis vecs.
-            ``True`` if the basis and adjoint vectors are bi-orthonormal.
-            Default is ``False``.
+        ``is_basis_orthonormal``: Boolean for bi-orthonormality of the basis
+        vecs.  ``True`` if the basis and adjoint basis vectors are
+        bi-orthonormal.  Default is ``False``.
             
-        ``inner_product_weights``: 1D or matrix of inner product weights.
-            It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
+        ``inner_product_weights``: 1D array or matrix of inner product weights.
+        Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
 
-        ``put_mat``: Function to put a matrix elsewhere (file or memory).
+        ``put_mat``: Function to put a matrix out of modred, e.g., write it to
+        file.
 
-    This class projects discrete or continuous time dynamics onto a set of basis
-    vectors, resulting in models. Often the basis vecs are modes from 
-    POD or BPOD.
-    It uses :py:class:`vectorspace.VectorSpaceMatrices` for low level functions.
+    This class projects discrete- or continuous-time dynamics onto a set of
+    basis vectors, producing reduced-order models. For example, the basis
+    vectors could be POD, BPOD, or DMD modes.  It uses
+    :py:class:`vectorspace.VectorSpaceMatrices` for low level functions.
     
     Usage::
         
-      LTI_proj = LTIGalerkinProjectionArray(basis_vecs,
-        adjoint_basis_vecs=adjoint_basis_vecs, 
-        is_basis_orthonormal=True)
-      A, B, C = LTI_proj.compute_model(A_on_basis_vecs, 
-        B_on_standard_basis_array, C_on_basis_vecs)
-        
+      LTI_proj = LTIGalerkinProjectionArray(
+          basis_vecs, adjoint_basis_vecs=adjoint_basis_vecs,
+          is_basis_orthonormal=True)
+      A, B, C = LTI_proj.compute_model(
+          A_on_basis_vecs, B_on_standard_basis_array, C_on_basis_vecs)
     """
     def __init__(self, basis_vecs, adjoint_basis_vecs=None,  
         is_basis_orthonormal=False, inner_product_weights=None,
@@ -167,14 +174,17 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
         self.vec_space = VectorSpaceMatrices(weights=inner_product_weights)
 
     def reduce_A(self, A_on_basis_vecs):
-        """Computes the continous or discrete time reduced A matrix.
+        """Computes the continous- or discrete-time reduced A matrix.
         
         Args:
-            ``A_on_basis_vecs``: Matrix with ``A*vecs``.
-                Columns are ``A`` acting on individual basis vectors.
-                    
+            ``A_on_basis_vecs``: Matrix whose columns contain :math:`A *
+            basis_vecs`, i.e., the results of :math:`A` acting on individual
+            basis vectors.  :math:`A` can represent either discrete- or
+            continuous-time dynamics.  For continuous time systems, see also
+            :py:meth:`compute_derivs_matrices`.
+        
         Returns:
-            ``A_reduced``: Reduced A matrix.
+            ``A_reduced``: Reduced-order A matrix.
         """
         self.A_reduced = self.vec_space.compute_inner_product_mat(
             self.adjoint_basis_vecs, A_on_basis_vecs)
@@ -182,21 +192,22 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
             self.A_reduced = self._get_proj_mat() * self.A_reduced
         return self.A_reduced
     
-    def reduce_B(self, B_on_standard_basis_array):
-        """Computes the reduced B matrix.
+    def reduce_B(self, B_on_standard_basis_mat):
+        """Computes the continous- or discrete-time reduced B matrix.
         
         Args:
-            ``B_on_standard_basis``: Matrix with column j ``B*e_j``.
-                ``e_j`` is the jth standard basis. 
+            ``B_on_standard_basis_mat``: Matrix whose jth column contains 
+            :math:`B * e_j`, i.e., the action of the :math:`B` matrix on the jth
+            standard basis vector (a vector with a 1 at the jth index and zeros
+            elsewhere).
             
         Returns:
-		    ``B_reduced``: Reduced B matrix.
+		    ``B_reduced``: Reduced-order B matrix.
 		    
-        Tip: If you found the modes via sampling initial condition responses 
-        to B (and C),
-        then your snapshots may be missing a factor of 1/dt
-        (where dt is the first simulation time step).
-        This can be remedied by multiplying ``B_reduced`` by dt.
+        Note that if you found the modes via sampling initial condition
+        responses to B (and C), then your snapshots may be missing a factor of
+        1/dt (where dt is the first simulation time step).  This can be
+        remedied by multiplying ``B_reduced`` by dt.
         """
         # TODO: Check this description, then move to docstring
         #To see this dt effect, consider:
@@ -213,19 +224,21 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
         #The important thing to see is the factor of dt difference.
 
         self.B_reduced = self.vec_space.compute_inner_product_mat(
-            self.adjoint_basis_vecs, B_on_standard_basis_array)
+            self.adjoint_basis_vecs, B_on_standard_basis_mat)
         if not self.is_basis_orthonormal:
             self.B_reduced = self._get_proj_mat() * self.B_reduced
         return self.B_reduced
         
     def reduce_C(self, C_on_basis_vecs):
-        """Computes the reduced C matrix.
-               
-        Args: 
-            ``C_on_basis_vecs``: Matrix with ``C*basis_vec`` as columns.
+        """Computes the continous- or discrete-time reduced C matrix.
         
+        Args:
+            ``C_on_basis_vecs``: Matrix whose columns contain :math:`C *
+            basis_vecs`, i.e., the results of :math:`C` acting on individual
+            basis vectors.
+            
         Returns:
-            ``C_reduced``: Reduced C matrix.
+		    ``C_reduced``: Reduced-order C matrix.
         """
         self.C_reduced = np.mat(np.array(C_on_basis_vecs, ndmin=2))
         return self.C_reduced
@@ -242,63 +255,79 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
             self._proj_mat = np.linalg.inv(IP_mat)
         return self._proj_mat
         
-    def compute_model(self, A_on_basis_vecs, B_on_standard_basis_array,
-        C_on_basis_vecs):
-        """Computes and returns the reduced matrices.
+    def compute_model(
+        self, A_on_basis_vecs, B_on_standard_basis_mat, C_on_basis_vecs):
+        """Computes the continous- or discrete-time reduced A, B, and C
+        matrices.
         
         Args:
-            ``A_on_basis_vecs``: Matrix with columns ``A*basis_vec``.
-                ``A`` can correpond to discrete or continuous time.
-                For continuous time systems, see also 
-                :py:meth:`compute_derivs_arrays`.
+            ``A_on_basis_vecs``: Matrix whose columns contain :math:`A *
+            basis_vecs`, i.e., the results of :math:`A` acting on individual
+            basis vectors.  :math:`A` can represent either discrete- or
+            continuous-time dynamics.  For continuous time systems, see also
+            :py:meth:`compute_derivs_arrays`.
                 
-            ``B_on_standard_basis_array``: Matrix with columns ``B*e_j``.
-                ``e_j`` is the jth standard basis. If :math:`B` is a matrix,
-                then this argument is just :math:`B`.
-            
-            ``C_on_basis_vecs``: Matrix with columns ``C*basis_vec``.
+            ``B_on_standard_basis_mat``: Matrix whose jth column contains 
+            :math:`B * e_j`, i.e., the action of the :math:`B` matrix on the jth
+            standard basis vector (a vector with a 1 at the jth index and zeros
+            elsewhere).
+           
+            ``C_on_basis_vecs``: Matrix whose columns contain :math:`C *
+            basis_vecs`, i.e., the results of :math:`C` acting on individual
+            basis vectors.
+        
+        Returns:
+		    ``A_reduced``: Reduced-order A matrix.
+
+		    ``B_reduced``: Reduced-order B matrix.
+
+		    ``C_reduced``: Reduced-order C matrix.
         """
         self.reduce_A(A_on_basis_vecs)
-        self.reduce_B(B_on_standard_basis_array)
+        self.reduce_B(B_on_standard_basis_mat)
         self.reduce_C(C_on_basis_vecs)
         return self.A_reduced, self.B_reduced, self.C_reduced
 
 
 class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
-    """Computes the reduced-order model matrices from modes for an LTI system,
-    using handles.
+    """Computes A, B, and C matrices of reduced-order model (ROM) of a linear
+    time-invariant (LTI) system, using vector handles.
     
     Args:
-        ``inner_product``: Function to take inner product of vectors.
+        ``inner_product``: Function that computes inner product of two vector
+        objects.
         
-        ``basis_vec_handles``: List of basis vector handles. 
+        ``basis_vec_handles``: List of handles for basis vector objects. 
     
     Kwargs:
-        ``adjoint_basis_vec_handles``: List of adjoint vector handles.
-            If not given, then ``basis_vec_handles`` are used.
+        ``adjoint_basis_vec_handles``: List of handles for adjoint basis vector
+        objects. If not given, then assumed to be the same as
+        ``basis_vec_handles``.
     
-        ``is_basis_orthonormal``: Bool for bi-orthonormality of the basis vecs.
-            ``True`` if the basis and adjoint vectors are bi-orthonormal.
-            Default is ``False``.
+        ``is_basis_orthonormal``: Boolean for bi-orthonormality of the basis
+        vecs.  ``True`` if the basis and adjoint basis vectors are
+        bi-orthonormal.  Default is ``False``.
             
-        ``put_mat``: Function to put a matrix elsewhere (memory or file).
-        
-        ``verbosity``: 1 prints progress and warnings, 0 almost nothing.
-        
-        ``max_vecs_per_node``: Max number of vectors in memory per node.
-    
-    This class projects discrete or continuous time dynamics onto a set of basis
-    vectors, resulting in models. Often the basis vecs are modes from 
-    POD or BPOD.
+        ``put_mat``: Function to put a matrix out of modred, e.g., write it to
+        file.
+            
+        ``max_vecs_per_node``: Max number of vectors that can be stored in 
+        memory, per node.
+
+        ``verbosity``: 1 prints progress and warnings, 0 prints almost nothing.
+   
+    This class projects discrete- or continuous-time dynamics onto a set of
+    basis vectors, producing reduced-order models. For example, the basis
+    vectors could be POD, BPOD, or DMD modes.  
     
     Usage::
-        
-      LTI_proj = LTIGalerkinProjectionHandles(inner_product, basis_vec_handles,
-        adjoint_basis_vec_handles=adjoint_basis_vec_handles, 
-        is_basis_orthonormal=True)
-      A, B, C = LTI_proj.compute_model(A_on_basis_vec_handles, 
-        B_on_standard_basis_handles, C_on_basis_vecs)
-        
+
+      LTI_proj = LTIGalerkinProjectionHandles(
+          inner_product, basis_vec_handles,
+          adjoint_basis_vec_handles=adjoint_basis_vec_handles,
+          is_basis_orthonormal=True)
+      A, B, C = LTI_proj.compute_model(
+          A_on_basis_vec_handles, B_on_standard_basis_handles, C_on_basis_vecs)
     """
     def __init__(self, inner_product, basis_vec_handles, 
         adjoint_basis_vec_handles=None, 
@@ -323,13 +352,17 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
             max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
 
     def reduce_A(self, A_on_basis_vec_handles):
-        """Computes and returns the continous or discrete time A matrix.
+        """Computes the continous- or discrete-time reduced A matrix.
         
         Args:
-            ``A_on_basis_vec_handles``: List of handles for ``A*basis_vec``.
-                    
+            ``A_on_basis_vec_handles``: List of handles for the results of
+            :math:`A` acting on individual basis vectors.  :math:`A` can
+            represent either discrete- or continuous-time dynamics.  For
+            continuous time systems, see also
+            :py:meth:`compute_derivs_handles`.
+        
         Returns:
-            ``A_reduced``: Reduced A matrix.
+            ``A_reduced``: Reduced-order A matrix.
         """
         self.A_reduced = self.vec_space.compute_inner_product_mat(
             self.adjoint_basis_vec_handles, A_on_basis_vec_handles)
@@ -338,19 +371,20 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
         return self.A_reduced
         
     def reduce_B(self, B_on_standard_basis_handles):
-        """Computes and returns the reduced B matrix.
+        """Computes the continous- or discrete-time reduced B matrix.
         
-        Args:		
-            ``B_on_standard_basis_handles``: List of handles for :math:`B*e_j`.
-                :math:`e_j` are the standard basis elements.
-        
+        Args:
+            ``B_on_standard_basis_handles``: List of handles for the results of
+            :math:`B` acting on standard basis vectors (vectors with a 1 at the
+            jth index and zeros elsewhere).
+            
         Returns:
-		    ``B_reduced``: Reduced B matrix.
-		
-        Tip: If you found the modes via sampling IC responses to B and C,
-        then your impulse responses may be missing a factor of 1/dt
-        (where dt is the first simulation time step).
-        This can be remedied by multiplying the reduced B by dt.
+		    ``B_reduced``: Reduced-order B matrix.
+		    
+        Note that if you found the modes via sampling initial condition
+        responses to B (and C), then your snapshots may be missing a factor of
+        1/dt (where dt is the first simulation time step).  This can be
+        remedied by multiplying ``B_reduced`` by dt.
         """
         # TODO: Check this description, then move to docstring
         #To see this dt effect, consider:
@@ -373,32 +407,43 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
         return self.B_reduced
 
     def reduce_C(self, C_on_basis_vecs):
-        """Computes and returns the reduced C matrix.
-               
-        Args: 
-            ``C_on_basis_vecs``: list with elements of 1D arrays ``C*basis_vec``
+        """Computes the continous- or discrete-time reduced C matrix.
         
+        Args:
+            ``C_on_basis_vecs``: List of 1D arrays, each of which is the result
+            of :math:`C` acting on an individual basis vector.
+            
         Returns:
-            ``C_reduced``: Reduced C matrix.
+		    ``C_reduced``: Reduced-order C matrix.
         """
         self.C_reduced = np.mat(np.array(C_on_basis_vecs, ndmin=2).T)
         return self.C_reduced
     
     def compute_model(self, A_on_basis_vec_handles, B_on_standard_basis_handles,
         C_on_basis_vecs):
-        """Computes and returns the reduced matrices.
+        """Computes the continous- or discrete-time reduced A, B, and C
+        matrices.
         
         Args:
-            ``A_on_basis_vec_handles``: List of handles for ``A*basis_vec``.
-                ``A`` can correpond to discrete or continuous time.
-                For continuous time systems, see also 
-                :py:meth:`compute_derivs_handles`.
+            ``A_on_basis_vec_handles``: List of handles for the results of
+            :math:`A` acting on individual basis vectors.  :math:`A` can
+            represent either discrete- or continuous-time dynamics.  For
+            continuous time systems, see also
+            :py:meth:`compute_derivs_handles`.
                 
-            ``B_on_standard_basis_handles``: List of handles for :math:`B*e_j`.
-                :math:`e_j` is the jth standard basis.
+            ``B_on_standard_basis_handles``: List of handles for the results of
+            :math:`B` acting on standard basis vectors (vectors with a 1 at the
+            jth index and zeros elsewhere).
             
-            ``C_on_basis_vecs``: list with elements of 1D arrays 
-            ``C*basis_vec``.
+            ``C_on_basis_vecs``: List of 1D arrays, each of which is the result
+            of :math:`C` acting on an individual basis vector.
+        
+        Returns:
+		    ``A_reduced``: Reduced-order A matrix.
+
+		    ``B_reduced``: Reduced-order B matrix.
+
+		    ``C_reduced``: Reduced-order C matrix.
         """
         self.reduce_A(A_on_basis_vec_handles)
         self.reduce_B(B_on_standard_basis_handles)
