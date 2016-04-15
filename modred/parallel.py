@@ -15,11 +15,11 @@ class ParallelError(Exception):
 
     
 class Parallel(object):
-    """For parallelization with mpi4py.
+    """Wrappers for parallel methods from mpi4py.
     
-    It ensures no failure in case mpi4py is not installed or when running in
-    serial.    
-    It is best to use the given instance, parallel.parallel_default_instance.
+    Allows user avoid errors when running in serial or without mpi4py
+    installed.  It is best to use the given instance,
+    parallel.parallel_default_instance.
     """
     # TODO: Could be extended for shared memory.
     def __init__(self):
@@ -58,21 +58,22 @@ class Parallel(object):
     
     @staticmethod
     def find_node_ID():
-        """Finds a unique ID number for each node."""
+        """Returns unique ID number for this node."""
         hostname = os.uname()[1]
         return hash(hostname)
     
     def get_num_nodes(self):
-        """Return the number of nodes."""
+        """Returns number of nodes."""
         return self._num_nodes
     
     def print_from_rank_zero(self, msgs):
-        """Prints the string ``msgs`` from rank=0 only."""
+        """Prints ``msgs`` from rank zero processor/MPI worker only."""
         if self.is_rank_zero():
             print(msg)
     
     def barrier(self):
-        """Forces all processors to synchronize. Wrapper for Barrier()."""
+        """Wrapper for Barrier(); forces all processors/MPI workers to
+        synchronize.""" 
         if self.distributed:
             self.comm.Barrier()
     
@@ -81,14 +82,15 @@ class Parallel(object):
         return self._rank == 0
             
     def call_from_rank_zero(self, func, *args, **kwargs):
-        """Calls function from rank zero, does not call ``barrier()``.
+        """Calls function from rank zero processor/MPI worker, does not call
+        ``barrier()``.
         
         Args:
             ``func``: Function to call.
             
-            ``*args``: All required arguments to ``func``.
-            
-            ``**kwargs``: All keyword (optional) arguments to ``func``.
+            ``*args``: Required arguments for ``func``.
+    
+            ``**kwargs``: Keyword args for ``func``.
         
         Usage::
         
@@ -102,37 +104,42 @@ class Parallel(object):
         return out
         
     def is_distributed(self):
-        """Returns True if >1 processor and mpi4py imported properly."""
+        """Returns True if more than one processor/MPI worker and mpi4py
+        imported properly."""
         return self.distributed
         
     def get_rank(self):
-        """Returns the rank of this processor."""
+        """Returns rank of this processor/MPI worker."""
         return self._rank
     
     def get_num_MPI_workers(self):
-        """Returns number of MPI workers, currently same as ``num_procs``."""
+        """Returns number of processors/MPI workers, currently same as
+        ``num_procs``.""" 
         return self._num_MPI_workers
     
     def get_num_procs(self):
-        """Returns the number of processors."""
+        """Returns number of processors/MPI workers."""
         return self.get_num_MPI_workers()
     
     def find_assignments(self, tasks, task_weights=None):
-        """Evenly distributes the tasks by task weights among all MPI workers.
+        """Evenly distributes tasks among all processors/MPI workers using task
+        weights.
         
         Args:
-            ``tasks``: List of "tasks".
-            Tasks can be any object that corresponds to
-            a task that needs to be completed, for example an index.
+            ``tasks``: List of tasks.  A "task" can be any object that
+            corresponds to a set of operations that needs to be completed. For
+            example ``tasks`` could be a list of indices, telling each
+            processor/MPI worker which indices of an array to operate on.
     
         Kwargs:
-            ``task_weights``: List of weights for each task. 
-            These are used to equally distribute the work load among MPI 
-            workers.
+            ``task_weights``: List of weights for each task.  These are used to
+            equally distribute the workload among processors/MPI workers, in
+            case some tasks are more expensive than others.
        
         Returns:
-            ``task_assignments``: 2D list of tasks, indices [rank][task_index].
-            Each MPI worker is responsible for tasks ``task_assignments[rank]``
+            ``task_assignments``: 2D list of tasks, with indices corresponding
+            to [rank][task_index].  Each processor/MPI worker is responsible
+            for ``task_assignments[rank]``
         """
         task_assignments = []
         
@@ -171,13 +178,15 @@ class Parallel(object):
         return task_assignments
 
     def check_for_empty_tasks(self, task_assignments):
-        """Convenience function that checks if empty worker assignments.
+        """Convenience function that checks for empty processor/MPI worker
+        assignments.
         
         Args:
             ``task_assignments``: List of task assignments.
         
         Returns:
-            ``empty_tasks``: ``True`` if no tasks, else ``False``.
+            ``empty_tasks``: ``True`` if any processor/MPI worker has no tasks,
+            otherwise ``False``.
         """
         empty_tasks = False
         for assignment in task_assignments:
@@ -186,19 +195,20 @@ class Parallel(object):
         return empty_tasks
 
     def call_and_bcast(self, func, *args, **kwargs):
-        """Calls function on rank 0 and broadcasts outputs to all workers.
+        """Calls function on rank zero processor/MPI worker and broadcasts
+        outputs to all others.
                
         Args:
             ``func``: A callable that takes ``*args`` and ``**kwargs``
     
             ``*args``: Required arguments for ``func``.
     
-            ``**kwargs``: Optional keyword args for ``func``.
+            ``**kwargs``: Keyword args for ``func``.
         
         Usage::
           
           # Adds one to the rank, but only evaluated on rank 0, so
-          # ``outputs==1`` on all workers.
+          # ``outputs==1`` on all processors/MPI workers.
           outputs = parallel.call_and_bcast(lambda x: x+1, parallel.get_rank())
             
         """
