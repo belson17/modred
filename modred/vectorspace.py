@@ -79,7 +79,7 @@ class VectorSpaceHandles(object):
         ``inner_product``: Function that computes inner product of two vector
         objects.
         
-        ``max_vecs_per_node``: Max number of vectors that can be stored in 
+        ``max_vecs_per_node``: Maximum number of vectors that can be stored in 
         memory, per node.
 
         ``verbosity``: 1 prints progress and warnings, 0 prints almost nothing.

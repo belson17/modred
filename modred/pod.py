@@ -181,7 +181,7 @@ class PODHandles(object):
       	``get_mat``: Function to get a matrix into modred, e.g., load it from
         file.
         
-        ``max_vecs_per_node``: Max number of vectors that can be stored in 
+        ``max_vecs_per_node``: Maximum number of vectors that can be stored in 
         memory, per node.
 
         ``verbosity``: 1 prints progress and warnings, 0 prints almost nothing.

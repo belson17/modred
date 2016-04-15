@@ -311,7 +311,7 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
         ``put_mat``: Function to put a matrix out of modred, e.g., write it to
         file.
             
-        ``max_vecs_per_node``: Max number of vectors that can be stored in 
+        ``max_vecs_per_node``: Maximum number of vectors that can be stored in 
         memory, per node.
 
         ``verbosity``: 1 prints progress and warnings, 0 prints almost nothing.
