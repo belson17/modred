@@ -16,11 +16,12 @@ from . import vectors as V
 
 
 class VectorSpaceMatrices(object):
-    """Inner products and linear combinations with matrices.
+    """Implements inner products and linear combinations using data stored in
+    matrices.
     
     Kwargs:
         ``inner_product_weights``: 1D array or matrix of inner product weights.
-            It corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
+        Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
     """
     def __init__(self, weights=None):
         self.weights = weights
@@ -71,20 +72,25 @@ class VectorSpaceMatrices(object):
 
 
 class VectorSpaceHandles(object):
-    """Responsible for performing addition and multiplication in parallel.
+    """Provides efficient, parallel implementations of vector space operations,
+    using handles.
 
     Kwargs:
-        ``inner_product``: Inner product function.
+        ``inner_product``: Function that computes inner product of two vector
+        objects.
         
-        ``max_vecs_per_node``: Max number of vecs in memory per node.
-        
+        ``max_vecs_per_node``: Max number of vectors that can be stored in 
+        memory, per node.
+
         ``verbosity``: 1 prints progress and warnings, 0 prints almost nothing.
         
-        ``print_interval``: Min time (secs) between printed progress messages.
+        ``print_interval``: Minimum time (in seconds) between printed progress 
+        messages.
 
-    The class implements parallelized vector addition and scalar multiplication
-    and is used in high-level classes in :py:mod:`pod`, :py:mod:`bpod`, 
-    :py:mod:`dmd` and :py:mod:`ltigalerkinproj`. 
+    This class implements low-level functions for computing large numbers of
+    vector sums and inner products.  These functions are used by high-level
+    classes in :py:mod:`pod`, :py:mod:`bpod`, :py:mod:`dmd` and
+    :py:mod:`ltigalerkinproj`. 
 
     Note: Computations are often sped up by using all available processors,
     even if this lowers ``max_vecs_per_node`` proportionally. 
@@ -124,23 +130,24 @@ class VectorSpaceHandles(object):
             raise RuntimeError('inner product function is not defined')
         
     def print_msg(self, msg, output_channel=sys.stdout):
-        """Print a message from rank 0."""
+        """Print a message from rank zero MPI worker/processor."""
         if self.verbosity > 0 and _parallel.is_rank_zero():
             print(msg, file=output_channel)
 
     def sanity_check(self, test_vec_handle):
-        """Check user-supplied vec handle and vec objects.
+        """Checks that user-supplied vector handle and vector satisfy 
+        requirements.
         
         Args:
-            ``test_vec_handle``: A vector handle.
+            ``test_vec_handle``: A vector handle to test.
         
-        The add and mult functions are tested for the vector object.  
+        The add and multiply functions are tested for the vector object.  
         This is not a complete testing, but catches some common mistakes.
-        Raises an error if a check fails.
+        An error is raised if a check fails.
         
-        TODO: Other things which could be tested:
-            ``get``/``put`` doesn't effect other vecs (memory problems)
         """
+        # TODO: Other things which could be tested:
+        # ``get``/``put`` doesn't affect other vecs (memory problems)
         self._check_inner_product()
         tol = 1e-10
 
@@ -180,30 +187,31 @@ class VectorSpaceHandles(object):
         self.print_msg('Passed the sanity check')
 
     def compute_inner_product_mat(self, row_vec_handles, col_vec_handles):
-        """Computes the matrix of inner product combinations between vectors.
+        """Computes matrix whose elements are inner products of the vector
+        objects in ``row_vec_handles`` and ``col_vec_handles``.
         
         Args:
-            ``row_vec_handles``: List of row vector handles.
-                For example BPOD adjoints, :math:`Y`.
-          
-            ``col_vec_handles``: List of column vector handles.
-                For example BPOD directs, :math:`X`.
+            ``row_vec_handles``: List of handles for vector objects
+            corresponding to rows of the inner product matrix.  For example, in
+            BPOD this is the adjoint snapshot matrix :math:`Y`.
+         
+            ``col_vec_handles``: List of handles for vector objects
+            corresponding to columns of the inner product matrix.  For example,
+            in BPOD this is the direct snapshot matrix :math:`X`.
         
         Returns:
             ``IP_mat``: 2D array of inner products.
 
-        The vecs are retrieved in memory-efficient
-        chunks and are not all in memory at once.
-        The row vecs and col vecs are assumed to be different.        
-        When they are the same, use :py:meth:`compute_symmetric_inner_product` 
-        for a 2x speedup.
+        The vectors are retrieved in memory-efficient chunks and are not all in
+        memory at once.  The row vectors and column vectors are assumed to be
+        different.  When they are the same, use
+        :py:meth:`compute_symmetric_inner_product` for a 2x speedup.
         
-        Each MPI worker (processor) is responsible for retrieving a subset of 
-        the rows and
-        columns. The processors then send/recv columns via MPI so they can be 
-        used to compute all IPs for the rows on each MPI worker. This is 
-        repeated until all MPI workers are done with all of their row chunks.
-        If there are 2 processors::
+        Each MPI worker (processor) is responsible for retrieving a subset of
+        the rows and columns. The processors then send/receive columns via MPI
+        so they can be used to compute all inner products for the rows on each
+        MPI worker.  This is repeated until all MPI workers are done with all
+        of their row chunks.  If there are 2 processors::
            
                 | x o |
           rank0 | x o |
@@ -213,8 +221,8 @@ class VectorSpaceHandles(object):
           rank1 | o x |
                 | o x |
         
-        In the next step, rank 0 sends column 0 to rank 1 and rank 1
-        sends column 1 to rank 0. The remaining IPs are filled in::
+        In the next step, rank 0 sends column 0 to rank 1 and rank 1 sends
+        column 1 to rank 0. The remaining inner products are filled in::
         
                 | x x |
           rank0 | x x |
@@ -224,25 +232,24 @@ class VectorSpaceHandles(object):
           rank1 | x x |
                 | x x |
           
-        When the number of cols and rows is
-        not divisible by the number of processors, the processors are assigned
-        unequal numbers of tasks. However, all processors are always
-        part of the passing cycle.
+        When the number of columns and rows is not divisible by the number of
+        processors, the processors are assigned unequal numbers of tasks.
+        However, all processors are always part of the passing cycle.
         
         The scaling is:
         
         - num gets / processor ~ :math:`(n_r*n_c/((max-2)*n_p*n_p)) + n_r/n_p`
-        - num MPI sends / processor ~ :math:`(n_p-1)*(n_r/((max-2)*n_p))*n_c/n_p`
+        - num MPI sends / processor ~ 
+          :math:`(n_p-1)*(n_r/((max-2)*n_p))*n_c/n_p`
         - num inner products / processor ~ :math:`n_r*n_c/n_p`
             
-        where :math:`n_r` is number of rows, :math:`n_c` number of columns, 
-        :math:`max` is
-        ``max_vecs_per_proc = max_vecs_per_node/num_procs_per_node``, and 
-        :math:`n_p` is the number of MPI workers (processors).
+        where :math:`n_r` is number of rows, :math:`n_c` number of columns,
+        :math:`max` is 
+        ``max_vecs_per_proc = max_vecs_per_node/num_procs_per_node``, 
+        and :math:`n_p` is the number of MPI workers (processors).
         
-        If there are more rows than columns, then an internal transpose
-        and un-transpose is performed to improve efficiency (since :math:`n_c`
-        only
+        If there are more rows than columns, then an internal transpose and
+        un-transpose is performed to improve efficiency (since :math:`n_c` only
         appears in the scaling in the quadratic term).
         """
         self._check_inner_product()
@@ -434,20 +441,27 @@ class VectorSpaceHandles(object):
         return IP_mat
         
     def compute_symmetric_inner_product_mat(self, vec_handles):
-        """Computes an upper-triangular symmetric matrix of inner products.
-        
+        """Computes symmetric matrix whose elements are inner products of the
+        vector objects in ``vec_handles`` with each other.  
+
         Args:
-            ``vec_handles``: List of vector handles.
+            ``vec_handles``: List of handles for vector objects corresponding
+            to both rows and columns.  For example, in POD this is the snapshot
+            matrix :math:`X`.
         
         Returns:
-            ``IP_mat``: Numpy array of inner products.
+            ``IP_mat``: 2D array of inner products.
 
         See the documentation for :py:meth:`compute_inner_product_mat` for an
-        idea how this works.
-        
-        TODO: JON, write detailed documentation similar to 
-        :py:meth:`compute_inner_product_mat`.
+        idea how this works.  Efficiency is achieved by only computing the
+        upper-triangular elements, since the matrix is symmetric.  Within the
+        upper-triangular portion, there are rectangular chunks and triangular
+        chunks.  The rectangular chunks are divided up among MPI workers
+        (processors) as weighted tasks.  Once those have been computed, the
+        triangular chunks are dealt with.  
         """
+        # TODO: JON, write detailed documentation similar to 
+        # :py:meth:`compute_inner_product_mat`.
         self._check_inner_product()
         vec_handles = util.make_iterable(vec_handles)
  
@@ -738,28 +752,31 @@ class VectorSpaceHandles(object):
     
     def lin_combine(self, sum_vec_handles, basis_vec_handles, coeff_mat,
         coeff_mat_col_indices=None):
-        """Linearly combines the basis vecs and calls ``put`` on result.
+        """Computes linear combination(s) of basis vector objects and calls
+        ``put`` on result(s), using handles.
         
         Args:
-            ``sum_vec_handles``: List of handles for the sum vectors.
+            ``sum_vec_handles``: List of handles for the sum vector objects.
                 
-            ``basis_vec_handles``: List of handles for the basis vecs.
+            ``basis_vec_handles``: List of handles for the basis vector objects.
                 
-            ``coeff_mat``: Matrix with rows corresponding to a basis vecs
-                and columns to sum (lin. comb.) vecs.
-                The rows and columns correspond, by index,
-                to the lists basis_vec_handles and sum_vec_handles.
-                ``sums = basis * coeff_mat``
+            ``coeff_mat``: Matrix whose rows correspond to basis vectors and
+            whose columns correspond to sum vectors.  The rows and columns
+            correspond, by index, to the lists ``basis_vec_handles`` and
+            ``sum_vec_handles``.  In matrix notation, we can write ``sums =
+            basis * coeff_mat``
         
         Kwargs:
-            ``coeff_mat_col_indices``: List of column indices.
-                The sum_vecs corresponding to these col indices are computed.
+            ``coeff_mat_col_indices``: List of column indices.  Only the
+            ``sum_vecs`` corresponding to these columns of the coefficient
+            matrix are computed.
             
-        Each processor retrieves a subset of the basis vecs to compute as many
-        outputs as a processor can have in memory at once. Each processor
-        computes the "layers" from the basis it is resonsible for, and for
-        as many modes as it can fit in memory. The layers from all procs are
-        summed together to form the sum_vecs and ``put`` ed.
+        Each MPI worker (processor) retrieves a subset of the basis vectors to
+        compute as many outputs as an MPI worker (processor) can have in memory
+        at once. Each MPI worker (processor) computes the "layers" from the
+        basis it is responsible for, and for as many modes as it can fit in
+        memory. The layers from all MPI workers (processors) are summed
+        together to form the ``sum_vecs`` and ``put`` is called on each.
         
         Scaling is:
         
@@ -769,10 +786,10 @@ class VectorSpaceHandles(object):
           
           scalar multiplies/worker = :math:`n_s*n_b/n_p`
           
-        Where :math:`n_s` is number of sum vecs, :math:`n_b` is 
+        where :math:`n_s` is number of sum vecs, :math:`n_b` is 
         number of basis vecs,
-        :math:`n_p` is number of processors, :math:`max` = 
-        ``max_vecs_per_node``.
+        :math:`n_p` is number of processors, 
+        :math:`max` = ``max_vecs_per_node``.
         """
         sum_vec_handles = util.make_iterable(sum_vec_handles)
         basis_vec_handles = util.make_iterable(basis_vec_handles)
