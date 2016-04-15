@@ -12,7 +12,7 @@ _parallel = parallel_default_instance
 
 def compute_DMD_matrices_snaps_method(
     vecs, mode_indices, adv_vecs=None, inner_product_weights=None, atol=1e-13,
-    rtol=None, return_all=False):
+    rtol=None, max_num_eigvals=None, return_all=False):
     """Computes DMD modes using data stored in matrices, using method of
     snapshots.
 
@@ -36,6 +36,13 @@ def compute_DMD_matrices_snaps_method(
  
         ``rtol``: Maximum relative difference between largest and smallest 
         eigenvalues of correlation matrix.  Smaller ones are truncated.
+
+        ``max_num_eigvals``: Maximum number of DMD eigenvalues that will be
+        computed.  This is enforced by truncating the basis onto which the
+        approximating linear map is projected.  Computationally, this
+        corresponds to truncating the eigendecomposition of the correlation
+        matrix. If set to None, no truncation will be performed, and the
+        maximum possible number of DMD eigenvalues will be computed.
 
         ``return_all``: Return more objects, see below. Default is false.
 
@@ -104,10 +111,16 @@ def compute_DMD_matrices_snaps_method(
     
     correlation_mat_eigvals, correlation_mat_eigvecs = util.eigh(
         correlation_mat, is_positive_definite=True, atol=atol, rtol=rtol)
+
+    # Truncate if necessary
+    if max_num_eigvals is not None and (
+        max_num_eigvals < correlation_mat_eigvals.size):
+        correlation_mat_eigvals = correlation_mat_eigvals[:max_num_eigvals]
+        correlation_mat_eigvecs = correlation_mat_eigvecs[:, :max_num_eigvals]
+     
+    # Compute low-order linear map for sequential or non-sequential case.
     correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(
         correlation_mat_eigvals ** -0.5))
- 
-    # Compute low-order linear map for sequential or non-sequential case.
     low_order_linear_map = (
         correlation_mat_eigvals_sqrt_inv * correlation_mat_eigvecs.H * 
         cross_correlation_mat * correlation_mat_eigvecs * 
@@ -154,7 +167,7 @@ def compute_DMD_matrices_snaps_method(
 
 def compute_DMD_matrices_direct_method(
     vecs, mode_indices, adv_vecs=None, inner_product_weights=None, atol=1e-13,
-    rtol=None, return_all=False):
+    rtol=None, max_num_eigvals=None, return_all=False):
     """Computes DMD modes using data stored in matrices, using direct method. 
 
     Args:
@@ -177,6 +190,13 @@ def compute_DMD_matrices_direct_method(
  
         ``rtol``: Maximum relative difference between largest and smallest 
         eigenvalues of correlation matrix.  Smaller ones are truncated.
+
+        ``max_num_eigvals``: Maximum number of DMD eigenvalues that will be
+        computed.  This is enforced by truncating the basis onto which the
+        approximating linear map is projected.  Computationally, this
+        corresponds to truncating the eigendecomposition of the correlation
+        matrix. If set to None, no truncation will be performed, and the
+        maximum possible number of DMD eigenvalues will be computed.
 
         ``return_all``: Return more objects, see below. Default is false.
  
@@ -242,6 +262,15 @@ def compute_DMD_matrices_direct_method(
     if adv_vecs is None:        
         U, sing_vals, correlation_mat_eigvecs = util.svd(
             vecs_weighted[:, :-1], atol=atol, rtol=rtol)
+        
+        # Truncate if necessary
+        if max_num_eigvals is not None and (
+            max_num_eigvals < sing_vals.size):
+            U = U[:, :max_num_eigvals]
+            sing_vals = sing_vals[:max_num_eigvals]
+            correlation_mat_eigvecs = correlation_mat_eigvecs[
+                :, :max_num_eigvals]
+
         correlation_mat_eigvals = sing_vals ** 2.
         correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(sing_vals ** -1.))
         correlation_mat = (
@@ -258,6 +287,15 @@ def compute_DMD_matrices_direct_method(
             raise ValueError(('vecs and adv_vecs are not the same shape.'))
         U, sing_vals, correlation_mat_eigvecs = util.svd(
             vecs_weighted, atol=atol, rtol=rtol)
+
+        # Truncate if necessary
+        if max_num_eigvals is not None and (
+            max_num_eigvals < sing_vals.size):
+            U = U[:, :max_num_eigvals]
+            sing_vals = sing_vals[:max_num_eigvals]
+            correlation_mat_eigvecs = correlation_mat_eigvecs[
+                :, :max_num_eigvals]
+
         correlation_mat_eigvals = sing_vals ** 2
         correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(sing_vals ** -1.))
         low_order_linear_map = (
@@ -488,7 +526,7 @@ class DMDHandles(object):
         """
         self.vec_space.sanity_check(test_vec_handle)
 
-    def compute_eigendecomp(self, atol=1e-13, rtol=None):
+    def compute_eigendecomp(self, atol=1e-13, rtol=None, max_num_eigvals=None):
         """Computes eigendecompositions of correlation matrix and approximating 
         low-order linear map.
        
@@ -498,6 +536,13 @@ class DMDHandles(object):
             
             ``rtol``: Maximum relative difference between largest and smallest
             eigenvalues of correlation matrix.  Smaller ones are truncated. 
+
+            ``max_num_eigvals``: Maximum number of DMD eigenvalues that will be
+            computed.  This is enforced by truncating the basis onto which the
+            approximating linear map is projected.  Computationally, this
+            corresponds to truncating the eigendecomposition of the correlation
+            matrix. If set to None, no truncation will be performed, and the
+            maximum possible number of DMD eigenvalues will be computed.
 
         Useful if you already have the correlation matrix and cross-correlation 
         matrix and want to avoid recomputing them.
@@ -509,16 +554,54 @@ class DMDHandles(object):
           DMD.compute_eigendecomp()
           DMD.compute_exact_modes(
               mode_idx_list, mode_handles, adv_vec_handles=adv_vec_handles)
+
+        Another way to use this is to compute a DMD using a truncated basis for
+        the projection of the approximating linear map.  Start by either
+        computing a full decomposition or by loading pre-computed correlation
+        and cross-correlation matrices.  
+
+        Usage::
+
+          # Start with a full decomposition 
+          DMD_eigvals, correlation_mat_eigvals = DMD.compute_decomp(
+              vec_handles)[0, 3]
+
+          # Do some processing to determine the truncation level, maybe based
+          # on the DMD eigenvalues and correlation matrix eigenvalues
+          desired_num_eigvals = my_post_processing_func(
+              DMD_eigvals, correlation_mat_eigvals)
+
+          # Do a truncated decomposition
+          DMD_eigvals_trunc = DMD.compute_eigendecomp(
+            max_num_eigvals=desired_num_eigvals)
+          
+          # Compute modes for truncated decomposition 
+          DMD.compute_exact_modes(
+              mode_idx_list, mode_handles, adv_vec_handles=adv_vec_handles)
+        
+        Since it doesn't overwrite the correlation and cross-correlation
+        matrices, ``compute_eigendecomp`` can be called many times in a row to
+        do computations for different truncation levels.  However, the results
+        of the decomposition (e.g., ``self.eigvals``) do get overwritten, so
+        you may want to call a ``put`` method to save those results somehow.
         """
         # Compute eigendecomposition of correlation matrix
         self.correlation_mat_eigvals, self.correlation_mat_eigvecs = \
             _parallel.call_and_bcast(
             util.eigh, self.correlation_mat, atol=atol, rtol=None,
             is_positive_definite=True)
+
+        # Truncate if necessary
+        if max_num_eigvals is not None and (
+            max_num_eigvals < self.correlation_mat_eigvals.size):
+            self.correlation_mat_eigvals = self.correlation_mat_eigvals[
+                :max_num_eigvals]
+            self.correlation_mat_eigvecs = self.correlation_mat_eigvecs[
+                :, :max_num_eigvals]
+                
+        # Compute low-order linear map 
         correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(
             self.correlation_mat_eigvals ** -0.5))
-        
-        # Compute low-order linear map 
         self.low_order_linear_map = (
             correlation_mat_eigvals_sqrt_inv * 
             self.correlation_mat_eigvecs.conj().T * 
@@ -532,7 +615,8 @@ class DMDHandles(object):
             **{'scale_choice':'left'})
 
     def compute_decomp(
-        self, vec_handles, adv_vec_handles=None, atol=1e-13, rtol=None):
+        self, vec_handles, adv_vec_handles=None, atol=1e-13, rtol=None,
+        max_num_eigvals=None):
         """Computes eigendecomposition of low-order linear map approximating
         relationship between vector objects, returning various matrices
         necessary for computing and characterizing DMD modes.
@@ -547,10 +631,17 @@ class DMDHandles(object):
             ``vec_handles[:-1]`` and ``adv_vec_handles`` becomes
             ``vec_handles[1:]``.
         
-        ``atol``: Level below which DMD eigenvalues are truncated.
- 
-        ``rtol``: Maximum relative difference between largest and smallest 
-        DMD eigenvalues.  Smaller ones are truncated.
+            ``atol``: Level below which DMD eigenvalues are truncated.
+     
+            ``rtol``: Maximum relative difference between largest and smallest 
+            DMD eigenvalues.  Smaller ones are truncated.
+
+            ``max_num_eigvals``: Maximum number of DMD eigenvalues that will be
+            computed.  This is enforced by truncating the basis onto which the
+            approximating linear map is projected.  Computationally, this
+            corresponds to truncating the eigendecomposition of the correlation
+            matrix. If set to None, no truncation will be performed, and the
+            maximum possible number of DMD eigenvalues will be computed.
     
         Returns:
             ``eigvals``: 1D array of eigenvalues of low-order linear map, i.e., 
@@ -600,7 +691,8 @@ class DMDHandles(object):
                 self.vec_handles, self.adv_vec_handles)
 
         # Compute eigendecomposition of low-order linear map.
-        self.compute_eigendecomp(atol=atol, rtol=rtol)
+        self.compute_eigendecomp(
+            atol=atol, rtol=rtol, max_num_eigvals=max_num_eigvals)
 
         return (
             self.eigvals, self.R_low_order_eigvecs,

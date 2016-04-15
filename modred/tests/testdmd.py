@@ -23,11 +23,11 @@ class TestDMDArraysFunctions(unittest.TestCase):
     def setUp(self):
         # Generate vecs if we are on the first processor
         # A random matrix of data (#cols = #vecs)
-        self.num_vecs = 6
-        self.num_states = 12
+        self.num_vecs = 10
+        self.num_states = 20
 
     def _helper_compute_DMD_from_data(
-        self, vecs, inner_product, adv_vecs=None):
+        self, vecs, inner_product, adv_vecs=None, max_num_eigvals=None):
         if adv_vecs is None:
             adv_vecs = vecs[:, 1:]
             vecs = vecs[:, :-1]
@@ -35,6 +35,14 @@ class TestDMDArraysFunctions(unittest.TestCase):
         cross_correlation_mat = inner_product(vecs, adv_vecs)
         V, Sigma, dummy = util.svd(correlation_mat)     # dummy = V.T 
         U = vecs.dot(V).dot(np.diag(Sigma ** -0.5))
+
+        # Truncate if necessary
+        if max_num_eigvals is not None and (
+            max_num_eigvals < Sigma.size):
+            V = V[:, :max_num_eigvals]
+            Sigma = Sigma[:max_num_eigvals]
+            U = U[:, :max_num_eigvals]
+
         A_tilde = inner_product(
             U, adv_vecs).dot(V).dot(np.diag(Sigma ** -0.5))
         eigvals, W, Z = util.eig_biorthog(
@@ -44,7 +52,9 @@ class TestDMDArraysFunctions(unittest.TestCase):
             V.dot(np.diag(Sigma ** -0.5)).dot(W).dot(np.diag(eigvals ** -1.)))
         modes_proj = vecs.dot(build_coeffs_proj)
         modes_exact = adv_vecs.dot(build_coeffs_exact)
-        spectral_coeffs = np.linalg.lstsq(modes_proj, vecs[:, 0])[0]
+        adj_modes = U.dot(Z)
+        spectral_coeffs = np.array(
+            inner_product(adj_modes, np.mat(vecs[:, 0]).T)).squeeze()
         return (
             modes_exact, modes_proj, spectral_coeffs, eigvals,
             W, Z, Sigma, V, correlation_mat, cross_correlation_mat)
@@ -70,7 +80,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
 
     def _helper_check_decomp(
         self, method_type, vecs, mode_indices, inner_product, 
-        inner_product_weights, rtol, atol, adv_vecs=None):
+        inner_product_weights, rtol, atol, adv_vecs=None, max_num_eigvals=None):
 
         # Compute reference values for testing DMD computation
         (modes_exact_true, modes_proj_true, spectral_coeffs_true, 
@@ -78,7 +88,8 @@ class TestDMDArraysFunctions(unittest.TestCase):
             correlation_mat_eigvals_true, correlation_mat_eigvecs_true,
             correlation_mat_true, cross_correlation_mat_true) = (
             self._helper_compute_DMD_from_data(
-            vecs, inner_product, adv_vecs=adv_vecs))
+            vecs, inner_product, adv_vecs=adv_vecs,
+            max_num_eigvals=max_num_eigvals))
  
         # Compute DMD using modred method of choice
         if method_type == 'snaps':
@@ -88,14 +99,16 @@ class TestDMDArraysFunctions(unittest.TestCase):
                 correlation_mat, cross_correlation_mat) = (
                 compute_DMD_matrices_snaps_method(
                 vecs, mode_indices, adv_vecs=adv_vecs,
-                inner_product_weights=inner_product_weights, return_all=True))
+                inner_product_weights=inner_product_weights,
+                max_num_eigvals=max_num_eigvals, return_all=True))
         elif method_type == 'direct':
             (modes_exact, modes_proj, spectral_coeffs, eigvals, 
                 R_low_order_eigvecs, L_low_order_eigvecs,
                 correlation_mat_eigvals, correlation_mat_eigvecs) = (
                 compute_DMD_matrices_direct_method(
                 vecs, mode_indices, adv_vecs=adv_vecs,
-                inner_product_weights=inner_product_weights, return_all=True))
+                inner_product_weights=inner_product_weights,
+                max_num_eigvals=max_num_eigvals, return_all=True))
         else:
             raise ValueError('Invalid DMD matrix method.')
 
@@ -159,23 +172,44 @@ class TestDMDArraysFunctions(unittest.TestCase):
                 'snaps', vecs, mode_indices, IP, weights, rtol, atol,
                 adv_vecs=None) 
             
+            # Check that truncation works
+            max_num_eigvals = int(np.round(self.num_vecs / 2))
+            self._helper_check_decomp(
+                'snaps', vecs, mode_indices, IP, weights, rtol, atol,
+                adv_vecs=None, max_num_eigvals=max_num_eigvals) 
+
             # Test DMD for a sequential dataset, direct method
             self._helper_check_decomp(
                 'direct', vecs, mode_indices, IP, weights, rtol, atol,
                 adv_vecs=None) 
-            
+           
+            # Check that truncation works
+            self._helper_check_decomp(
+                'direct', vecs, mode_indices, IP, weights, rtol, atol,
+                adv_vecs=None, max_num_eigvals=max_num_eigvals) 
+ 
             # Generate data for a non-sequential dataset
             adv_vecs = np.random.random((self.num_states, self.num_vecs))
 
-            # Test DMD for a sequential dataset, method of snapshots
+            # Test DMD for a non-sequential dataset, method of snapshots
             self._helper_check_decomp(
                 'snaps', vecs, mode_indices, IP, weights, rtol, atol,
                 adv_vecs=adv_vecs) 
             
-            # Test DMD for a sequential dataset, direct method
+            # Check that truncation works
+            self._helper_check_decomp(
+                'snaps', vecs, mode_indices, IP, weights, rtol, atol,
+                adv_vecs=adv_vecs, max_num_eigvals=max_num_eigvals) 
+
+            # Test DMD for a non-sequential dataset, direct method
             self._helper_check_decomp(
                 'direct', vecs, mode_indices, IP, weights, rtol, atol,
                 adv_vecs=adv_vecs) 
+
+            # Check that truncation works
+            self._helper_check_decomp(
+                'direct', vecs, mode_indices, IP, weights, rtol, atol,
+                adv_vecs=adv_vecs, max_num_eigvals=max_num_eigvals) 
 
 
 #@unittest.skip('others')
@@ -187,8 +221,8 @@ class TestDMDHandles(unittest.TestCase):
         if not os.path.isdir(self.test_dir) and _parallel.is_rank_zero():
             os.mkdir(self.test_dir)
         
-        self.num_vecs = 6
-        self.num_states = 12
+        self.num_vecs = 10
+        self.num_states = 20
         self.my_DMD = DMDHandles(np.vdot, verbosity=0)
 
         self.vec_path = join(self.test_dir, 'dmd_vec_%03d.pkl')
@@ -348,7 +382,8 @@ class TestDMDHandles(unittest.TestCase):
         np.testing.assert_allclose(adv_proj_coeffs_loaded, adv_proj_coeffs)
 
     def _helper_compute_DMD_from_data(
-        self, vec_array, inner_product, adv_vec_array=None):
+        self, vec_array, inner_product, adv_vec_array=None,
+        max_num_eigvals=None):
         # Generate adv_vec_array for the case of a sequential dataset
         if adv_vec_array is None:
             adv_vec_array = vec_array[:, 1:]
@@ -364,7 +399,16 @@ class TestDMDHandles(unittest.TestCase):
             correlation_mat) 
         U = vec_array.dot(np.array(correlation_mat_eigvecs)).dot(
             np.diag(correlation_mat_eigvals ** -0.5))
-        U_list = [U[:,i] for i in range(U.shape[1])]
+        U_list = [U[:, i] for i in range(U.shape[1])]
+
+        # Truncate SVD if necessary
+        if max_num_eigvals is not None and (
+            max_num_eigvals < correlation_mat_eigvals.size):
+            correlation_mat_eigvals = correlation_mat_eigvals[:max_num_eigvals]
+            correlation_mat_eigvecs = correlation_mat_eigvecs[
+                :, :max_num_eigvals]
+            U = U[:, :max_num_eigvals]
+            U_list = U_list[:max_num_eigvals]
 
         # Compute eigendecomposition of low order linear operator
         A_tilde = inner_product(U_list, adv_vecs).dot(
@@ -389,18 +433,16 @@ class TestDMDHandles(unittest.TestCase):
         modes_proj = vec_array.dot(build_coeffs_proj)
         modes_exact = adv_vec_array.dot(build_coeffs_exact)
         adj_modes = U.dot(L_low_order_eigvecs)
-
-        # Compute DMD modes
-        eigvecs = vec_array.dot(build_coeffs_proj)
-        eigvecs_list = [np.array(eigvecs[:,i]).squeeze() 
-            for i in range(eigvecs.shape[1])]
+        adj_modes_list = [
+            np.array(adj_modes[:, i]) for i in range(adj_modes.shape[1])]
 
         # Compute spectrum using pesudoinverse, which is analytically
         # equivalent to the adjoint approach used in the DMD class.  This
         # should work so long as the eigenvector matrices are full rank, which
         # is the case as long as there are no Jordan blocks.  For random data,
         # this should be ok.
-        spectral_coeffs = np.linalg.lstsq(eigvecs, vec_array[:, 0])[0]
+        spectral_coeffs = np.array(
+            inner_product(adj_modes_list, vecs[0:1])).squeeze()
 
         return (
             modes_exact, modes_proj, spectral_coeffs, eigvals,
@@ -444,7 +486,7 @@ class TestDMDHandles(unittest.TestCase):
 
     def _helper_check_decomp(
         self, vec_array,  vec_handles, adv_vec_array=None,
-        adv_vec_handles=None):
+        adv_vec_handles=None, max_num_eigvals=None):
         # Set tolerance.  
         tol = 1e-10
 
@@ -453,13 +495,14 @@ class TestDMDHandles(unittest.TestCase):
             correlation_mat_eigvals_true, correlation_mat_eigvecs_true) = (
             self._helper_compute_DMD_from_data(
             vec_array, util.InnerProductBlock(np.vdot),
-            adv_vec_array=adv_vec_array))[3:-1]
+            adv_vec_array=adv_vec_array, max_num_eigvals=max_num_eigvals))[3:-1]
 
         # Compute DMD using modred
         (eigvals_returned,  R_low_order_eigvecs_returned,
             L_low_order_eigvecs_returned, correlation_mat_eigvals_returned,
             correlation_mat_eigvecs_returned) = self.my_DMD.compute_decomp(
-            vec_handles, adv_vec_handles=adv_vec_handles)
+            vec_handles, adv_vec_handles=adv_vec_handles, 
+            max_num_eigvals=max_num_eigvals)
 
         # Test that matrices were correctly computed.  For build coeffs, check
         # column by column, as it is ok to be off by a negative sign.
@@ -514,6 +557,11 @@ class TestDMDHandles(unittest.TestCase):
         _parallel.barrier()
         self._helper_check_decomp(vec_array, self.vec_handles)
 
+        # Make sure truncation works
+        max_num_eigvals = int(np.round(self.num_vecs / 2))
+        self._helper_check_decomp(vec_array, self.vec_handles, 
+            max_num_eigvals=max_num_eigvals)
+
         # Create more data, to check a non-sequential dataset
         adv_vec_array = _parallel.call_and_bcast(np.random.random, 
             ((self.num_states, self.num_vecs)))
@@ -527,6 +575,12 @@ class TestDMDHandles(unittest.TestCase):
             vec_array, self.vec_handles, adv_vec_array=adv_vec_array,
             adv_vec_handles=self.adv_vec_handles)
 
+        # Make sure truncation works
+        self._helper_check_decomp(
+            vec_array, self.vec_handles, adv_vec_array=adv_vec_array,
+            adv_vec_handles=self.adv_vec_handles,
+            max_num_eigvals=max_num_eigvals)
+        
         # Check that if mismatched sets of handles are passed in, an error is
         # raised.
         self.assertRaises(ValueError, self.my_DMD.compute_decomp,

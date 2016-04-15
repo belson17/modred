@@ -30,8 +30,14 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
   :py:func:`dmd.DMDHandles.compute_proj_modes`,
   :py:func:`dmd.DMDHandles.compute_spectrum`,
   :py:func:`dmd.DMDHandles.compute_proj_coeffs`,
+  :py:func:`dmd.DMDHandles.compute_eigendecomp`,
   :py:func:`dmd.DMDHandles.put_spectral_coeffs`,
   and :py:func:`dmd.DMDHandles.put_eig_vals`.
+
+* The ``compute_decomp`` step in DMD has been refactored, resulting in the new
+  method :py:func:`dmd.DMDHandles.compute_eigendecomp`. This method can be used
+  to restart DMD computations from saved correlation and cross-correlation
+  matrices, or to compute a DMD using a truncated basis.  
 
 * Absolute and relative tolerances can now be passed in using the keyword 
   arguments ``atol`` and ``rtol``, respectively, when calling
