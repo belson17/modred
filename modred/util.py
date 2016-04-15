@@ -11,14 +11,15 @@ import numpy as np
 class UndefinedError(Exception): pass
 
 def make_mat(array):
-    """Makes 1D or 2D array into matrix. 1D arrays become mats with one col."""
+    """Makes 1D or 2D arrays into matrices. 1D arrays become matrices with one
+    column."""
     if array.ndim == 1:
         array = array.reshape((array.shape[0], 1))
     return np.mat(array)
 
 def make_iterable(arg):
-    """Checks arg is iterable. If not, makes it a 1-element list. If iterable, 
-    retuns arg."""
+    """Checks if ``arg`` is iterable. If not, makes it a one-element list.
+    Otherwise returns ``arg``."""
     try:
         iterator = iter(arg)
         return arg
@@ -42,12 +43,12 @@ def save_array_text(array, file_name, delimiter=None):
     """Saves a 1D or 2D array or matrix to a text file.
     
     Args:
-        ``array``: Matrix or array to save to file (1D or 2D).
+        ``array``: 1D or 2D matrix or array to save to file. 
         
-        ``file_name``: Path to save to, string.
+        ``file_name``: Filepath to location where data is to be saved.
         
     Kwargs:   
-        ``delimeter``: Delimeter in file, default is same as ``numpy.savetxt``.
+        ``delimiter``: Delimiter in file. Default is same as ``numpy.savetxt``.
     
     Format of saved files is::
       
@@ -80,18 +81,19 @@ def save_array_text(array, file_name, delimiter=None):
         np.savetxt(file_name, array_save.view(float), delimiter=delimiter)
     
 def load_array_text(file_name, delimiter=None, is_complex=False):
-    """Loads a text file, returns an array.
+    """Reads data saved in a text file, returns an array.
     
     Args:
-        ``file_name``: Name of file to load.
+        ``file_name``: Name of file from which to load data.
     
     Kwargs:
         ``delimiter``: Delimiter in file. Default is same as ``numpy.loadtxt``.
 
-        ``is_complex``: Bool, if the data saved is complex then use ``True``.
+        ``is_complex``: Boolean describing whether the data to be loaded is
+        complex valued.
     
     Returns:
-        ``array``: 2D numpy array.
+        ``array``: 2D array containing loaded data.
 
     See :py:func:`save_array_text` for the format used by this function.
     """
@@ -141,11 +143,11 @@ def get_data_members(obj):
     return data_members
 
 def sum_arrays(arr1, arr2):
-    """Used for allreduce command."""
+    """Used for ``allreduce`` command."""
     return arr1 + arr2
 
 def sum_lists(list1, list2):
-    """Sum the elements of each list, return a new list.
+    """Sums the elements of each list, returns a new list.
     
     This function is used in MPI reduce commands, but could be used
     elsewhere too."""
@@ -153,7 +155,8 @@ def sum_lists(list1, list2):
     return [list1[i] + list2[i] for i in range(len(list1))]
  
 def smart_eq(arg1, arg2):
-    """Checks if equal, accounting for numpy's ``==`` not returning a bool."""
+    """Checks for equality, accounting for the fact that numpy's ``==`` doesn't
+    return a bool. In that case, returns True only if all elements are equal."""
     eq = (arg1 == arg2)
     if isinstance(eq, np.ndarray):
         return eq.all()
@@ -176,23 +179,24 @@ class InnerProductBlock(object):
 
 
 def svd(mat, atol=1e-13, rtol=None):
-    """Wrapper for numpy's SVD, U E V^* = mat. 
+    """Wrapper for ``numpy.linalg.svd``, computes the singular value
+    decomposition of a matrix.
     
     Args:
-        ``mat``: Array or matrix of which to take SVD.
+        ``mat``: Matrix to take singular value decomposition of.
     
     Kwargs:
         ``atol``: Level below which singular values are truncated.
 
         ``rtol``: Maximum relative difference between largest and smallest
-            singular values.  Smaller ones are truncated.
+        singular values.  Smaller ones are truncated.
     
     Returns:
-        ``U``: Matrix of left singular vectors.
+        ``U``: Matrix whose columns are left singular vectors.
         
         ``E``: 1D array of singular values.
         
-        ``V``: Matrix of right singular vectors.
+        ``V``: Matrix whose columns are right singular vectors.
     
     Truncates ``U``, ``E``, and ``V`` such that the singular values
     obey both ``atol`` and ``rtol``.
@@ -218,28 +222,27 @@ def svd(mat, atol=1e-13, rtol=None):
     return U, E, V
 
 def eigh(mat, atol=1e-13, rtol=None, is_positive_definite=False):
-    """Wrapper for ``numpy.linalg.eigh``. Computes the e-values and vecs of
+    """Wrapper for ``numpy.linalg.eigh``. Computes eigendecomposition of a
     Hermitian matrix/array.
     
     Args:
-        ``mat``: Array or matrix to take eigendecomposition of.
+        ``mat``: Matrix to take eigendecomposition of.
         
         ``atol``: Value below which eigenvalues (and corresponding 
-            eigenvectors) are truncated.
+        eigenvectors) are truncated.
         
         ``rtol``: Maximum relative difference between largest and smallest
-            eigenvalues.  Smaller ones are truncated.
+        eigenvalues.  Smaller ones are truncated.
 
-        ``is_positive_definite``: If true, matrix being decomposed will be 
-            assumed to be positive definite.  Tolerance will be automatically 
-            adjusted (if necessary) so that only positive eigenvalues are 
-            returned.
+        ``is_positive_definite``: If true, matrix being decomposed will be
+        assumed to be positive definite.  Tolerance will be automatically
+        adjusted (if necessary) so that only positive eigenvalues are returned.
     
     Returns:
-        ``eigvals``: Eigenvalues in a 1D array, sorted in descending order (of
-            magnitude).
+        ``eigvals``: 1D array of eigenvalues, sorted in descending order (of
+        magnitude).
         
-        ``eigvecs``: Eigenvectors, columns of matrix, sorted by eigvals.
+        ``eigvecs``: Matrix whose columns are eigenvectors.
     """
     eigvals, eigvecs = np.linalg.eigh(np.mat(mat))
     eigvecs = np.mat(eigvecs)
@@ -273,23 +276,23 @@ def eigh(mat, atol=1e-13, rtol=None, is_positive_definite=False):
 
 def eig_biorthog(mat, scale_choice='left'):
     """Wrapper for ``numpy.linalg.eig`` that returns both left and right
-    eigenvectors. Eigenvalues and eigenvectors are sorted so that the left and
-    right eigenvector matrices are orthogonal.
+    eigenvectors. Eigenvalues and eigenvectors are sorted and scaled so that
+    the left and right eigenvector matrices are orthonormal.
 
     Args:
-        ``mat``: To take eigen decomposition of.
+        ``mat``: Matrix to take eigendecomposition of.
        
     Kwargs:
         ``scale_choice``: Determines whether 'left' (default) or 'right'
-        eigenvectors will be scaled to yield a biorthogonal set.  The other 
+        eigenvectors will be scaled to yield a biorthonormal set.  The other 
         eigenvectors will be left unscaled, leaving them with unit norms.
 
     Returns:
-        ``evals``: Eigenvalues in a 1D array.
+        ``evals``: 1D array of eigenvalues.
         
-        ``R_evecs``: Right eigenvectors, columns of matrix, sorted by evals.
+        ``R_evecs``: Matrix whose columns are right eigenvectors.
 
-        ``L_evecs``: Left eigenvectors, columns of matrix, sorted by evals.
+        ``L_evecs``: Matrix whose columns are left eigenvectors.
     """
     # Compute eigendecompositions
     R_evals, R_evecs= np.linalg.eig(np.mat(mat))
@@ -326,14 +329,14 @@ def eig_biorthog(mat, scale_choice='left'):
 
 
 def solve_Lyapunov_direct(A, Q):
-    """Solves discrete Lyapunov equation AXA' - X + Q = 0 for X given A and Q.
+    """Solves discrete Lyapunov equation :math:`AXA' - X + Q = 0` for
+    :math:`X`, given :math:`A` and :math:`Q`.
     
     This function may not be as computationally efficient or stable as 
     Matlab's ``dylap``.
 
-    See also :py:func:`solve_Lyapunov_iterative`.
-    
-    See http://en.wikipedia.org/wiki/Lyapunov_equation
+    See also :py:func:`solve_Lyapunov_iterative` and 
+    http://en.wikipedia.org/wiki/Lyapunov_equation
     """
     A = np.array(A)
     Q = np.array(Q)
@@ -347,11 +350,12 @@ def solve_Lyapunov_direct(A, Q):
     return X
 
 def solve_Lyapunov_iterative(A, Q, max_iters=10000, tol=1e-8):
-    """Solves discrete Lyapunov equation AXA' - X + Q = 0 for X given A and Q.
+    """Solves discrete Lyapunov equation :math:`AXA' - X + Q = 0` for
+    :math:`X`, given :math:`A` and :math:`Q`.
 
-    Iterative discrete-time Lyapunov solver based on:     
-    Davinson and Man, "The Numerical Solution of A'Q+QA=-C." 
-    IEEE Transactions on Automatic Control, volume 13, issue 4, August 1968.
+    This method is based on the iterative discrete-time Lyapunov solver
+    described in Davinson and Man, "The Numerical Solution of A'Q+QA=-C,"
+    IEEE Transactions on Automatic Control, volume 13, issue 4, August 1968,
     p. 448.
     
     This function may not be as computationally efficient or stable as 
@@ -386,19 +390,29 @@ def solve_Lyapunov_iterative(A, Q, max_iters=10000, tol=1e-8):
 
 def balanced_truncation(A, B, C, order=None, return_sing_vals=False,
     iterative_solver=True):
-    """Balance and truncate discrete-time LTI system defined by A, B, C.
+    """Balance and truncate discrete-time linear time-invariant (LTI) system
+    defined by A, B, C matrices.
     
     Args:
         ``A``, ``B``, ``C``: LTI discrete-time matrices.
         
     Kwargs:
-        ``order``: Order of truncated system. Default is maximum.
-            Can truncate afterwards 
+        ``order``: Order (number of states) of truncated system. Default is to
+        use the maximal possible value (can truncate system afterwards).
+   
+    Returns:
+        ``A_balanced``, ``B_balanced``, ``C_balanced``: LTI discrete-time
+        matrices of balanced system.
+
+        If ``return_sing_vals`` is True, also returns:
+
+        ``sing_vals``: Hankel singular values.
+
+    Notes:
     
-    ``D`` is unchanged by balanced truncation.
-    
-    This function may not be as computationally efficient or stable as 
-    Matlab's ``balancmr``. 
+    - ``D`` is unchanged by balanced truncation.
+    - This function may not be as computationally efficient or stable as 
+      Matlab's ``balancmr``. 
     """
     if iterative_solver:
         gram_cont = solve_Lyapunov_iterative(A, B.dot(B.transpose().conj()))
@@ -426,7 +440,7 @@ def balanced_truncation(A, B, C, order=None, return_sing_vals=False,
         return A_bal_trunc, B_bal_trunc, C_bal_trunc
 
 def drss(num_states, num_inputs, num_outputs):
-    """Generates a discrete-time random state space system.
+    """Generates a discrete-time random state-space system.
     
     Args:
         ``num_states``: Number of states.
@@ -436,9 +450,9 @@ def drss(num_states, num_inputs, num_outputs):
         ``num_outputs``: Number of outputs.
     
     Returns:
-        ``A``, ``B``, and ``C`` matrices of system.
+        ``A``, ``B``, ``C``: State-space matrices of discrete-time system.
         
-    All eigenvalues are real and stable.
+    By construction, all eigenvalues are real and stable.
     """
     eig_vals = np.linspace(.9, .95, num_states) 
     eig_vecs = np.random.normal(0, 2., (num_states, num_states))
@@ -449,7 +463,7 @@ def drss(num_states, num_inputs, num_outputs):
     return A, B, C
 
 def rss(num_states, num_inputs, num_outputs):
-    """Generates a continuous-time random state space system.
+    """Generates a continuous-time random state-space system.
 
     Args:
         ``num_states``: Number of states.
@@ -459,9 +473,9 @@ def rss(num_states, num_inputs, num_outputs):
         ``num_outputs``: Number of outputs.
     
     Returns:
-        ``A``, ``B``, and ``C`` matrices of system.
+        ``A``, ``B``, ``C``: State-space matrices of continuous-time system.
         
-    All eigenvalues are real and stable.
+    By construction, all eigenvalues are real and stable.
     """
     e_vals = -np.random.random(num_states)
     transformation = np.random.random((num_states, num_states))
@@ -472,23 +486,24 @@ def rss(num_states, num_inputs, num_outputs):
     return A, B, C
         
 def lsim(A, B, C, inputs, initial_condition=None):
-    """Simulates a discrete time system with arbitrary inputs. 
+    """Simulates a discrete-time system with arbitrary inputs. 
     
     :math:`x(n+1) = Ax(n) + Bu(n)`
+
     :math:`y(n) = Cx(n)`
     
     Args:
         ``A``, ``B``, and ``C``: State-space system matrices.
         
-        ``inputs``: Array with dimensions ``[num_time_steps, num_inputs]``,
-        :math:`u`.
+        ``inputs``: Array of inputs :math:`u`, with dimensions
+        ``[num_time_steps, num_inputs]``.
     
     Kwargs:
-        ``initial_condition``: Initial condition, :math:`x(0)`.
+        ``initial_condition``: Initial condition :math:`x(0)`.
     
     Returns:
-        ``outputs``: Array with dimensions ``[num_time_steps, num_outputs]``,
-        :math:`y`.
+        ``outputs``: Array of outputs :math:`y`, with dimensions
+        ``[num_time_steps, num_outputs]``.
     
     ``D`` matrix is assumed to be zero.
     """
@@ -528,17 +543,20 @@ def impulse(A, B, C, num_time_steps=None):
     """Generates impulse response outputs for a discrete-time system.
     
     Args:
-        ``A, B, C``: State-space system arrays/matrices.
+        ``A``, ``B``, ``C``: State-space system arrays/matrices.
         
     Kwargs:
         ``num_time_steps``: Number of time steps to simulate.
-            By default, automatically chooses.
+        By default, automatically chooses a value between 20 and 2000, stopping
+        either when 2000 timesteps have elapsed, or when the outputs decay to
+        below a magnitude of 1e-6.
 
     Returns:
-        ``outputs``: Response outputs, indices [time step, output, input].
+        ``outputs``: Impulse response outputs, with indices corresponding to
+        [time step, output, input].
     
-    No D matrix is included, but can simply be prepended to the output if it is
-    non-zero. 
+    No D matrix is included, but one can simply be prepended to the output if
+    it is non-zero. 
     """
     A_arr = np.array(A)
     B_arr = np.array(B)
@@ -577,7 +595,7 @@ def load_signals(signal_path, delimiter=None):
     """Loads signals from text files with columns [t signal1 signal2 ...].     
     
     Args:
-        ``signal_paths``: List of paths to signals, strings.
+        ``signal_paths``: List of filepaths to files containing signals.
     
     Returns:
         ``time_values``: 1D array of time values.
@@ -590,7 +608,6 @@ def load_signals(signal_path, delimiter=None):
       1 0.2 0.46
       2 0.2 1.6
       3 0.6 0.1
-      
     """
     raw_data = load_array_text(signal_path, delimiter=delimiter)
     num_signals = raw_data.shape[1] - 1
@@ -604,10 +621,11 @@ def load_signals(signal_path, delimiter=None):
     return time_values, signals
 
 def load_multiple_signals(signal_paths, delimiter=None):
-    """Loads multiple signal files w/columns [t channel1 channel2 ...].
+    """Loads multiple signal files from text files with columns [t channel1
+    channel2 ...].
     
     Args:
-        ``signal_paths``: List of paths to signals, strings.
+        ``signal_paths``: List of filepaths to files containing signals.
     
     Returns:
         ``time_values``: 1D array of time values.
@@ -645,13 +663,14 @@ def Hankel(first_row, last_col=None):
     Construct a Hankel matrix.
     
     Args:
-        ``first_row``: 1D array corresponding to first row.
+        ``first_row``: 1D array corresponding to first row of Hankel matrix.
     
     Kwargs:
-        ``last_col``: 1D array corresponding to the last col, default zeros.
+        ``last_col``: 1D array corresponding to the last column of Hankel
+        matrix.  Default is an array of zeros.
     
     Returns:
-        Hankel: 2D array with dimensions [len(last_col), len(first_row)].
+        Hankel: 2D array with dimensions ``[len(last_col), len(first_row)]``.
     """
     first_row = np.asarray(first_row).flatten()
     if last_col is None:

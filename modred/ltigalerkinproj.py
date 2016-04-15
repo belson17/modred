@@ -130,9 +130,9 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
         ``adjoint_basis_vec_handles``: Matrix whose columns are adjoint basis
         vectors.  If not given, then assumed to be the same as ``basis_vecs``. 
     
-        ``is_basis_orthonormal``: Boolean for bi-orthonormality of the basis
+        ``is_basis_orthonormal``: Boolean for biorthonormality of the basis
         vecs.  ``True`` if the basis and adjoint basis vectors are
-        bi-orthonormal.  Default is ``False``.
+        biorthonormal.  Default is ``False``.
             
         ``inner_product_weights``: 1D array or matrix of inner product weights.
         Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
@@ -304,9 +304,9 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
         objects. If not given, then assumed to be the same as
         ``basis_vec_handles``.
     
-        ``is_basis_orthonormal``: Boolean for bi-orthonormality of the basis
+        ``is_basis_orthonormal``: Boolean for biorthonormality of the basis
         vecs.  ``True`` if the basis and adjoint basis vectors are
-        bi-orthonormal.  Default is ``False``.
+        biorthonormal.  Default is ``False``.
             
         ``put_mat``: Function to put a matrix out of modred, e.g., write it to
         file.
