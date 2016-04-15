@@ -4,9 +4,11 @@ import modred as mr
 
 # Define the handles for the snapshots
 num_vecs = 30    
-direct_snapshots = [mr.VecHandleArrayText('direct_vec%d.txt' % i) 
+direct_snapshots = [
+    mr.VecHandleArrayText('direct_vec%d.txt' % i) 
     for i in range(num_vecs)]
-adjoint_snapshots = [mr.VecHandleArrayText('adjoint_vec%d.txt' % i)
+adjoint_snapshots = [
+    mr.VecHandleArrayText('adjoint_vec%d.txt' % i)
     for i in range(num_vecs)]
 
 # Save arbitrary data in text files
@@ -18,14 +20,16 @@ for i, snap in enumerate(adjoint_snapshots):
 
 # Calculate and save BPOD modes
 my_BPOD = mr.BPODHandles(np.vdot, max_vecs_per_node=10)
-L_sing_vecs, sing_vals, R_sing_vecs = \
-    my_BPOD.compute_decomp(direct_snapshots, adjoint_snapshots)
+sing_vals, L_sing_vecs, R_sing_vecs = my_BPOD.compute_decomp(
+    direct_snapshots, adjoint_snapshots)
 
 num_modes = 10
 mode_nums = list(range(num_modes))  
-direct_modes = [mr.VecHandleArrayText('direct_mode%d' % i) 
+direct_modes = [
+    mr.VecHandleArrayText('direct_mode%d' % i) 
     for i in mode_nums]
-adjoint_modes = [mr.VecHandleArrayText('adjoint_mode%d' % i) 
+adjoint_modes = [
+    mr.VecHandleArrayText('adjoint_mode%d' % i) 
     for i in mode_nums]
 my_BPOD.compute_direct_modes(mode_nums, direct_modes)
 my_BPOD.compute_adjoint_modes(mode_nums, adjoint_modes)

@@ -1,8 +1,12 @@
 from future import standard_library
 standard_library.install_hooks()
 import pickle
-import modred as mr
 from copy import deepcopy
+
+import numpy as np
+
+import modred as mr
+
 
 class CustomVector(mr.Vector):
     def __init__(self, grids, data_array):
@@ -26,7 +30,7 @@ class CustomVector(mr.Vector):
         return self.weighted_ip(self.data_array, other.data_array)
 
 class CustomVecHandle(mr.VecHandle):
-    def __init__(self, vec_path, base_handle=np.ne, scale=np.ne):
+    def __init__(self, vec_path, base_handle=None, scale=None):
         mr.VecHandle.__init__(self, base_handle, scale)
         self.vec_path = vec_path
 

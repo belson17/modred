@@ -14,7 +14,7 @@ snapshots = [mr.VecHandlePickle('vec%d.pkl'%i) for i in range(num_vecs)]
 parallel = mr.parallel_default_instance
 if parallel.is_rank_zero():
     for i,snap in enumerate(snapshots):
-        snap.put(np.sin(X*i) + np.cos(Y*i))
+        snap.put(np.sin(X * i) + np.cos(Y * i))
 parallel.barrier()
 
 weighted_IP = mr.InnerProductTrapz(x_grid, y_grid)
@@ -22,8 +22,10 @@ weighted_IP = mr.InnerProductTrapz(x_grid, y_grid)
 # Calculate DMD modes and save them to pickle files.
 my_DMD = mr.DMDHandles(weighted_IP)
 my_DMD.compute_decomp(snapshots)
-my_DMD.put_decomp('ritz_vals.txt', 'mode_norms.txt', 'build_coeffs.txt')
+my_DMD.put_decomp(
+    'eigvals.txt', 'R_low_order_eigvecs.txt', 'L_low_order_eigvecs.txt',
+    'correlation_mat_eigvals.txt', 'correlation_mat_eigvecs.txt')
 mode_indices = [1, 4, 5, 0, 10]
 modes = [mr.VecHandlePickle('mode%d.pkl'%i) for i in mode_indices]
-my_DMD.compute_modes(mode_indices, modes)
+my_DMD.compute_exact_modes(mode_indices, modes)
 

@@ -329,7 +329,7 @@ class DMDHandles(object):
 
       myDMD = DMDHandles(my_inner_product)
       myDMD.compute_decomp(vec_handles)
-      myDMD.compute_modes(range(50), mode_handles)
+      myDMD.compute_exact_modes(range(50), mode_handles)
 
     See also :func:`compute_DMD_matrices_snaps_method`,
     :func:`compute_DMD_matrices_direct_method`, and :mod:`vectors`.
@@ -641,7 +641,7 @@ class DMDHandles(object):
         # vec_handles is set.  If so, assume a sequential dataset, in which
         # case adv_vec_handles can be taken from a slice of vec_handles.  
         elif self.vec_handles is not None:
-            if len(self.vec_handles) - self.build_coeffs_exact.shape[0] == 1:
+            if len(self.vec_handles) - build_coeffs_exact.shape[0] == 1:
                 self.vec_space.lin_combine(mode_handles, self.vec_handles[1:], 
                     build_coeffs_exact, coeff_mat_col_indices=mode_indices)
             else:
