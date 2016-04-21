@@ -8,7 +8,7 @@ modred 2.0.0
 
 Main changes are an updated interface for DMD that matches the latest theory
 and support for Python 3.  Python 3 support was primarily implemented by Pierre
-Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
+Augier (pa371 [-at-] damtp [-dot-] cam [-dot-] ac [-dot-] uk). Thanks, Pierre!
 
 **New features and improvements**
 
