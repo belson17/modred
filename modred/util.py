@@ -206,8 +206,11 @@ def svd(mat, atol=1e-13, rtol=None):
     U = np.mat(U)
    
     # Figure out how many singular values satisfy the tolerances
-    num_nonzeros_atol = (abs(E) > atol).sum()
-    if rtol:
+    if atol is not None:
+        num_nonzeros_atol = (abs(E) > atol).sum()
+    else:
+        num_nonzeros_atol = E.size
+    if rtol is not None:
         num_nonzeros_rtol = (
             abs(E[:num_nonzeros_atol]) / abs(E[0]) > rtol).sum()
         num_nonzeros = min(num_nonzeros_atol, num_nonzeros_rtol)
@@ -263,7 +266,10 @@ def eigh(mat, atol=1e-13, rtol=None, is_positive_definite=False):
         atol = abs(eigvals.min())
 
     # Filter out small and negative eigenvalues, if necessary
-    num_nonzeros_atol = (abs(eigvals) > atol).sum()
+    if atol is not None:
+        num_nonzeros_atol = (abs(eigvals) > atol).sum()
+    else:
+        num_nonzeros_atol = eigvals.size
     if rtol is not None:
         num_nonzeros_rtol = (
             abs(eigvals[:num_nonzeros_atol]) / abs(eigvals[0]) > rtol).sum()

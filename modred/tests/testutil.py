@@ -219,13 +219,13 @@ class TestUtil(unittest.TestCase):
 
                     # If a relative tolerance is passed in, make sure the
                     # relative tolerance is satisfied.
-                    if rtol:
+                    if rtol is not None:
                         self.assertTrue(
                             abs(eigvals).min() / abs(eigvals).max() > rtol)
 
                     # If an absolute tolerance is passed in, make sure the
                     # absolute tolerance is satisfied.
-                    if atol:
+                    if atol is not None:
                         self.assertTrue(abs(eigvals).min() > atol)
 
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')

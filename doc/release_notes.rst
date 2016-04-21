@@ -14,6 +14,9 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
 
 * Python 3 is now supported!
 
+* Documentation has been updated for clarity and consistency, and example code
+  works with the latest interface.
+
 * DMD implementation now matches newest theory, laid out in a 2014 paper by Tu
   et al. in the Journal of Computational Dynamics.  Features were only added,
   i.e., none were removed.  Any DMD computations previously done using modred
@@ -54,11 +57,6 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
   :py:func:`bpod.BPODHandles.compute_proj_coeffs`,
   :py:func:`bpod.BPODHandles.compute_adj_proj_coeffs`,
   :py:func:`dmd.DMDHandles.compute_proj_coeffs`.
-
-* Added a new function :py:func:`dmd.DMDHandles.compute_eigendecom` so that DMD 
-  computations can be restarted from saved correlation and cross-correlation
-  matrices, rather than having to recompute those matrices, which can be
-  expensive.
 
 **Bug fixes**
 
@@ -177,6 +175,15 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
 * The packaging has been improved.
 
 * Ported to python >= 3.3 using `python-future <http://python-future.org/>`_.
+
+* Replaced instances of xrange() with range() for compatability with Python 3.
+  This is not as efficient in Python 2, but only occurs in a few places and with
+  small enough loops that the impact should be negligible.
+
+* Added a few more checks for None values, as Python 3 doesn't allow ordering
+  with respect to None.  So comparisons to potential None values (e.g., in
+  inequalities) must be separated into cases where the value is None and those
+  where it is not. 
 
 
 ------------

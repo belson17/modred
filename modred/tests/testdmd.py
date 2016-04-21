@@ -63,14 +63,14 @@ class TestDMDArraysFunctions(unittest.TestCase):
         self, true_vals, test_vals, rtol=1e-12, atol=1e-16):
         # Check that shapes are the same
         self.assertEqual(len(true_vals.shape), len(test_vals.shape))
-        for shape_idx in xrange(len(true_vals.shape)):
+        for shape_idx in range(len(true_vals.shape)):
             self.assertEqual(
                 true_vals.shape[shape_idx], test_vals.shape[shape_idx])
 
         # Check values column by columns.  To allow for matrices or arrays,
         # turn columns into arrays and squeeze them (forcing 1D arrays).  This
         # avoids failures due to trivial shape mismatches.
-        for col_idx in xrange(true_vals.shape[1]):
+        for col_idx in range(true_vals.shape[1]):
             true_col = np.array(true_vals[:, col_idx]).squeeze()
             test_col = np.array(test_vals[:, col_idx]).squeeze()
             self.assertTrue(
@@ -457,7 +457,7 @@ class TestDMDHandles(unittest.TestCase):
         self.assertEqual(true_vals.size, test_vals.size)
 
         # Check values entry by entry.  
-        for idx in xrange(true_vals.size):
+        for idx in range(true_vals.size):
             true_val = true_vals[idx]
             test_val = test_vals[idx]
             self.assertTrue(
@@ -469,14 +469,14 @@ class TestDMDHandles(unittest.TestCase):
         self, true_vals, test_vals, rtol=1e-12, atol=1e-16):
         # Check that shapes are the same
         self.assertEqual(len(true_vals.shape), len(test_vals.shape))
-        for shape_idx in xrange(len(true_vals.shape)):
+        for shape_idx in range(len(true_vals.shape)):
             self.assertEqual(
                 true_vals.shape[shape_idx], test_vals.shape[shape_idx])
 
         # Check values column by columns.  To allow for matrices or arrays,
         # turn columns into arrays and squeeze them (forcing 1D arrays).  This
         # avoids failures due to trivial shape mismatches.
-        for col_idx in xrange(true_vals.shape[1]):
+        for col_idx in range(true_vals.shape[1]):
             true_col = np.array(true_vals[:, col_idx]).squeeze()
             test_col = np.array(test_vals[:, col_idx]).squeeze()
             self.assertTrue(
