@@ -51,6 +51,11 @@ Augier (pa371 [-at-] damtp [-dot-] cam [-dot-] ac [-dot-] uk). Thanks, Pierre!
   also be used to truncate the computations and limit the number of modes making
   up the decompositions.
 
+* In DMD, truncation can also be achieved by setting the keyword
+  argument ``max_num_eigvals`` in  either
+  :py:func:`dmd.DMDHandles.compute_decomp` or
+  :py:func:`dmd.DMDHandles.compute_eigendecomp`.
+
 * Added new methods that compute the projection of the original data vectors
   onto the modes, for POD, BPOD, and DMD, respectively:
   :py:func:`pod.PODHandles.compute_proj_coeffs`,
@@ -130,6 +135,9 @@ Augier (pa371 [-at-] damtp [-dot-] cam [-dot-] ac [-dot-] uk). Thanks, Pierre!
   :py:func:`bpod.BPODHandles.compute_decomp`,
   :py:func:`dmd.DMDHandles.compute_decomp`.
 
+* Optional ``max_num_eigvals`` argument added to 
+  :py:func:`dmd.DMDHandles.compute_decomp`.
+
 * ``util.svd``, ``util.eigh``, and ``util.eig_biorthog`` now consistently return
   numpy matrices.  Previously, the SVD method returned matrices but the
   eigendecompositions returned arrays.
@@ -176,13 +184,13 @@ Augier (pa371 [-at-] damtp [-dot-] cam [-dot-] ac [-dot-] uk). Thanks, Pierre!
 
 * Ported to python >= 3.3 using `python-future <http://python-future.org/>`_.
 
-* Replaced instances of xrange() with range() for compatability with Python 3.
-  (In Python 3, xrange has been renamed as range.) This is not as efficient in
-  Python 2, but only occurs in a few places and with small enough loops that the
-  impact should be negligible.
+* Replaced instances of ``xrange`` with ``range`` for compatability with Python
+  3.  (In Python 3, ``xrange`` has been renamed as ``range``.) This is not as
+  efficient in Python 2, but only occurs in a few places and with small enough
+  loops that the impact should be negligible.
 
-* Added a few more checks for None values, as Python 3 doesn't allow comparisons
-  of floats to None.
+* Added a few more checks for ``None`` values, as Python 3 doesn't allow 
+  comparisons of floats to ``None``.
 
 
 ------------
