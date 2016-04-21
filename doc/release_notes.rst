@@ -177,13 +177,12 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
 * Ported to python >= 3.3 using `python-future <http://python-future.org/>`_.
 
 * Replaced instances of xrange() with range() for compatability with Python 3.
-  This is not as efficient in Python 2, but only occurs in a few places and with
-  small enough loops that the impact should be negligible.
+  (In Python 3, xrange has been renamed as range.) This is not as efficient in
+  Python 2, but only occurs in a few places and with small enough loops that the
+  impact should be negligible.
 
-* Added a few more checks for None values, as Python 3 doesn't allow ordering
-  with respect to None.  So comparisons to potential None values (e.g., in
-  inequalities) must be separated into cases where the value is None and those
-  where it is not. 
+* Added a few more checks for None values, as Python 3 doesn't allow comparisons
+  of floats to None.
 
 
 ------------
