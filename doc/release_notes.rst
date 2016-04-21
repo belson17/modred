@@ -23,7 +23,7 @@ Augier (pa371 [-at-] damtp [-dot-] cam [-dot-] ac [-dot-] uk). Thanks, Pierre!
   can be reproduced, though the names of some function calls have changed.
   Namely, :py:func:`dmd.DMDHandles.compute_proj_modes` replaces
   :py:func:`dmd.DMDHandles.compute_modes`, and
-  :py:func:`dmd.DMDHandles.put_eig_vals` replaces
+  :py:func:`dmd.DMDHandles.put_eigvals` replaces
   :py:func:`dmd.DMDHandles.put_ritz_vals`.  Generally, the term "projected
   modes" has replaced "modes," and similarly "eigenvalues" has replaced "Ritz
   values."  "Exact modes" are now availble in addition to the projected modes.
@@ -35,7 +35,7 @@ Augier (pa371 [-at-] damtp [-dot-] cam [-dot-] ac [-dot-] uk). Thanks, Pierre!
   :py:func:`dmd.DMDHandles.compute_proj_coeffs`,
   :py:func:`dmd.DMDHandles.compute_eigendecomp`,
   :py:func:`dmd.DMDHandles.put_spectral_coeffs`,
-  and :py:func:`dmd.DMDHandles.put_eig_vals`.
+  and :py:func:`dmd.DMDHandles.put_eigvals`.
 
 * The ``compute_decomp`` step in DMD has been refactored, resulting in the new
   method :py:func:`dmd.DMDHandles.compute_eigendecomp`. This method can be used
