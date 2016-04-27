@@ -8,7 +8,7 @@ modred 2.0.0
 
 Main changes are an updated interface for DMD that matches the latest theory
 and support for Python 3.  Python 3 support was primarily implemented by Pierre
-Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
+Augier (pa371 [-at-] damtp [-dot-] cam [-dot-] ac [-dot-] uk). Thanks, Pierre!
 
 **New features and improvements**
 
@@ -23,7 +23,7 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
   can be reproduced, though the names of some function calls have changed.
   Namely, :py:func:`dmd.DMDHandles.compute_proj_modes` replaces
   :py:func:`dmd.DMDHandles.compute_modes`, and
-  :py:func:`dmd.DMDHandles.put_eig_vals` replaces
+  :py:func:`dmd.DMDHandles.put_eigvals` replaces
   :py:func:`dmd.DMDHandles.put_ritz_vals`.  Generally, the term "projected
   modes" has replaced "modes," and similarly "eigenvalues" has replaced "Ritz
   values."  "Exact modes" are now availble in addition to the projected modes.
@@ -35,7 +35,7 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
   :py:func:`dmd.DMDHandles.compute_proj_coeffs`,
   :py:func:`dmd.DMDHandles.compute_eigendecomp`,
   :py:func:`dmd.DMDHandles.put_spectral_coeffs`,
-  and :py:func:`dmd.DMDHandles.put_eig_vals`.
+  and :py:func:`dmd.DMDHandles.put_eigvals`.
 
 * The ``compute_decomp`` step in DMD has been refactored, resulting in the new
   method :py:func:`dmd.DMDHandles.compute_eigendecomp`. This method can be used
@@ -50,6 +50,11 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
   values or eigenvalues that should be considered numerical artifacts.  They can
   also be used to truncate the computations and limit the number of modes making
   up the decompositions.
+
+* In DMD, truncation can also be achieved by setting the keyword
+  argument ``max_num_eigvals`` in  either
+  :py:func:`dmd.DMDHandles.compute_decomp` or
+  :py:func:`dmd.DMDHandles.compute_eigendecomp`.
 
 * Added new methods that compute the projection of the original data vectors
   onto the modes, for POD, BPOD, and DMD, respectively:
@@ -130,6 +135,9 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
   :py:func:`bpod.BPODHandles.compute_decomp`,
   :py:func:`dmd.DMDHandles.compute_decomp`.
 
+* Optional ``max_num_eigvals`` argument added to 
+  :py:func:`dmd.DMDHandles.compute_decomp`.
+
 * ``util.svd``, ``util.eigh``, and ``util.eig_biorthog`` now consistently return
   numpy matrices.  Previously, the SVD method returned matrices but the
   eigendecompositions returned arrays.
@@ -176,13 +184,13 @@ Augier (pa371 @ damtp.cam.ac.uk). Thanks, Pierre!
 
 * Ported to python >= 3.3 using `python-future <http://python-future.org/>`_.
 
-* Replaced instances of xrange() with range() for compatability with Python 3.
-  (In Python 3, xrange has been renamed as range.) This is not as efficient in
-  Python 2, but only occurs in a few places and with small enough loops that the
-  impact should be negligible.
+* Replaced instances of ``xrange`` with ``range`` for compatability with Python
+  3.  (In Python 3, ``xrange`` has been renamed as ``range``.) This is not as
+  efficient in Python 2, but only occurs in a few places and with small enough
+  loops that the impact should be negligible.
 
-* Added a few more checks for None values, as Python 3 doesn't allow comparisons
-  of floats to None.
+* Added a few more checks for ``None`` values, as Python 3 doesn't allow 
+  comparisons of floats to ``None``.
 
 
 ------------
