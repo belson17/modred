@@ -35,12 +35,13 @@ setup(
     # long_description=long_description,
     # keywords='',
     author=('Brandt Belson, Jonathan Tu, and Clarence W. Rowley;'
-            'repacked and ported for python 3 by Pierre Augier'),
+            'repacked and ported for Python 3 by Pierre Augier'),
     author_email=(
         'bbelson@princeton.edu, jhtu@princeton.edu, cwrowley@princeton.edu'
         ),
     url='https://pythonhosted.org/modred',
-    maintainer='Brandt Belson, Jonathan Tu, and Clarence W. Rowley',
+    maintainer=('Brandt Belson, Jonathan Tu, and Clarence W. Rowley;'
+            'repacked and ported for Python 3 by Pierre Augier'),
     maintainer_email='bbelson@princeton.edu',
     license='Free BSD',
     classifiers=[
