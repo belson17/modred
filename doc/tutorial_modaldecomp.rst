@@ -200,9 +200,9 @@ You just need to define and use your own vector handle and vector objects.
 There are two important new features of this example: a custom vector class
 ``CustomVector`` and a custom vector handle class ``CustomVecHandle``.  
 These definitions may be collected together in a file, for instance called
-``custom_vector.py``:
+``customvector.py``:
 
-.. literalinclude:: ../modred/examples/custom_vector.py
+.. literalinclude:: ../modred/examples/customvector.py
 
 Instances of ``CustomVector`` meet the requirements for a vector object: vector
 addition ``__add__`` and scalar multiplication ``__mul__`` are defined, and the
