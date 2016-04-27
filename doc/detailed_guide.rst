@@ -190,7 +190,7 @@ Example
 
 An example of a custom class for vectors and vector handles is shown below:
 
-.. literalinclude:: ../modred/examples/custom_vector.py
+.. literalinclude:: ../modred/examples/customvector.py
 
 For an example using this class, see the tutorial in :ref:`sec_modaldecomp`.
 
