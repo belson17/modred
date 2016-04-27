@@ -39,7 +39,6 @@ setup(
     url='https://pythonhosted.org/modred',
     maintainer=('Brandt Belson, Jonathan Tu, and Clancy Rowley;'
             'repacked and ported for Python 3 by Pierre Augier'),
-    maintainer='Brandt Belson, Jonathan Tu, and Clancy Rowley',
     maintainer_email='bbelson@princeton.edu',
     license='Free BSD',
     classifiers=[
