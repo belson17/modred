@@ -133,10 +133,10 @@ def compute_DMD_matrices_snaps_method(
         correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv * 
         R_low_order_eigvecs)
     build_coeffs_exact = build_coeffs_proj * np.mat(np.diag(eigvals ** -1.))
-    spectral_coeffs = np.array(
+    spectral_coeffs = np.abs(np.array(
         L_low_order_eigvecs.H *
         np.mat(np.diag(np.sqrt(correlation_mat_eigvals))) *
-        correlation_mat_eigvecs[0, :].T).squeeze()
+        correlation_mat_eigvecs[0, :].T).squeeze())
 
     # For sequential data, user must provide one more vec than columns of 
     # build_coeffs. 
@@ -309,10 +309,10 @@ def compute_DMD_matrices_direct_method(
         correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv *
         R_low_order_eigvecs) 
     build_coeffs_exact = build_coeffs_proj * np.mat(np.diag(eigvals ** -1.))
-    spectral_coeffs = np.array(
+    spectral_coeffs = np.abs(np.array(
         L_low_order_eigvecs.H *
         np.mat(np.diag(np.sqrt(correlation_mat_eigvals))) * 
-        correlation_mat_eigvecs[0, :].T).squeeze()
+        correlation_mat_eigvecs[0, :].T).squeeze())
 
     # For sequential data, user must provide one more vec than columns of 
     # build_coeffs. 
@@ -797,10 +797,10 @@ class DMDHandles(object):
         """
         # TODO: maybe allow for user to choose which column to spectrum from?
         # ie first, last, or mean?  
-        self.spectral_coeffs = np.array(
+        self.spectral_coeffs = np.abs(np.array(
             self.L_low_order_eigvecs.H *
             np.mat(np.diag(np.sqrt(self.correlation_mat_eigvals))) * 
-            np.mat(self.correlation_mat_eigvecs[0, :]).T).squeeze()
+            np.mat(self.correlation_mat_eigvecs[0, :]).T).squeeze())
         return self.spectral_coeffs
 
     # Note that a biorthogonal projection onto the exact DMD modes is the same

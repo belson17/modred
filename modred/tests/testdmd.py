@@ -53,8 +53,8 @@ class TestDMDArraysFunctions(unittest.TestCase):
         modes_proj = vecs.dot(build_coeffs_proj)
         modes_exact = adv_vecs.dot(build_coeffs_exact)
         adj_modes = U.dot(Z)
-        spectral_coeffs = np.array(
-            inner_product(adj_modes, np.mat(vecs[:, 0]).T)).squeeze()
+        spectral_coeffs = np.abs(np.array(
+            inner_product(adj_modes, np.mat(vecs[:, 0]).T)).squeeze())
         return (
             modes_exact, modes_proj, spectral_coeffs, eigvals,
             W, Z, Sigma, V, correlation_mat, cross_correlation_mat)
@@ -436,13 +436,9 @@ class TestDMDHandles(unittest.TestCase):
         adj_modes_list = [
             np.array(adj_modes[:, i]) for i in range(adj_modes.shape[1])]
 
-        # Compute spectrum using pesudoinverse, which is analytically
-        # equivalent to the adjoint approach used in the DMD class.  This
-        # should work so long as the eigenvector matrices are full rank, which
-        # is the case as long as there are no Jordan blocks.  For random data,
-        # this should be ok.
-        spectral_coeffs = np.array(
-            inner_product(adj_modes_list, vecs[0:1])).squeeze()
+        # Compute spectrum 
+        spectral_coeffs = np.abs(np.array(
+            inner_product(adj_modes_list, vecs[0:1])).squeeze())
 
         return (
             modes_exact, modes_proj, spectral_coeffs, eigvals,
