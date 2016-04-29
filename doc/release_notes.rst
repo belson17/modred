@@ -2,6 +2,19 @@
 Release notes
 =============
 
+
+------------
+modred 2.0.1
+------------
+
+Minor bug fix.
+
+**Bug fixes**
+
+* :py:func:`dmd.DMDHandles.compute_spectrum` now returns real numbers, as it
+  should have before, instead of complex values.
+
+
 ------------
 modred 2.0.0
 ------------

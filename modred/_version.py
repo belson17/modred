@@ -11,4 +11,4 @@ http://legacy.python.org/dev/peps/pep-0386/
 'a' or 'alpha' means alpha version (internal testing),
 'b' or 'beta' means beta version (external testing).
 """
-__version__ = '2.0.0'
+__version__ = '2.0.1'
