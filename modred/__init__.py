@@ -19,7 +19,8 @@ from .pod import (
 
 from .dmd import (
     DMDHandles,
-    compute_DMD_matrices_direct_method, compute_DMD_matrices_snaps_method
+    compute_DMD_matrices_direct_method, compute_DMD_matrices_snaps_method,
+    TLSqrDMDHandles
 )
 
 from .bpod import BPODHandles, compute_BPOD_matrices
