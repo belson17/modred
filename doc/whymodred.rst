@@ -1,6 +1,6 @@
-================
+===========
 Why modred?
-================
+===========
 
 modred's a good choice for beginners, experts, experimentalists, and
 computationalists from many fields.

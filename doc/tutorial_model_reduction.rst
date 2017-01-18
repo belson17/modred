@@ -1,12 +1,13 @@
 .. _sec_model_reduction:
 
--------------------------------------------------
+---------------
 Model reduction
--------------------------------------------------
+---------------
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Linear reduced-order models
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 We provide a class to find reduced-order models (continuous and discrete time)
 by projecting linear dynamics onto modes (Petrov-Galerkin projection).
 The governing equation of the full system is assumed to be either continuous
@@ -87,9 +88,11 @@ For this reason, modred requires only the *action* of the operators on the
 vectors, i.e., the products :math:`A \phi_j`, :math:`Be_j`, and :math:`C
 \phi_j`, and *not* the operators :math:`A`, :math:`B`, and :math:`C` themselves.
 
-*****************************************
+
+************************************
 Example 1: Smaller data and matrices
-*****************************************
+************************************
+
 Here's an example that uses matrices.
 
 .. literalinclude:: ../modred/examples/rom_ex1.py
@@ -113,9 +116,10 @@ Specifying the constructor keyword argument ``is_basis_orthonormal=True`` tells
 modred this matrix is identity and to not compute it.
 
 
-**********************************************
+*****************************************
 Example 2: Larger data and vector handles
-**********************************************
+*****************************************
+
 Here's an example similar to what might arise when doing large simulations in
 another language or program.
 
@@ -129,8 +133,9 @@ continuous time model, see
 :py:func:`ltigalerkinproj.compute_derivs_handles`.
 
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Eigensystem Realization Algorithm (ERA)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 See the documentation and examples provided in :py:func:`era.compute_ERA_model`
 and :py:class:`era.ERA`.

@@ -1,8 +1,8 @@
 .. _sec_modaldecomp:
 
--------------------------------------------------
+------------------------------------------
 Modal decompositions -- POD, BPOD, and DMD
--------------------------------------------------
+------------------------------------------
 
 This tutorial discusses computing modes from data, using the Proper Orthogonal
 Decomposition (POD), Balanced Proper Orthogonal Decomposition (BPOD), and
@@ -18,9 +18,11 @@ This could be a 1D, 2D, or 3D array, or any other object that satisfies the
 properties of a vector space.
 The examples below build on one another, each introducing new aspects.
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 1 -- All data in a matrix
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 A simple way to find POD modes is:
 
 .. literalinclude:: ../modred/examples/tutorial_ex1.py
@@ -39,9 +41,10 @@ In short, it computes the correlation matrix :math:`X^* X`, where :math:`X` is `
 modes.
 
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 2 -- Inner products with all data in a matrix
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 You can use a weighted inner product, specified here by a 1D array of weights,
 so that the correlation matrix is :math:`X^* W X`, where :math:`X` is ``vecs``
 and :math:`W` contains the inner product weights.
@@ -57,9 +60,10 @@ The differences between the two are insignificant in most cases.
 For details, see :py:func:`pod.compute_POD_arrays_direct_method`.
 
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 3 -- Vector handles for loading and saving
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 This example demonstrates *vector handles*, which are very important because
 they allow modred to interact with large and complicated datasets without
 requiring that all of the vectors be stacked into a single matrix.
@@ -133,9 +137,10 @@ If you're curious, the text files are saved in a format defined in
 :py:func:`util.load_array_text` and :py:func:`util.save_array_text`.
 
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 4 -- Inner product function
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 You are free to use any inner product function, as long as it has the interface
 ``value = inner_product(vec1, vec2)`` and satisfies the mathematical
 definition of an inner product (see :ref:`sec_details`).
@@ -153,9 +158,10 @@ saves the arrays associated with the decomposition to text files.
 Again, this code can be executed in parallel without any modifications.
 
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 5 -- Shifting and scaling vectors using vector handles
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Often vectors contain an offset (also called a shift or translation) such as a
 mean or equilibrium state, and one might want to do model reduction with this
 known offset removed.
@@ -185,9 +191,10 @@ need arises, it should be used (instead of writing new code) since it is tested
 and parallelized.
 
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 6 -- User-defined vectors and handles
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 So far, all of the vectors have been arrays, but you may want to apply modred to
 data saved in your own custom format with more complicated inner products and
 other operations.
@@ -254,9 +261,9 @@ As usual, this example can be executed in parallel without any modifications.
 
 .. _sec_matrices:
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
 Matrix input and output
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
 
 By default, ``put_mat`` and ``get_mat`` save and load to text files.
 If you prefer a different format, you can pass your own functions as keyword
@@ -265,9 +272,10 @@ The functions should have the following interfaces: ``put_mat(mat, mat_dest)``
 and ``mat = get_mat(mat_source)``.
 The ``mat`` argument could be a numpy matrix, 1D array, or 2D array.
 
-^^^^^^^^^^^^^^
+
+^^^^^^^^^^
 References
-^^^^^^^^^^^^^^
+^^^^^^^^^^
 
 .. [HLBR] P. Holmes, J. L. Lumley, G. Berkooz, and C. W. Rowley.
    *Turbulence, Coherent Structures, Dynamical Systems and Symmetry*,

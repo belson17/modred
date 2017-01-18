@@ -1,8 +1,8 @@
 .. _sec_details:
 
-==================================================
+==========================
 Interfacing with your data
-==================================================
+==========================
 
 The simplest way to use modred is with the Matlab-like functions and 2D arrays.
 However, sometimes your data is too large for this.
@@ -11,9 +11,10 @@ data in any format and never needs the data stacked into a 2D array.
 Of course, you'll need to tell modred how to interact with your data.
 This section explains how to do this and provides some mathematical background.
 
--------------------
+
+--------------
 Vector objects
--------------------
+--------------
 
 The building block of the modal decompositions is the vector object.
 Sets of these vector objects are decomposed into modes by POD, BPOD, and DMD.
@@ -63,9 +64,9 @@ We mean this in both the programming sense that modes are vector objects and the
 mathematical sense that modes live in the same vector space as vectors.
 
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^
 Base class
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^
 
 We provide a useful base class for all user-defined vectors to inherit from,
 ``mr.Vector``.
@@ -74,9 +75,10 @@ useful special functions and has some error checking.
 If you're curious, take a look at it in the :mod:`vectors` module (click on the
 [source] link on the right side).
 
-----------------------------
+
+--------------
 Vector handles
-----------------------------
+--------------
 
 When the vectors are large, it can be inefficient or impossible to have all of
 them in memory simultaneously.
@@ -124,9 +126,9 @@ So if vector handles contain vectors or other large data, then modred could run
 slowly or stop with "out of memory" errors.
 
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^
 Base class
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^
 
 We provide a useful base class for all user-defined vector handles to inherit
 from.
@@ -155,9 +157,10 @@ instances of classes derived from ``mr.VecHandle``.
 If you're curious, feel free to take a look at it in the :mod:`vectors` module
 (click on the [source] link on the right side).
 
---------------------------------------------------------
+
+-----------------------------------
 Checking requirements automatically
---------------------------------------------------------
+-----------------------------------
 
 First, we encourage you to write your own tests (see module ``unittest``) to be
 sure your vector object and vector handle work as you expect.
@@ -168,9 +171,10 @@ products.
 We used to call this the ``idiot_check`` as motivation to use it; keep that in
 mind!
 
---------------------------------------------------
+
+-------------------------------------------------
 How vector objects and handles are used in modred
---------------------------------------------------
+-------------------------------------------------
 
 The classes ``POD``, ``BPOD``, and ``DMD`` have similar interfaces which
 interact with vectors and vector handles.
@@ -184,9 +188,10 @@ handles and vectors; only that they satisfy the requirements.
 More information about these methods is provided in the documentation for each
 class.
 
-----------
+
+-------
 Example
-----------
+-------
 
 An example of a custom class for vectors and vector handles is shown below:
 
@@ -194,9 +199,10 @@ An example of a custom class for vectors and vector handles is shown below:
 
 For an example using this class, see the tutorial in :ref:`sec_modaldecomp`.
 
----------------------------------------
+
+----------------------
 Summary and next steps
----------------------------------------
+----------------------
 
 Summarizing, to use modred on arbitrary data, define
 
