@@ -162,7 +162,7 @@ def compute_DMD_matrices_snaps_method(
             R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
             correlation_mat_eigvecs, correlation_mat, cross_correlation_mat)
     else:
-        return exact_modes, proj_modes, eigvals, spectral_coeffs
+        return exact_modes, proj_modes, spectral_coeffs, eigvals
 
 
 def compute_DMD_matrices_direct_method(
@@ -339,7 +339,7 @@ def compute_DMD_matrices_direct_method(
             R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
             correlation_mat_eigvecs)
     else:
-        return exact_modes, proj_modes, eigvals, spectral_coeffs
+        return exact_modes, proj_modes, spectral_coeffs, eigvals
 
 
 class DMDHandles(object):
