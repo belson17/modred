@@ -41,23 +41,23 @@ class TestVectorSpaceHandles(unittest.TestCase):
             'max_vecs_per_node': 10000,
             'max_vecs_per_proc': 10000 * _parallel.get_num_nodes() // \
                 _parallel.get_num_procs(),
-            'verbosity': 0, 'print_interval': 10, 'prev_print_time': 0.}        
+            'verbosity': 0, 'print_interval': 10, 'prev_print_time': 0.}
         _parallel.barrier()
 
     def tearDown(self):
         _parallel.barrier()
         _parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
         _parallel.barrier()
- 
+
     #@unittest.skip('testing other things')
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly."""
         data_members_original = util.get_data_members(
             VectorSpaceHandles(inner_product=np.vdot, verbosity=0))
         self.assertEqual(data_members_original, self.default_data_members)
-                
+
         max_vecs_per_node = 500
-        my_VS = VectorSpaceHandles(inner_product=np.vdot, 
+        my_VS = VectorSpaceHandles(inner_product=np.vdot,
             max_vecs_per_node=max_vecs_per_node, verbosity=0)
         data_members = copy.deepcopy(data_members_original)
         data_members['max_vecs_per_node'] = max_vecs_per_node
@@ -75,7 +75,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
         my_VS = VectorSpaceHandles(inner_product=np.vdot, verbosity=0)
         in_mem_handle = V.VecHandleInMemory(test_array)
         my_VS.sanity_check(in_mem_handle)
-        
+
         # An sanity's vector that redefines multiplication to modify its data
         class SanityMultVec(V.Vector):
             def __init__(self, arr):
@@ -87,7 +87,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
             def __mul__(self, a):
                 self.arr *= a
                 return self
-                
+
         class SanityAddVec(V.Vector):
             def __init__(self, arr):
                 self.arr = arr
@@ -98,20 +98,20 @@ class TestVectorSpaceHandles(unittest.TestCase):
                 f_return = copy.deepcopy(self)
                 f_return.arr *= a
                 return f_return
-        
+
         def my_IP(vec1, vec2):
             return np.vdot(vec1.arr, vec2.arr)
         my_VS.inner_product = my_IP
         my_sanity_mult_vec = SanityMultVec(test_array)
-        self.assertRaises(ValueError, my_VS.sanity_check, 
+        self.assertRaises(ValueError, my_VS.sanity_check,
             V.VecHandleInMemory(my_sanity_mult_vec))
         my_sanity_add_vec = SanityAddVec(test_array)
-        self.assertRaises(ValueError, my_VS.sanity_check, 
+        self.assertRaises(ValueError, my_VS.sanity_check,
             V.VecHandleInMemory(my_sanity_add_vec))
-                
+
     def generate_vecs_modes(self, num_states, num_vecs, num_modes):
-        """Generates random vecs and finds the modes. 
-        
+        """Generates random vecs and finds the modes.
+
         Returns:
             vec_array: matrix in which each column is a vec (in order)
             mode_indices: unordered list of integers representing mode indices,
@@ -125,8 +125,8 @@ class TestVectorSpaceHandles(unittest.TestCase):
         build_coeff_mat = np.mat(np.random.random((num_vecs, num_modes)))
         vec_array = np.mat(np.random.random((num_states, num_vecs)))
         mode_array = vec_array*build_coeff_mat
-        return vec_array, mode_indices, build_coeff_mat, mode_array 
-    
+        return vec_array, mode_indices, build_coeff_mat, mode_array
+
     #@unittest.skip('testing other things')
     def test_lin_combine(self):
         num_vecs_list = [1, 15, 40]
@@ -140,7 +140,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
             self.total_num_vecs_in_mem, self.total_num_vecs_in_mem * 2]
         mode_path = join(self.test_dir, 'mode_%03d.txt')
         vec_path = join(self.test_dir, 'vec_%03d.txt')
-        
+
         for num_vecs in num_vecs_list:
             for num_modes in num_modes_list:
                 #generate data and then broadcast to all procs
@@ -150,10 +150,10 @@ class TestVectorSpaceHandles(unittest.TestCase):
                 #print 'num_modes =',num_modes
                 #print 'max_vecs_per_node =',max_vecs_per_node
                 #print 'index_from =',index_from
-                vec_handles = [V.VecHandleArrayText(vec_path%i) 
+                vec_handles = [V.VecHandleArrayText(vec_path%i)
                     for i in range(num_vecs)]
                 vec_array, mode_indices, build_coeff_mat, true_modes = \
-                    _parallel.call_and_bcast(self.generate_vecs_modes, 
+                    _parallel.call_and_bcast(self.generate_vecs_modes,
                     num_states, num_vecs, num_modes)
 
                 if _parallel.is_rank_zero():
@@ -162,21 +162,21 @@ class TestVectorSpaceHandles(unittest.TestCase):
                 _parallel.barrier()
                 mode_handles = [V.VecHandleArrayText(mode_path%mode_num)
                     for mode_num in mode_indices]
-                
+
                 # If there are more vecs than mat has rows
                 build_coeff_mat_too_small = \
-                    np.zeros((build_coeff_mat.shape[0]-1, 
+                    np.zeros((build_coeff_mat.shape[0]-1,
                         build_coeff_mat.shape[1]))
                 self.assertRaises(ValueError, self.my_vec_ops.\
                     lin_combine, mode_handles,
                     vec_handles, build_coeff_mat_too_small, mode_indices)
-                
+
                 # Test the case that only one mode is desired,
                 # in which case user might pass in an int
                 if len(mode_indices) == 1:
                     mode_indices = mode_indices[0]
                     mode_handles = mode_handles[0]
-                    
+
                 # Saves modes to files
                 self.my_vec_ops.lin_combine(mode_handles,
                     vec_handles, build_coeff_mat, mode_indices)
@@ -196,25 +196,25 @@ class TestVectorSpaceHandles(unittest.TestCase):
                     #print 'computed mode',computed_mode
                     np.testing.assert_allclose(
                         computed_mode, true_modes[:,mode_index])
-                        
+
                 _parallel.barrier()
-       
+
         _parallel.barrier()
-    
+
     #@unittest.skip('testing others')
     @unittest.skipIf(_parallel.is_distributed(), 'Serial only')
     def test_compute_inner_product_mat_types(self):
         class ArrayTextComplexHandle(V.VecHandleArrayText):
             def get(self):
                 return (1 + 1j)*V.VecHandleArrayText.get(self)
-        
+
         num_row_vecs = 4
         num_col_vecs = 6
         num_states = 7
 
         row_vec_path = join(self.test_dir, 'row_vec_%03d.txt')
         col_vec_path = join(self.test_dir, 'col_vec_%03d.txt')
-        
+
         # generate vecs and save to file
         row_vec_array = np.mat(np.random.random((num_states,
             num_row_vecs)))
@@ -230,11 +230,11 @@ class TestVectorSpaceHandles(unittest.TestCase):
             path = col_vec_path % vec_index
             util.save_array_text(col_vec_array[:,vec_index], path)
             col_vec_paths.append(path)
-    
+
         # Compute inner product matrix and check type
-        for handle, dtype in [(V.VecHandleArrayText, float), 
+        for handle, dtype in [(V.VecHandleArrayText, float),
             (ArrayTextComplexHandle, complex)]:
-            row_vec_handles = [handle(path) for path in row_vec_paths] 
+            row_vec_handles = [handle(path) for path in row_vec_paths]
             col_vec_handles = [handle(path) for path in col_vec_paths]
             inner_product_mat = self.my_vec_ops.compute_inner_product_mat(
                 row_vec_handles, col_vec_handles)
@@ -246,8 +246,8 @@ class TestVectorSpaceHandles(unittest.TestCase):
 
     #@unittest.skip('testing other things')
     def test_compute_inner_product_mats(self):
-        """Test computation of matrix of inner products.""" 
-        num_row_vecs_list = [1, int(round(self.total_num_vecs_in_mem / 2.)), 
+        """Test computation of matrix of inner products."""
+        num_row_vecs_list = [1, int(round(self.total_num_vecs_in_mem / 2.)),
             self.total_num_vecs_in_mem, self.total_num_vecs_in_mem * 2,
             _parallel.get_num_procs() + 1]
         num_col_vecs_list = num_row_vecs_list
@@ -255,20 +255,20 @@ class TestVectorSpaceHandles(unittest.TestCase):
 
         row_vec_path = join(self.test_dir, 'row_vec_%03d.txt')
         col_vec_path = join(self.test_dir, 'col_vec_%03d.txt')
-        
+
         for num_row_vecs in num_row_vecs_list:
             for num_col_vecs in num_col_vecs_list:
                 # generate vecs
                 _parallel.barrier()
-                row_vec_array = _parallel.call_and_bcast(np.random.random, 
+                row_vec_array = _parallel.call_and_bcast(np.random.random,
                     (num_states, num_row_vecs))
-                col_vec_array = _parallel.call_and_bcast(np.random.random, 
+                col_vec_array = _parallel.call_and_bcast(np.random.random,
                     (num_states, num_col_vecs))
-                row_vec_handles = [V.VecHandleArrayText(row_vec_path%i) 
+                row_vec_handles = [V.VecHandleArrayText(row_vec_path%i)
                     for i in range(num_row_vecs)]
-                col_vec_handles = [V.VecHandleArrayText(col_vec_path%i) 
+                col_vec_handles = [V.VecHandleArrayText(col_vec_path%i)
                     for i in range(num_col_vecs)]
-                
+
                 # Save vecs
                 if _parallel.is_rank_zero():
                     for i,h in enumerate(row_vec_handles):
@@ -283,14 +283,14 @@ class TestVectorSpaceHandles(unittest.TestCase):
                 if len(col_vec_handles) == 1:
                     col_vec_handles = col_vec_handles[0]
 
-                # Test IP computation.  
+                # Test IP computation.
                 product_true = np.dot(row_vec_array.T, col_vec_array)
                 product_computed = self.my_vec_ops.compute_inner_product_mat(
                     row_vec_handles, col_vec_handles)
                 row_vecs = [row_vec_array[:,i] for i in range(num_row_vecs)]
                 col_vecs = [col_vec_array[:,i] for i in range(num_col_vecs)]
                 np.testing.assert_allclose(product_computed, product_true)
-                
+
                 # Test symm IP computation
                 product_true = np.dot(row_vec_array.T, row_vec_array)
                 product_computed = \
@@ -298,7 +298,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
                         row_vec_handles)
                 row_vecs = [row_vec_array[:,i] for i in range(num_row_vecs)]
                 np.testing.assert_allclose(product_computed, product_true)
-                
-                        
+
+
 if __name__=='__main__':
-    unittest.main()    
+    unittest.main()

@@ -33,7 +33,7 @@ x_s = x_2
 nu = U + 2J * c_u
 gamma = 1. + 1J * c_d
 # chi: decay rate of global modes
-chi = (-mu_2 / (2.*gamma))**0.25 
+chi = (-mu_2 / (2.*gamma))**0.25
 
 print('----- Parameters ------')
 for var in ['nx','dt','U','c_u','c_d','mu_0','mu_2','s','x_s',
@@ -96,7 +96,7 @@ if plots:
     PLT.legend(['Real','Imag'])
     PLT.xlim([-20, 20])
     PLT.grid(True)
-    
+
 
 # Simulate impulse responses to the direct and adjoint systems w/Crank-np.colson
 # (q(i+1) - q(i)) / dt = 1/2 (A q(i+1) + A q(i)) + B u(i)
@@ -117,7 +117,7 @@ q_adj[:,0] = C_adj
 for ti in range(nt-1):
     q[:,ti+1] = np.linalg.solve(LHS, RHS*q[:,ti])
     q_adj[:,ti+1] = np.linalg.solve(LHS_adj, RHS_adj*q_adj[:,ti])
-    
+
 # Plot all snapshots as a contour plot
 if plots:
     t = np.arange(0, nt*dt, dt)

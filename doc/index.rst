@@ -10,39 +10,39 @@ Contents:
 
 .. toctree::
    :maxdepth: 2
-   
+
    intro
-   
+
    whymodred
-   
+
    installation
 
-   tutorial 
-   
+   tutorial
+
    detailed_guide
- 
+
    examples
-   
+
    pod
-   
+
    bpod
-   
+
    dmd
 
    ltigalerkinproj
 
    era
-     
+
    okid
 
    vectors
-   
+
    vectorspace
 
    parallel
-   
+
    util
-   
+
    release_notes
 
 
@@ -52,4 +52,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

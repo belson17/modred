@@ -5,4 +5,3 @@ System identification -- OKID and ERA
 ---------------------------------------
 
 See :mod:`okid` and :mod:`era`.
-

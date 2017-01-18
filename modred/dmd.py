@@ -20,8 +20,8 @@ def compute_DMD_matrices_snaps_method(
         ``vecs``: Matrix whose columns are data vectors.
 
         ``mode_indices``: List of indices describing which modes to compute.
-        Examples are ``range(10)`` or ``[3, 0, 6, 8]``. 
-    
+        Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
+
     Kwargs:
         ``adv_vecs``: Matrix whose columns are data vectors advanced in time.
         If not provided, then it is assumed that the vectors describe a
@@ -30,11 +30,11 @@ def compute_DMD_matrices_snaps_method(
 
         ``inner_product_weights``: 1D array or matrix of inner product weights.
         Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
-        
-        ``atol``: Level below which eigenvalues of correlation matrix are 
+
+        ``atol``: Level below which eigenvalues of correlation matrix are
         truncated.
- 
-        ``rtol``: Maximum relative difference between largest and smallest 
+
+        ``rtol``: Maximum relative difference between largest and smallest
         eigenvalues of correlation matrix.  Smaller ones are truncated.
 
         ``max_num_eigvals``: Maximum number of DMD eigenvalues that will be
@@ -51,24 +51,24 @@ def compute_DMD_matrices_snaps_method(
 
         ``proj_modes``: Matrix whose columns are projected DMD modes.
 
-        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on 
+        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on
         projection of first data vector.
 
         ``eigvals``: 1D array of eigenvalues of approximating low-order linear
         map (DMD eigenvalues).
-                
+
         If ``return_all`` is true, also returns:
-        
+
         ``R_low_order_eigvecs``: Matrix of right eigenvectors of approximating
         low-order linear map.
 
         ``L_low_order_eigvecs``: Matrix of left eigenvectors of approximating
         low-order linear map.
 
-        ``correlation_mat_eigvals``: 1D array of eigenvalues of 
+        ``correlation_mat_eigvals``: 1D array of eigenvalues of
         correlation matrix.
 
-        ``correlation_mat_eigvecs``: Matrix of eigenvectors of 
+        ``correlation_mat_eigvecs``: Matrix of eigenvectors of
         correlation matrix.
 
         ``correlation_mat``: Correlation matrix; elements are inner products of
@@ -78,7 +78,7 @@ def compute_DMD_matrices_snaps_method(
         products of data vectors with data vectors advanced in time. Going down
         rows, the data vector changes; going across columns the advanced data
         vector changes.
-   
+
     This uses the method of snapshots, which is faster than the direct method
     (see :py:func:`compute_DMD_matrices_direct_method`) when ``vecs`` has more
     rows than columns, i.e., when there are more elements in a vector than
@@ -92,7 +92,7 @@ def compute_DMD_matrices_snaps_method(
     if adv_vecs is None:
         # Compute correlation mat for all vectors.
         # This is more efficient because only one call is made to the inner
-        # product routine, even though we don't need the last row and column 
+        # product routine, even though we don't need the last row and column
         # yet.
         expanded_correlation_mat = \
             vec_space.compute_symmetric_inner_product_mat(vecs)
@@ -108,7 +108,7 @@ def compute_DMD_matrices_snaps_method(
             vecs))
         cross_correlation_mat = np.mat(vec_space.compute_inner_product_mat(
             vecs, adv_vecs))
-    
+
     correlation_mat_eigvals, correlation_mat_eigvecs = util.eigh(
         correlation_mat, is_positive_definite=True, atol=atol, rtol=rtol)
 
@@ -117,20 +117,20 @@ def compute_DMD_matrices_snaps_method(
         max_num_eigvals < correlation_mat_eigvals.size):
         correlation_mat_eigvals = correlation_mat_eigvals[:max_num_eigvals]
         correlation_mat_eigvecs = correlation_mat_eigvecs[:, :max_num_eigvals]
-     
+
     # Compute low-order linear map for sequential or non-sequential case.
     correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(
         correlation_mat_eigvals ** -0.5))
     low_order_linear_map = (
-        correlation_mat_eigvals_sqrt_inv * correlation_mat_eigvecs.H * 
-        cross_correlation_mat * correlation_mat_eigvecs * 
+        correlation_mat_eigvals_sqrt_inv * correlation_mat_eigvecs.H *
+        cross_correlation_mat * correlation_mat_eigvecs *
         correlation_mat_eigvals_sqrt_inv)
 
     # Compute eigendecomposition of low-order linear map.
     eigvals, R_low_order_eigvecs, L_low_order_eigvecs =\
         util.eig_biorthog(low_order_linear_map, scale_choice='left')
     build_coeffs_proj = (
-        correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv * 
+        correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv *
         R_low_order_eigvecs)
     build_coeffs_exact = build_coeffs_proj * np.mat(np.diag(eigvals ** -1.))
     spectral_coeffs = np.abs(np.array(
@@ -138,15 +138,15 @@ def compute_DMD_matrices_snaps_method(
         np.mat(np.diag(np.sqrt(correlation_mat_eigvals))) *
         correlation_mat_eigvecs[0, :].T).squeeze())
 
-    # For sequential data, user must provide one more vec than columns of 
-    # build_coeffs. 
+    # For sequential data, user must provide one more vec than columns of
+    # build_coeffs.
     if vecs.shape[1] - build_coeffs_exact.shape[0] == 1:
-        exact_modes = vec_space.lin_combine(vecs[:, 1:], 
+        exact_modes = vec_space.lin_combine(vecs[:, 1:],
             build_coeffs_exact, coeff_mat_col_indices=mode_indices)
-        proj_modes = vec_space.lin_combine(vecs[:, :-1], 
+        proj_modes = vec_space.lin_combine(vecs[:, :-1],
             build_coeffs_proj, coeff_mat_col_indices=mode_indices)
-    # For non-sequential data, user must provide as many vecs as columns of 
-    # build_coeffs. 
+    # For non-sequential data, user must provide as many vecs as columns of
+    # build_coeffs.
     elif vecs.shape[1] == build_coeffs_exact.shape[0]:
         exact_modes = vec_space.lin_combine(
             adv_vecs, build_coeffs_exact, coeff_mat_col_indices=mode_indices)
@@ -168,14 +168,14 @@ def compute_DMD_matrices_snaps_method(
 def compute_DMD_matrices_direct_method(
     vecs, mode_indices, adv_vecs=None, inner_product_weights=None, atol=1e-13,
     rtol=None, max_num_eigvals=None, return_all=False):
-    """Computes DMD modes using data stored in matrices, using direct method. 
+    """Computes DMD modes using data stored in matrices, using direct method.
 
     Args:
         ``vecs``: Matrix whose columns are data vectors.
 
         ``mode_indices``: List of indices describing which modes to compute.
-        Examples are ``range(10)`` or ``[3, 0, 6, 8]``. 
-   
+        Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
+
     Kwargs:
         ``adv_vecs``: Matrix whose columns are data vectors advanced in time.
         If not provided, then it is assumed that the vectors describe a
@@ -184,11 +184,11 @@ def compute_DMD_matrices_direct_method(
 
         ``inner_product_weights``: 1D array or matrix of inner product weights.
         Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
-        
-        ``atol``: Level below which eigenvalues of correlation matrix are 
+
+        ``atol``: Level below which eigenvalues of correlation matrix are
         truncated.
- 
-        ``rtol``: Maximum relative difference between largest and smallest 
+
+        ``rtol``: Maximum relative difference between largest and smallest
         eigenvalues of correlation matrix.  Smaller ones are truncated.
 
         ``max_num_eigvals``: Maximum number of DMD eigenvalues that will be
@@ -199,21 +199,21 @@ def compute_DMD_matrices_direct_method(
         maximum possible number of DMD eigenvalues will be computed.
 
         ``return_all``: Return more objects, see below. Default is false.
- 
+
     Returns:
 
         ``exact_modes``: Matrix whose columns are exact DMD modes.
 
         ``proj_modes``: Matrix whose columns are projected DMD modes.
 
-        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on 
+        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on
         projection of first data vector.
 
         ``eigvals``: 1D array of eigenvalues of approximating low-order linear
         map (DMD eigenvalues).
-                
+
         If ``return_all`` is true, also returns:
-        
+
         ``R_low_order_eigvecs``: Matrix of right eigenvectors of approximating
         low-order linear map.
 
@@ -221,7 +221,7 @@ def compute_DMD_matrices_direct_method(
         low-order linear map.
 
         ``correlation_mat_eigvals``: 1D array of eigenvalues of correlation
-        matrix, which are the squares of the singular values of the data 
+        matrix, which are the squares of the singular values of the data
         matrix.
 
         ``correlation_mat_eigvecs``: Matrix of eigenvectors of correlation
@@ -231,7 +231,7 @@ def compute_DMD_matrices_direct_method(
     snapshots (:py:func:`compute_DMD_matrices_snaps_method`). It's slightly
     more accurate, but slower when the number of elements in a vector is more
     than the number of vectors, i.e.,  when ``vecs`` has more rows than
-    columns. 
+    columns.
     """
     if _parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
@@ -239,7 +239,7 @@ def compute_DMD_matrices_direct_method(
     vecs = util.make_mat(vecs)
     if adv_vecs is not None:
         adv_vecs = util.make_mat(adv_vecs)
-    
+
     if inner_product_weights is None:
         vecs_weighted = vecs
         if adv_vecs is not None:
@@ -256,14 +256,14 @@ def compute_DMD_matrices_direct_method(
         vecs_weighted = sqrt_weights * vecs
         if adv_vecs is not None:
             adv_vecs_weighted = sqrt_weights * adv_vecs
-    
+
     # Compute low-order linear map for sequential snapshot set.  This takes
     # advantage of the fact that for a sequential dataset, the unadvanced
     # and advanced vectors overlap.
-    if adv_vecs is None:        
+    if adv_vecs is None:
         U, sing_vals, correlation_mat_eigvecs = util.svd(
             vecs_weighted[:, :-1], atol=atol, rtol=rtol)
-        
+
         # Truncate if necessary
         if max_num_eigvals is not None and (
             max_num_eigvals < sing_vals.size):
@@ -275,15 +275,15 @@ def compute_DMD_matrices_direct_method(
         correlation_mat_eigvals = sing_vals ** 2.
         correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(sing_vals ** -1.))
         correlation_mat = (
-            correlation_mat_eigvecs * 
-            np.mat(np.diag(correlation_mat_eigvals)) * 
+            correlation_mat_eigvecs *
+            np.mat(np.diag(correlation_mat_eigvals)) *
             correlation_mat_eigvecs.H)
         last_col = U.H * vecs_weighted[:, -1]
         low_order_linear_map = np.mat(np.concatenate(
             (correlation_mat_eigvals_sqrt_inv * correlation_mat_eigvecs.H * \
             correlation_mat[:, 1:], last_col), axis=1)) * \
             correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv
-    else: 
+    else:
         if vecs.shape != adv_vecs.shape:
             raise ValueError(('vecs and adv_vecs are not the same shape.'))
         U, sing_vals, correlation_mat_eigvecs = util.svd(
@@ -300,30 +300,30 @@ def compute_DMD_matrices_direct_method(
         correlation_mat_eigvals = sing_vals ** 2
         correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(sing_vals ** -1.))
         low_order_linear_map = (
-            U.H * adv_vecs_weighted * 
+            U.H * adv_vecs_weighted *
             correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv)
-        
+
     # Compute eigendecomposition of low-order linear map.
     eigvals, R_low_order_eigvecs, L_low_order_eigvecs =\
         util.eig_biorthog(low_order_linear_map, scale_choice='left')
     build_coeffs_proj = (
         correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv *
-        R_low_order_eigvecs) 
+        R_low_order_eigvecs)
     build_coeffs_exact = build_coeffs_proj * np.mat(np.diag(eigvals ** -1.))
     spectral_coeffs = np.abs(np.array(
         L_low_order_eigvecs.H *
-        np.mat(np.diag(np.sqrt(correlation_mat_eigvals))) * 
+        np.mat(np.diag(np.sqrt(correlation_mat_eigvals))) *
         correlation_mat_eigvecs[0, :].T).squeeze())
 
-    # For sequential data, user must provide one more vec than columns of 
-    # build_coeffs. 
+    # For sequential data, user must provide one more vec than columns of
+    # build_coeffs.
     if vecs.shape[1] - build_coeffs_exact.shape[0] == 1:
-        exact_modes = vec_space.lin_combine(vecs[:, 1:], 
+        exact_modes = vec_space.lin_combine(vecs[:, 1:],
             build_coeffs_exact, coeff_mat_col_indices=mode_indices)
-        proj_modes = vec_space.lin_combine(vecs[:, :-1], 
+        proj_modes = vec_space.lin_combine(vecs[:, :-1],
             build_coeffs_proj, coeff_mat_col_indices=mode_indices)
-    # For sequential data, user must provide as many vecs as columns of 
-    # build_coeffs. 
+    # For sequential data, user must provide as many vecs as columns of
+    # build_coeffs.
     elif vecs.shape[1] == build_coeffs_exact.shape[0]:
         exact_modes = vec_space.lin_combine(
             adv_vecs, build_coeffs_exact, coeff_mat_col_indices=mode_indices)
@@ -332,7 +332,7 @@ def compute_DMD_matrices_direct_method(
     else:
         raise ValueError(('Number of cols in vecs does not match '
             'number of rows in build_coeffs matrix.'))
-    
+
     if return_all:
         return (
             exact_modes, proj_modes, spectral_coeffs, eigvals,
@@ -348,19 +348,19 @@ class DMDHandles(object):
     Args:
         ``inner_product``: Function that computes inner product of two vector
         objects.
-        
-    Kwargs:        
+
+    Kwargs:
         ``put_mat``: Function to put a matrix out of modred, e.g., write it to
         file.
-      	
+
       	``get_mat``: Function to get a matrix into modred, e.g., load it from
         file.
-        
-        ``max_vecs_per_node``: Maximum number of vectors that can be stored in 
+
+        ``max_vecs_per_node``: Maximum number of vectors that can be stored in
         memory, per node.
 
         ``verbosity``: 1 prints progress and warnings, 0 prints almost nothing.
-               
+
     Computes DMD modes from vector objects (or handles).  It uses
     :py:class:`vectorspace.VectorSpaceHandles` for low level functions.
 
@@ -391,32 +391,32 @@ class DMDHandles(object):
         self.spectral_coeffs = None
         self.proj_coeffs = None
         self.adv_proj_coeffs = None
-        self.vec_space = VectorSpaceHandles(inner_product=inner_product, 
+        self.vec_space = VectorSpaceHandles(inner_product=inner_product,
             max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
         self.vec_handles = None
         self.adv_vec_handles = None
-        
+
     def get_decomp(
         self, eigvals_src, R_low_order_eigvecs_src, L_low_order_eigvecs_src,
         correlation_mat_eigvals_src, correlation_mat_eigvecs_src):
         """Gets the decomposition matrices from sources (memory or file).
-        
+
         Args:
             ``eigvals_src``: Source from which to retrieve eigenvalues of
             approximating low-order linear map (DMD eigenvalues).
 
             ``R_low_order_eigvecs_src``: Source from which to retrieve right
             eigenvectors of approximating low-order linear DMD map.
-            
-            ``L_low_order_eigvecs_src``: Source from which to retrieve left 
+
+            ``L_low_order_eigvecs_src``: Source from which to retrieve left
             eigenvectors of approximating low-order linear DMD map.
 
-            ``correlation_mat_eigvals_src``: Source from which to retrieve 
+            ``correlation_mat_eigvals_src``: Source from which to retrieve
             eigenvalues of correlation matrix.
 
-            ``correlation_mat_eigvecs_src``: Source from which to retrieve 
+            ``correlation_mat_eigvecs_src``: Source from which to retrieve
             eigenvectors of correlation matrix.
-        """        
+        """
         self.eigvals = np.squeeze(np.array(
             _parallel.call_and_bcast(self.get_mat, eigvals_src)))
         self.R_low_order_eigvecs = _parallel.call_and_bcast(
@@ -440,14 +440,14 @@ class DMDHandles(object):
 
             ``R_low_order_eigvecs_dest``: Destination in which to put right
             eigenvectors of approximating low-order linear map.
-           
-            ``L_low_order_eigvecs_dest``: Destination in which to put left 
+
+            ``L_low_order_eigvecs_dest``: Destination in which to put left
             eigenvectors of approximating low-order linear map.
-            
-            ``correlation_mat_eigvals_dest``: Destination in which to put 
+
+            ``correlation_mat_eigvals_dest``: Destination in which to put
             eigenvalues of correlation matrix.
 
-            ``correlation_mat_eigvecs_dest``: Destination in which to put 
+            ``correlation_mat_eigvecs_dest``: Destination in which to put
             eigenvectors of correlation matrix.
         """
         # Don't check if rank is zero because the following methods do.
@@ -472,7 +472,7 @@ class DMDHandles(object):
         _parallel.barrier()
 
     def put_L_low_order_eigvecs(self, dest):
-        """Puts left eigenvectors of approximating low-order linear map to 
+        """Puts left eigenvectors of approximating low-order linear map to
         ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.L_low_order_eigvecs, dest)
@@ -507,7 +507,7 @@ class DMDHandles(object):
         if _parallel.is_rank_zero():
             self.put_mat(self.spectral_coeffs, dest)
         _parallel.barrier()
-    
+
     def put_proj_coeffs(self, dest, adv_dest):
         """Puts projection coefficients to ``dest``, advanced projection
         coefficients to ``adv_dest``."""
@@ -517,12 +517,12 @@ class DMDHandles(object):
         _parallel.barrier()
 
     def sanity_check(self, test_vec_handle):
-        """Checks that user-supplied vector handle and vector satisfy 
+        """Checks that user-supplied vector handle and vector satisfy
         requirements.
-        
+
         Args:
             ``test_vec_handle``: A vector handle to test.
-        
+
         See :py:meth:`vectorspace.VectorSpaceHandles.sanity_check`.
         """
         self.vec_space.sanity_check(test_vec_handle)
@@ -530,13 +530,13 @@ class DMDHandles(object):
     def compute_eigendecomp(self, atol=1e-13, rtol=None, max_num_eigvals=None):
         """Computes eigendecompositions of correlation matrix and approximating
         low-order linear map.
-       
+
         Kwargs:
             ``atol``: Level below which eigenvalues of correlation matrix are
             truncated.
-            
+
             ``rtol``: Maximum relative difference between largest and smallest
-            eigenvalues of correlation matrix.  Smaller ones are truncated. 
+            eigenvalues of correlation matrix.  Smaller ones are truncated.
 
             ``max_num_eigvals``: Maximum number of DMD eigenvalues that will be
             computed.  This is enforced by truncating the basis onto which the
@@ -549,7 +549,7 @@ class DMDHandles(object):
         matrix and want to avoid recomputing them.
 
         Usage::
-          
+
           DMD.correlation_mat = pre_existing_correlation_mat
           DMD.cross_correlation_mat = pre_existing_cross_correlation_mat
           DMD.compute_eigendecomp()
@@ -559,11 +559,11 @@ class DMDHandles(object):
         Another way to use this is to compute a DMD using a truncated basis for
         the projection of the approximating linear map.  Start by either
         computing a full decomposition or by loading pre-computed correlation
-        and cross-correlation matrices.  
+        and cross-correlation matrices.
 
         Usage::
 
-          # Start with a full decomposition 
+          # Start with a full decomposition
           DMD_eigvals, correlation_mat_eigvals = DMD.compute_decomp(
               vec_handles)[0, 3]
 
@@ -575,11 +575,11 @@ class DMDHandles(object):
           # Do a truncated decomposition
           DMD_eigvals_trunc = DMD.compute_eigendecomp(
             max_num_eigvals=desired_num_eigvals)
-          
-          # Compute modes for truncated decomposition 
+
+          # Compute modes for truncated decomposition
           DMD.compute_exact_modes(
               mode_idx_list, mode_handles, adv_vec_handles=adv_vec_handles)
-        
+
         Since it doesn't overwrite the correlation and cross-correlation
         matrices, ``compute_eigendecomp`` can be called many times in a row to
         do computations for different truncation levels.  However, the results
@@ -599,20 +599,20 @@ class DMDHandles(object):
                 :max_num_eigvals]
             self.correlation_mat_eigvecs = self.correlation_mat_eigvecs[
                 :, :max_num_eigvals]
-                
-        # Compute low-order linear map 
+
+        # Compute low-order linear map
         correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(
             self.correlation_mat_eigvals ** -0.5))
         self.low_order_linear_map = (
-            correlation_mat_eigvals_sqrt_inv * 
-            self.correlation_mat_eigvecs.conj().T * 
-            self.cross_correlation_mat * self.correlation_mat_eigvecs * 
+            correlation_mat_eigvals_sqrt_inv *
+            self.correlation_mat_eigvecs.conj().T *
+            self.cross_correlation_mat * self.correlation_mat_eigvecs *
             correlation_mat_eigvals_sqrt_inv)
-        
+
         # Compute eigendecomposition of low-order linear map
         self.eigvals, self.R_low_order_eigvecs, self.L_low_order_eigvecs =\
             _parallel.call_and_bcast(
-            util.eig_biorthog, self.low_order_linear_map, 
+            util.eig_biorthog, self.low_order_linear_map,
             **{'scale_choice':'left'})
 
     def compute_decomp(
@@ -621,20 +621,20 @@ class DMDHandles(object):
         """Computes eigendecomposition of low-order linear map approximating
         relationship between vector objects, returning various matrices
         necessary for computing and characterizing DMD modes.
-        
+
         Args:
             ``vec_handles``: List of handles for vector objects.
-        
+
         Kwargs:
             ``adv_vec_handles``: List of handles for vector objects advanced in
             time.  If not provided, it is assumed that the vector objects
             describe a sequential time-series. Thus ``vec_handles`` becomes
             ``vec_handles[:-1]`` and ``adv_vec_handles`` becomes
             ``vec_handles[1:]``.
-        
+
             ``atol``: Level below which DMD eigenvalues are truncated.
-     
-            ``rtol``: Maximum relative difference between largest and smallest 
+
+            ``rtol``: Maximum relative difference between largest and smallest
             DMD eigenvalues.  Smaller ones are truncated.
 
             ``max_num_eigvals``: Maximum number of DMD eigenvalues that will be
@@ -643,21 +643,21 @@ class DMDHandles(object):
             corresponds to truncating the eigendecomposition of the correlation
             matrix. If set to None, no truncation will be performed, and the
             maximum possible number of DMD eigenvalues will be computed.
-    
+
         Returns:
             ``eigvals``: 1D array of eigenvalues of low-order linear map, i.e.,
             the DMD eigenvalues.
-            
+
             ``R_low_order_eigvecs``: Matrix whose columns are right
             eigenvectors of approximating low-order linear map.
 
             ``L_low_order_eigvecs``: Matrix whose columns are left eigenvectors
             of approximating low-order linear map.
 
-            ``correlation_mat_eigvals``: 1D array of eigenvalues of 
+            ``correlation_mat_eigvals``: 1D array of eigenvalues of
             correlation matrix.
 
-            ``correlation_mat_eigvecs``: Matrix whose columns are eigenvectors 
+            ``correlation_mat_eigvecs``: Matrix whose columns are eigenvectors
             of correlation matrix.
         """
         self.vec_handles = vec_handles
@@ -665,7 +665,7 @@ class DMDHandles(object):
             self.adv_vec_handles = adv_vec_handles
             if len(self.vec_handles) != len(self.adv_vec_handles):
                 raise ValueError(('Number of vec_handles and adv_vec_handles'
-                    ' is not equal.'))            
+                    ' is not equal.'))
 
         # For a sequential dataset, compute correlation mat for all vectors.
         # This is more efficient because only one call is made to the inner
@@ -680,7 +680,7 @@ class DMDHandles(object):
                 self.vec_handles)
             self.correlation_mat = self.expanded_correlation_mat[:-1, :-1]
             self.cross_correlation_mat = self.expanded_correlation_mat[:-1, 1:]
-        # For non-sequential data, compute the correlation matrix from the 
+        # For non-sequential data, compute the correlation matrix from the
         # unadvanced snapshots only.  Compute the cross correlation matrix
         # involving the unadvanced and advanced snapshots separately.
         else:
@@ -696,16 +696,16 @@ class DMDHandles(object):
             atol=atol, rtol=rtol, max_num_eigvals=max_num_eigvals)
 
         return (
-            self.eigvals, 
+            self.eigvals,
             self.R_low_order_eigvecs,
-            self.L_low_order_eigvecs, 
+            self.L_low_order_eigvecs,
             self.correlation_mat_eigvals,
             self.correlation_mat_eigvecs)
-       
+
     def _compute_build_coeffs_exact(self):
         """Compute build coefficients for exact DMD modes."""
         return (
-            self.correlation_mat_eigvecs * 
+            self.correlation_mat_eigvecs *
             np.mat(np.diag(self.correlation_mat_eigvals ** -0.5)) *
             self.R_low_order_eigvecs
             * np.mat(np.diag(self.eigvals ** -1.)))
@@ -713,24 +713,24 @@ class DMDHandles(object):
     def _compute_build_coeffs_proj(self):
         """Compute build coefficients for projected DMD modes."""
         return (
-            self.correlation_mat_eigvecs * 
+            self.correlation_mat_eigvecs *
             np.mat(np.diag(self.correlation_mat_eigvals ** -0.5)) *
             self.R_low_order_eigvecs)
 
-    def compute_exact_modes(self, mode_indices, mode_handles, 
+    def compute_exact_modes(self, mode_indices, mode_handles,
         adv_vec_handles=None):
         """Computes exact DMD modes and calls ``put`` on them using mode
         handles.
-        
+
         Args:
             ``mode_indices``: List of indices describing which exact modes to
             compute, e.g. ``range(10)`` or ``[3, 0, 5]``.
 
             ``mode_handles``: List of handles for exact modes to compute.
-            
+
         Kwargs:
-            ``vec_handles``: List of handles for vector objects. Optional if 
-            when calling :py:meth:`compute_decomp`. 
+            ``vec_handles``: List of handles for vector objects. Optional if
+            when calling :py:meth:`compute_decomp`.
         """
         # If advanced vec handles are passed in, set the internal attribute,
         if adv_vec_handles is not None:
@@ -741,14 +741,14 @@ class DMDHandles(object):
 
         # If the internal attribute is set, then compute the modes
         if self.adv_vec_handles is not None:
-            self.vec_space.lin_combine(mode_handles, self.adv_vec_handles, 
+            self.vec_space.lin_combine(mode_handles, self.adv_vec_handles,
                 build_coeffs_exact, coeff_mat_col_indices=mode_indices)
         # If the internal attribute is not set, then check to see if
         # vec_handles is set.  If so, assume a sequential dataset, in which
-        # case adv_vec_handles can be taken from a slice of vec_handles.  
+        # case adv_vec_handles can be taken from a slice of vec_handles.
         elif self.vec_handles is not None:
             if len(self.vec_handles) - build_coeffs_exact.shape[0] == 1:
-                self.vec_space.lin_combine(mode_handles, self.vec_handles[1:], 
+                self.vec_space.lin_combine(mode_handles, self.vec_handles[1:],
                     build_coeffs_exact, coeff_mat_col_indices=mode_indices)
             else:
                 raise(
@@ -761,36 +761,36 @@ class DMDHandles(object):
     def compute_proj_modes(self, mode_indices, mode_handles, vec_handles=None):
         """Computes projected DMD modes and calls ``put`` on them using mode
         handles.
-        
+
         Args:
             ``mode_indices``: List of indices describing which projected modes
             to compute, e.g. ``range(10)`` or ``[3, 0, 5]``.
 
             ``mode_handles``: List of handles for projected modes to compute.
-            
+
         Kwargs:
-            ``vec_handles``: List of handles for vector objects. Optional if 
-            when calling :py:meth:`compute_decomp`. 
+            ``vec_handles``: List of handles for vector objects. Optional if
+            when calling :py:meth:`compute_decomp`.
         """
         if vec_handles is not None:
             self.vec_handles = vec_handles
-        
+
         # Compute build coefficient matrix
         build_coeffs_proj = self._compute_build_coeffs_proj()
 
         # For sequential data, the user will provide a list vec_handles that
-        # whose length is one larger than the number of rows of the 
+        # whose length is one larger than the number of rows of the
         # build_coeffs matrix.  This is to be expected, as vec_handles is
         # essentially partitioned into two sets of handles, each of length one
         # less than vec_handles.
         if len(self.vec_handles) - build_coeffs_proj.shape[0] == 1:
-            self.vec_space.lin_combine(mode_handles, self.vec_handles[:-1], 
+            self.vec_space.lin_combine(mode_handles, self.vec_handles[:-1],
                 build_coeffs_proj, coeff_mat_col_indices=mode_indices)
         # For a non-sequential dataset, the user will provide a list
         # vec_handles whose length is equal to the number of rows in the
         # build_coeffs matrix.
         elif len(self.vec_handles) == build_coeffs_proj.shape[0]:
-            self.vec_space.lin_combine(mode_handles, self.vec_handles, 
+            self.vec_space.lin_combine(mode_handles, self.vec_handles,
                 build_coeffs_proj, coeff_mat_col_indices=mode_indices)
         # Otherwise, raise an error, as the number of handles should fit one of
         # the two cases described above.
@@ -803,15 +803,15 @@ class DMDHandles(object):
         biorthogonal projection of the first vector object onto the exact DMD
         modes, which is analytically equivalent to doing a least-squares
         projection onto the projected DMD modes.
-       
+
         Returns:
             ``spectral_coeffs``: 1D array of DMD spectral coefficients.
         """
         # TODO: maybe allow for user to choose which column to spectrum from?
-        # ie first, last, or mean?  
+        # ie first, last, or mean?
         self.spectral_coeffs = np.abs(np.array(
             self.L_low_order_eigvecs.H *
-            np.mat(np.diag(np.sqrt(self.correlation_mat_eigvals))) * 
+            np.mat(np.diag(np.sqrt(self.correlation_mat_eigvals))) *
             np.mat(self.correlation_mat_eigvecs[0, :]).T).squeeze())
         return self.spectral_coeffs
 
@@ -822,7 +822,7 @@ class DMDHandles(object):
         """Computes projection of vector objects onto DMD modes.  Note that a
         biorthogonal projection onto exact DMD modes is analytically equivalent
         to a least-squares projection onto projected DMD modes.
-       
+
         Returns:
             ``proj_coeffs``: Matrix of projection coefficients for vector
             objects, expressed as a linear combination of DMD modes.  Columns
@@ -833,13 +833,13 @@ class DMDHandles(object):
             modes.  Columns correspond to vector objects, rows correspond to
             DMD modes.
         """
-        self.proj_coeffs = ( 
+        self.proj_coeffs = (
             self.L_low_order_eigvecs.H *
-            np.mat(np.diag(np.sqrt(self.correlation_mat_eigvals))) * 
+            np.mat(np.diag(np.sqrt(self.correlation_mat_eigvals))) *
             self.correlation_mat_eigvecs.T)
         self.adv_proj_coeffs = (
             self.L_low_order_eigvecs.H *
-            np.mat(np.diag(self.correlation_mat_eigvals ** -0.5)) * 
+            np.mat(np.diag(self.correlation_mat_eigvals ** -0.5)) *
             self.correlation_mat_eigvecs.T * self.cross_correlation_mat)
         return self.proj_coeffs, self.adv_proj_coeffs
 
@@ -847,15 +847,15 @@ class DMDHandles(object):
 def compute_TLSqrDMD_matrices_snaps_method(
     vecs, mode_indices, adv_vecs=None, inner_product_weights=None, atol=1e-13,
     rtol=None, max_num_eigvals=None, return_all=False):
-    """Computes Total Least Squares DMD modes using data stored in matrices, 
+    """Computes Total Least Squares DMD modes using data stored in matrices,
     using method of snapshots.
 
     Args:
         ``vecs``: Matrix whose columns are data vectors.
 
         ``mode_indices``: List of indices describing which modes to compute.
-        Examples are ``range(10)`` or ``[3, 0, 6, 8]``. 
-    
+        Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
+
     Kwargs:
         ``adv_vecs``: Matrix whose columns are data vectors advanced in time.
         If not provided, then it is assumed that the vectors describe a
@@ -864,11 +864,11 @@ def compute_TLSqrDMD_matrices_snaps_method(
 
         ``inner_product_weights``: 1D array or matrix of inner product weights.
         Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
-        
-        ``atol``: Level below which eigenvalues of correlation matrix are 
+
+        ``atol``: Level below which eigenvalues of correlation matrix are
         truncated.
- 
-        ``rtol``: Maximum relative difference between largest and smallest 
+
+        ``rtol``: Maximum relative difference between largest and smallest
         eigenvalues of correlation matrix.  Smaller ones are truncated.
 
         ``max_num_eigvals``: Maximum number of DMD eigenvalues that will be
@@ -885,30 +885,30 @@ def compute_TLSqrDMD_matrices_snaps_method(
 
         ``proj_modes``: Matrix whose columns are projected DMD modes.
 
-        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on 
+        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on
         projection of first data vector.
 
         ``eigvals``: 1D array of eigenvalues of approximating low-order linear
         map (DMD eigenvalues).
-                
+
         If ``return_all`` is true, also returns:
-        
+
         ``R_low_order_eigvecs``: Matrix of right eigenvectors of approximating
         low-order linear map.
 
         ``L_low_order_eigvecs``: Matrix of left eigenvectors of approximating
         low-order linear map.
 
-        ``summed_correlation_mats_eigvals``: 1D array of eigenvalues of 
+        ``summed_correlation_mats_eigvals``: 1D array of eigenvalues of
         summed correlation matrices.
 
-        ``summed_correlation_mats_eigvecs``: Matrix whose columns are 
+        ``summed_correlation_mats_eigvecs``: Matrix whose columns are
         eigenvectors of summed correlation matrices.
 
-        ``proj_correlation_mat_eigvals``: 1D array of eigenvalues of 
+        ``proj_correlation_mat_eigvals``: 1D array of eigenvalues of
         projected correlation matrix.
 
-        ``proj_correlation_mat_eigvecs``: Matrix whose columns are 
+        ``proj_correlation_mat_eigvecs``: Matrix whose columns are
         eigenvectors of projected correlation matrix.
 
         ``correlation_mat``: Correlation matrix; elements are inner products of
@@ -921,13 +921,13 @@ def compute_TLSqrDMD_matrices_snaps_method(
         products of data vectors with data vectors advanced in time. Going down
         rows, the data vector changes; going across columns the advanced data
         vector changes.
-   
+
     This uses the method of snapshots, which is faster than the direct method
     (see :py:func:`compute_TLSqrDMD_matrices_direct_method`) when ``vecs`` has
     more rows than columns, i.e., when there are more elements in a vector than
     there are vectors. However, it "squares" this matrix and its singular
     values, making it slightly less accurate than the direct method.
-   
+
     Note that max_num_eigvals must be set to a value smaller than the rank of
     the dataset.  In other words, if the projection basis for
     total-least-squares DMD is not truncated, then the algorithm reduces to
@@ -948,7 +948,7 @@ def compute_TLSqrDMD_matrices_snaps_method(
     if adv_vecs is None:
         # Compute correlation mat for all vectors.
         # This is more efficient because only one call is made to the inner
-        # product routine, even though we don't need the last row and column 
+        # product routine, even though we don't need the last row and column
         # yet.
         expanded_correlation_mat = \
             vec_space.compute_symmetric_inner_product_mat(vecs)
@@ -968,10 +968,10 @@ def compute_TLSqrDMD_matrices_snaps_method(
         adv_correlation_mat = np.mat(
             vec_space.compute_symmetric_inner_product_mat(
             adv_vecs))
- 
+
     summed_correlation_mats_eigvals, summed_correlation_mats_eigvecs =\
         util.eigh(
-        correlation_mat + adv_correlation_mat, is_positive_definite=True, 
+        correlation_mat + adv_correlation_mat, is_positive_definite=True,
         atol=atol, rtol=rtol)
 
     # Truncate if necessary
@@ -984,11 +984,11 @@ def compute_TLSqrDMD_matrices_snaps_method(
 
     # Compute eigendecomposition of projected correlation matrix
     proj_correlation_mat = (
-        summed_correlation_mats_eigvecs * 
-        summed_correlation_mats_eigvecs.H * 
-        correlation_mat * 
-        summed_correlation_mats_eigvecs * 
-        summed_correlation_mats_eigvecs.H) 
+        summed_correlation_mats_eigvecs *
+        summed_correlation_mats_eigvecs.H *
+        correlation_mat *
+        summed_correlation_mats_eigvecs *
+        summed_correlation_mats_eigvecs.H)
     proj_correlation_mat_eigvals, proj_correlation_mat_eigvecs = util.eigh(
         proj_correlation_mat, atol=atol, rtol=None, is_positive_definite=True)
 
@@ -1000,43 +1000,43 @@ def compute_TLSqrDMD_matrices_snaps_method(
         proj_correlation_mat_eigvecs = proj_correlation_mat_eigvecs[
             :, :max_num_eigvals]
 
-    # Compute low-order linear map 
+    # Compute low-order linear map
     proj_correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(
         proj_correlation_mat_eigvals ** -0.5))
     low_order_linear_map = (
-        proj_correlation_mat_eigvals_sqrt_inv * 
-        proj_correlation_mat_eigvecs.conj().H * 
-        summed_correlation_mats_eigvecs * 
+        proj_correlation_mat_eigvals_sqrt_inv *
+        proj_correlation_mat_eigvecs.conj().H *
+        summed_correlation_mats_eigvecs *
         summed_correlation_mats_eigvecs.H *
-        cross_correlation_mat * 
-        summed_correlation_mats_eigvecs * 
+        cross_correlation_mat *
+        summed_correlation_mats_eigvecs *
         summed_correlation_mats_eigvecs.H *
-        proj_correlation_mat_eigvecs * 
+        proj_correlation_mat_eigvecs *
         proj_correlation_mat_eigvals_sqrt_inv)
 
     # Compute eigendecomposition of low-order linear map.
     eigvals, R_low_order_eigvecs, L_low_order_eigvecs =\
         util.eig_biorthog(low_order_linear_map, scale_choice='left')
-    build_coeffs_proj = (summed_correlation_mats_eigvecs * 
+    build_coeffs_proj = (summed_correlation_mats_eigvecs *
         summed_correlation_mats_eigvecs.H *
-        proj_correlation_mat_eigvecs * 
+        proj_correlation_mat_eigvecs *
         np.mat(np.diag(proj_correlation_mat_eigvals ** -0.5)) *
         R_low_order_eigvecs)
     build_coeffs_exact = build_coeffs_proj * np.mat(np.diag(eigvals ** -1.))
     spectral_coeffs = np.abs(np.array(
         L_low_order_eigvecs.H *
-        np.mat(np.diag(np.sqrt(proj_correlation_mat_eigvals))) * 
+        np.mat(np.diag(np.sqrt(proj_correlation_mat_eigvals))) *
         proj_correlation_mat_eigvecs[0, :].T)).squeeze()
-    
-    # For sequential data, user must provide one more vec than columns of 
-    # build_coeffs. 
+
+    # For sequential data, user must provide one more vec than columns of
+    # build_coeffs.
     if vecs.shape[1] - build_coeffs_exact.shape[0] == 1:
-        exact_modes = vec_space.lin_combine(vecs[:, 1:], 
+        exact_modes = vec_space.lin_combine(vecs[:, 1:],
             build_coeffs_exact, coeff_mat_col_indices=mode_indices)
-        proj_modes = vec_space.lin_combine(vecs[:, :-1], 
+        proj_modes = vec_space.lin_combine(vecs[:, :-1],
             build_coeffs_proj, coeff_mat_col_indices=mode_indices)
-    # For non-sequential data, user must provide as many vecs as columns of 
-    # build_coeffs. 
+    # For non-sequential data, user must provide as many vecs as columns of
+    # build_coeffs.
     elif vecs.shape[1] == build_coeffs_exact.shape[0]:
         exact_modes = vec_space.lin_combine(
             adv_vecs, build_coeffs_exact, coeff_mat_col_indices=mode_indices)
@@ -1061,14 +1061,14 @@ def compute_TLSqrDMD_matrices_direct_method(
     vecs, mode_indices, adv_vecs=None, inner_product_weights=None, atol=1e-13,
     rtol=None, max_num_eigvals=None, return_all=False):
     """Computes Total Least Squares DMD modes using data stored in matrices,
-    using direct method. 
+    using direct method.
 
     Args:
         ``vecs``: Matrix whose columns are data vectors.
 
         ``mode_indices``: List of indices describing which modes to compute.
-        Examples are ``range(10)`` or ``[3, 0, 6, 8]``. 
-   
+        Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
+
     Kwargs:
         ``adv_vecs``: Matrix whose columns are data vectors advanced in time.
         If not provided, then it is assumed that the vectors describe a
@@ -1077,11 +1077,11 @@ def compute_TLSqrDMD_matrices_direct_method(
 
         ``inner_product_weights``: 1D array or matrix of inner product weights.
         Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
-        
-        ``atol``: Level below which eigenvalues of correlation matrix are 
+
+        ``atol``: Level below which eigenvalues of correlation matrix are
         truncated.
- 
-        ``rtol``: Maximum relative difference between largest and smallest 
+
+        ``rtol``: Maximum relative difference between largest and smallest
         eigenvalues of correlation matrix.  Smaller ones are truncated.
 
         ``max_num_eigvals``: Maximum number of DMD eigenvalues that will be
@@ -1092,45 +1092,45 @@ def compute_TLSqrDMD_matrices_direct_method(
         maximum possible number of DMD eigenvalues will be computed.
 
         ``return_all``: Return more objects, see below. Default is false.
- 
+
     Returns:
 
         ``exact_modes``: Matrix whose columns are exact DMD modes.
 
         ``proj_modes``: Matrix whose columns are projected DMD modes.
 
-        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on 
+        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on
         projection of first data vector.
 
         ``eigvals``: 1D array of eigenvalues of approximating low-order linear
         map (DMD eigenvalues).
-                
+
         If ``return_all`` is true, also returns:
-        
+
         ``R_low_order_eigvecs``: Matrix of right eigenvectors of approximating
         low-order linear map.
 
         ``L_low_order_eigvecs``: Matrix of left eigenvectors of approximating
         low-order linear map.
 
-        ``summed_correlation_mats_eigvals``: 1D array of eigenvalues of 
+        ``summed_correlation_mats_eigvals``: 1D array of eigenvalues of
         summed correlation matrices.
 
-        ``summed_correlation_mats_eigvecs``: Matrix whose columns are 
+        ``summed_correlation_mats_eigvecs``: Matrix whose columns are
         eigenvectors of summed correlation matrices.
 
-        ``proj_correlation_mat_eigvals``: 1D array of eigenvalues of 
+        ``proj_correlation_mat_eigvals``: 1D array of eigenvalues of
         projected correlation matrix.
 
-        ``proj_correlation_mat_eigvecs``: Matrix whose columns are 
+        ``proj_correlation_mat_eigvecs``: Matrix whose columns are
         eigenvectors of projected correlation matrix.
 
     This method does not square the matrix of vectors as in the method of
     snapshots (:py:func:`compute_DMD_matrices_snaps_method`). It's slightly
     more accurate, but slower when the number of elements in a vector is more
     than the number of vectors, i.e.,  when ``vecs`` has more rows than
-    columns. 
-    
+    columns.
+
     Note that max_num_eigvals must be set to a value smaller than the rank of
     the dataset.  In other words, if the projection basis for
     total-least-squares DMD is not truncated, then the algorithm reduces to
@@ -1149,7 +1149,7 @@ def compute_TLSqrDMD_matrices_direct_method(
     vecs = util.make_mat(vecs)
     if adv_vecs is not None:
         adv_vecs = util.make_mat(adv_vecs)
-    
+
     if inner_product_weights is None:
         vecs_weighted = vecs
         if adv_vecs is not None:
@@ -1166,14 +1166,14 @@ def compute_TLSqrDMD_matrices_direct_method(
         vecs_weighted = sqrt_weights * vecs
         if adv_vecs is not None:
             adv_vecs_weighted = sqrt_weights * adv_vecs
-    
+
     # Compute projections of original data (to de-noise).  First consider the
     # sequential data case.
-    if adv_vecs is None:        
+    if adv_vecs is None:
         stacked_U, stacked_sing_vals, summed_correlation_mats_eigvecs =\
-            util.svd(np.vstack((vecs_weighted[:, :-1], vecs_weighted[:, 1:])), 
+            util.svd(np.vstack((vecs_weighted[:, :-1], vecs_weighted[:, 1:])),
             atol=atol, rtol=rtol)
-        
+
         # Truncate if necessary
         if max_num_eigvals is not None and (
             max_num_eigvals < stacked_sing_vals.size):
@@ -1183,18 +1183,18 @@ def compute_TLSqrDMD_matrices_direct_method(
                 :, :max_num_eigvals]
 
         # Project original data to de-noise
-        vecs_proj = (vecs[:, :-1] * 
-            summed_correlation_mats_eigvecs * 
+        vecs_proj = (vecs[:, :-1] *
+            summed_correlation_mats_eigvecs *
             summed_correlation_mats_eigvecs.H)
-        adv_vecs_proj = (vecs[:, 1:] * 
-            summed_correlation_mats_eigvecs * 
+        adv_vecs_proj = (vecs[:, 1:] *
+            summed_correlation_mats_eigvecs *
             summed_correlation_mats_eigvecs.H)
     # Non-sequential data case
-    else: 
+    else:
         if vecs.shape != adv_vecs.shape:
             raise ValueError(('vecs and adv_vecs are not the same shape.'))
         stacked_U, stacked_sing_vals, summed_correlation_mats_eigvecs =\
-            util.svd(np.vstack((vecs_weighted, adv_vecs_weighted)), atol=atol, 
+            util.svd(np.vstack((vecs_weighted, adv_vecs_weighted)), atol=atol,
             rtol=rtol)
 
         # Truncate if necessary
@@ -1206,26 +1206,26 @@ def compute_TLSqrDMD_matrices_direct_method(
                 :, :max_num_eigvals]
 
         # Project original data to de-noise
-        vecs_proj = (vecs * 
-            summed_correlation_mats_eigvecs * 
+        vecs_proj = (vecs *
+            summed_correlation_mats_eigvecs *
             summed_correlation_mats_eigvecs.H)
-        adv_vecs_proj = (adv_vecs * 
-            summed_correlation_mats_eigvecs * 
+        adv_vecs_proj = (adv_vecs *
+            summed_correlation_mats_eigvecs *
             summed_correlation_mats_eigvecs.H)
 
     # Now proceed with DMD of projected data
     summed_correlation_mats_eigvals = stacked_sing_vals ** 2
-    (exact_modes, proj_modes, spectral_coeffs, eigvals, 
+    (exact_modes, proj_modes, spectral_coeffs, eigvals,
     R_low_order_eigvecs, L_low_order_eigvecs, proj_correlation_mat_eigvals,
     proj_correlation_mat_eigvecs) = compute_DMD_matrices_direct_method(
         vecs_proj, mode_indices, adv_vecs=adv_vecs_proj,
         inner_product_weights=inner_product_weights, atol=atol, rtol=rtol,
         max_num_eigvals=max_num_eigvals, return_all=True)
-                
+
     if return_all:
         return (
             exact_modes, proj_modes, spectral_coeffs, eigvals,
-            R_low_order_eigvecs, L_low_order_eigvecs, 
+            R_low_order_eigvecs, L_low_order_eigvecs,
             summed_correlation_mats_eigvals,
             summed_correlation_mats_eigvecs,
             proj_correlation_mat_eigvals,
@@ -1235,25 +1235,25 @@ def compute_TLSqrDMD_matrices_direct_method(
 
 
 class TLSqrDMDHandles(DMDHandles):
-    """Total Least Squares Dynamic Mode Decomposition implemented for large 
+    """Total Least Squares Dynamic Mode Decomposition implemented for large
     datasets.
 
     Args:
         ``inner_product``: Function that computes inner product of two vector
         objects.
-        
-    Kwargs:        
+
+    Kwargs:
         ``put_mat``: Function to put a matrix out of modred, e.g., write it to
         file.
-      	
+
       	``get_mat``: Function to get a matrix into modred, e.g., load it from
         file.
-        
-        ``max_vecs_per_node``: Maximum number of vectors that can be stored in 
+
+        ``max_vecs_per_node``: Maximum number of vectors that can be stored in
         memory, per node.
 
         ``verbosity``: 1 prints progress and warnings, 0 prints almost nothing.
-               
+
     Computes Total-Least-Squares DMD modes from vector objects (or handles).
     It uses :py:class:`vectorspace.VectorSpaceHandles` for low level functions.
 
@@ -1276,15 +1276,15 @@ class TLSqrDMDHandles(DMDHandles):
     larger than the size of each vector object), this occurs naturally.  For
     under-constrained datasets, (number of vector objects is smaller than size
     of vector objects), this must be done explicitly by the user.  At this
-    time, there is no standard method for choosing a truncation level.  One 
+    time, there is no standard method for choosing a truncation level.  One
     approach is to look at the roll-off of the correlation matrix eigenvalues,
     which contains information about the "energy" content of each projection
     basis vectors.
 
-    Also, note that :class:`TLSqrDMDHandles` inherits from 
+    Also, note that :class:`TLSqrDMDHandles` inherits from
     :class:`DMDHandles`, so
     certain methods are available, even though they are not
-    implemented/documented here (namely several ``put`` functions). 
+    implemented/documented here (namely several ``put`` functions).
 
     See also :func:`compute_TLSqrDMD_matrices_snaps_method`,
     :func:`compute_TLSqrDMD_matrices_direct_method`, and :mod:`vectors`.
@@ -1310,7 +1310,7 @@ class TLSqrDMDHandles(DMDHandles):
         self.spectral_coeffs = None
         self.proj_coeffs = None
         self.adv_proj_coeffs = None
-        self.vec_space = VectorSpaceHandles(inner_product=inner_product, 
+        self.vec_space = VectorSpaceHandles(inner_product=inner_product,
             max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
         self.vec_handles = None
         self.adv_vec_handles = None
@@ -1318,13 +1318,13 @@ class TLSqrDMDHandles(DMDHandles):
     def compute_eigendecomp(self, atol=1e-13, rtol=None, max_num_eigvals=None):
         """Computes eigendecompositions of correlation matrix and approximating
         low-order linear map.
-       
+
         Kwargs:
             ``atol``: Level below which eigenvalues of correlation matrix are
             truncated.
-            
+
             ``rtol``: Maximum relative difference between largest and smallest
-            eigenvalues of correlation matrix.  Smaller ones are truncated. 
+            eigenvalues of correlation matrix.  Smaller ones are truncated.
 
             ``max_num_eigvals``: Maximum number of DMD eigenvalues that will be
             computed.  This is enforced by truncating the basis onto which the
@@ -1337,7 +1337,7 @@ class TLSqrDMDHandles(DMDHandles):
         matrix and want to avoid recomputing them.
 
         Usage::
-          
+
           TLSqrDMD.correlation_mat = pre_existing_correlation_mat
           TLSqrDMD.adv_correlation_mat = pre_existing_adv_correlation_mat
           TLSqrDMD.cross_correlation_mat = pre_existing_cross_correlation_mat
@@ -1348,11 +1348,11 @@ class TLSqrDMDHandles(DMDHandles):
         Another way to use this is to compute TLSqrDMD using different basis
         truncation levels for the projection of the approximating linear map.
         Start by either computing a full decomposition or by loading
-        pre-computed correlation and cross-correlation matrices.  
+        pre-computed correlation and cross-correlation matrices.
 
         Usage::
 
-          # Start with a full decomposition 
+          # Start with a full decomposition
           DMD_eigvals, correlation_mat_eigvals = TLSqrDMD.compute_decomp(
               vec_handles)[0, 3]
 
@@ -1364,11 +1364,11 @@ class TLSqrDMDHandles(DMDHandles):
           # Do a truncated decomposition
           DMD_eigvals_trunc = TLSqrDMD.compute_eigendecomp(
             max_num_eigvals=desired_num_eigvals)
-          
-          # Compute modes for truncated decomposition 
+
+          # Compute modes for truncated decomposition
           TLSqrDMD.compute_exact_modes(
               mode_idx_list, mode_handles, adv_vec_handles=adv_vec_handles)
-        
+
         Since it doesn't overwrite the correlation and cross-correlation
         matrices, ``compute_eigendecomp`` can be called many times in a row to
         do computations for different truncation levels.  However, the results
@@ -1384,7 +1384,7 @@ class TLSqrDMDHandles(DMDHandles):
         # Compute eigendecomposition of stacked correlation matrix
         self.summed_correlation_mats = (
             self.correlation_mat + self.adv_correlation_mat)
-        (self.summed_correlation_mats_eigvals, 
+        (self.summed_correlation_mats_eigvals,
         self.summed_correlation_mats_eigvecs) = _parallel.call_and_bcast(
             util.eigh, self.summed_correlation_mats,
             atol=atol, rtol=None, is_positive_definite=True)
@@ -1399,12 +1399,12 @@ class TLSqrDMDHandles(DMDHandles):
 
         # Compute eigendecomposition of projected correlation matrix
         self.proj_correlation_mat = (
-            self.summed_correlation_mats_eigvecs * 
-            self.summed_correlation_mats_eigvecs.H * 
-            self.correlation_mat * 
-            self.summed_correlation_mats_eigvecs * 
-            self.summed_correlation_mats_eigvecs.H) 
-        (self.proj_correlation_mat_eigvals, 
+            self.summed_correlation_mats_eigvecs *
+            self.summed_correlation_mats_eigvecs.H *
+            self.correlation_mat *
+            self.summed_correlation_mats_eigvecs *
+            self.summed_correlation_mats_eigvecs.H)
+        (self.proj_correlation_mat_eigvals,
         self.proj_correlation_mat_eigvecs) = _parallel.call_and_bcast(
             util.eigh, self.proj_correlation_mat ,
             atol=atol, rtol=None, is_positive_definite=True)
@@ -1417,24 +1417,24 @@ class TLSqrDMDHandles(DMDHandles):
             self.proj_correlation_mat_eigvecs =\
                 self.proj_correlation_mat_eigvecs[:, :max_num_eigvals]
 
-        # Compute low-order linear map 
+        # Compute low-order linear map
         proj_correlation_mat_eigvals_sqrt_inv = np.mat(np.diag(
             self.proj_correlation_mat_eigvals ** -0.5))
         self.low_order_linear_map = (
-            proj_correlation_mat_eigvals_sqrt_inv * 
-            self.proj_correlation_mat_eigvecs.conj().H * 
-            self.summed_correlation_mats_eigvecs * 
+            proj_correlation_mat_eigvals_sqrt_inv *
+            self.proj_correlation_mat_eigvecs.conj().H *
+            self.summed_correlation_mats_eigvecs *
             self.summed_correlation_mats_eigvecs.H *
-            self.cross_correlation_mat * 
-            self.summed_correlation_mats_eigvecs * 
+            self.cross_correlation_mat *
+            self.summed_correlation_mats_eigvecs *
             self.summed_correlation_mats_eigvecs.H *
-            self.proj_correlation_mat_eigvecs * 
+            self.proj_correlation_mat_eigvecs *
             proj_correlation_mat_eigvals_sqrt_inv)
-        
+
         # Compute eigendecomposition of low-order linear map
         self.eigvals, self.R_low_order_eigvecs, self.L_low_order_eigvecs =\
             _parallel.call_and_bcast(
-            util.eig_biorthog, self.low_order_linear_map, 
+            util.eig_biorthog, self.low_order_linear_map,
             **{'scale_choice':'left'})
 
     def compute_decomp(
@@ -1443,20 +1443,20 @@ class TLSqrDMDHandles(DMDHandles):
         """Computes eigendecomposition of low-order linear map approximating
         relationship between vector objects, returning various matrices
         necessary for computing and characterizing DMD modes.
-        
+
         Args:
             ``vec_handles``: List of handles for vector objects.
-        
+
         Kwargs:
             ``adv_vec_handles``: List of handles for vector objects advanced in
             time.  If not provided, it is assumed that the vector objects
             describe a sequential time-series. Thus ``vec_handles`` becomes
             ``vec_handles[:-1]`` and ``adv_vec_handles`` becomes
             ``vec_handles[1:]``.
-        
+
             ``atol``: Level below which DMD eigenvalues are truncated.
-     
-            ``rtol``: Maximum relative difference between largest and smallest 
+
+            ``rtol``: Maximum relative difference between largest and smallest
             DMD eigenvalues.  Smaller ones are truncated.
 
             ``max_num_eigvals``: Maximum number of DMD eigenvalues that will be
@@ -1465,27 +1465,27 @@ class TLSqrDMDHandles(DMDHandles):
             corresponds to truncating the eigendecomposition of the correlation
             matrix. If set to None, no truncation will be performed, and the
             maximum possible number of DMD eigenvalues will be computed.
-    
+
         Returns:
             ``eigvals``: 1D array of eigenvalues of low-order linear map, i.e.,
             the DMD eigenvalues.
-            
+
             ``R_low_order_eigvecs``: Matrix whose columns are right
             eigenvectors of approximating low-order linear map.
 
             ``L_low_order_eigvecs``: Matrix whose columns are left eigenvectors
             of approximating low-order linear map.
 
-            ``summed_correlation_mats_eigvals``: 1D array of eigenvalues of 
+            ``summed_correlation_mats_eigvals``: 1D array of eigenvalues of
             summed correlation matrices.
 
-            ``summed_correlation_mats_eigvecs``: Matrix whose columns are 
+            ``summed_correlation_mats_eigvecs``: Matrix whose columns are
             eigenvectors of summed correlation matrices.
 
-            ``proj_correlation_mat_eigvals``: 1D array of eigenvalues of 
+            ``proj_correlation_mat_eigvals``: 1D array of eigenvalues of
             projected correlation matrix.
 
-            ``proj_correlation_mat_eigvecs``: Matrix whose columns are 
+            ``proj_correlation_mat_eigvecs``: Matrix whose columns are
             eigenvectors of projected correlation matrix.
 
         Note that the truncation level (corresponding to ``max_num_eigvals``)
@@ -1499,7 +1499,7 @@ class TLSqrDMDHandles(DMDHandles):
             self.adv_vec_handles = adv_vec_handles
             if len(self.vec_handles) != len(self.adv_vec_handles):
                 raise ValueError(('Number of vec_handles and adv_vec_handles'
-                    ' is not equal.'))            
+                    ' is not equal.'))
 
         # For a sequential dataset, compute correlation mat for all vectors.
         # This is more efficient because only one call is made to the inner
@@ -1515,7 +1515,7 @@ class TLSqrDMDHandles(DMDHandles):
             self.correlation_mat = self.expanded_correlation_mat[:-1, :-1]
             self.cross_correlation_mat = self.expanded_correlation_mat[:-1, 1:]
             self.adv_correlation_mat = self.expanded_correlation_mat[1:, 1:]
-        # For non-sequential data, compute the correlation matrix from the 
+        # For non-sequential data, compute the correlation matrix from the
         # unadvanced snapshots only.  Compute the cross correlation matrix
         # involving the unadvanced and advanced snapshots separately.
         else:
@@ -1534,9 +1534,9 @@ class TLSqrDMDHandles(DMDHandles):
             atol=atol, rtol=rtol, max_num_eigvals=max_num_eigvals)
 
         return (
-            self.eigvals, 
+            self.eigvals,
             self.R_low_order_eigvecs,
-            self.L_low_order_eigvecs, 
+            self.L_low_order_eigvecs,
             self.summed_correlation_mats_eigvals,
             self.summed_correlation_mats_eigvecs,
             self.proj_correlation_mat_eigvals,
@@ -1545,9 +1545,9 @@ class TLSqrDMDHandles(DMDHandles):
     def _compute_build_coeffs_exact(self):
         """Compute build coefficients for exact DMD modes."""
         return (
-            self.summed_correlation_mats_eigvecs * 
+            self.summed_correlation_mats_eigvecs *
             self.summed_correlation_mats_eigvecs.H *
-            self.proj_correlation_mat_eigvecs * 
+            self.proj_correlation_mat_eigvecs *
             np.mat(np.diag(self.proj_correlation_mat_eigvals ** -0.5)) *
             self.R_low_order_eigvecs
             * np.mat(np.diag(self.eigvals ** -1.)))
@@ -1555,27 +1555,27 @@ class TLSqrDMDHandles(DMDHandles):
     def _compute_build_coeffs_proj(self):
         """Compute build coefficients for projected DMD modes."""
         return (
-            self.summed_correlation_mats_eigvecs * 
+            self.summed_correlation_mats_eigvecs *
             self.summed_correlation_mats_eigvecs.H *
-            self.proj_correlation_mat_eigvecs * 
+            self.proj_correlation_mat_eigvecs *
             np.mat(np.diag(self.proj_correlation_mat_eigvals ** -0.5)) *
             self.R_low_order_eigvecs)
 
     def get_decomp(
         self, eigvals_src, R_low_order_eigvecs_src, L_low_order_eigvecs_src,
-        summed_correlation_mats_eigvals_src, 
-        summed_correlation_mats_eigvecs_src, proj_correlation_mat_eigvals_src, 
+        summed_correlation_mats_eigvals_src,
+        summed_correlation_mats_eigvecs_src, proj_correlation_mat_eigvals_src,
         proj_correlation_mat_eigvecs_src):
         """Gets the decomposition matrices from sources (memory or file).
-        
+
         Args:
             ``eigvals_src``: Source from which to retrieve eigenvalues of
             approximating low-order linear map (DMD eigenvalues).
 
             ``R_low_order_eigvecs_src``: Source from which to retrieve right
             eigenvectors of approximating low-order linear DMD map.
-            
-            ``L_low_order_eigvecs_src``: Source from which to retrieve left 
+
+            ``L_low_order_eigvecs_src``: Source from which to retrieve left
             eigenvectors of approximating low-order linear DMD map.
 
             ``summed_correlation_mats_eigvals_src``: Source from which to
@@ -1583,13 +1583,13 @@ class TLSqrDMDHandles(DMDHandles):
 
             ``summed_correlation_mats_eigvecs_src``: Source from which to
             retrieve eigenvectors of summed correlation matrices.
-        
+
             ``proj_correlation_mat_eigvals_src``: Source from which to
             retrieve eigenvalues of projected correlation matrix.
 
             ``proj_correlation_mat_eigvecs_src``: Source from which to
             retrieve eigenvectors of projected correlation matrix.
-        """        
+        """
         self.eigvals = np.squeeze(np.array(
             _parallel.call_and_bcast(self.get_mat, eigvals_src)))
         self.R_low_order_eigvecs = _parallel.call_and_bcast(
@@ -1609,7 +1609,7 @@ class TLSqrDMDHandles(DMDHandles):
 
     def put_decomp(
         self, eigvals_dest, R_low_order_eigvecs_dest, L_low_order_eigvecs_dest,
-        summed_correlation_mats_eigvals_dest, 
+        summed_correlation_mats_eigvals_dest,
         summed_correlation_mats_eigvecs_dest,
         proj_correlation_mat_eigvals_dest, proj_correlation_mat_eigvecs_dest):
         """Puts the decomposition matrices in destinations (file or memory).
@@ -1620,20 +1620,20 @@ class TLSqrDMDHandles(DMDHandles):
 
             ``R_low_order_eigvecs_dest``: Destination in which to put right
             eigenvectors of approximating low-order linear map.
-           
-            ``L_low_order_eigvecs_dest``: Destination in which to put left 
+
+            ``L_low_order_eigvecs_dest``: Destination in which to put left
             eigenvectors of approximating low-order linear map.
-            
+
             ``summed_correlation_mats_eigvals_dest``: Destination in which to
             put eigenvalues of summed correlation matrices.
 
             ``summed_correlation_mats_eigvecs_dest``: Destination in which to
             put eigenvectors of summed correlation matrices.
 
-            ``proj_correlation_mat_eigvals_dest``: Destination in which to put 
+            ``proj_correlation_mat_eigvals_dest``: Destination in which to put
             eigenvalues of projected correlation matrix.
 
-            ``proj_correlation_mat_eigvecs_dest``: Destination in which to put 
+            ``proj_correlation_mat_eigvecs_dest``: Destination in which to put
             eigenvectors of projected correlation matrix.
         """
         # Don't check if rank is zero because the following methods do.
@@ -1696,15 +1696,15 @@ class TLSqrDMDHandles(DMDHandles):
         biorthogonal projection of the first (de-noised) vector object onto the
         exact DMD modes, which is analytically equivalent to doing a
         least-squares projection onto the projected DMD modes.
-       
+
         Returns:
             ``spectral_coeffs``: 1D array of DMD spectral coefficients.
         """
         # TODO: maybe allow for user to choose which column to spectrum from?
-        # ie first, last, or mean?  
+        # ie first, last, or mean?
         self.spectral_coeffs = np.abs(np.array(
             self.L_low_order_eigvecs.H *
-            np.mat(np.diag(np.sqrt(self.proj_correlation_mat_eigvals))) * 
+            np.mat(np.diag(np.sqrt(self.proj_correlation_mat_eigvals))) *
             np.mat(self.proj_correlation_mat_eigvecs[0, :]).T)).squeeze()
         return self.spectral_coeffs
 
@@ -1716,7 +1716,7 @@ class TLSqrDMDHandles(DMDHandles):
         Note that a biorthogonal projection onto exact DMD modes is
         analytically equivalent to a least-squares projection onto projected
         DMD modes.
-       
+
         Returns:
             ``proj_coeffs``: Matrix of projection coefficients for
             (de-noised)vector objects, expressed as a linear combination of DMD
@@ -1728,14 +1728,14 @@ class TLSqrDMDHandles(DMDHandles):
             combination of DMD modes.  Columns correspond to vector objects,
             rows correspond to DMD modes.
         """
-        self.proj_coeffs = ( 
+        self.proj_coeffs = (
             self.L_low_order_eigvecs.H *
-            np.mat(np.diag(np.sqrt(self.proj_correlation_mat_eigvals))) * 
+            np.mat(np.diag(np.sqrt(self.proj_correlation_mat_eigvals))) *
             self.proj_correlation_mat_eigvecs.T)
         self.adv_proj_coeffs = (
             self.L_low_order_eigvecs.H *
-            np.mat(np.diag(self.proj_correlation_mat_eigvals ** -0.5)) * 
-            self.proj_correlation_mat_eigvecs.T * 
+            np.mat(np.diag(self.proj_correlation_mat_eigvals ** -0.5)) *
+            self.proj_correlation_mat_eigvecs.T *
             self.summed_correlation_mats_eigvecs *
             self.summed_correlation_mats_eigvecs.H *
             self.cross_correlation_mat *
@@ -1743,5 +1743,3 @@ class TLSqrDMDHandles(DMDHandles):
             self.summed_correlation_mats_eigvecs.H)
 
         return self.proj_coeffs, self.adv_proj_coeffs
-
-

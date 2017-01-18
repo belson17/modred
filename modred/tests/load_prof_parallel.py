@@ -17,17 +17,14 @@ num_stats = 30
 
 if len(sys.argv) == 2:
     num_procs = int(sys.argv[1])
-    
+
 if len(sys.argv) == 3:
     num_procs = int(sys.argv[1])
     num_stats = int(sys.argv[2])
 
 stats = P.Stats(prof_path%0)
 for rank in range(1, num_procs):
-    stats.add(prof_path%rank)   
-    
+    stats.add(prof_path%rank)
+
 print('\n----- Sum of all processors stats -----')
 stats.strip_dirs().sort_stats('cumulative').print_stats(num_stats)
-
-
-

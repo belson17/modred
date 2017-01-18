@@ -46,6 +46,6 @@ class CustomVecHandle(mr.VecHandle):
         pickle.dump(vec.grids, file_id)
         pickle.dump(vec.data_array, file_id)
         file_id.close()
-        
+
 def inner_product(v1, v2):
     return v1.inner_product(v2)

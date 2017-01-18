@@ -5,7 +5,7 @@ can cause memory problems for large objects, as in our case. After emailing
 the mpi4py mailing list (4/19/11), Lisandro sent me a link to this file:
 http://code.google.com/p/mpi4py/source/browse/trunk/demo/reductions/reductions.py
 It implements point-to-point reductions that are scalable. I'm not sure
-why this isn't the default, maybe it will be in a future release. 
+why this isn't the default, maybe it will be in a future release.
 To use this reduce, Lisandro says:
 
 from reductions import Intracomm

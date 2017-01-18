@@ -11,7 +11,7 @@ direct_snapshots = [
     CustomVecHandle('direct_snap%d.pkl' % i, scale=np.pi) for i in range(10)]
 adjoint_snapshots = [
     CustomVecHandle('adjoint_snap%d.pkl' % i, scale=np.pi) for i in range(10)]
-    
+
 # Arbitrary data.
 parallel = mr.parallel_default_instance
 nx = 50
@@ -36,7 +36,7 @@ sing_vals_norm = sing_vals / np.sum(sing_vals)
 num_modes = np.nonzero(np.cumsum(sing_vals_norm) > 0.9)[0][0] + 1
 mode_nums = list(range(num_modes))
 
-direct_modes = [CustomVecHandle('direct_mode%d.pkl'%i) for i in mode_nums] 
+direct_modes = [CustomVecHandle('direct_mode%d.pkl'%i) for i in mode_nums]
 adjoint_modes = [CustomVecHandle('adjoint_mode%d.pkl'%i) for i in mode_nums]
 
 my_BPOD.compute_direct_modes(mode_nums, direct_modes)

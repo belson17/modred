@@ -3,7 +3,7 @@
 from future.builtins import range
 import unittest
 # For deleting directories and their contents
-from shutil import rmtree 
+from shutil import rmtree
 import os
 from os.path import join
 
@@ -16,9 +16,9 @@ from modred import util
 
 class TestUtil(unittest.TestCase):
     """Tests all of the functions in util.py
-    
+
     To test all parallel features, use "mpiexec -n 2 python testutil.py"
-    """    
+    """
     def setUp(self):
         self.test_dir = 'DELETE_ME_test_files_util'
         if not os.access('.', os.W_OK):
@@ -26,13 +26,13 @@ class TestUtil(unittest.TestCase):
         if _parallel.is_rank_zero():
             if not os.path.isdir(self.test_dir):
                 os.mkdir(self.test_dir)
-    
+
     def tearDown(self):
         _parallel.barrier()
         if _parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
         _parallel.barrier()
-        
+
     @unittest.skipIf(
         _parallel.is_distributed(), 'Only save/load matrices in serial')
     def test_load_save_array_text(self):
@@ -65,7 +65,7 @@ class TestUtil(unittest.TestCase):
                             if squeeze:
                                 mat_read = np.squeeze(mat_read)
                             np.testing.assert_allclose(mat_read, mat)#,rtol=tol)
-    
+
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_svd(self):
         # Set tolerance for testing eigval/eigvec property
@@ -93,7 +93,7 @@ class TestUtil(unittest.TestCase):
                 # Loop through different tolerance cases
                 for atol in atol_list:
                     for rtol in rtol_list:
-                
+
                         # For all matrices, check that the output of util.svd
                         # satisfies the definition of an SVD.  Do this by
                         # checking eigval/eigvec properties, which must be
@@ -105,16 +105,16 @@ class TestUtil(unittest.TestCase):
                         L_sing_vecs, sing_vals, R_sing_vecs = util.svd(
                             mat, atol=atol, rtol=rtol)
                         np.testing.assert_allclose(
-                            np.dot(np.dot(mat, mat.T), L_sing_vecs) - 
-                            np.dot(L_sing_vecs, np.diag(sing_vals ** 2)), 
+                            np.dot(np.dot(mat, mat.T), L_sing_vecs) -
+                            np.dot(L_sing_vecs, np.diag(sing_vals ** 2)),
                             np.zeros(L_sing_vecs.shape),
                             atol=test_tol)
                         np.testing.assert_allclose(
-                            np.dot(np.dot(mat.T, mat), R_sing_vecs) - 
-                            np.dot(R_sing_vecs, np.diag(sing_vals ** 2)), 
+                            np.dot(np.dot(mat.T, mat), R_sing_vecs) -
+                            np.dot(R_sing_vecs, np.diag(sing_vals ** 2)),
                             np.zeros(R_sing_vecs.shape),
                             atol=test_tol)
-                    
+
                         # If either tolerance is nonzero, make sure that
                         # something is actually truncated, otherwise force test
                         # to quit.  To do this, make sure the eigvec matrix is
@@ -134,11 +134,11 @@ class TestUtil(unittest.TestCase):
                         if rtol:
                             self.assertTrue(
                                 abs(sing_vals[0]) / abs(sing_vals[-1]) > rtol)
-    
+
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_eigh(self):
         # Set tolerance for test of eigval/eigvec properties.  Value necessary
-        # for test to pass depends on matrix size, as well as atol and rtol 
+        # for test to pass depends on matrix size, as well as atol and rtol
         # values
         test_tol = 1e-12
 
@@ -148,19 +148,19 @@ class TestUtil(unittest.TestCase):
         # Test matrices that are and are not positive definite
         for is_pos_def in [True, False]:
 
-            # Generate random matrix with values between 0 and 1 
-            mat = np.random.random((num_rows, num_rows)) 
-           
+            # Generate random matrix with values between 0 and 1
+            mat = np.random.random((num_rows, num_rows))
+
             # Make matrix symmetric.  Note that if the matrix is large, for
             # some reason an in-place operation causes the operation to fail
             # (not sure why...).  Values are still between 0 and 1.
             mat = 0.5 * (mat + mat.T)
- 
+
             # If necessary, make the matrix positive definite by first making
             # it symmetric (adding the transpose), and then making it
             # diagonally dominant (each element is less than 1, so add N * I to
             # make the diagonal dominant).  Here an in-place change seems to be
-            # ok.  
+            # ok.
             if is_pos_def:
                 mat = mat + num_rows * np.eye(num_rows)
 
@@ -170,7 +170,7 @@ class TestUtil(unittest.TestCase):
                     raise ValueError(
                         'Failed to generate positive definite matrix '
                         'for test.')
- 
+
             # Compute full set of eigenvalues to help choose tolerance levels
             # that guarantee truncation (otherwise tests won't actually check
             # those features).
@@ -195,8 +195,8 @@ class TestUtil(unittest.TestCase):
                         mat, rtol=rtol, atol=atol,
                         is_positive_definite=is_pos_def)
                     np.testing.assert_allclose(
-                        np.dot(mat, eigvecs) - 
-                        np.dot(eigvecs, np.diag(eigvals)), 
+                        np.dot(mat, eigvecs) -
+                        np.dot(eigvecs, np.diag(eigvals)),
                         np.zeros(eigvecs.shape),
                         atol=test_tol)
 
@@ -231,12 +231,12 @@ class TestUtil(unittest.TestCase):
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_eig_biorthog(self):
         test_tol = 1e-10
-        num_rows = 100 
+        num_rows = 100
         mat = np.random.random((num_rows, num_rows))
         for scale_choice in ['left', 'right']:
             R_eigvals, R_eigvecs, L_eigvecs = util.eig_biorthog(
                 mat, scale_choice=scale_choice)
-       
+
             # Check eigenvector/eigenvalue relationship (use right eigenvalues
             # only).  Test difference so that all values are compared to zeros,
             # avoiding need to check relative tolerances.
@@ -245,7 +245,7 @@ class TestUtil(unittest.TestCase):
                 np.zeros(mat.shape),
                 atol=test_tol)
             np.testing.assert_allclose(
-                np.dot(L_eigvecs.conj().T, mat) - 
+                np.dot(L_eigvecs.conj().T, mat) -
                 np.dot(np.diag(R_eigvals), L_eigvecs.conj().T),
                 np.zeros(mat.shape),
                 atol=test_tol)
@@ -255,7 +255,7 @@ class TestUtil(unittest.TestCase):
             # values should be zero, avoiding need for rtol
             ip_mat = np.dot(L_eigvecs.conj().T, R_eigvecs)
             np.testing.assert_allclose(
-                np.abs(ip_mat) - np.eye(num_rows), np.zeros(ip_mat.shape), 
+                np.abs(ip_mat) - np.eye(num_rows), np.zeros(ip_mat.shape),
                 atol=test_tol)
 
             # Check for unit norms
@@ -265,18 +265,18 @@ class TestUtil(unittest.TestCase):
                 unit_eigvecs = L_eigvecs
             np.testing.assert_allclose(
                 np.sqrt(np.sum(np.multiply(
-                unit_eigvecs, unit_eigvecs.conj()), axis=0)).squeeze(), 
+                unit_eigvecs, unit_eigvecs.conj()), axis=0)).squeeze(),
                 np.ones((1, R_eigvals.size)))
 
         # Check that error is raised for invalid scale choice
         self.assertRaises(
             ValueError, util.eig_biorthog, mat, **{'scale_choice':'invalid'})
-        
+
     @unittest.skipIf(_parallel.is_distributed(), 'Only load data in serial')
     def test_load_impulse_outputs(self):
         """
         Test loading multiple signal files in [t sig1 sig2 ...] format.
-        
+
         Creates signals, saves them, loads them, tests are equal to the
         originals.
         """
@@ -288,7 +288,7 @@ class TestUtil(unittest.TestCase):
                         num_time_steps, num_signals))
                     # Time steps need not be sequential
                     time_values_true = np.random.random(num_time_steps)
-                    
+
                     signal_paths = []
                     # Save signals to file
                     for path_num in range(num_paths):
@@ -297,14 +297,14 @@ class TestUtil(unittest.TestCase):
                           (time_values_true.reshape(len(time_values_true), 1),
                           all_signals_true[path_num]), axis=1)
                         util.save_array_text(data_to_save, signal_path%path_num)
-                    
+
                     time_values, all_signals = util.load_multiple_signals(
                         signal_paths)
                     np.testing.assert_allclose(all_signals, all_signals_true)
                     np.testing.assert_allclose(time_values, time_values_true)
-    
-    
-    @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')    
+
+
+    @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
     def test_solve_Lyapunov(self):
         """Test solution of Lyapunov w/known solution from Matlab's dlyap"""
         A = np.array([[0.725404224946106, 0.714742903826096],
@@ -316,13 +316,13 @@ class TestUtil(unittest.TestCase):
         X_computed = util.solve_Lyapunov_direct(A, Q)
         np.testing.assert_allclose(X_computed, X_true)
         X_computed_mats = util.solve_Lyapunov_direct(np.mat(A), np.mat(Q))
-        np.testing.assert_allclose(X_computed_mats, X_true)    
+        np.testing.assert_allclose(X_computed_mats, X_true)
 
         X_computed = util.solve_Lyapunov_iterative(A, Q)
         np.testing.assert_allclose(X_computed, X_true)
         X_computed_mats = util.solve_Lyapunov_iterative(np.mat(A), np.mat(Q))
-        np.testing.assert_allclose(X_computed_mats, X_true)    
-    
+        np.testing.assert_allclose(X_computed_mats, X_true)
+
     @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
     def test_balanced_truncation(self):
         """Test balanced system is close to original."""
@@ -335,7 +335,7 @@ class TestUtil(unittest.TestCase):
                     y = util.impulse(A, B, C, num_time_steps=num_time_steps)
                     yr = util.impulse(Ar, Br, Cr, num_time_steps=num_time_steps)
                     np.testing.assert_allclose(yr, y, rtol=1e-5)
-    
+
     @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
     def test_drss(self):
         """Test drss gives correct mat dimensions and stable dynamics."""
@@ -347,7 +347,7 @@ class TestUtil(unittest.TestCase):
                     self.assertEqual(B.shape, (num_states, num_inputs))
                     self.assertEqual(C.shape, (num_outputs, num_states))
                     self.assertTrue(np.amax(np.abs(np.linalg.eig(A)[0])) < 1)
-    
+
     @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
     def test_lsim(self):
         """Test that lsim has right shapes, does not test result"""
@@ -355,7 +355,7 @@ class TestUtil(unittest.TestCase):
             for num_inputs in [1, 2, 4]:
                 for num_outputs in [1, 2, 3, 5]:
                     #print (
-                    #    'num_states %d, num_inputs %d, 
+                    #    'num_states %d, num_inputs %d,
                     #    num_outputs %d'%(num_states, num_inputs, num_outputs)
                     A, B, C = util.drss(num_states, num_inputs, num_outputs)
                     #print 'Shape of C is',C.shape
@@ -379,7 +379,7 @@ class TestUtil(unittest.TestCase):
                     for ti in range(num_time_steps):
                         outputs_true[ti] = C * (A**ti) * B
                     np.testing.assert_allclose(outputs, outputs_true)
-                    
+
                     # Check can give num_time_steps as an argument
                     outputs = util.impulse(
                         A, B, C, num_time_steps=num_time_steps)

@@ -60,9 +60,9 @@ setup(
         ],
     packages=find_packages(exclude=['doc', 'matlab']),
     package_data={'modred':[
-            'modred/tests/files_okid/SISO/*', 
-            'modred/tests/files_okid/SIMO/*', 
-            'modred/tests/files_okid/MISO/*', 
+            'modred/tests/files_okid/SISO/*',
+            'modred/tests/files_okid/SIMO/*',
+            'modred/tests/files_okid/MISO/*',
             'modred/tests/files_okid/MIMO/*']},
       install_requires=['numpy', 'future']
     )

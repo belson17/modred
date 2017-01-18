@@ -19,10 +19,10 @@ from .pod import (
 
 from .dmd import (
     DMDHandles,
-    compute_DMD_matrices_direct_method, 
+    compute_DMD_matrices_direct_method,
     compute_DMD_matrices_snaps_method,
     TLSqrDMDHandles,
-    compute_TLSqrDMD_matrices_direct_method, 
+    compute_TLSqrDMD_matrices_direct_method,
     compute_TLSqrDMD_matrices_snaps_method,
 )
 
@@ -34,7 +34,7 @@ from .okid import OKID
 
 from .ltigalerkinproj import (
     LTIGalerkinProjectionBase,
-    LTIGalerkinProjectionHandles, 
+    LTIGalerkinProjectionHandles,
     LTIGalerkinProjectionMatrices,
     compute_derivs_handles, compute_derivs_matrices, standard_basis
 )
@@ -42,7 +42,7 @@ from .ltigalerkinproj import (
 from .vectorspace import VectorSpaceHandles, VectorSpaceMatrices
 
 from .vectors import (
-    VecHandlePickle, VecHandleInMemory, 
+    VecHandlePickle, VecHandleInMemory,
     Vector, VecHandle, VecHandleArrayText,
     InnerProductTrapz, inner_product_array_uniform
 )
@@ -60,5 +60,3 @@ from .util import (
 from modred import tests
 
 del absolute_import
-
-

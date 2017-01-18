@@ -20,34 +20,34 @@ Sets of these vector objects are decomposed into modes by POD, BPOD, and DMD.
 Others call these vector objects snapshots, planes of spatial data, fields, time
 histories, and many other names.
 Within modred, "vector" refers to the object you, the user, use to represent
-your data.  
-**By "vector", we do not mean a 1D array**. 
+your data.
+**By "vector", we do not mean a 1D array**.
 We do mean an element of a vector space (technically an inner product space).
 You are free to choose *any* object, from numpy arrays to your own class, so
 long as it satisfies a few simple requirements.
 
 The vector object must:
 
-1. Support scalar multiplication, i.e. ``vector2 = 2.0*vector1``. 
+1. Support scalar multiplication, i.e. ``vector2 = 2.0*vector1``.
 2. Support addition with other vectors, i.e. ``vector3 = vector1 + vector2``.
-3. Be compatible with a user-supplied ``inner_product(vector1, vector2)`` 
+3. Be compatible with a user-supplied ``inner_product(vector1, vector2)``
    function.
 
-Numpy arrays already meet requirements 1 and 2. 
+Numpy arrays already meet requirements 1 and 2.
 For your own classes, define the special methods ``__mul__`` and ``__add__`` for
 1 and 2.
 
-You also need an inner product function that takes two vectors and returns a 
-single number. 
-This number can be real or complex, but may not switch from real to complex 
+You also need an inner product function that takes two vectors and returns a
+single number.
+This number can be real or complex, but may not switch from real to complex
 depending on the input, i.e., it must be real for all inputs or complex for all
 inputs.
 Your inner product must satisfy the mathematical definition for an inner
 product:
 
-- Conjugate symmetry: 
+- Conjugate symmetry:
   ``inner_product(vec1, vec2) == numpy.conj(inner_product(vec2, vec1))``.
-- Linearity: 
+- Linearity:
   ``inner_product(vec1, scalar*vec2) == scalar*inner_product(vec1, vec2)``.
 - Implied norm: ``inner_product(vec, vec) >= 0`` with equality if and only if
   ``vec`` is the zero vector.
@@ -55,7 +55,7 @@ product:
 The two examples we show are numpy's ``vdot`` and the trapezoidal rule in
 :py:class:`vectors.InnerProductTrapz`.
 It's often a good idea to define an inner product function as a member function
-of the vector class, and write a simple wrapper. 
+of the vector class, and write a simple wrapper.
 There is an example of this in the tutorial.
 
 The resulting modes are also vectors.
@@ -82,7 +82,7 @@ When the vectors are large, it can be inefficient or impossible to have all of
 them in memory simultaneously.
 Thus, modred only needs a subset of vectors in memory, loading and saving them
 as necessary.
-Therefore, you can provide it with a list of *vector handles*. 
+Therefore, you can provide it with a list of *vector handles*.
 These are *lightweight* objects that in some sense point to a vector's location,
 like the filename where it's saved.
 In general, vector handles get a vector from a location and return it, and also
@@ -99,7 +99,7 @@ to the file name.
 
 One can think of ``get`` as loading, but it is more general because ``get`` can
 retrieve the vector from anywhere (though most often from file).
-Similarly, one can think of ``put`` as saving, but it is more general because 
+Similarly, one can think of ``put`` as saving, but it is more general because
 ``put`` can send the vector anywhere (though most often to file).
 
 It's natural to think of a vector handle's ``get`` and ``put`` as inverses, but
@@ -117,7 +117,7 @@ Similarly, one only needs to write a ``get`` for the mode vector handle if one
 wants to load the modes (for example to plot them).
 
 It's very important that the vector handles actually be lightweight (use little
-memory). 
+memory).
 modred is most efficient when it uses all of the memory available to have as
 many vectors in memory as possible.
 So if vector handles contain vectors or other large data, then modred could run
@@ -135,7 +135,7 @@ is provided in the tutorial.
 This isn't required, but strongly encouraged because it contains extra
 functionality.
 The ``mr.VecHandle`` constructor accepts two additional arguments, a base vector
-handle ``base_handle`` and a scaling factor ``scale``. 
+handle ``base_handle`` and a scaling factor ``scale``.
 This allows the ``get`` function to retrieve a vector, subtract from it a base
 vector (for example an equilibrium or mean state), scale it (for example by a
 quadrature weight), and return the modified vector.
@@ -146,11 +146,11 @@ The base class's ``put`` simply calls ``_put`` of the derived class.
 Examples are shown in the tutorial.
 
 One might be concerned that the base class is reloading the base vector at each
-call of ``get``, but this is avoidable. 
+call of ``get``, but this is avoidable.
 As long as the ``base_handle`` you give each vector handle instance is equal
 (with respect to ``==``), then the base vector is loaded on the first call of
 ``get`` and stored as ``mr.VecHandle.cached_base_vec``, which is used by all
-instances of classes derived from ``mr.VecHandle``. 
+instances of classes derived from ``mr.VecHandle``.
 
 If you're curious, feel free to take a look at it in the :mod:`vectors` module
 (click on the [source] link on the right side).
@@ -177,7 +177,7 @@ interact with vectors and vector handles.
 First, each has ``compute_decomp`` functions that take lists of vector handles,
 ``vec_handles``, as arguments.
 Within the ``compute_decomp`` functions, ``vec = vec_handle.get()`` is called
-repeatedly to retrieve vectors as needed. 
+repeatedly to retrieve vectors as needed.
 In fact, ``compute_decomp`` does not "know" or "care" what's inside the vector
 handles and vectors; only that they satisfy the requirements.
 
@@ -216,7 +216,7 @@ Summarizing, to use modred on arbitrary data, define
 
    1. Member function ``get()`` which returns a vector handle.
    2. Member function ``put(vec)`` where ``vec`` is a vector handle.
-   3. Optionally inherits from :py:class:`vectors.VecHandle`. If so, 
+   3. Optionally inherits from :py:class:`vectors.VecHandle`. If so,
       member function names in 1 and 2 change to ``_get`` and ``_put``.
 
 Then you can get started using any of the modal decomposition classes!
@@ -225,4 +225,4 @@ common vector and vector handles classes.
 
 For large data, Python's speed limitations can be bypassed by implementing
 functions in compiled languages such as C/C++ and Fortran and accessing them
-within python with Cython, SWIG, f2py, etc. 
+within python with Cython, SWIG, f2py, etc.

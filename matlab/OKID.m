@@ -1,7 +1,7 @@
 function [H, M] = OKID(y,u,r)
 % OKID based on 1991 NASA TM-104069 by Juang, Phan, Horta and Longman
 % inputs
-%     y: sampled output with dimensions [numOutputs x numSamples] 
+%     y: sampled output with dimensions [numOutputs x numSamples]
 %     u: sampled input with dimensions [numInputs x numSamples]
 %     r: effective system order, the number of Markov params estimated
 % outputs
@@ -16,11 +16,11 @@ function [H, M] = OKID(y,u,r)
 
 % Step 0, check shapes of y,u
 yshape = size(y);
-q = yshape(1);  % q is the number of outputs 
+q = yshape(1);  % q is the number of outputs
 l = yshape(2);  % L is the number of output samples
 ushape = size(u);
 m = ushape(1);  % m is the number of inputs
-lu = ushape(2); % Lu i the number of input samples 
+lu = ushape(2); % Lu i the number of input samples
 assert(l==lu);  % L and Lu need to be the same length
 
 

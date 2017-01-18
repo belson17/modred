@@ -28,4 +28,3 @@ my_DMD.put_decomp(
 mode_indices = [1, 4, 5, 0, 10]
 modes = [mr.VecHandlePickle('mode%d.pkl'%i) for i in mode_indices]
 my_DMD.compute_exact_modes(mode_indices, modes)
-

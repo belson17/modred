@@ -13,9 +13,9 @@ base_vec_handle = mr.VecHandlePickle('base_vec.pkl')
 snapshots = [mr.VecHandlePickle(
     'vec%d.pkl' %i, base_vec_handle=base_vec_handle, scale=quad_weights[i])
     for i in range(num_vecs)]
- 
+
 # Save arbitrary data, normally unnecessary.
-num_elements = 2000  
+num_elements = 2000
 parallel = mr.parallel_default_instance
 if parallel.is_rank_zero():
     for snap in snapshots + [base_vec_handle]:

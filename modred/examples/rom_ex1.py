@@ -17,5 +17,3 @@ LTI_proj = mr.LTIGalerkinProjectionMatrices(basis_vecs)
 A_reduced, B_reduced, C_reduced = LTI_proj.compute_model(
     A * basis_vecs, B, C * basis_vecs)
 LTI_proj.put_model('A_reduced.txt', 'B_reduced.txt', 'C_reduced.txt')
-
-

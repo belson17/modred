@@ -10,7 +10,7 @@ provided, as well as serial implementations of the Observer Kalman filter
 Identification method (OKID) and the Eigensystem Realization Algorithm (ERA).
 modred is applicable to a wide range of problems and nearly any type of data.
 
-For smaller and simpler datasets, there is a Matlab-like interface. 
+For smaller and simpler datasets, there is a Matlab-like interface.
 For larger and more complicated datasets, you can provide modred classes with
 functions to interact with your data.
 
@@ -36,7 +36,7 @@ mpi4py)::
 
   mpiexec -n 3 python -c 'import modred.tests; modred.tests.run()'
 
-Please report failures and installation problems to belson17 [-at-] gmail.com 
+Please report failures and installation problems to belson17 [-at-] gmail.com
 with the following information:
 
 1. Copy of the entire output of the tests or installation

@@ -24,7 +24,7 @@ class VecHandle(object):
     def __init__(self, base_vec_handle=None, scale=None):
         self.__base_vec_handle = base_vec_handle
         self.scale = scale
-    
+
     def get(self):
         """Get a vector, using the private (user-overwritten) ``_get``
         function.  If available, the base vector will be subtracted from the
@@ -41,10 +41,10 @@ class VecHandle(object):
             VecHandle.cached_base_vec_handle = self.__base_vec_handle
             VecHandle.cached_base_vec = base_vec
         return self.__scale_vec(vec - base_vec)
-        
+
     def put(self, vec):
         """Put a vector to file or memory using the private (user-overwritten)
-        ``_put`` function.""" 
+        ``_put`` function."""
         return self._put(vec)
 
     def _get(self):
@@ -60,7 +60,7 @@ class VecHandle(object):
         if self.scale is not None:
             return vec*self.scale
         return vec
-    
+
 
 class VecHandleInMemory(VecHandle):
     """Gets and puts vectors from/in memory."""
@@ -80,8 +80,8 @@ class VecHandleInMemory(VecHandle):
         if type(other) != type(self):
             return False
         return util.smart_eq(self.vec, other.vec)
-        
-        
+
+
 class VecHandleArrayText(VecHandle):
     """Gets and puts array vector objects from/in text files."""
     def __init__(self, vec_path, base_vec_handle=None, scale=None):
@@ -100,7 +100,7 @@ class VecHandleArrayText(VecHandle):
         if type(other) != type(self):
             return False
         return self.vec_path == other.vec_path
-        
+
 
 class VecHandlePickle(VecHandle):
     """Gets and puts any vector object from/in pickle files."""
@@ -123,8 +123,8 @@ class VecHandlePickle(VecHandle):
         if type(other) != type(self):
             return False
         return self.vec_path == other.vec_path
-        
-        
+
+
 def inner_product_array_uniform(vec1, vec2):
     """Takes inner product of numpy arrays without weighting."""
     return np.vdot(vec1, vec2)
@@ -133,13 +133,13 @@ def inner_product_array_uniform(vec1, vec2):
 class InnerProductTrapz(object):
     """Callable that computes inner product of n-dimensional arrays defined on
     a spatial grid, using the trapezoidal rule.
-    
+
     Args:
         ``*grids``: 1D arrays of grid points, in the order of the spatial
-        dimensions.  
-    
+        dimensions.
+
     Usage::
-      
+
       nx = 10
       ny = 11
       x_grid = 1 - np.cos(np.linspace(0, np.pi, nx))
@@ -189,5 +189,4 @@ class Vector(object):
         return self.__mul__(scalar)
 
     def __sub__(self, other):
-        return self + other*-1    
-
+        return self + other*-1
