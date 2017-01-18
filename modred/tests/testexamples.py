@@ -60,12 +60,14 @@ class TestExamples(unittest.TestCase):
 
         os.chdir(self.test_dir)
 
+
     def tearDown(self):
         os.chdir(running_dir)
         _parallel.barrier()
         if _parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
         _parallel.barrier()
+
 
     @unittest.skip('Test with Makefile in examples directory instead')
     def test_tutorial_examples(self):
@@ -79,6 +81,7 @@ class TestExamples(unittest.TestCase):
                 execfile(join(examples_dir, example_script%example_num))
                 _parallel.barrier()
                 #printing(True)
+
 
     @unittest.skip('Unnecessary test for user')
     def test_benchmark(self):

@@ -43,6 +43,7 @@ class TestBPODMatrices(unittest.TestCase):
         #self.adjoint_vecs = _parallel.call_and_bcast(np.random.random,
         #    (self.num_states, self.num_adjoint_vec_handles))
 
+
     def test_compute_modes(self):
         """Test computing modes in serial and parallel."""
         tol = 1e-6
@@ -164,10 +165,12 @@ class TestBPODHandles(unittest.TestCase):
         self.my_BPOD = BPODHandles(np.vdot, verbosity=0)
         _parallel.barrier()
 
+
     def tearDown(self):
         _parallel.barrier()
         _parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
         _parallel.barrier()
+
 
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
@@ -222,6 +225,7 @@ class TestBPODHandles(unittest.TestCase):
         for k,v in util.get_data_members(my_BPOD).items():
             self.assertEqual(v, data_members_modified[k])
 
+
     def test_puts_gets(self):
         """Test that put/get work in base class."""
         test_dir = 'DELETE_ME_test_files_bpod'
@@ -262,6 +266,7 @@ class TestBPODHandles(unittest.TestCase):
         np.testing.assert_allclose(BPOD_load.R_sing_vecs, R_sing_vecs_true)
         np.testing.assert_allclose(BPOD_load.sing_vals, sing_vals_true)
 
+
     #@unittest.skip('testing others')
     def test_compute_decomp(self):
         """Test that can take vecs, compute the Hankel and SVD matrices. """
@@ -289,6 +294,7 @@ class TestBPODHandles(unittest.TestCase):
             self.R_sing_vecs_true, rtol=tol, atol=tol)
         np.testing.assert_allclose(sing_vals_return[:num_sing_vals],
             self.sing_vals_true, rtol=tol, atol=tol)
+
 
     #@unittest.skip('testing others')
     def test_compute_modes(self):
@@ -339,6 +345,7 @@ class TestBPODHandles(unittest.TestCase):
                 else:
                     self.assertAlmostEqual(IP, 1., places=6)
 
+
     def test_compute_proj_coeffs(self):
         # Tests fail if tolerance is too tight, likely due to random nature of
         # data.  Maximum error (elementwise) seems to come out ~1e-11.
@@ -362,6 +369,7 @@ class TestBPODHandles(unittest.TestCase):
         # Test values
         np.testing.assert_allclose(
             proj_coeffs, proj_coeffs_true, rtol=rtol, atol=atol)
+
 
     def test_compute_adj_proj_coeffs(self):
         # Tests fail if tolerance is too tight, likely due to random nature of

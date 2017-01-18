@@ -36,8 +36,10 @@ class TestOKID(unittest.TestCase):
     def setUp(self):
         self.test_dir = join(os.path.dirname(__file__), 'files_okid')
 
+
     def tearDown(self):
         pass
+
 
     def test_OKID(self):
         for case in ['SISO', 'SIMO', 'MISO', 'MIMO']:

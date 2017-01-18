@@ -45,9 +45,11 @@ class testERA(unittest.TestCase):
             os.mkdir(self.test_dir)
         self.impulse_file_path = join(self.test_dir, 'impulse_input%03d.txt')
 
+
     def tearDown(self):
         """Deletes all of the matrices created by the tests"""
         rmtree(self.test_dir, ignore_errors=True)
+
 
     #@unittest.skip('Testing others')
     def test_make_sampled_format(self):
@@ -88,6 +90,7 @@ class testERA(unittest.TestCase):
                     time_values[num_time_steps/2] = -1
                     self.assertRaises(ValueError, era.make_sampled_format,
                         time_values, outputs)
+
 
     #@unittest.skip("testing others")
     def test_assemble_Hankel(self):
@@ -134,6 +137,7 @@ class testERA(unittest.TestCase):
                                 Hp[row*num_outputs:(row+1)*num_outputs,
                                     col*num_inputs:(col+1)*num_inputs],
                                 C*(A**time_steps[(row+col)*2 + 1])*B)
+
 
     #@unittest.skip('testing others')
     def test_compute_model(self):

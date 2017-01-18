@@ -25,12 +25,14 @@ import modred as mr
 
 _parallel = mr.parallel_default_instance
 
-parser = argparse.ArgumentParser(description='Get directory in which to ' +\
-    'save data.')
-parser.add_argument('--outdir', default='files_benchmark',
+parser = argparse.ArgumentParser(
+    description='Get directory in which to save data.')
+parser.add_argument(
+    '--outdir', default='files_benchmark',
     help='Directory in which to save data.')
-parser.add_argument('--function', choices=['lin_combine',
-    'inner_product_mat', 'symmetric_inner_product_mat'],
+parser.add_argument(
+    '--function',
+    choices=['lin_combine', 'inner_product_mat', 'symmetric_inner_product_mat'],
     help='Function to benchmark.')
 args = parser.parse_args()
 data_dir = args.outdir
@@ -42,6 +44,7 @@ basis_name = 'vec_%04d'
 product_name = 'product_%04d'
 col_vec_name = 'col_%04d'
 row_vec_name = 'row_%04d'
+
 
 def generate_vecs(vec_dir, num_states, vec_handles):
     """Creates a random data set of vecs, saves to file."""
@@ -63,8 +66,9 @@ def generate_vecs(vec_dir, num_states, vec_handles):
 
     _parallel.barrier()
 
-def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node,
-    verbosity=1):
+
+def inner_product_mat(
+    num_states, num_rows, num_cols, max_vecs_per_node, verbosity=1):
     """
     Computes inner products from known vecs.
 
@@ -77,20 +81,21 @@ def inner_product_mat(num_states, num_rows, num_cols, max_vecs_per_node,
 
     generate_vecs(data_dir, num_states, row_vec_handles+col_vec_handles)
 
-    my_VS = mr.VectorSpaceHandles(np.vdot, max_vecs_per_node=max_vecs_per_node,
-        verbosity=verbosity)
+    my_VS = mr.VectorSpaceHandles(
+        np.vdot, max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
 
     prof = cProfile.Profile()
     start_time = T.time()
-    prof.runcall(my_VS.compute_inner_product_mat, *(col_vec_handles,
-        row_vec_handles))
+    prof.runcall(
+        my_VS.compute_inner_product_mat, *(col_vec_handles, row_vec_handles))
     total_time = T.time() - start_time
     prof.dump_stats('IP_mat_r%d.prof'%_parallel.get_rank())
 
     return total_time
 
-def symmetric_inner_product_mat(num_states, num_vecs, max_vecs_per_node,
-    verbosity=1):
+
+def symmetric_inner_product_mat(
+    num_states, num_vecs, max_vecs_per_node, verbosity=1):
     """
     Computes symmetric inner product matrix from known vecs (as in POD).
     """
@@ -99,8 +104,8 @@ def symmetric_inner_product_mat(num_states, num_vecs, max_vecs_per_node,
 
     generate_vecs(data_dir, num_states, vec_handles)
 
-    my_VS = mr.VectorSpaceHandles(np.vdot, max_vecs_per_node=max_vecs_per_node,
-        verbosity=verbosity)
+    my_VS = mr.VectorSpaceHandles(
+        np.vdot, max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
 
     prof = cProfile.Profile()
     start_time = T.time()
@@ -110,8 +115,9 @@ def symmetric_inner_product_mat(num_states, num_vecs, max_vecs_per_node,
 
     return total_time
 
-def lin_combine(num_states, num_bases, num_products, max_vecs_per_node,
-    verbosity=1):
+
+def lin_combine(
+    num_states, num_bases, num_products, max_vecs_per_node, verbosity=1):
     """
     Computes linear combination of vecs from saved vecs and random coeffs
 
@@ -139,10 +145,12 @@ def lin_combine(num_states, num_bases, num_products, max_vecs_per_node,
     prof.dump_stats('lincomb_r%d.prof'%_parallel.get_rank())
     return total_time
 
+
 def clean_up():
     _parallel.barrier()
     if _parallel.is_rank_zero():
         rmtree(data_dir)
+
 
 def main():
     #method_to_test = 'lin_combine'

@@ -26,6 +26,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
         self.num_vecs = 10
         self.num_states = 20
 
+
     def _helper_compute_DMD_from_data(
         self, vecs, inner_product, adv_vecs=None, max_num_eigvals=None):
         if adv_vecs is None:
@@ -59,6 +60,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
             modes_exact, modes_proj, spectral_coeffs, eigvals,
             W, Z, Sigma, V, correlation_mat, cross_correlation_mat)
 
+
     def _helper_test_mat_to_sign(
         self, true_vals, test_vals, rtol=1e-12, atol=1e-16):
         # Check that shapes are the same
@@ -77,6 +79,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
                 np.allclose(true_col, test_col, rtol=rtol, atol=atol)
                 or
                 np.allclose(-true_col, test_col, rtol=rtol, atol=atol))
+
 
     def _helper_check_decomp(
         self, method_type, vecs, mode_indices, inner_product,
@@ -150,6 +153,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
             np.testing.assert_allclose(
                 cross_correlation_mat, cross_correlation_mat_true,
                 rtol=rtol, atol=atol)
+
 
     def test_all(self):
         rtol = 1e-8
@@ -236,11 +240,13 @@ class TestDMDHandles(unittest.TestCase):
             for i in range(self.num_vecs)]
         _parallel.barrier()
 
+
     def tearDown(self):
         _parallel.barrier()
         if _parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
         _parallel.barrier()
+
 
     #@unittest.skip('Testing something else.')
     def test_init(self):
@@ -296,6 +302,7 @@ class TestDMDHandles(unittest.TestCase):
             _parallel.get_num_procs()
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
+
 
     #@unittest.skip('Testing something else.')
     def test_puts_gets(self):
@@ -386,6 +393,7 @@ class TestDMDHandles(unittest.TestCase):
         np.testing.assert_allclose(proj_coeffs_loaded, proj_coeffs)
         np.testing.assert_allclose(adv_proj_coeffs_loaded, adv_proj_coeffs)
 
+
     def _helper_compute_DMD_from_data(
         self, vec_array, inner_product, adv_vec_array=None,
         max_num_eigvals=None):
@@ -450,6 +458,7 @@ class TestDMDHandles(unittest.TestCase):
             R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
             correlation_mat_eigvecs, adj_modes)
 
+
     def _helper_test_1D_array_to_sign(
         self, true_vals, test_vals, rtol=1e-12, atol=1e-16):
         # Check that shapes are the same
@@ -465,6 +474,7 @@ class TestDMDHandles(unittest.TestCase):
                 np.allclose(true_val, test_val, rtol=rtol, atol=atol)
                 or
                 np.allclose(-true_val, test_val, rtol=rtol, atol=atol))
+
 
     def _helper_test_mat_to_sign(
         self, true_vals, test_vals, rtol=1e-12, atol=1e-16):
@@ -484,6 +494,7 @@ class TestDMDHandles(unittest.TestCase):
                 np.allclose(true_col, test_col, rtol=rtol, atol=atol)
                 or
                 np.allclose(-true_col, test_col, rtol=rtol, atol=atol))
+
 
     def _helper_check_decomp(
         self, vec_array,  vec_handles, adv_vec_array=None,
@@ -537,6 +548,7 @@ class TestDMDHandles(unittest.TestCase):
             correlation_mat_eigvecs_returned, correlation_mat_eigvecs_true,
             rtol=tol)
 
+
     def _helper_check_modes(self, modes_true, mode_path_list):
         # Set tolerance.
         tol = 1e-10
@@ -546,6 +558,7 @@ class TestDMDHandles(unittest.TestCase):
         for i, path in enumerate(mode_path_list):
             modes_computed[:, i] = V.VecHandlePickle(path).get()
         np.testing.assert_allclose(modes_true, modes_computed, rtol=tol)
+
 
     #@unittest.skip('Testing something else.')
     def test_compute_decomp(self):
@@ -589,6 +602,7 @@ class TestDMDHandles(unittest.TestCase):
         # raised.
         self.assertRaises(ValueError, self.my_DMD.compute_decomp,
             self.vec_handles, self.adv_vec_handles[:-1])
+
 
     #@unittest.skip('Testing something else.')
     def test_compute_modes(self):
@@ -705,6 +719,7 @@ class TestDMDHandles(unittest.TestCase):
             [V.VecHandlePickle(path) for path in mode_path_list])
         self._helper_check_modes(modes_proj, mode_path_list)
 
+
     #@unittest.skip('Testing something else.')
     def test_compute_spectrum(self):
         """Test DMD spectrum"""
@@ -750,6 +765,7 @@ class TestDMDHandles(unittest.TestCase):
         self._helper_test_1D_array_to_sign(
             spectral_coeffs_true, spectral_coeffs_computed, rtol=rtol,
             atol=atol)
+
 
     #@unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):
@@ -819,6 +835,7 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
         self.num_states = 10
         self.max_num_eigvals = int(np.round(self.num_states / 2))
 
+
     def _helper_compute_DMD_from_data(
         self, vecs, inner_product, adv_vecs=None, max_num_eigvals=None):
         if adv_vecs is None:
@@ -876,6 +893,7 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
             W, Z, stacked_Sigma, stacked_V, proj_Sigma, proj_V,
             correlation_mat, adv_correlation_mat, cross_correlation_mat)
 
+
     def _helper_test_mat_to_sign(
         self, true_vals, test_vals, rtol=1e-12, atol=1e-16):
         # Check that shapes are the same
@@ -894,6 +912,7 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                 np.allclose(true_col, test_col, rtol=rtol, atol=atol)
                 or
                 np.allclose(-true_col, test_col, rtol=rtol, atol=atol))
+
 
     def _helper_check_decomp(
         self, method_type, vecs, mode_indices, inner_product,
@@ -985,6 +1004,7 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                 cross_correlation_mat, cross_correlation_mat_true,
                 rtol=rtol, atol=atol)
 
+
     def test_all(self):
         rtol = 1e-8
         atol = 1e-15
@@ -1050,11 +1070,13 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             for i in range(self.num_vecs)]
         _parallel.barrier()
 
+
     def tearDown(self):
         _parallel.barrier()
         if _parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
         _parallel.barrier()
+
 
     #@unittest.skip('Testing something else.')
     def test_init(self):
@@ -1113,6 +1135,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             _parallel.get_num_procs()
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
+
 
     #@unittest.skip('Testing something else.')
     def test_puts_gets(self):
@@ -1239,6 +1262,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         np.testing.assert_allclose(proj_coeffs_loaded, proj_coeffs)
         np.testing.assert_allclose(adv_proj_coeffs_loaded, adv_proj_coeffs)
 
+
     def _helper_compute_DMD_from_data(
         self, vec_array, inner_product, adv_vec_array=None,
         max_num_eigvals=None):
@@ -1358,6 +1382,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             proj_correlation_mat_eigvecs,
             adj_modes)
 
+
     def _helper_test_1D_array_to_sign(
         self, true_vals, test_vals, rtol=1e-12, atol=1e-16):
         # Check that shapes are the same
@@ -1373,6 +1398,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 np.allclose(true_val, test_val, rtol=rtol, atol=atol)
                 or
                 np.allclose(-true_val, test_val, rtol=rtol, atol=atol))
+
 
     def _helper_test_mat_to_sign(
         self, true_vals, test_vals, rtol=1e-12, atol=1e-16):
@@ -1392,6 +1418,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 np.allclose(true_col, test_col, rtol=rtol, atol=atol)
                 or
                 np.allclose(-true_col, test_col, rtol=rtol, atol=atol))
+
 
     def _helper_check_decomp(
         self, vec_array,  vec_handles, adv_vec_array=None,
@@ -1464,6 +1491,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             proj_correlation_mat_eigvecs_returned,
             proj_correlation_mat_eigvecs_true, rtol=tol)
 
+
     def _helper_check_modes(self, modes_true, mode_path_list):
         # Set tolerance.
         tol = 1e-10
@@ -1473,6 +1501,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         for i, path in enumerate(mode_path_list):
             modes_computed[:, i] = V.VecHandlePickle(path).get()
         np.testing.assert_allclose(modes_true, modes_computed, rtol=tol)
+
 
     #@unittest.skip('Testing something else.')
     def test_compute_decomp(self):
@@ -1644,6 +1673,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             [V.VecHandlePickle(path) for path in mode_path_list])
         self._helper_check_modes(modes_proj, mode_path_list)
 
+
     #@unittest.skip('Testing something else.')
     def test_compute_spectrum(self):
         """Test DMD spectrum"""
@@ -1691,6 +1721,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         self._helper_test_1D_array_to_sign(
             spectral_coeffs_true, spectral_coeffs_computed, rtol=rtol,
             atol=atol)
+
 
     #@unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):

@@ -27,10 +27,12 @@ class TestLTIGalerkinProjectionBase(unittest.TestCase):
             os.mkdir(self.test_dir)
         _parallel.barrier()
 
+
     def tearDown(self):
         _parallel.barrier()
         _parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
         _parallel.barrier()
+
 
     def test_put_reduced_mats(self):
         """Test putting reduced mats"""
@@ -66,12 +68,15 @@ class TestLTIGalerkinProjectionMatrices(unittest.TestCase):
         self.LTI_proj = LGP.LTIGalerkinProjectionMatrices(self.basis_vecs,
             self.adjoint_basis_vecs, is_basis_orthonormal=True)
 
+
     def tearDown(self):
         pass
+
 
     def test_init(self):
         """ """
         pass
+
 
     def generate_data_set(self, num_basis_vecs, num_adjoint_basis_vecs,
         num_states, num_inputs, num_outputs):
@@ -102,6 +107,7 @@ class TestLTIGalerkinProjectionMatrices(unittest.TestCase):
         self.A_true_nonorth = np.dot(self.proj_mat, self.A_true)
         self.B_true_nonorth = np.dot(self.proj_mat, self.B_true)
 
+
     #@unittest.skip('testing others')
     def test_reduce_A(self):
         """Reduction of A matrix for Matrix, LookUp operators and in_memory."""
@@ -116,6 +122,7 @@ class TestLTIGalerkinProjectionMatrices(unittest.TestCase):
         np.testing.assert_allclose(LTI_proj._proj_mat, self.proj_mat)
         np.testing.assert_allclose(A_returned, self.A_true_nonorth)
 
+
     #@unittest.skip('testing others')
     def test_reduce_B(self):
         """Given modes, test reduced B matrix"""
@@ -127,16 +134,19 @@ class TestLTIGalerkinProjectionMatrices(unittest.TestCase):
         B_returned = LTI_proj.reduce_B(self.B_on_standard_basis_array)
         np.testing.assert_allclose(B_returned, self.B_true_nonorth)
 
+
     #@unittest.skip('testing others')
     def test_reduce_C(self):
         """Test that, given modes, can find correct C matrix"""
         C_returned = self.LTI_proj.reduce_C(self.C_on_basis_vecs)
         np.testing.assert_allclose(C_returned, self.C_true)
 
+
     def test_compute_model(self):
         A,B,C = self.LTI_proj.compute_model(self.A_on_basis_vecs,
             self.B_on_standard_basis_array, self.C_on_basis_vecs)
         # np. test, just check it runs. Results are checked in other tests.
+
 
     def test_adjoint_basis_vec_optional(self):
         """Test that adjoint modes default to direct modes"""
@@ -179,15 +189,18 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
             np.vdot, self.basis_vec_handles, self.adjoint_basis_vec_handles,
             is_basis_orthonormal=True, verbosity=0)
 
+
     def tearDown(self):
         _parallel.barrier()
         if _parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
         _parallel.barrier()
 
+
     def test_init(self):
         """ """
         pass
+
 
     def generate_data_set(self, num_basis_vecs, num_adjoint_basis_vecs,
         num_states, num_inputs, num_outputs):
@@ -257,6 +270,7 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
         self.A_true_nonorth = np.dot(self.proj_mat, self.A_true)
         self.B_true_nonorth = np.dot(self.proj_mat, self.B_true)
 
+
     #@unittest.skip('testing others')
     def test_derivs(self):
         """Test can take derivs"""
@@ -275,6 +289,7 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
         derivs_loaded = list(map(np.squeeze, derivs_loaded))
         list(map(np.testing.assert_allclose, derivs_loaded, true_derivs))
 
+
     #@unittest.skip('testing others')
     def test_reduce_A(self):
         """Reduction of A matrix for Matrix, LookUp operators and in_memory."""
@@ -291,6 +306,7 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
         np.testing.assert_allclose(LTI_proj._proj_mat, self.proj_mat)
         np.testing.assert_allclose(A_returned, self.A_true_nonorth)
 
+
     #@unittest.skip('testing others')
     def test_reduce_B(self):
         """Given modes, test reduced B matrix, orthogonal and non-orthogonal."""
@@ -303,11 +319,13 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
         B_returned = LTI_proj.reduce_B(self.B_on_standard_basis_handles)
         np.testing.assert_allclose(B_returned, self.B_true_nonorth)
 
+
     #@unittest.skip('testing others')
     def test_reduce_C(self):
         """Test that, given modes, can find correct C matrix"""
         C_returned = self.LTI_proj.reduce_C(self.C_on_basis_vecs)
         np.testing.assert_allclose(C_returned, self.C_true)
+
 
     def test_adjoint_basis_vec_optional(self):
         """Test that adjoint modes default to direct modes"""

@@ -28,11 +28,13 @@ class TestVectors(unittest.TestCase):
         self.num_states = 100
         self.index_from = 2
 
+
     def tearDown(self):
         parallel.barrier()
         if parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
         parallel.barrier()
+
 
     def test_in_memory_handle(self):
         """Test in memory and base class vector handles"""
@@ -78,6 +80,7 @@ class TestVectors(unittest.TestCase):
         self.assertNotEqual(vec_handle1, vec_handle3)
         self.assertNotEqual(vec_handle1, vec_handle4)
 
+
     def test_handles_which_save(self):
         """Test handles whose get/put load/save from file"""
         base_vec1 = np.random.random((3,4))
@@ -109,6 +112,7 @@ class TestVectors(unittest.TestCase):
             self.assertEqual(vec_handle1, vec_handle2)
             self.assertNotEqual(vec_handle1, vec_handle3)
             self.assertNotEqual(vec_handle1, vec_handle4)
+
 
     def test_IP_trapz(self):
         """Test trapezoidal rule inner product for 2nd-order convergence"""

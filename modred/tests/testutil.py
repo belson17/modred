@@ -2,8 +2,7 @@
 """Test util module"""
 from future.builtins import range
 import unittest
-# For deleting directories and their contents
-from shutil import rmtree
+from shutil import rmtree   # For deleting directories and their contents
 import os
 from os.path import join
 
@@ -27,11 +26,13 @@ class TestUtil(unittest.TestCase):
             if not os.path.isdir(self.test_dir):
                 os.mkdir(self.test_dir)
 
+
     def tearDown(self):
         _parallel.barrier()
         if _parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
         _parallel.barrier()
+
 
     @unittest.skipIf(
         _parallel.is_distributed(), 'Only save/load matrices in serial')
@@ -65,6 +66,7 @@ class TestUtil(unittest.TestCase):
                             if squeeze:
                                 mat_read = np.squeeze(mat_read)
                             np.testing.assert_allclose(mat_read, mat)#,rtol=tol)
+
 
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_svd(self):
@@ -134,6 +136,7 @@ class TestUtil(unittest.TestCase):
                         if rtol:
                             self.assertTrue(
                                 abs(sing_vals[0]) / abs(sing_vals[-1]) > rtol)
+
 
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_eigh(self):
@@ -228,6 +231,7 @@ class TestUtil(unittest.TestCase):
                     if atol is not None:
                         self.assertTrue(abs(eigvals).min() > atol)
 
+
     @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
     def test_eig_biorthog(self):
         test_tol = 1e-10
@@ -271,6 +275,7 @@ class TestUtil(unittest.TestCase):
         # Check that error is raised for invalid scale choice
         self.assertRaises(
             ValueError, util.eig_biorthog, mat, **{'scale_choice':'invalid'})
+
 
     @unittest.skipIf(_parallel.is_distributed(), 'Only load data in serial')
     def test_load_impulse_outputs(self):
@@ -323,6 +328,7 @@ class TestUtil(unittest.TestCase):
         X_computed_mats = util.solve_Lyapunov_iterative(np.mat(A), np.mat(Q))
         np.testing.assert_allclose(X_computed_mats, X_true)
 
+
     @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
     def test_balanced_truncation(self):
         """Test balanced system is close to original."""
@@ -336,6 +342,7 @@ class TestUtil(unittest.TestCase):
                     yr = util.impulse(Ar, Br, Cr, num_time_steps=num_time_steps)
                     np.testing.assert_allclose(yr, y, rtol=1e-5)
 
+
     @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
     def test_drss(self):
         """Test drss gives correct mat dimensions and stable dynamics."""
@@ -347,6 +354,7 @@ class TestUtil(unittest.TestCase):
                     self.assertEqual(B.shape, (num_states, num_inputs))
                     self.assertEqual(C.shape, (num_outputs, num_states))
                     self.assertTrue(np.amax(np.abs(np.linalg.eig(A)[0])) < 1)
+
 
     @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
     def test_lsim(self):
@@ -363,6 +371,7 @@ class TestUtil(unittest.TestCase):
                     inputs = np.random.random((nt, num_inputs))
                     outputs = util.lsim(A, B, C, inputs)
                     self.assertEqual(outputs.shape, (nt, num_outputs))
+
 
     @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
     def test_impulse(self):
@@ -384,6 +393,7 @@ class TestUtil(unittest.TestCase):
                     outputs = util.impulse(
                         A, B, C, num_time_steps=num_time_steps)
                     np.testing.assert_allclose(outputs, outputs_true)
+
 
     def test_Hankel(self):
         """Test forming Hankel matrix from first row and last column."""

@@ -7,7 +7,7 @@ from __future__ import print_function
 from future.builtins import object
 
 import numpy as np
-import matplotlib.pyplot as PLT
+import matplotlib.pyplot as plt
 
 
 class Scaling(object):
@@ -180,17 +180,17 @@ def lin():
         s.barriers /= s.workers
 
     # Speedup plot
-    PLT.figure(figsize=(5.5, 4))
+    plt.figure(figsize=(5.5, 4))
     width = .4
-    PLT.hold(True)
-    #PLT.plot(workers, workers,'k-')
-    PLT.plot(workers, [cases[0].total*cases[0].workers/c.total for c in cases],
+    plt.hold(True)
+    #plt.plot(workers, workers,'k-')
+    plt.plot(workers, [cases[0].total*cases[0].workers/c.total for c in cases],
         'ro-')
-    PLT.xlabel('Workers')
-    PLT.ylabel('Speedup')
-    PLT.grid(True)
-    #PLT.legend(['Linear','Measured'], loc='upper left')
-    PLT.savefig('lin_combine_speedup.eps')
+    plt.xlabel('Workers')
+    plt.ylabel('Speedup')
+    plt.grid(True)
+    #plt.legend(['Linear','Measured'], loc='upper left')
+    plt.savefig('lin_combine_speedup.eps')
 
     # Table of time spent in each operation for diff num of workers
     print('Workers |   Total Wall   |        Loads       |' +\
@@ -202,31 +202,31 @@ def lin():
 
     # Time spent breakdown
     """
-    PLT.figure()
-    PLT.hold(True)
-    PLT.plot(workers, cases[0].total/workers,'k-')
-    PLT.plot(workers, [c.total for c in cases],'bx-')
+    plt.figure()
+    plt.hold(True)
+    plt.plot(workers, cases[0].total/workers,'k-')
+    plt.plot(workers, [c.total for c in cases],'bx-')
     for c in cases:
         bottom = 0
         top = c.sends + c.recvs + c.barriers
-        PLT.bar(c.workers-width/2, top-bottom, width=width,
+        plt.bar(c.workers-width/2, top-bottom, width=width,
             bottom=bottom,color='r')
 
         bottom = top
         top += c.loads
-        PLT.bar(c.workers-width/2, top-bottom, width=width,
+        plt.bar(c.workers-width/2, top-bottom, width=width,
             bottom=bottom,color='g')
 
         bottom = top
         top = c.total
-        PLT.bar(c.workers-width/2, top-bottom, width=width,
+        plt.bar(c.workers-width/2, top-bottom, width=width,
             bottom=bottom,color='k')
-    PLT.legend(['Linear', 'Measured', 'Send/Recvs', 'Loads', 'Other'])
-    PLT.xlabel('Workers')
-    PLT.ylabel('Time [s]')
-    PLT.savefig('lin_combine_time_n1.eps')
+    plt.legend(['Linear', 'Measured', 'Send/Recvs', 'Loads', 'Other'])
+    plt.xlabel('Workers')
+    plt.ylabel('Time [s]')
+    plt.savefig('lin_combine_time_n1.eps')
     """
-    PLT.show()
+    plt.show()
 
 def ips():
     """
@@ -327,17 +327,17 @@ def ips():
         s.barriers /= s.workers
 
     # Speedup plot
-    PLT.figure(figsize=(5.5,4))
+    plt.figure(figsize=(5.5,4))
     width = .4
-    PLT.hold(True)
-    #PLT.plot(workers, workers,'k-')
-    PLT.plot(
+    plt.hold(True)
+    #plt.plot(workers, workers,'k-')
+    plt.plot(
         workers, [cases[0].total*cases[0].workers/c.total for c in cases],'ro-')
-    PLT.xlabel('Workers')
-    PLT.ylabel('Speedup')
-    PLT.grid(True)
-    #PLT.legend(['Linear','Measured'], loc='upper left')
-    PLT.savefig('IPs_speedup.eps')
+    plt.xlabel('Workers')
+    plt.ylabel('Speedup')
+    plt.grid(True)
+    #plt.legend(['Linear','Measured'], loc='upper left')
+    plt.savefig('IPs_speedup.eps')
 
     # Table of time spent in each operation for diff num of workers
     print('Workers |   Total Wall   |        Loads       |' +\
@@ -350,31 +350,31 @@ def ips():
 
     # Time spent breakdown
     """
-    PLT.figure()
-    PLT.hold(True)
-    PLT.plot(workers, cases[0].total/workers,'k-')
-    PLT.plot(workers, [c.total for c in cases],'bx-')
+    plt.figure()
+    plt.hold(True)
+    plt.plot(workers, cases[0].total/workers,'k-')
+    plt.plot(workers, [c.total for c in cases],'bx-')
     for c in cases:
         bottom = 0
         top = c.sends + c.recvs + c.barriers
-        PLT.bar(
+        plt.bar(
             c.workers-width/2, top-bottom, width=width,bottom=bottom,color='r')
 
         bottom = top
         top += c.loads
-        PLT.bar(
+        plt.bar(
             c.workers-width/2, top-bottom, width=width,bottom=bottom,color='g')
 
         bottom = top
         top = c.total
-        PLT.bar(
+        plt.bar(
             c.workers-width/2, top-bottom, width=width,bottom=bottom,color='k')
-    PLT.legend(['Linear','Measured','Send/Recvs','Loads','Other'])
-    PLT.xlabel('Workers')
-    PLT.ylabel('Time [s]')
-    PLT.savefig('lin_combine_time_n1.eps')
+    plt.legend(['Linear','Measured','Send/Recvs','Loads','Other'])
+    plt.xlabel('Workers')
+    plt.ylabel('Time [s]')
+    plt.savefig('lin_combine_time_n1.eps')
     """
-    PLT.show()
+    plt.show()
 
 
 if __name__ == '__main__':

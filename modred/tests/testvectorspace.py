@@ -39,15 +39,17 @@ class TestVectorSpaceHandles(unittest.TestCase):
         # so messages won't print during tests
         self.default_data_members = {'inner_product': np.vdot,
             'max_vecs_per_node': 10000,
-            'max_vecs_per_proc': 10000 * _parallel.get_num_nodes() // \
-                _parallel.get_num_procs(),
+            'max_vecs_per_proc': (
+                10000 * _parallel.get_num_nodes() // _parallel.get_num_procs()),
             'verbosity': 0, 'print_interval': 10, 'prev_print_time': 0.}
         _parallel.barrier()
+
 
     def tearDown(self):
         _parallel.barrier()
         _parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
         _parallel.barrier()
+
 
     #@unittest.skip('testing other things')
     def test_init(self):
@@ -64,6 +66,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
         data_members['max_vecs_per_proc'] = max_vecs_per_node * \
             _parallel.get_num_nodes() // _parallel.get_num_procs()
         self.assertEqual(util.get_data_members(my_VS), data_members)
+
 
     #@unittest.skip('testing other things')
     def test_sanity_check(self):
@@ -109,6 +112,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
         self.assertRaises(ValueError, my_VS.sanity_check,
             V.VecHandleInMemory(my_sanity_add_vec))
 
+
     def generate_vecs_modes(self, num_states, num_vecs, num_modes):
         """Generates random vecs and finds the modes.
 
@@ -126,6 +130,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
         vec_array = np.mat(np.random.random((num_states, num_vecs)))
         mode_array = vec_array*build_coeff_mat
         return vec_array, mode_indices, build_coeff_mat, mode_array
+
 
     #@unittest.skip('testing other things')
     def test_lin_combine(self):
@@ -201,6 +206,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
 
         _parallel.barrier()
 
+
     #@unittest.skip('testing others')
     @unittest.skipIf(_parallel.is_distributed(), 'Serial only')
     def test_compute_inner_product_mat_types(self):
@@ -243,6 +249,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
                     row_vec_handles)
             self.assertEqual(inner_product_mat.dtype, dtype)
             self.assertEqual(symm_inner_product_mat.dtype, dtype)
+
 
     #@unittest.skip('testing other things')
     def test_compute_inner_product_mats(self):
