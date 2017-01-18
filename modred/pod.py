@@ -198,9 +198,9 @@ class PODHandles(object):
     See also :func:`compute_POD_matrices_snaps_method`,
     :func:`compute_POD_matrices_direct_method`, and :mod:`vectors`.
     """
-    def __init__(self, inner_product,
-        get_mat=util.load_array_text, put_mat=util.save_array_text,
-        max_vecs_per_node=None, verbosity=1):
+    def __init__(
+        self, inner_product, get_mat=util.load_array_text,
+        put_mat=util.save_array_text, max_vecs_per_node=None, verbosity=1):
         self.get_mat = get_mat
         self.put_mat = put_mat
         self.verbosity = verbosity
@@ -212,6 +212,7 @@ class PODHandles(object):
             verbosity=verbosity)
         self.vec_handles = None
         self.correlation_mat = None
+
 
     def get_decomp(self, eigvals_src, eigvecs_src):
         """Gets the decomposition matrices from sources (memory or file).
@@ -228,6 +229,7 @@ class PODHandles(object):
         self.eigvecs = _parallel.call_and_bcast(self.get_mat,
             eigvecs_src)
 
+
     def put_decomp(self, eigvals_dest, eigvecs_dest):
         """Puts the decomposition matrices in destinations (file or memory).
 
@@ -242,11 +244,13 @@ class PODHandles(object):
         self.put_eigvecs(eigvecs_dest)
         self.put_eigvals(eigvals_dest)
 
+
     def put_eigvals(self, dest):
         """Puts eigenvalues of correlation matrix to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.eigvals, dest)
         _parallel.barrier()
+
 
     def put_eigvecs(self, dest):
         """Puts eigenvectors of correlation matrix to ``dest``."""
@@ -254,17 +258,20 @@ class PODHandles(object):
             self.put_mat(self.eigvecs, dest)
         _parallel.barrier()
 
+
     def put_correlation_mat(self, dest):
         """Puts correlation matrix to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.correlation_mat, dest)
         _parallel.barrier()
 
+
     def put_proj_coeffs(self, dest):
         """Puts projection coefficients to ``dest``"""
         if _parallel.is_rank_zero():
             self.put_mat(self.proj_coeffs, dest)
         _parallel.barrier()
+
 
     def sanity_check(self, test_vec_handle):
         """Checks that user-supplied vector handle and vector satisfy
@@ -276,6 +283,7 @@ class PODHandles(object):
         See :py:meth:`vectorspace.VectorSpaceHandles.sanity_check`.
         """
         self.vec_space.sanity_check(test_vec_handle)
+
 
     def compute_eigendecomp(self, atol=1e-13, rtol=None):
         """Computes eigendecomposition of correlation matrix.
@@ -299,6 +307,7 @@ class PODHandles(object):
         self.eigvals, self.eigvecs = _parallel.call_and_bcast(
             util.eigh, self.correlation_mat, atol=atol, rtol=rtol,
             is_positive_definite=True)
+
 
     def compute_decomp(self, vec_handles, atol=1e-13, rtol=None):
         """Computes correlation matrix :math:`X^*WX` and its eigendecomposition.
@@ -326,6 +335,7 @@ class PODHandles(object):
         self.compute_eigendecomp(atol=atol, rtol=rtol)
         return self.eigvals, self.eigvecs
 
+
     def compute_modes(self, mode_indices, mode_handles, vec_handles=None):
         """Computes POD modes and calls ``put`` on them using mode handles.
 
@@ -345,6 +355,7 @@ class PODHandles(object):
         self.vec_space.lin_combine(
             mode_handles, self.vec_handles, build_coeff_mat,
             coeff_mat_col_indices=mode_indices)
+
 
     def compute_proj_coeffs(self):
         """Computes orthogonal projection of vector objects onto POD modes.

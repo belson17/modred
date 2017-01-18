@@ -56,20 +56,24 @@ class Parallel(object):
             self.comm = None
             self.distributed = False
 
+
     @staticmethod
     def find_node_ID():
         """Returns unique ID number for this node."""
         hostname = socket.gethostname()
         return hash(hostname)
 
+
     def get_num_nodes(self):
         """Returns number of nodes."""
         return self._num_nodes
+
 
     def print_from_rank_zero(self, msgs):
         """Prints ``msgs`` from rank zero processor/MPI worker only."""
         if self.is_rank_zero():
             print(msg)
+
 
     def barrier(self):
         """Wrapper for Barrier(); forces all processors/MPI workers to
@@ -77,9 +81,11 @@ class Parallel(object):
         if self.distributed:
             self.comm.Barrier()
 
+
     def is_rank_zero(self):
         """Returns True if rank is zero, False if not."""
         return self._rank == 0
+
 
     def call_from_rank_zero(self, func, *args, **kwargs):
         """Calls function from rank zero processor/MPI worker, does not call
@@ -103,23 +109,28 @@ class Parallel(object):
             out = None
         return out
 
+
     def is_distributed(self):
         """Returns True if more than one processor/MPI worker and mpi4py
         imported properly."""
         return self.distributed
 
+
     def get_rank(self):
         """Returns rank of this processor/MPI worker."""
         return self._rank
+
 
     def get_num_MPI_workers(self):
         """Returns number of processors/MPI workers, currently same as
         ``num_procs``."""
         return self._num_MPI_workers
 
+
     def get_num_procs(self):
         """Returns number of processors/MPI workers."""
         return self.get_num_MPI_workers()
+
 
     def find_assignments(self, tasks, task_weights=None):
         """Evenly distributes tasks among all processors/MPI workers using task
@@ -177,6 +188,7 @@ class Parallel(object):
 
         return task_assignments
 
+
     def check_for_empty_tasks(self, task_assignments):
         """Convenience function that checks for empty processor/MPI worker
         assignments.
@@ -193,6 +205,7 @@ class Parallel(object):
             if len(assignment) == 0 and not empty_tasks:
                 empty_tasks = True
         return empty_tasks
+
 
     def call_and_bcast(self, func, *args, **kwargs):
         """Calls function on rank zero processor/MPI worker and broadcasts
@@ -220,6 +233,7 @@ class Parallel(object):
             outputs = self.comm.bcast(outputs, root=0)
         return outputs
 
+
     def __eq__(self, other):
         equal = (self._num_MPI_workers == other.get_num_MPI_workers() and \
         self._rank == other.get_rank() and \
@@ -227,6 +241,8 @@ class Parallel(object):
         #print self._numProcs == other.getNumProcs() ,\
         #self._rank == other.getRank() ,self.parallel == other.isParallel()
         return equal
+
+
     def __ne__(self, other):
         return not (self.__eq__(other))
 

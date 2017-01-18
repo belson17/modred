@@ -53,6 +53,7 @@ def make_sampled_format(times, Markovs, dt_tol=1e-6):
     time_steps_corr[1::2] = time_steps[1:]
     return time_steps_corr, Markovs_corr
 
+
 def compute_ERA_model(Markovs, num_states):
     """Convenience function to compute linear time-invariant (LTI)
     reduced-order model (ROM) matrices A, B, and C using the eigensystem
@@ -138,8 +139,8 @@ class ERA(object):
 
     - See convenience function :py:func:`compute_ERA_model`.
     """
-    def __init__(self, put_mat=util.save_array_text, mc=None, mo=None,
-        verbosity=1):
+    def __init__(
+        self, put_mat=util.save_array_text, mc=None, mo=None, verbosity=1):
         """Constructor"""
         self.put_mat = put_mat
         self.mc = mc
@@ -159,6 +160,7 @@ class ERA(object):
         self.Hankel_mat2 = None
         self.num_Markovs = None
         self.Markovs = None
+
 
     def compute_model(self, Markovs, num_states, mc=None, mo=None):
         """Computes the A, B, and C matrices of the linear time-invariant (LTI)
@@ -195,16 +197,17 @@ class ERA(object):
         self.mo = mo
 
         self._assemble_Hankel()
-        self.L_sing_vecs, self.sing_vals, self.R_sing_vecs = \
-            util.svd(self.Hankel_mat)
+        self.L_sing_vecs, self.sing_vals, self.R_sing_vecs = util.svd(
+            self.Hankel_mat)
 
         # Truncate matrices
         Ur = np.mat(self.L_sing_vecs[:, :num_states])
         Er = np.squeeze(self.sing_vals[:num_states])
         Vr = np.mat(self.R_sing_vecs[:, :num_states])
 
-        self.A = np.mat(np.diag(Er**-.5)) * Ur.H * self.Hankel_mat2 * Vr * \
-            np.mat(np.diag(Er**-.5))
+        self.A = (
+            np.mat(np.diag(Er**-.5)) * Ur.H * self.Hankel_mat2 * Vr *
+            np.mat(np.diag(Er**-.5)))
         self.B = (np.mat(np.diag(Er**.5)) * (Vr.H)[:, :self.num_inputs])
         # *dt above is removed, users must do this themselves.
         # It is explained in the docs.
@@ -215,6 +218,7 @@ class ERA(object):
             print('Warning: Unstable eigenvalues of reduced A matrix')
             print('eig vals are', np.linalg.eigvals(self.A))
         return self.A, self.B, self.C
+
 
     def put_model(self, A_dest, B_dest, C_dest):
         """Puts the A, B, and C matrices of the linear time-invariant (LTI)
@@ -266,9 +270,11 @@ class ERA(object):
         self.put_mat(self.sing_vals, sing_vals_dest)
         self.put_mat(self.R_sing_vecs, R_sing_vecs_dest)
 
+
     def put_sing_vals(self, sing_vals_dest):
         """Puts the singular values to ``sing_vals_dest``."""
         self.put_mat(self.sing_vals, sing_vals_dest)
+
 
     def _set_Markovs(self, Markovs):
         """Sets the Markov params to ``self.Markovs`` and error checks.
@@ -296,6 +302,7 @@ class ERA(object):
         if self.num_time_steps % 2 != 0:
             self.num_time_steps -= 1
             self.Markovs = self.Markovs[:-1]
+
 
     def _assemble_Hankel(self):
         """Assembles and sets ``self.Hankel_mat`` and ``self.Hankel_mat2``

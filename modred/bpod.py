@@ -123,9 +123,9 @@ class BPODHandles(object):
 
     See also :py:func:`compute_BPOD_matrices` and :mod:`vectors`.
     """
-    def __init__(self, inner_product,
-        put_mat=util.save_array_text, get_mat=util.load_array_text,
-        max_vecs_per_node=None, verbosity=1):
+    def __init__(
+        self, inner_product, put_mat=util.save_array_text,
+        get_mat=util.load_array_text,max_vecs_per_node=None, verbosity=1):
         """Constructor """
         self.get_mat = get_mat
         self.put_mat = put_mat
@@ -140,6 +140,7 @@ class BPODHandles(object):
             verbosity=verbosity)
         self.direct_vec_handles = None
         self.adjoint_vec_handles = None
+
 
     def get_decomp(self, sing_vals_src, L_sing_vecs_src, R_sing_vecs_src):
         """Gets the decomposition matrices from sources (memory or file).
@@ -161,6 +162,7 @@ class BPODHandles(object):
         self.R_sing_vecs = _parallel.call_and_bcast(
             self.get_mat, R_sing_vecs_src)
 
+
     def put_decomp(self, sing_vals_dest, L_sing_vecs_dest, R_sing_vecs_dest):
         """Puts the decomposition matrices in destinations (file or memory).
 
@@ -179,11 +181,13 @@ class BPODHandles(object):
         self.put_R_sing_vecs(R_sing_vecs_dest)
         self.put_sing_vals(sing_vals_dest)
 
+
     def put_L_sing_vecs(self, dest):
         """Puts left singular vectors of Hankel matrix to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.L_sing_vecs, dest)
         _parallel.barrier()
+
 
     def put_sing_vals(self, dest):
         """Puts Hankel singular values to ``dest``."""
@@ -191,11 +195,13 @@ class BPODHandles(object):
             self.put_mat(self.sing_vals, dest)
         _parallel.barrier()
 
+
     def put_R_sing_vecs(self, dest):
         """Puts right singular vectors of Hankel matrix to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.R_sing_vecs, dest)
         _parallel.barrier()
+
 
     def put_Hankel_mat(self, dest):
         """Puts Hankel matrix to ``dest``."""
@@ -203,17 +209,20 @@ class BPODHandles(object):
             self.put_mat(self.Hankel_mat, dest)
         _parallel.barrier()
 
+
     def put_direct_proj_coeffs(self, dest):
         """Puts direct projection coefficients to ``dest``"""
         if _parallel.is_rank_zero():
             self.put_mat(self.proj_coeffs, dest)
         _parallel.barrier()
 
+
     def put_adjoint_proj_coeffs(self, dest):
         """Puts adjoint projection coefficients to ``dest``"""
         if _parallel.is_rank_zero():
             self.put_mat(self.adjoint_proj_coeffs, dest)
         _parallel.barrier()
+
 
     def compute_SVD(self, atol=1e-13, rtol=None):
         """Computes singular value decomposition of the Hankel matrix.
@@ -234,9 +243,10 @@ class BPODHandles(object):
           my_BPOD.compute_direct_modes(
               range(10), mode_handles, direct_vec_handles=direct_vec_handles)
         """
-        self.L_sing_vecs, self.sing_vals, self.R_sing_vecs = \
+        self.L_sing_vecs, self.sing_vals, self.R_sing_vecs =\
             _parallel.call_and_bcast(
             util.svd, self.Hankel_mat, atol=atol, rtol=rtol)
+
 
     def sanity_check(self, test_vec_handle):
         """Checks that user-supplied vector handle and vector satisfy
@@ -248,6 +258,7 @@ class BPODHandles(object):
         See :py:meth:`vectorspace.VectorSpaceHandles.sanity_check`.
         """
         self.vec_space.sanity_check(test_vec_handle)
+
 
     def compute_decomp(
         self, direct_vec_handles, adjoint_vec_handles, atol=1e-13, rtol=None):
@@ -283,8 +294,9 @@ class BPODHandles(object):
         self.compute_SVD(atol=atol, rtol=rtol)
         return self.sing_vals, self.L_sing_vecs, self.R_sing_vecs
 
-    def compute_direct_modes(self, mode_indices, mode_handles,
-        direct_vec_handles=None):
+
+    def compute_direct_modes(
+        self, mode_indices, mode_handles, direct_vec_handles=None):
         """Computes direct BPOD modes and calls ``put`` on them using mode
         handles.
 
@@ -311,8 +323,9 @@ class BPODHandles(object):
             mode_handles, self.direct_vec_handles, build_coeff_mat,
             coeff_mat_col_indices=mode_indices)
 
-    def compute_adjoint_modes(self, mode_indices, mode_handles,
-        adjoint_vec_handles=None):
+
+    def compute_adjoint_modes(
+        self, mode_indices, mode_handles, adjoint_vec_handles=None):
         """Computes adjoint BPOD modes and calls ``put`` on them using mode
         handles.
 
@@ -339,6 +352,7 @@ class BPODHandles(object):
             mode_handles, self.adjoint_vec_handles, build_coeff_mat,
             coeff_mat_col_indices=mode_indices)
 
+
     def compute_proj_coeffs(self):
         """Computes biorthogonal projection of direct vector objects onto
         direct BPOD modes, using adjoint BPOD modes.
@@ -352,6 +366,7 @@ class BPODHandles(object):
         self.proj_coeffs = (
             np.mat(np.diag(self.sing_vals ** 0.5)) * self.R_sing_vecs.H)
         return self.proj_coeffs
+
 
     def compute_adjoint_proj_coeffs(self):
         """Computes biorthogonal projection of adjoint vector objects onto

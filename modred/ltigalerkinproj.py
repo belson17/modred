@@ -25,6 +25,7 @@ def standard_basis(num_dims):
     """
     return list(np.identity(num_dims))
 
+
 def compute_derivs_handles(vec_handles, adv_vec_handles, deriv_vec_handles, dt):
     """Computes 1st-order time derivatives of vector objects, using handles.
 
@@ -56,6 +57,7 @@ def compute_derivs_handles(vec_handles, adv_vec_handles, deriv_vec_handles, dt):
         deriv_vec_handles[i].put((1./dt)*(vec_dt - vec))
     _parallel.barrier()
 
+
 def compute_derivs_matrices(vecs, adv_vecs, dt):
     """Computes 1st-order time derivatives using data stored in matrices.
 
@@ -86,20 +88,24 @@ class LTIGalerkinProjectionBase(object):
         self.B_reduced = None
         self.C_reduced = None
 
+
     def put_A_reduced(self, dest):
         """Puts A matrix of reduced-order model to ``dest``."""
         _parallel.call_from_rank_zero(self.put_mat, self.A_reduced, dest)
         _parallel.barrier()
+
 
     def put_B_reduced(self, dest):
         """Puts B matrix of reduced-order model to ``dest``."""
         _parallel.call_from_rank_zero(self.put_mat, self.B_reduced, dest)
         _parallel.barrier()
 
+
     def put_C_reduced(self, dest):
         """Puts C matrix of reduced-order model to ``dest``."""
         _parallel.call_from_rank_zero(self.put_mat, self.C_reduced, dest)
         _parallel.barrier()
+
 
     def put_model(self, A_reduced_dest, B_reduced_dest, C_reduced_dest):
         """Puts A, B, and C matrices of reduced-order model in destinations.
@@ -153,9 +159,9 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
       A, B, C = LTI_proj.compute_model(
           A_on_basis_vecs, B_on_standard_basis_array, C_on_basis_vecs)
     """
-    def __init__(self, basis_vecs, adjoint_basis_vecs=None,
-        is_basis_orthonormal=False, inner_product_weights=None,
-        put_mat=util.save_array_text):
+    def __init__(
+        self, basis_vecs, adjoint_basis_vecs=None, is_basis_orthonormal=False,
+        inner_product_weights=None, put_mat=util.save_array_text):
         """Constructor"""
         LTIGalerkinProjectionBase.__init__(self, is_basis_orthonormal,
             put_mat=put_mat)
@@ -172,6 +178,7 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
                 raise ValueError('Basis vec and adjoint basis vec arrays '+\
                     'are different shapes')
         self.vec_space = VectorSpaceMatrices(weights=inner_product_weights)
+
 
     def reduce_A(self, A_on_basis_vecs):
         """Computes the continous- or discrete-time reduced A matrix.
@@ -192,6 +199,7 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
             self.A_reduced = self._get_proj_mat() * self.A_reduced
         return self.A_reduced
 
+
     def reduce_B(self, B_on_standard_basis_mat):
         """Computes the continous- or discrete-time reduced B matrix.
 
@@ -202,7 +210,7 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
             elsewhere).
 
         Returns:
-		    ``B_reduced``: Reduced-order B matrix.
+            ``B_reduced``: Reduced-order B matrix.
 
         Note that if you found the modes via sampling initial condition
         responses to B (and C), then your snapshots may be missing a factor of
@@ -229,6 +237,7 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
             self.B_reduced = self._get_proj_mat() * self.B_reduced
         return self.B_reduced
 
+
     def reduce_C(self, C_on_basis_vecs):
         """Computes the continous- or discrete-time reduced C matrix.
 
@@ -238,10 +247,11 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
             basis vectors.
 
         Returns:
-		    ``C_reduced``: Reduced-order C matrix.
+            ``C_reduced``: Reduced-order C matrix.
         """
         self.C_reduced = np.mat(np.array(C_on_basis_vecs, ndmin=2))
         return self.C_reduced
+
 
     def _get_proj_mat(self):
         """Gets the projection mat, i.e. inv(Psi^* Phi)."""
@@ -254,6 +264,7 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
                     self.adjoint_basis_vecs, self.basis_vecs)
             self._proj_mat = np.linalg.inv(IP_mat)
         return self._proj_mat
+
 
     def compute_model(
         self, A_on_basis_vecs, B_on_standard_basis_mat, C_on_basis_vecs):
@@ -277,11 +288,11 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
             basis vectors.
 
         Returns:
-		    ``A_reduced``: Reduced-order A matrix.
+            ``A_reduced``: Reduced-order A matrix.
 
-		    ``B_reduced``: Reduced-order B matrix.
+            ``B_reduced``: Reduced-order B matrix.
 
-		    ``C_reduced``: Reduced-order C matrix.
+            ``C_reduced``: Reduced-order C matrix.
         """
         self.reduce_A(A_on_basis_vecs)
         self.reduce_B(B_on_standard_basis_mat)
@@ -329,8 +340,8 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
       A, B, C = LTI_proj.compute_model(
           A_on_basis_vec_handles, B_on_standard_basis_handles, C_on_basis_vecs)
     """
-    def __init__(self, inner_product, basis_vec_handles,
-        adjoint_basis_vec_handles=None,
+    def __init__(
+        self, inner_product, basis_vec_handles, adjoint_basis_vec_handles=None,
         is_basis_orthonormal=False, put_mat=util.save_array_text, verbosity=1,
         max_vecs_per_node=10000):
         """Constructor"""
@@ -351,6 +362,7 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
         self.vec_space = VectorSpaceHandles(inner_product=inner_product,
             max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
 
+
     def reduce_A(self, A_on_basis_vec_handles):
         """Computes the continous- or discrete-time reduced A matrix.
 
@@ -370,6 +382,7 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
             self.A_reduced = self._get_proj_mat() * self.A_reduced
         return self.A_reduced
 
+
     def reduce_B(self, B_on_standard_basis_handles):
         """Computes the continous- or discrete-time reduced B matrix.
 
@@ -379,7 +392,7 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
             jth index and zeros elsewhere).
 
         Returns:
-		    ``B_reduced``: Reduced-order B matrix.
+            ``B_reduced``: Reduced-order B matrix.
 
         Note that if you found the modes via sampling initial condition
         responses to B (and C), then your snapshots may be missing a factor of
@@ -406,6 +419,7 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
             self.B_reduced = self._get_proj_mat() * self.B_reduced
         return self.B_reduced
 
+
     def reduce_C(self, C_on_basis_vecs):
         """Computes the continous- or discrete-time reduced C matrix.
 
@@ -414,12 +428,14 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
             of :math:`C` acting on an individual basis vector.
 
         Returns:
-		    ``C_reduced``: Reduced-order C matrix.
+            ``C_reduced``: Reduced-order C matrix.
         """
         self.C_reduced = np.mat(np.array(C_on_basis_vecs, ndmin=2).T)
         return self.C_reduced
 
-    def compute_model(self, A_on_basis_vec_handles, B_on_standard_basis_handles,
+
+    def compute_model(
+        self, A_on_basis_vec_handles, B_on_standard_basis_handles,
         C_on_basis_vecs):
         """Computes the continous- or discrete-time reduced A, B, and C
         matrices.
@@ -439,16 +455,17 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
             of :math:`C` acting on an individual basis vector.
 
         Returns:
-		    ``A_reduced``: Reduced-order A matrix.
+            ``A_reduced``: Reduced-order A matrix.
 
-		    ``B_reduced``: Reduced-order B matrix.
+            ``B_reduced``: Reduced-order B matrix.
 
-		    ``C_reduced``: Reduced-order C matrix.
+            ``C_reduced``: Reduced-order C matrix.
         """
         self.reduce_A(A_on_basis_vec_handles)
         self.reduce_B(B_on_standard_basis_handles)
         self.reduce_C(C_on_basis_vecs)
         return self.A_reduced, self.B_reduced, self.C_reduced
+
 
     def _get_proj_mat(self):
         """Gets the projection mat, i.e. ``inv(adjoint_vecs^* direct_vecs)``."""

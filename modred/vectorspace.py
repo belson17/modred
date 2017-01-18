@@ -40,14 +40,18 @@ class VectorSpaceMatrices(object):
         else:
             raise ValueError('Weights must be None, 1D, or 2D')
 
+
     def _IP_no_weights(self, vecs1, vecs2):
         return np.mat(vecs1).H * np.mat(vecs2)
+
 
     def _IP_1D_weights(self, vecs1, vecs2):
         return np.mat((np.array(vecs1).conj().T * self.weights).dot(vecs2))
 
+
     def _IP_2D_weights(self, vecs1, vecs2):
         return np.mat(vecs1).H * self.weights * np.mat(vecs2)
+
 
     def __eq__(self, other):
         if type(other) == type(self):
@@ -55,17 +59,21 @@ class VectorSpaceMatrices(object):
         else:
             return False
 
+
     def lin_combine(self, basis_vecs, coeff_mat,
         coeff_mat_col_indices=None):
         return np.mat(basis_vecs) * np.mat(coeff_mat[:,coeff_mat_col_indices])
 
+
     def compute_symmetric_inner_product_mat(self, vecs):
         return self.compute_inner_product_mat(vecs, vecs)
+
 
     def __eq__(self, other):
         if type(self) != type(other):
             return False
         return util.smart_eq(self.weights, other.weights)
+
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -124,15 +132,18 @@ class VectorSpaceHandles(object):
             self.max_vecs_per_proc = self.max_vecs_per_node * \
                 _parallel.get_num_nodes() // _parallel.get_num_procs()
 
+
     def _check_inner_product(self):
         """Check that ``inner_product`` is defined"""
         if self.inner_product is None:
             raise RuntimeError('inner product function is not defined')
 
+
     def print_msg(self, msg, output_channel=sys.stdout):
         """Print a message from rank zero MPI worker/processor."""
         if self.verbosity > 0 and _parallel.is_rank_zero():
             print(msg, file=output_channel)
+
 
     def sanity_check(self, test_vec_handle):
         """Checks that user-supplied vector handle and vector satisfy
@@ -185,6 +196,7 @@ class VectorSpaceHandles(object):
         #np.testing.assert_array_almost_equal(vecSub,2.5*test_vec)
         #np.testing.assert_array_almost_equal(test_vec,vec_copy)
         self.print_msg('Passed the sanity check')
+
 
     def compute_inner_product_mat(self, row_vec_handles, col_vec_handles):
         """Computes matrix whose elements are inner products of the vector
@@ -304,7 +316,6 @@ class VectorSpaceHandles(object):
                     'there are %d, will be retrieved %d times each. Increase '
                     'number of nodes or max_vecs_per_node to reduce redundant '
                     '"get"s for a speedup.'%(num_cols, num_row_get_loops))
-
 
         # Estimate the time this will take and determine matrix datatype
         # (real or complex).
@@ -440,6 +451,7 @@ class VectorSpaceHandles(object):
         _parallel.barrier()
         return IP_mat
 
+
     def compute_symmetric_inner_product_mat(self, vec_handles):
         """Computes symmetric matrix whose elements are inner products of the
         vector objects in ``vec_handles`` with each other.
@@ -514,7 +526,6 @@ class VectorSpaceHandles(object):
         self.print_msg('Computing the inner product matrix will take at least '
                     '%.1f minutes' % ((total_IP_time + total_get_time) / 60.))
         del test_vec
-
 
         # Use the same trick as in compute_IP_mat, having each proc
         # fill in elements of a num_rows x num_rows sized matrix, rather than
@@ -750,6 +761,7 @@ class VectorSpaceHandles(object):
         _parallel.barrier()
         return IP_mat
 
+
     def lin_combine(self, sum_vec_handles, basis_vec_handles, coeff_mat,
         coeff_mat_col_indices=None):
         """Computes linear combination(s) of basis vector objects and calls
@@ -954,11 +966,13 @@ class VectorSpaceHandles(object):
         self.prev_print_time = time()
         _parallel.barrier()
 
+
     def __eq__(self, other):
         if type(self) != type(other):
             return False
         return (self.inner_product == other.inner_product and
             self.verbosity == other.verbosity)
+
 
     def __ne__(self, other):
         return not self.__eq__(other)

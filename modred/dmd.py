@@ -353,7 +353,7 @@ class DMDHandles(object):
         ``put_mat``: Function to put a matrix out of modred, e.g., write it to
         file.
 
-      	``get_mat``: Function to get a matrix into modred, e.g., load it from
+        ``get_mat``: Function to get a matrix into modred, e.g., load it from
         file.
 
         ``max_vecs_per_node``: Maximum number of vectors that can be stored in
@@ -396,6 +396,7 @@ class DMDHandles(object):
         self.vec_handles = None
         self.adv_vec_handles = None
 
+
     def get_decomp(
         self, eigvals_src, R_low_order_eigvecs_src, L_low_order_eigvecs_src,
         correlation_mat_eigvals_src, correlation_mat_eigvecs_src):
@@ -429,6 +430,7 @@ class DMDHandles(object):
         self.correlation_mat_eigvecs = _parallel.call_and_bcast(
             self.get_mat, correlation_mat_eigvecs_src)
 
+
     def put_decomp(
         self, eigvals_dest, R_low_order_eigvecs_dest, L_low_order_eigvecs_dest,
         correlation_mat_eigvals_dest, correlation_mat_eigvecs_dest):
@@ -457,12 +459,14 @@ class DMDHandles(object):
         self.put_correlation_mat_eigvals(correlation_mat_eigvals_dest)
         self.put_correlation_mat_eigvecs(correlation_mat_eigvecs_dest)
 
+
     def put_eigvals(self, dest):
         """Puts eigenvalues of approximating low-order-linear map (DMD
         eigenvalues) to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.eigvals, dest)
         _parallel.barrier()
+
 
     def put_R_low_order_eigvecs(self, dest):
         """Puts right eigenvectors of approximating low-order linear map to
@@ -471,6 +475,7 @@ class DMDHandles(object):
             self.put_mat(self.R_low_order_eigvecs, dest)
         _parallel.barrier()
 
+
     def put_L_low_order_eigvecs(self, dest):
         """Puts left eigenvectors of approximating low-order linear map to
         ``dest``."""
@@ -478,11 +483,13 @@ class DMDHandles(object):
             self.put_mat(self.L_low_order_eigvecs, dest)
         _parallel.barrier()
 
+
     def put_correlation_mat_eigvals(self, dest):
         """Puts eigenvalues of correlation matrix to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.correlation_mat_eigvals, dest)
         _parallel.barrier()
+
 
     def put_correlation_mat_eigvecs(self, dest):
         """Puts eigenvectors of correlation matrix to ``dest``."""
@@ -490,11 +497,13 @@ class DMDHandles(object):
             self.put_mat(self.correlation_mat_eigvecs, dest)
         _parallel.barrier()
 
+
     def put_correlation_mat(self, dest):
         """Puts correlation mat to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.correlation_mat, dest)
         _parallel.barrier()
+
 
     def put_cross_correlation_mat(self, dest):
         """Puts cross-correlation mat to ``dest``."""
@@ -502,11 +511,13 @@ class DMDHandles(object):
             self.put_mat(self.cross_correlation_mat, dest)
         _parallel.barrier()
 
+
     def put_spectral_coeffs(self, dest):
         """Puts DMD spectral coefficients to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.spectral_coeffs, dest)
         _parallel.barrier()
+
 
     def put_proj_coeffs(self, dest, adv_dest):
         """Puts projection coefficients to ``dest``, advanced projection
@@ -515,6 +526,7 @@ class DMDHandles(object):
             self.put_mat(self.proj_coeffs, dest)
             self.put_mat(self.adv_proj_coeffs, adv_dest)
         _parallel.barrier()
+
 
     def sanity_check(self, test_vec_handle):
         """Checks that user-supplied vector handle and vector satisfy
@@ -526,6 +538,7 @@ class DMDHandles(object):
         See :py:meth:`vectorspace.VectorSpaceHandles.sanity_check`.
         """
         self.vec_space.sanity_check(test_vec_handle)
+
 
     def compute_eigendecomp(self, atol=1e-13, rtol=None, max_num_eigvals=None):
         """Computes eigendecompositions of correlation matrix and approximating
@@ -615,6 +628,7 @@ class DMDHandles(object):
             util.eig_biorthog, self.low_order_linear_map,
             **{'scale_choice':'left'})
 
+
     def compute_decomp(
         self, vec_handles, adv_vec_handles=None, atol=1e-13, rtol=None,
         max_num_eigvals=None):
@@ -702,6 +716,7 @@ class DMDHandles(object):
             self.correlation_mat_eigvals,
             self.correlation_mat_eigvecs)
 
+
     def _compute_build_coeffs_exact(self):
         """Compute build coefficients for exact DMD modes."""
         return (
@@ -710,12 +725,14 @@ class DMDHandles(object):
             self.R_low_order_eigvecs
             * np.mat(np.diag(self.eigvals ** -1.)))
 
+
     def _compute_build_coeffs_proj(self):
         """Compute build coefficients for projected DMD modes."""
         return (
             self.correlation_mat_eigvecs *
             np.mat(np.diag(self.correlation_mat_eigvals ** -0.5)) *
             self.R_low_order_eigvecs)
+
 
     def compute_exact_modes(self, mode_indices, mode_handles,
         adv_vec_handles=None):
@@ -758,6 +775,7 @@ class DMDHandles(object):
             raise(ValueError, 'Neither vec_handles nor adv_vec_handles is '
                 'defined.')
 
+
     def compute_proj_modes(self, mode_indices, mode_handles, vec_handles=None):
         """Computes projected DMD modes and calls ``put`` on them using mode
         handles.
@@ -797,6 +815,7 @@ class DMDHandles(object):
         else:
             raise ValueError(('Number of vec_handles does not match number of '
                 'columns in build_coeffs_proj matrix.'))
+
 
     def compute_spectrum(self):
         """Computes DMD spectral coefficients.  These coefficients come from a
@@ -1315,6 +1334,7 @@ class TLSqrDMDHandles(DMDHandles):
         self.vec_handles = None
         self.adv_vec_handles = None
 
+
     def compute_eigendecomp(self, atol=1e-13, rtol=None, max_num_eigvals=None):
         """Computes eigendecompositions of correlation matrix and approximating
         low-order linear map.
@@ -1437,6 +1457,7 @@ class TLSqrDMDHandles(DMDHandles):
             util.eig_biorthog, self.low_order_linear_map,
             **{'scale_choice':'left'})
 
+
     def compute_decomp(
         self, vec_handles, adv_vec_handles=None, atol=1e-13, rtol=None,
         max_num_eigvals=None):
@@ -1542,6 +1563,7 @@ class TLSqrDMDHandles(DMDHandles):
             self.proj_correlation_mat_eigvals,
             self.proj_correlation_mat_eigvecs)
 
+
     def _compute_build_coeffs_exact(self):
         """Compute build coefficients for exact DMD modes."""
         return (
@@ -1552,6 +1574,7 @@ class TLSqrDMDHandles(DMDHandles):
             self.R_low_order_eigvecs
             * np.mat(np.diag(self.eigvals ** -1.)))
 
+
     def _compute_build_coeffs_proj(self):
         """Compute build coefficients for projected DMD modes."""
         return (
@@ -1560,6 +1583,7 @@ class TLSqrDMDHandles(DMDHandles):
             self.proj_correlation_mat_eigvecs *
             np.mat(np.diag(self.proj_correlation_mat_eigvals ** -0.5)) *
             self.R_low_order_eigvecs)
+
 
     def get_decomp(
         self, eigvals_src, R_low_order_eigvecs_src, L_low_order_eigvecs_src,
@@ -1607,6 +1631,7 @@ class TLSqrDMDHandles(DMDHandles):
         self.proj_correlation_mat_eigvecs = _parallel.call_and_bcast(
             self.get_mat, proj_correlation_mat_eigvecs_src)
 
+
     def put_decomp(
         self, eigvals_dest, R_low_order_eigvecs_dest, L_low_order_eigvecs_dest,
         summed_correlation_mats_eigvals_dest,
@@ -1649,11 +1674,13 @@ class TLSqrDMDHandles(DMDHandles):
         self.put_proj_correlation_mat_eigvecs(
             proj_correlation_mat_eigvecs_dest)
 
+
     def put_correlation_mat_eigvals(self, dest):
         """This method is not available for total least squares DMD"""
         raise NotImplementedError(
             'This method is not available.  Use '
             'put_summed_correlation_mats_eigvals instead.')
+
 
     def put_correlation_mat_eigvecs(self, dest):
         """This method is not available for total least squares DMD"""
@@ -1661,11 +1688,13 @@ class TLSqrDMDHandles(DMDHandles):
             'This method is not available.  Use '
             'put_summed_correlation_mats_eigvecs instead.')
 
+
     def put_summed_correlation_mats_eigvals(self, dest):
         """Puts eigenvalues of summed correlation matrices to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.summed_correlation_mats_eigvals, dest)
         _parallel.barrier()
+
 
     def put_summed_correlation_mats_eigvecs(self, dest):
         """Puts eigenvectors of summed correlation matrices to ``dest``."""
@@ -1673,11 +1702,13 @@ class TLSqrDMDHandles(DMDHandles):
             self.put_mat(self.summed_correlation_mats_eigvecs, dest)
         _parallel.barrier()
 
+
     def put_proj_correlation_mat_eigvals(self, dest):
         """Puts eigenvalues of projected correlation matrix to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.proj_correlation_mat_eigvals, dest)
         _parallel.barrier()
+
 
     def put_proj_correlation_mat_eigvecs(self, dest):
         """Puts eigenvectors of projected correlation matrix to ``dest``."""
@@ -1685,11 +1716,13 @@ class TLSqrDMDHandles(DMDHandles):
             self.put_mat(self.proj_correlation_mat_eigvecs, dest)
         _parallel.barrier()
 
+
     def put_adv_correlation_mat(self, dest):
         """Puts advanced correlation mat to ``dest``."""
         if _parallel.is_rank_zero():
             self.put_mat(self.adv_correlation_mat, dest)
         _parallel.barrier()
+
 
     def compute_spectrum(self):
         """Computes DMD spectral coefficients.  These coefficients come from a
@@ -1707,6 +1740,7 @@ class TLSqrDMDHandles(DMDHandles):
             np.mat(np.diag(np.sqrt(self.proj_correlation_mat_eigvals))) *
             np.mat(self.proj_correlation_mat_eigvecs[0, :]).T)).squeeze()
         return self.spectral_coeffs
+
 
     # Note that a biorthogonal projection onto the exact DMD modes is the same
     # as a least squares projection onto the projected DMD modes, so there is

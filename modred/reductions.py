@@ -22,9 +22,9 @@ class Intracomm(MPI.Intracomm):
     Intracommunicator class with scalable, point-to-point based
     implementations of global reduction operations.
     """
-
     def __new__(cls, comm=None):
         return super(Intracomm, cls).__new__(cls, comm)
+
 
     def reduce(self, sendobj=None, recvobj=None, op=MPI.SUM, root=0):
         size = self.size
@@ -60,10 +60,12 @@ class Intracomm(MPI.Intracomm):
 
         return recvobj
 
+
     def allreduce(self, sendobj=None, recvobj=None, op=MPI.SUM):
         recvobj = self.reduce(sendobj, recvobj, op, 0)
         recvobj = self.bcast(recvobj, 0)
         return recvobj
+
 
     def scan(self, sendobj=None, recvobj=None, op=MPI.SUM):
         size = self.size
@@ -91,6 +93,7 @@ class Intracomm(MPI.Intracomm):
             mask <<= 1
 
         return recvobj
+
 
     def exscan(self, sendobj=None, recvobj=None, op=MPI.SUM):
         size = self.size

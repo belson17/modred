@@ -10,12 +10,14 @@ import numpy as np
 
 class UndefinedError(Exception): pass
 
+
 def make_mat(array):
     """Makes 1D or 2D arrays into matrices. 1D arrays become matrices with one
     column."""
     if array.ndim == 1:
         array = array.reshape((array.shape[0], 1))
     return np.mat(array)
+
 
 def make_iterable(arg):
     """Checks if ``arg`` is iterable. If not, makes it a one-element list.
@@ -26,6 +28,7 @@ def make_iterable(arg):
     except TypeError:
         return [arg]
 
+
 """
 def make_list(arg):
     #Returns the argument as a list. If already a list, ``arg`` is returned.
@@ -35,9 +38,11 @@ def make_list(arg):
     return arg
 """
 
+
 def flatten_list(my_list):
     """Flatten a list of lists into a single list."""
     return [num for elem in my_list for num in elem]
+
 
 def save_array_text(array, file_name, delimiter=None):
     """Saves a 1D or 2D array or matrix to a text file.
@@ -80,6 +85,7 @@ def save_array_text(array, file_name, delimiter=None):
     else:
         np.savetxt(file_name, array_save.view(float), delimiter=delimiter)
 
+
 def load_array_text(file_name, delimiter=None, is_complex=False):
     """Reads data saved in a text file, returns an array.
 
@@ -113,11 +119,13 @@ def load_array_text(file_name, delimiter=None, is_complex=False):
     ## End work around for ndmin=2 option.
 
     if is_complex and array.shape[1] % 2 != 0:
-        raise ValueError(('Cannot load complex data, file %s '%file_name)+\
-            'has an odd number of columns. Maybe it has real data.')
+        raise ValueError(
+            ('Cannot load complex data, file %s has an odd number of columns. '
+            'Maybe it has real data.') % file_name)
 
     # Cast as an array, copies to make it C-contiguous memory
     return np.array(array.view(dtype))
+
 
 def get_file_list(directory, file_extension=None):
     """Returns list of files in ``directory`` with ``file_extension``."""
@@ -133,6 +141,7 @@ def get_file_list(directory, file_extension=None):
     else:
         return files
 
+
 def get_data_members(obj):
     """Returns a dictionary containing data members of ``obj``."""
     data_members = {}
@@ -142,9 +151,11 @@ def get_data_members(obj):
             data_members[name] = value
     return data_members
 
+
 def sum_arrays(arr1, arr2):
     """Used for ``allreduce`` command."""
     return arr1 + arr2
+
 
 def sum_lists(list1, list2):
     """Sums the elements of each list, returns a new list.
@@ -153,6 +164,7 @@ def sum_lists(list1, list2):
     elsewhere too."""
     assert len(list1) == len(list2)
     return [list1[i] + list2[i] for i in range(len(list1))]
+
 
 def smart_eq(arg1, arg2):
     """Checks for equality, accounting for the fact that numpy's ``==`` doesn't
@@ -167,6 +179,8 @@ class InnerProductBlock(object):
     """Only used in tests. Takes inner product of all vectors."""
     def __init__(self, inner_product):
         self.inner_product = inner_product
+
+
     def __call__(self, vecs1, vecs2):
         n1 = len(vecs1)
         n2 = len(vecs2)
@@ -224,6 +238,7 @@ def svd(mat, atol=1e-13, rtol=None):
 
     return U, E, V
 
+
 def eigh(mat, atol=1e-13, rtol=None, is_positive_definite=False):
     """Wrapper for ``numpy.linalg.eigh``. Computes eigendecomposition of a
     Hermitian matrix/array.
@@ -279,6 +294,7 @@ def eigh(mat, atol=1e-13, rtol=None, is_positive_definite=False):
     eigvals = eigvals[:num_nonzeros]
     eigvecs = eigvecs[:, :num_nonzeros]
     return eigvals, eigvecs
+
 
 def eig_biorthog(mat, scale_choice='left'):
     """Wrapper for ``numpy.linalg.eig`` that returns both left and right
@@ -355,6 +371,7 @@ def solve_Lyapunov_direct(A, Q):
     X = X_flat.reshape((A.shape))
     return X
 
+
 def solve_Lyapunov_iterative(A, Q, max_iters=10000, tol=1e-8):
     """Solves discrete Lyapunov equation :math:`AXA' - X + Q = 0` for
     :math:`X`, given :math:`A` and :math:`Q`.
@@ -394,8 +411,9 @@ def solve_Lyapunov_iterative(A, Q, max_iters=10000, tol=1e-8):
         print('Warning: did not converge to solution. Error is %f.'%error)
     return X
 
-def balanced_truncation(A, B, C, order=None, return_sing_vals=False,
-    iterative_solver=True):
+
+def balanced_truncation(
+    A, B, C, order=None, return_sing_vals=False, iterative_solver=True):
     """Balance and truncate discrete-time linear time-invariant (LTI) system
     defined by A, B, C matrices.
 
@@ -445,6 +463,7 @@ def balanced_truncation(A, B, C, order=None, return_sing_vals=False,
     else:
         return A_bal_trunc, B_bal_trunc, C_bal_trunc
 
+
 def drss(num_states, num_inputs, num_outputs):
     """Generates a discrete-time random state-space system.
 
@@ -468,6 +487,7 @@ def drss(num_states, num_inputs, num_outputs):
     C = np.mat(np.random.normal(0, 1., (num_outputs, num_states)))
     return A, B, C
 
+
 def rss(num_states, num_inputs, num_outputs):
     """Generates a continuous-time random state-space system.
 
@@ -490,6 +510,7 @@ def rss(num_states, num_inputs, num_outputs):
     B = np.random.random((num_states, num_inputs))
     C = np.random.random((num_outputs, num_states))
     return A, B, C
+
 
 def lsim(A, B, C, inputs, initial_condition=None):
     """Simulates a discrete-time system with arbitrary inputs.
@@ -597,6 +618,7 @@ def impulse(A, B, C, num_time_steps=None):
             A_powers = np.dot(A_powers, A_arr)
     return outputs
 
+
 def load_signals(signal_path, delimiter=None):
     """Loads signals from text files with columns [t signal1 signal2 ...].
 
@@ -625,6 +647,7 @@ def load_signals(signal_path, delimiter=None):
     if signals.ndim == 1:
         signals = signals.reshape((signals.shape[0], 1))
     return time_values, signals
+
 
 def load_multiple_signals(signal_paths, delimiter=None):
     """Loads multiple signal files from text files with columns [t channel1
@@ -663,6 +686,7 @@ def load_multiple_signals(signal_paths, delimiter=None):
         all_signals[path_num] = signals
 
     return time_values, all_signals
+
 
 def Hankel(first_row, last_col=None):
     """

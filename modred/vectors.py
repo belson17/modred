@@ -21,9 +21,11 @@ class VecHandle(object):
     cached_base_vec_handle = None
     cached_base_vec = None
 
+
     def __init__(self, base_vec_handle=None, scale=None):
         self.__base_vec_handle = base_vec_handle
         self.scale = scale
+
 
     def get(self):
         """Get a vector, using the private (user-overwritten) ``_get``
@@ -42,18 +44,22 @@ class VecHandle(object):
             VecHandle.cached_base_vec = base_vec
         return self.__scale_vec(vec - base_vec)
 
+
     def put(self, vec):
         """Put a vector to file or memory using the private (user-overwritten)
         ``_put`` function."""
         return self._put(vec)
 
+
     def _get(self):
         """Subclass must overwrite, retrieves a vector."""
         raise NotImplementedError("must be implemented by subclasses")
 
+
     def _put(self, vec):
         """Subclass must overwrite, puts a vector."""
         raise NotImplementedError("must be implemented by subclasses")
+
 
     def __scale_vec(self, vec):
         """Scales the vector by a scalar."""
@@ -68,13 +74,16 @@ class VecHandleInMemory(VecHandle):
         VecHandle.__init__(self, base_vec_handle, scale)
         self.vec = vec
 
+
     def _get(self):
         """Returns the vector."""
         return self.vec
 
+
     def _put(self, vec):
         """Stores the vector, ``vec``."""
         self.vec = vec
+
 
     def __eq__(self, other):
         if type(other) != type(self):
@@ -88,13 +97,16 @@ class VecHandleArrayText(VecHandle):
         VecHandle.__init__(self, base_vec_handle, scale)
         self.vec_path = vec_path
 
+
     def _get(self):
         """Loads vector from path."""
         return util.load_array_text(self.vec_path)
 
+
     def _put(self, vec):
         """Saves vector to path."""
         util.save_array_text(vec, self.vec_path)
+
 
     def __eq__(self, other):
         if type(other) != type(self):
@@ -155,8 +167,10 @@ class InnerProductTrapz(object):
             raise ValueError('Must supply at least one 1D grid array')
         self.grids = grids
 
+
     def __call__(self, vec1, vec2):
         return self.inner_product(vec1, vec2)
+
 
     def inner_product(self, vec1, vec2):
         """Computes inner product."""
@@ -175,18 +189,23 @@ class Vector(object):
         """Must overwrite"""
         raise NotImplementedError('constructor must be implemented by subclass')
 
+
     def __add__(self, other):
         raise NotImplementedError('addition must be implemented by subclass')
+
 
     def __mul__(self, scalar):
         raise NotImplementedError('multiplication must be implemented by '
             'subclass')
 
+
     def __rmul__(self, scalar):
         return self.__mul__(scalar)
 
+
     def __lmul__(self, scalar):
         return self.__mul__(scalar)
+
 
     def __sub__(self, other):
         return self + other*-1
