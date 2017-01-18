@@ -1,8 +1,9 @@
 # This file makes the modred directory a python package.
 
 # Modules to load when using "from modred import *"
-#__all__ = ['bpod', 'bpodltirom', 'dmd', 'era', 'vectorspace',
-#		'okid', 'parallel', 'pod', 'reductions', 'util']
+#__all__ = [
+#    'bpod', 'bpodltirom', 'dmd', 'era', 'vectorspace', 'okid', 'parallel',
+#    'pod', 'reductions', 'util']
 
 # Modules whose internal contents are available through the
 # modred namespace as "modred.foo()" are imported below.

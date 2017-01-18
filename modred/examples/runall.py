@@ -1,10 +1,12 @@
+#!/usr/bin/env python
 from past.builtins import execfile
 from future.builtins import range
-#!/usr/bin/env python
 
-# modred must be installed.
 import os
-import modred as mr
+
+import modred as mr     # modred must be installed.
+
+
 parallel = mr.parallel_default_instance
 
 for i in range(1, 7):

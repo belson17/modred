@@ -7,6 +7,7 @@ from future.builtins import range
 import numpy as np
 import numpy.ma as ma
 
+
 def herroots(n):
     """Returns the roots of the Hermite polynomial of degree n."""
     # Jacobi matrix

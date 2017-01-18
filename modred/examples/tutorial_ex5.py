@@ -1,7 +1,10 @@
 from __future__ import print_function
 from future.builtins import range
+
 import numpy as np
+
 import modred as mr
+
 
 num_elements = 2000
 num_vecs = 100

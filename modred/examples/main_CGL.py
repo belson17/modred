@@ -6,9 +6,11 @@ from __future__ import absolute_import
 from future.builtins import range
 
 import numpy as np
-import scipy.linalg as SL
+import scipy.linalg as spla
+
 import modred as mr
-from . import hermite as H
+from . import hermite as hr
+
 
 plots = False
 
@@ -42,7 +44,7 @@ for var in ['nx','dt','U','c_u','c_d','mu_0','mu_2','s','x_s',
 print('-----------------------')
 
 # Collocation points in x are roughly [-85, 85], as in Ilak 2010
-x, Ds = H.herdif(nx, 2, np.real(chi))
+x, Ds = hr.herdif(nx, 2, np.real(chi))
 
 # Inner product weights, trapezoidal rule
 weights = np.zeros(nx)
@@ -59,7 +61,7 @@ mu = (mu_0 - c_u**2) + mu_2 * x**2/2.
 A = np.mat(-nu * Ds[0] + gamma * Ds[1] + np.diag(mu))
 
 # Compute optimal disturbance and use it as B matrix
-A_discrete = np.mat(SL.expm(A*dt))
+A_discrete = np.mat(spla.expm(A*dt))
 exp_mat = np.mat(np.identity(nx, dtype=complex))
 max_sing_val = 0
 for i in range(1, 100):
@@ -96,7 +98,6 @@ if plots:
     PLT.legend(['Real','Imag'])
     PLT.xlim([-20, 20])
     PLT.grid(True)
-
 
 # Simulate impulse responses to the direct and adjoint systems w/Crank-np.colson
 # (q(i+1) - q(i)) / dt = 1/2 (A q(i+1) + A q(i)) + B u(i)
@@ -152,9 +153,9 @@ if plots:
         PLT.title('Direct and adjoint mode %d'%(i+1))
 
 # Project the linear dynamics onto the modes
-projection = mr.LTIGalerkinProjectionMatrices(direct_modes,
-    adjoint_basis_vecs=adjoint_modes, inner_product_weights=weights,
-    is_basis_orthonormal=True)
+projection = mr.LTIGalerkinProjectionMatrices(
+    direct_modes, adjoint_basis_vecs=adjoint_modes,
+    inner_product_weights=weights,is_basis_orthonormal=True)
 A_direct_modes = A * direct_modes
 Ar, Br, Cr = projection.compute_model(A_direct_modes, B, C.dot(direct_modes))
 
@@ -168,7 +169,9 @@ for ti in range(nt-1):
 y = C*q
 yr = Cr*qr
 
-print('Max error in reduced system impulse response output y is', np.amax(np.abs(y-yr)))
+print(
+    'Max error in reduced system impulse response output y is',
+    np.amax(np.abs(y-yr)))
 
 if plots:
     PLT.figure()

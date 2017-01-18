@@ -1,12 +1,13 @@
 import numpy as np
+
 import modred as mr
 
+
+# Create random system and modes
 nx = 100
 num_inputs = 2
 num_outputs = 3
 num_basis_vecs = 10
-
-# Create random system and modes
 A = np.mat(np.random.random((nx, nx)))
 B = np.mat(np.random.random((nx, num_inputs)))
 C = np.mat(np.random.random((num_outputs, nx)))

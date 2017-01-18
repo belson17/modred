@@ -1,6 +1,9 @@
 from future.builtins import range
+
 import numpy as np
+
 import modred as mr
+
 
 # Define the handles for the snapshots
 num_vecs = 30

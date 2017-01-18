@@ -1,6 +1,9 @@
 from future.builtins import range
+
 import numpy as np
+
 import modred as mr
+
 
 nx = 100
 ny = 200
@@ -8,8 +11,8 @@ num_inputs = 2
 num_outputs = 4
 num_modes = 40
 
-# Create random modes and action on modes. Typically this data already exists and
-# this section is unnecesary.
+# Create random modes and action on modes. Typically this data already exists
+# and this section is unnecesary.
 basis_vecs = [
     mr.VecHandlePickle('dir_mode_%02d.pkl'%i)
     for i in range(num_modes)]

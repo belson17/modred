@@ -1,9 +1,13 @@
 from future.builtins import range
-import modred as mr
+
 import numpy as np
 
+import modred as mr
+
+
 num_vecs = 100
-# np.n-uniform grid and corresponding inner product weights.
+
+# uniform grid and corresponding inner product weights.
 nx = 80
 ny = 100
 x_grid = 1. - np.cos(np.linspace(0, np.pi, nx))

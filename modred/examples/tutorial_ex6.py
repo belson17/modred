@@ -1,7 +1,9 @@
 from __future__ import division
 from __future__ import absolute_import
 from future.builtins import range
+
 import numpy as np
+
 import modred as mr
 from customvector import CustomVector, CustomVecHandle, inner_product
 
