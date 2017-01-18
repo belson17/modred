@@ -14,6 +14,7 @@ function [H, M] = OKID(y,u,r)
 % Steve Brunton, November 2010.
 % Last edited by Brandt Belson, Feb. 2012 to work for MIMO.
 
+
 % Step 0, check shapes of y,u
 yshape = size(y);
 q = yshape(1);  % q is the number of outputs
@@ -41,14 +42,12 @@ for i=2:p+1
     end
 end
 
-
-
 Ybar = y*pinv(V, 1e-5);
+
 
 % Step 3, isolate system Markov parameters H, and observer gain M
 D = Ybar(:,1:m);  % feed-through term (or D matrix) is the first term
 YbarNoD = Ybar(:,m+1:end);
-
 
 Ybar1 = zeros(q,m,length(YbarNoD));
 Ybar2 = zeros(q,q,length(YbarNoD));
@@ -64,7 +63,6 @@ for k=2:p
         Y(:,:,k) = Y(:,:,k) + Ybar2(:,:,i)*Y(:,:,k-i);
     end
 end
-
 
 size(Y)
 
