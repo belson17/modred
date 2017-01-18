@@ -4,7 +4,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 from future.builtins import range
 from future.builtins import object
-import os
+import socket
 
 import numpy as np
 
@@ -59,7 +59,7 @@ class Parallel(object):
     @staticmethod
     def find_node_ID():
         """Returns unique ID number for this node."""
-        hostname = os.uname()[1]
+        hostname = socket.gethostname()
         return hash(hostname)
     
     def get_num_nodes(self):
