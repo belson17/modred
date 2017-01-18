@@ -149,8 +149,10 @@ def lin_combine(
 def clean_up():
     _parallel.barrier()
     if _parallel.is_rank_zero():
-        rmtree(data_dir)
-
+        try:
+            rmtree(data_dir)
+        except:
+            pass
 
 def main():
     #method_to_test = 'lin_combine'
