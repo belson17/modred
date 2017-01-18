@@ -1,5 +1,5 @@
 Welcome to the modred library!
---------------
+------------------------------
 
 This is an easy-to-use and parallelized library for finding modal decompositions
 and reduced-order models.
@@ -19,7 +19,7 @@ the Air Force Office of Scientific Research (AFOSR).
 
 
 Installation
---------------
+------------
 
 To install::
 
@@ -44,4 +44,11 @@ with the following information:
 3. Numpy version (``python -c 'import numpy; print numpy.__version__'``)
 4. Your operating system
 
-The documentation is available at: http://packages.python.org/modred
+The documentation is available at: http://packages.python.org/modred or can be
+built from source by navigating to the install directory and calling::
+
+  sphinx-build doc doc/_build'
+
+Then simply open index.html in a web browser.
+
+
