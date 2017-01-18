@@ -16,7 +16,7 @@ plots = False
 
 if plots:
     try:
-        import matplotlib.pyplot as PLT
+        import matplotlib.pyplot as plt
     except:
         plots = False
 
@@ -79,25 +79,25 @@ C_adj = inv_M * C.H
 
 # Plot spatial distributions of B and C
 if plots:
-    PLT.figure()
-    PLT.hold(True)
-    PLT.plot(x, B.real,'b')
-    PLT.plot(x, B.imag,'r')
-    PLT.xlabel('x')
-    PLT.ylabel('B')
-    PLT.legend(['Real','Imag'])
-    PLT.xlim([-20, 20])
-    PLT.grid(True)
+    plt.figure()
+    plt.hold(True)
+    plt.plot(x, B.real,'b')
+    plt.plot(x, B.imag,'r')
+    plt.xlabel('x')
+    plt.ylabel('B')
+    plt.legend(['Real','Imag'])
+    plt.xlim([-20, 20])
+    plt.grid(True)
 
-    PLT.figure()
-    PLT.hold(True)
-    PLT.plot(x, C.T.real,'b')
-    PLT.plot(x, C.T.imag,'r')
-    PLT.xlabel('x')
-    PLT.ylabel('C')
-    PLT.legend(['Real','Imag'])
-    PLT.xlim([-20, 20])
-    PLT.grid(True)
+    plt.figure()
+    plt.hold(True)
+    plt.plot(x, C.T.real,'b')
+    plt.plot(x, C.T.imag,'r')
+    plt.xlabel('x')
+    plt.ylabel('C')
+    plt.legend(['Real','Imag'])
+    plt.xlim([-20, 20])
+    plt.grid(True)
 
 # Simulate impulse responses to the direct and adjoint systems w/Crank-np.colson
 # (q(i+1) - q(i)) / dt = 1/2 (A q(i+1) + A q(i)) + B u(i)
@@ -123,17 +123,17 @@ for ti in range(nt-1):
 if plots:
     t = np.arange(0, nt*dt, dt)
     X, T = np.meshgrid(x, t)
-    PLT.figure()
-    PLT.contourf(T, X, np.array(q.real).T, 20, cmap=PLT.cm.binary)
-    PLT.xlabel('t')
-    PLT.ylabel('x')
-    PLT.colorbar()
-    PLT.figure()
-    PLT.contourf(T, X, np.array(q_adj.real).T, 20, cmap=PLT.cm.binary)
-    PLT.xlabel('t')
-    PLT.ylabel('x')
-    PLT.title('adjoint')
-    PLT.colorbar()
+    plt.figure()
+    plt.contourf(T, X, np.array(q.real).T, 20, cmap=plt.cm.binary)
+    plt.xlabel('t')
+    plt.ylabel('x')
+    plt.colorbar()
+    plt.figure()
+    plt.contourf(T, X, np.array(q_adj.real).T, 20, cmap=plt.cm.binary)
+    plt.xlabel('t')
+    plt.ylabel('x')
+    plt.title('adjoint')
+    plt.colorbar()
 
 # Compute the BPOD modes
 r = 10
@@ -143,14 +143,14 @@ direct_modes, adjoint_modes, sing_vals = mr.compute_BPOD_matrices(
 # Plot the first 3 modes
 if plots:
     for i in range(3):
-        PLT.figure()
-        PLT.hold(True)
-        PLT.plot(x, direct_modes[:,i].real, '-o')
-        PLT.plot(x, adjoint_modes[:,i].real,'-x')
-        PLT.xlabel('Space')
-        PLT.ylabel('Real(q)')
-        PLT.legend(['direct', 'adjoint'])
-        PLT.title('Direct and adjoint mode %d'%(i+1))
+        plt.figure()
+        plt.hold(True)
+        plt.plot(x, direct_modes[:,i].real, '-o')
+        plt.plot(x, adjoint_modes[:,i].real,'-x')
+        plt.xlabel('Space')
+        plt.ylabel('Real(q)')
+        plt.legend(['direct', 'adjoint'])
+        plt.title('Direct and adjoint mode %d'%(i+1))
 
 # Project the linear dynamics onto the modes
 projection = mr.LTIGalerkinProjectionMatrices(
@@ -174,12 +174,12 @@ print(
     np.amax(np.abs(y-yr)))
 
 if plots:
-    PLT.figure()
-    PLT.plot(t, y.T.real)
-    PLT.hold(True)
-    PLT.plot(t, yr.T.real)
-    PLT.legend(['Full','Reduced, r=%d'%r])
-    PLT.xlabel('t')
-    PLT.ylabel('real(y)')
+    plt.figure()
+    plt.plot(t, y.T.real)
+    plt.hold(True)
+    plt.plot(t, yr.T.real)
+    plt.legend(['Full','Reduced, r=%d'%r])
+    plt.xlabel('t')
+    plt.ylabel('real(y)')
 
-    PLT.show()
+    plt.show()
