@@ -47,7 +47,7 @@ with the following information:
 The documentation is available at: http://packages.python.org/modred or can be
 built from source by navigating to the install directory and calling::
 
-  sphinx-build doc doc/_build'
+  sphinx-build doc doc/_build
 
 Then simply open index.html in a web browser.
 
