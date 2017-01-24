@@ -42,7 +42,7 @@ extensions = [
           #'sphinx.ext.doctest',
           #'ipython_console_highlighting',
           #'inheritance_diagram',
-          'sphinx.ext.pngmath']
+          'sphinx.ext.imgmath']
           #'sphinx.ext.jsmath',
           #'numpydoc']
 
