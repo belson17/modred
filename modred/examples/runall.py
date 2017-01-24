@@ -4,10 +4,9 @@ from future.builtins import range
 
 import os
 
+from modred import parallel
 import modred as mr     # modred must be installed.
 
-
-parallel = mr.parallel_default_instance
 
 for i in range(1, 7):
     if not parallel.is_distributed():

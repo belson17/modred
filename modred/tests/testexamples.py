@@ -10,8 +10,7 @@ import os, sys
 from os.path import join
 from shutil import rmtree
 
-import modred.parallel as parallel_mod
-_parallel = parallel_mod.parallel_default_instance
+import modred.parallel as parallel
 
 
 # Directory we start from, absolute path.
@@ -50,23 +49,23 @@ def printing(on):
 
 class TestExamples(unittest.TestCase):
     def setUp(self):
-        _parallel.barrier()
+        parallel.barrier()
         self.test_dir = join(running_dir, 'DELETE_ME_test_tutorial_examples')
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        if not os.path.isdir(self.test_dir) and _parallel.is_rank_zero():
+        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
             os.mkdir(self.test_dir)
-        _parallel.barrier()
+        parallel.barrier()
 
         os.chdir(self.test_dir)
 
 
     def tearDown(self):
         os.chdir(running_dir)
-        _parallel.barrier()
-        if _parallel.is_rank_zero():
+        parallel.barrier()
+        if parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     @unittest.skip('Test with Makefile in examples directory instead')
@@ -75,11 +74,11 @@ class TestExamples(unittest.TestCase):
         example_script = 'tutorial_ex%d.py'
         for example_num in range(1, 7):
             # Example 3 isn't meant to work in parallel
-            if not (_parallel.is_distributed() and example_num != 3):
+            if not (parallel.is_distributed() and example_num != 3):
                 #printing(False)
-                _parallel.barrier()
+                parallel.barrier()
                 execfile(join(examples_dir, example_script%example_num))
-                _parallel.barrier()
+                parallel.barrier()
                 #printing(True)
 
 

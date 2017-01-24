@@ -9,8 +9,7 @@ from shutil import rmtree
 
 import numpy as np
 
-import modred.parallel as parallel_mod
-_parallel = parallel_mod.parallel_default_instance
+import modred.parallel as parallel
 from modred import era
 from modred import util
 
@@ -35,7 +34,7 @@ def make_time_steps(num_steps, interval):
     return time_steps
 
 
-@unittest.skipIf(_parallel.is_distributed(), 'Only test ERA in serial')
+@unittest.skipIf(parallel.is_distributed(), 'Only test ERA in serial')
 class testERA(unittest.TestCase):
     def setUp(self):
         if not os.access('.', os.W_OK):

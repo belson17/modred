@@ -3,6 +3,7 @@ import os
 
 import numpy as np
 
+from modred import parallel
 import modred as mr
 
 
@@ -32,7 +33,6 @@ B_on_bases = [
     for i in range(num_inputs)]
 C_on_basis_vecs = [
     np.sin(np.linspace(0, 0.1 * i, num_outputs)) for i in range(num_modes)]
-parallel = mr.parallel_default_instance
 if parallel.is_rank_zero():
     for handle in (
         basis_vecs + adjoint_basis_vecs + A_on_basis_vecs + B_on_bases):

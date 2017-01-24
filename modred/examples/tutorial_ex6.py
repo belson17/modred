@@ -5,6 +5,7 @@ import os
 
 import numpy as np
 
+from modred import parallel
 import modred as mr
 from customvector import CustomVector, CustomVecHandle, inner_product
 
@@ -29,7 +30,6 @@ nz = 20
 x = np.linspace(0, 1, nx)
 y = np.logspace(1, 2, ny)
 z = np.linspace(0, 1, nz) ** 2
-parallel = mr.parallel_default_instance
 if parallel.is_rank_zero():
     for snap in direct_snapshots + adjoint_snapshots:
         snap.put(CustomVector([x, y, z], np.random.random((nx, ny, nz))))

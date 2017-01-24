@@ -4,6 +4,7 @@ import os
 
 import numpy as np
 
+from modred import parallel
 import modred as mr
 
 
@@ -24,7 +25,6 @@ snapshots = [
 
 # Save arbitrary data, normally unnecessary
 num_elements = 2000
-parallel = mr.parallel_default_instance
 if parallel.is_rank_zero():
     for snap in snapshots + [base_vec_handle]:
         snap.put(np.random.random(num_elements))

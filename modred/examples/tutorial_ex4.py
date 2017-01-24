@@ -3,6 +3,7 @@ import os
 
 import numpy as np
 
+from modred import parallel
 import modred as mr
 
 
@@ -21,9 +22,8 @@ Y, X = np.meshgrid(y_grid, x_grid)
 
 snapshots = [
     mr.VecHandlePickle('%s/vec%d.pkl' % (out_dir, i)) for i in range(num_vecs)]
-parallel = mr.parallel_default_instance
 if parallel.is_rank_zero():
-    for i,snap in enumerate(snapshots):
+    for i, snap in enumerate(snapshots):
         snap.put(np.sin(X * i) + np.cos(Y * i))
 parallel.barrier()
 

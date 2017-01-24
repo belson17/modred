@@ -9,8 +9,7 @@ import numpy as np
 from . import util
 from .vectors import VecHandleInMemory
 from .vectorspace import *
-from .parallel import parallel_default_instance
-_parallel = parallel_default_instance
+from . import parallel
 
 
 def standard_basis(num_dims):
@@ -48,14 +47,14 @@ def compute_derivs_handles(vec_handles, adv_vec_handles, deriv_vec_handles, dt):
         num_vecs != len(deriv_vec_handles):
         raise RuntimeError('Number of vectors not equal')
 
-    vec_index_tasks = _parallel.find_assignments(list(range(num_vecs)))[
-        _parallel.get_rank()]
+    vec_index_tasks = parallel.find_assignments(list(range(num_vecs)))[
+        parallel.get_rank()]
 
     for i in vec_index_tasks:
         vec = vec_handles[i].get()
         vec_dt = adv_vec_handles[i].get()
         deriv_vec_handles[i].put((1./dt)*(vec_dt - vec))
-    _parallel.barrier()
+    parallel.barrier()
 
 
 def compute_derivs_matrices(vecs, adv_vecs, dt):
@@ -91,20 +90,20 @@ class LTIGalerkinProjectionBase(object):
 
     def put_A_reduced(self, dest):
         """Puts A matrix of reduced-order model to ``dest``."""
-        _parallel.call_from_rank_zero(self.put_mat, self.A_reduced, dest)
-        _parallel.barrier()
+        parallel.call_from_rank_zero(self.put_mat, self.A_reduced, dest)
+        parallel.barrier()
 
 
     def put_B_reduced(self, dest):
         """Puts B matrix of reduced-order model to ``dest``."""
-        _parallel.call_from_rank_zero(self.put_mat, self.B_reduced, dest)
-        _parallel.barrier()
+        parallel.call_from_rank_zero(self.put_mat, self.B_reduced, dest)
+        parallel.barrier()
 
 
     def put_C_reduced(self, dest):
         """Puts C matrix of reduced-order model to ``dest``."""
-        _parallel.call_from_rank_zero(self.put_mat, self.C_reduced, dest)
-        _parallel.barrier()
+        parallel.call_from_rank_zero(self.put_mat, self.C_reduced, dest)
+        parallel.barrier()
 
 
     def put_model(self, A_reduced_dest, B_reduced_dest, C_reduced_dest):
@@ -165,7 +164,7 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
         """Constructor"""
         LTIGalerkinProjectionBase.__init__(self, is_basis_orthonormal,
             put_mat=put_mat)
-        if _parallel.is_distributed():
+        if parallel.is_distributed():
             raise RuntimeError('Not for parallel use.')
         self.basis_vecs = basis_vecs
         if adjoint_basis_vecs is None:

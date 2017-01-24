@@ -6,8 +6,7 @@ import numpy as np
 
 from .vectorspace import VectorSpaceMatrices, VectorSpaceHandles
 from . import util
-from .parallel import parallel_default_instance
-_parallel = parallel_default_instance
+from . import parallel
 
 
 def compute_DMD_matrices_snaps_method(
@@ -84,7 +83,7 @@ def compute_DMD_matrices_snaps_method(
     rows than columns, i.e., when there are more elements in a vector than
     there are vectors. However, it "squares" this matrix and its singular
     values, making it slightly less accurate than the direct method."""
-    if _parallel.is_distributed():
+    if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
     vec_space = VectorSpaceMatrices(weights=inner_product_weights)
     vecs = util.make_mat(vecs)
@@ -233,7 +232,7 @@ def compute_DMD_matrices_direct_method(
     than the number of vectors, i.e.,  when ``vecs`` has more rows than
     columns.
     """
-    if _parallel.is_distributed():
+    if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
     vec_space = VectorSpaceMatrices(weights=inner_product_weights)
     vecs = util.make_mat(vecs)
@@ -419,15 +418,15 @@ class DMDHandles(object):
             eigenvectors of correlation matrix.
         """
         self.eigvals = np.squeeze(np.array(
-            _parallel.call_and_bcast(self.get_mat, eigvals_src)))
-        self.R_low_order_eigvecs = _parallel.call_and_bcast(
+            parallel.call_and_bcast(self.get_mat, eigvals_src)))
+        self.R_low_order_eigvecs = parallel.call_and_bcast(
             self.get_mat, R_low_order_eigvecs_src)
-        self.L_low_order_eigvecs = _parallel.call_and_bcast(
+        self.L_low_order_eigvecs = parallel.call_and_bcast(
             self.get_mat, L_low_order_eigvecs_src)
         self.correlation_mat_eigvals = np.squeeze(np.array(
-            _parallel.call_and_bcast(
+            parallel.call_and_bcast(
             self.get_mat, correlation_mat_eigvals_src)))
-        self.correlation_mat_eigvecs = _parallel.call_and_bcast(
+        self.correlation_mat_eigvecs = parallel.call_and_bcast(
             self.get_mat, correlation_mat_eigvecs_src)
 
 
@@ -463,69 +462,69 @@ class DMDHandles(object):
     def put_eigvals(self, dest):
         """Puts eigenvalues of approximating low-order-linear map (DMD
         eigenvalues) to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.eigvals, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_R_low_order_eigvecs(self, dest):
         """Puts right eigenvectors of approximating low-order linear map to
         ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.R_low_order_eigvecs, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_L_low_order_eigvecs(self, dest):
         """Puts left eigenvectors of approximating low-order linear map to
         ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.L_low_order_eigvecs, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_correlation_mat_eigvals(self, dest):
         """Puts eigenvalues of correlation matrix to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.correlation_mat_eigvals, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_correlation_mat_eigvecs(self, dest):
         """Puts eigenvectors of correlation matrix to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.correlation_mat_eigvecs, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_correlation_mat(self, dest):
         """Puts correlation mat to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.correlation_mat, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_cross_correlation_mat(self, dest):
         """Puts cross-correlation mat to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.cross_correlation_mat, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_spectral_coeffs(self, dest):
         """Puts DMD spectral coefficients to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.spectral_coeffs, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_proj_coeffs(self, dest, adv_dest):
         """Puts projection coefficients to ``dest``, advanced projection
         coefficients to ``adv_dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.proj_coeffs, dest)
             self.put_mat(self.adv_proj_coeffs, adv_dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def sanity_check(self, test_vec_handle):
@@ -601,7 +600,7 @@ class DMDHandles(object):
         """
         # Compute eigendecomposition of correlation matrix
         self.correlation_mat_eigvals, self.correlation_mat_eigvecs = \
-            _parallel.call_and_bcast(
+            parallel.call_and_bcast(
             util.eigh, self.correlation_mat, atol=atol, rtol=None,
             is_positive_definite=True)
 
@@ -624,7 +623,7 @@ class DMDHandles(object):
 
         # Compute eigendecomposition of low-order linear map
         self.eigvals, self.R_low_order_eigvecs, self.L_low_order_eigvecs =\
-            _parallel.call_and_bcast(
+            parallel.call_and_bcast(
             util.eig_biorthog, self.low_order_linear_map,
             **{'scale_choice':'left'})
 
@@ -959,7 +958,7 @@ def compute_TLSqrDMD_matrices_snaps_method(
     which contains information about the "energy" content of each projection
     basis vectors.
     """
-    if _parallel.is_distributed():
+    if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
     vec_space = VectorSpaceMatrices(weights=inner_product_weights)
     vecs = util.make_mat(vecs)
@@ -1162,7 +1161,7 @@ def compute_TLSqrDMD_matrices_direct_method(
     which contains information about the "energy" content of each projection
     basis vectors.
     """
-    if _parallel.is_distributed():
+    if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
     vec_space = VectorSpaceMatrices(weights=inner_product_weights)
     vecs = util.make_mat(vecs)
@@ -1405,7 +1404,7 @@ class TLSqrDMDHandles(DMDHandles):
         self.summed_correlation_mats = (
             self.correlation_mat + self.adv_correlation_mat)
         (self.summed_correlation_mats_eigvals,
-        self.summed_correlation_mats_eigvecs) = _parallel.call_and_bcast(
+        self.summed_correlation_mats_eigvecs) = parallel.call_and_bcast(
             util.eigh, self.summed_correlation_mats,
             atol=atol, rtol=None, is_positive_definite=True)
 
@@ -1425,7 +1424,7 @@ class TLSqrDMDHandles(DMDHandles):
             self.summed_correlation_mats_eigvecs *
             self.summed_correlation_mats_eigvecs.H)
         (self.proj_correlation_mat_eigvals,
-        self.proj_correlation_mat_eigvecs) = _parallel.call_and_bcast(
+        self.proj_correlation_mat_eigvecs) = parallel.call_and_bcast(
             util.eigh, self.proj_correlation_mat ,
             atol=atol, rtol=None, is_positive_definite=True)
 
@@ -1453,7 +1452,7 @@ class TLSqrDMDHandles(DMDHandles):
 
         # Compute eigendecomposition of low-order linear map
         self.eigvals, self.R_low_order_eigvecs, self.L_low_order_eigvecs =\
-            _parallel.call_and_bcast(
+            parallel.call_and_bcast(
             util.eig_biorthog, self.low_order_linear_map,
             **{'scale_choice':'left'})
 
@@ -1615,20 +1614,20 @@ class TLSqrDMDHandles(DMDHandles):
             retrieve eigenvectors of projected correlation matrix.
         """
         self.eigvals = np.squeeze(np.array(
-            _parallel.call_and_bcast(self.get_mat, eigvals_src)))
-        self.R_low_order_eigvecs = _parallel.call_and_bcast(
+            parallel.call_and_bcast(self.get_mat, eigvals_src)))
+        self.R_low_order_eigvecs = parallel.call_and_bcast(
             self.get_mat, R_low_order_eigvecs_src)
-        self.L_low_order_eigvecs = _parallel.call_and_bcast(
+        self.L_low_order_eigvecs = parallel.call_and_bcast(
             self.get_mat, L_low_order_eigvecs_src)
         self.summed_correlation_mats_eigvals = np.squeeze(np.array(
-            _parallel.call_and_bcast(
+            parallel.call_and_bcast(
             self.get_mat, summed_correlation_mats_eigvals_src)))
-        self.summed_correlation_mats_eigvecs = _parallel.call_and_bcast(
+        self.summed_correlation_mats_eigvecs = parallel.call_and_bcast(
             self.get_mat, summed_correlation_mats_eigvecs_src)
         self.proj_correlation_mat_eigvals = np.squeeze(np.array(
-            _parallel.call_and_bcast(
+            parallel.call_and_bcast(
             self.get_mat, proj_correlation_mat_eigvals_src)))
-        self.proj_correlation_mat_eigvecs = _parallel.call_and_bcast(
+        self.proj_correlation_mat_eigvecs = parallel.call_and_bcast(
             self.get_mat, proj_correlation_mat_eigvecs_src)
 
 
@@ -1691,37 +1690,37 @@ class TLSqrDMDHandles(DMDHandles):
 
     def put_summed_correlation_mats_eigvals(self, dest):
         """Puts eigenvalues of summed correlation matrices to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.summed_correlation_mats_eigvals, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_summed_correlation_mats_eigvecs(self, dest):
         """Puts eigenvectors of summed correlation matrices to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.summed_correlation_mats_eigvecs, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_proj_correlation_mat_eigvals(self, dest):
         """Puts eigenvalues of projected correlation matrix to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.proj_correlation_mat_eigvals, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_proj_correlation_mat_eigvecs(self, dest):
         """Puts eigenvectors of projected correlation matrix to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.proj_correlation_mat_eigvecs, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_adv_correlation_mat(self, dest):
         """Puts advanced correlation mat to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.adv_correlation_mat, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def compute_spectrum(self):

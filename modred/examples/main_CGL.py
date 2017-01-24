@@ -9,7 +9,7 @@ import numpy as np
 import scipy.linalg as spla
 
 import modred as mr
-from . import hermite as hr
+import hermite as hr
 
 
 plots = False

@@ -47,7 +47,7 @@ from .vectors import (
     InnerProductTrapz, inner_product_array_uniform
 )
 
-from .parallel import Parallel, ParallelError, parallel_default_instance
+from . import parallel
 
 from .util import (
     UndefinedError, make_mat, make_iterable, flatten_list, save_array_text,

@@ -10,8 +10,7 @@ from time import time
 import numpy as np
 
 from . import util
-from .parallel import parallel_default_instance
-_parallel = parallel_default_instance
+from . import parallel
 from . import vectors as V
 
 
@@ -122,7 +121,7 @@ class VectorSpaceHandles(object):
             self.max_vecs_per_node = max_vecs_per_node
 
         if self.max_vecs_per_node < \
-            2 * _parallel.get_num_procs() / _parallel.get_num_nodes():
+            2 * parallel.get_num_procs() / parallel.get_num_nodes():
             self.max_vecs_per_proc = 2
             self.print_msg('Warning: max_vecs_per_node too small for given '
                 'number of nodes and procs. Assuming 2 vecs can be '
@@ -130,7 +129,7 @@ class VectorSpaceHandles(object):
                 'max_vecs_per_node for a speedup.')
         else:
             self.max_vecs_per_proc = self.max_vecs_per_node * \
-                _parallel.get_num_nodes() // _parallel.get_num_procs()
+                parallel.get_num_nodes() // parallel.get_num_procs()
 
 
     def _check_inner_product(self):
@@ -141,7 +140,7 @@ class VectorSpaceHandles(object):
 
     def print_msg(self, msg, output_channel=sys.stdout):
         """Print a message from rank zero MPI worker/processor."""
-        if self.verbosity > 0 and _parallel.is_rank_zero():
+        if self.verbosity > 0 and parallel.is_rank_zero():
             print(msg, file=output_channel)
 
 
@@ -283,7 +282,7 @@ class VectorSpaceHandles(object):
             transpose = False
 
         # convenience
-        rank = _parallel.get_rank()
+        rank = parallel.get_rank()
 
         ## Old way that worked
         # num_cols_per_proc_chunk is the number of cols each proc gets at once
@@ -292,8 +291,8 @@ class VectorSpaceHandles(object):
             num_cols_per_proc_chunk
 
         # Determine how the retrieving and inner products will be split up.
-        row_tasks = _parallel.find_assignments(list(range(num_rows)))
-        col_tasks = _parallel.find_assignments(list(range(num_cols)))
+        row_tasks = parallel.find_assignments(list(range(num_rows)))
+        col_tasks = parallel.find_assignments(list(range(num_cols)))
 
         # Find max number of col tasks among all processors
         max_num_row_tasks = max([len(tasks) for tasks in row_tasks])
@@ -334,11 +333,11 @@ class VectorSpaceHandles(object):
         IP_type = type(IP)
 
         total_IP_time = (num_rows * num_cols * IP_time /
-            _parallel.get_num_procs())
-        vecs_per_proc = self.max_vecs_per_node * _parallel.get_num_nodes() / \
-            _parallel.get_num_procs()
+            parallel.get_num_procs())
+        vecs_per_proc = self.max_vecs_per_node * parallel.get_num_nodes() / \
+            parallel.get_num_procs()
         num_gets =  (num_rows*num_cols) / ((vecs_per_proc-2) *
-            _parallel.get_num_procs()**2) + num_rows/_parallel.get_num_procs()
+            parallel.get_num_procs()**2) + num_rows/parallel.get_num_procs()
         total_get_time = num_gets * get_time
         self.print_msg('Computing the inner product matrix will take at least '
                     '%.1f minutes' % ((total_IP_time + total_get_time) / 60.))
@@ -380,7 +379,7 @@ class VectorSpaceHandles(object):
                 # Must do this for each processor, until data makes a circle
                 col_vecs_recv = (None, None)
                 col_indices = list(range(start_col_index, end_col_index))
-                for pass_index in range(_parallel.get_num_procs()):
+                for pass_index in range(parallel.get_num_procs()):
                     #if rank==0: print 'starting pass index=',pass_index
                     # If on the first pass, get the col vecs, no send/recv
                     # This is all that is called when in serial, loop iterates
@@ -391,23 +390,23 @@ class VectorSpaceHandles(object):
                             end_col_index]]
                     else:
                         # Determine with whom to communicate
-                        dest = (rank + 1) % _parallel.get_num_procs()
-                        source = (rank - 1)%_parallel.get_num_procs()
+                        dest = (rank + 1) % parallel.get_num_procs()
+                        source = (rank - 1)%parallel.get_num_procs()
 
                         # Create unique tag based on send/recv ranks
                         send_tag = rank * \
-                                (_parallel.get_num_procs() + 1) + dest
+                                (parallel.get_num_procs() + 1) + dest
                         recv_tag = source * \
-                            (_parallel.get_num_procs() + 1) + rank
+                            (parallel.get_num_procs() + 1) + rank
 
                         # Collect data and send/receive
                         col_vecs_send = (col_vecs, col_indices)
-                        request = _parallel.comm.isend(
+                        request = parallel.comm.isend(
                             col_vecs_send, dest=dest, tag=send_tag)
-                        col_vecs_recv = _parallel.comm.recv(
+                        col_vecs_recv = parallel.comm.recv(
                             source=source, tag=recv_tag)
                         request.Wait()
-                        _parallel.barrier()
+                        parallel.barrier()
                         col_indices = col_vecs_recv[1]
                         col_vecs = col_vecs_recv[0]
 
@@ -425,7 +424,7 @@ class VectorSpaceHandles(object):
                             self.print_interval:
                             num_completed_IPs = (np.abs(IP_mat)>0).sum()
                             percent_completed_IPs = (100. * num_completed_IPs*
-                                _parallel.get_num_MPI_workers()) / (
+                                parallel.get_num_MPI_workers()) / (
                                 num_cols*num_rows)
                             self.print_msg(('Completed %.1f%% of inner ' +
                                 'products')%percent_completed_IPs, sys.stderr)
@@ -437,8 +436,8 @@ class VectorSpaceHandles(object):
             del row_vecs
 
         # Assign these chunks into IP_mat.
-        if _parallel.is_distributed():
-            IP_mat = _parallel.custom_comm.allreduce(IP_mat)
+        if parallel.is_distributed():
+            IP_mat = parallel.custom_comm.allreduce(IP_mat)
 
         if transpose:
             IP_mat = IP_mat.T
@@ -448,7 +447,7 @@ class VectorSpaceHandles(object):
             'products')%percent_completed_IPs, sys.stderr)
         self.prev_print_time = time()
 
-        _parallel.barrier()
+        parallel.barrier()
         return IP_mat
 
 
@@ -489,8 +488,8 @@ class VectorSpaceHandles(object):
             num_cols_per_proc_chunk
 
         # <nprocs> chunks are computed simulaneously, making up a set.
-        num_cols_per_chunk = num_cols_per_proc_chunk * _parallel.get_num_procs()
-        num_rows_per_chunk = num_rows_per_proc_chunk * _parallel.get_num_procs()
+        num_cols_per_chunk = num_cols_per_proc_chunk * parallel.get_num_procs()
+        num_rows_per_chunk = num_rows_per_proc_chunk * parallel.get_num_procs()
 
         # <num_row_chunks> is the number of sets that must be computed.
         num_row_chunks = int(np.ceil(num_vecs * 1. / num_rows_per_chunk))
@@ -516,12 +515,12 @@ class VectorSpaceHandles(object):
         IP_type = type(IP)
 
         total_IP_time = (num_vecs**2 * IP_time / 2. /
-            _parallel.get_num_procs())
-        vecs_per_proc = self.max_vecs_per_node * _parallel.get_num_nodes() / \
-            _parallel.get_num_procs()
+            parallel.get_num_procs())
+        vecs_per_proc = self.max_vecs_per_node * parallel.get_num_nodes() / \
+            parallel.get_num_procs()
         num_gets =  (num_vecs**2 /2.) / ((vecs_per_proc-2) *
-            _parallel.get_num_procs()**2) + \
-            num_vecs/_parallel.get_num_procs()/2.
+            parallel.get_num_procs()**2) + \
+            num_vecs/parallel.get_num_procs()/2.
         total_get_time = num_gets * get_time
         self.print_msg('Computing the inner product matrix will take at least '
                     '%.1f minutes' % ((total_IP_time + total_get_time) / 60.))
@@ -535,11 +534,11 @@ class VectorSpaceHandles(object):
         IP_mat = np.mat(np.zeros((num_vecs, num_vecs), dtype=IP_type))
         for start_row_index in range(0, num_vecs, num_rows_per_chunk):
             end_row_index = min(num_vecs, start_row_index + num_rows_per_chunk)
-            proc_row_tasks_all = _parallel.find_assignments(list(range(
+            proc_row_tasks_all = parallel.find_assignments(list(range(
                 start_row_index, end_row_index)))
             num_active_procs = len([task for task in \
                 proc_row_tasks_all if task != []])
-            proc_row_tasks = proc_row_tasks_all[_parallel.get_rank()]
+            proc_row_tasks = proc_row_tasks_all[parallel.get_rank()]
             if len(proc_row_tasks)!=0:
                 row_vecs = [vec_handle.get() for vec_handle in vec_handles[
                     proc_row_tasks[0]:proc_row_tasks[-1] + 1]]
@@ -574,7 +573,7 @@ class VectorSpaceHandles(object):
             # iterations (round up).
             for set_index in range(int(np.ceil((num_active_procs - 1.) / 2))):
                 # The current proc is "sender"
-                my_rank = _parallel.get_rank()
+                my_rank = parallel.get_rank()
                 my_row_indices = proc_row_tasks
                 my_num_rows = len(my_row_indices)
 
@@ -618,17 +617,17 @@ class VectorSpaceHandles(object):
 
                         # Create unique tags based on ranks
                         send_tag = my_rank * (
-                            _parallel.get_num_procs() + 1) + dest_rank
+                            parallel.get_num_procs() + 1) + dest_rank
                         recv_tag = source_rank * (
-                            _parallel.get_num_procs() + 1) + my_rank
+                            parallel.get_num_procs() + 1) + my_rank
 
                         # Send and receieve data.  The Wait() command after the
                         # receive prevents a race condition not fixed by sync().
                         # The Wait() is very important for the non-
                         # blocking send (though we are unsure why).
-                        request = _parallel.comm.isend(col_vecs_send,
+                        request = parallel.comm.isend(col_vecs_send,
                             dest=dest_rank, tag=send_tag)
-                        col_vecs_recv = _parallel.comm.recv(source =
+                        col_vecs_recv = parallel.comm.recv(source =
                             source_rank, tag=recv_tag)
                         request.Wait()
                         col_vecs = col_vecs_recv[0]
@@ -646,7 +645,7 @@ class VectorSpaceHandles(object):
                                 num_completed_IPs = (np.abs(IP_mat)>0).sum()
                                 percent_completed_IPs = \
                                     (100.*2*num_completed_IPs * \
-                                    _parallel.get_num_MPI_workers())/\
+                                    parallel.get_num_MPI_workers())/\
                                     (num_vecs**2)
                                 self.print_msg(
                                     ('Completed %.1f%% of inner products') %
@@ -654,7 +653,7 @@ class VectorSpaceHandles(object):
                                 self.prev_print_time = time()
 
                     # Sync after send/receive
-                    _parallel.barrier()
+                    parallel.barrier()
 
             # Fill in the rectangular portion next to each triangle (if nec.).
             # Start at index after last row, continue to last column. This part
@@ -664,8 +663,8 @@ class VectorSpaceHandles(object):
                 num_cols_per_chunk):
                 end_col_index = min(start_col_index + num_cols_per_chunk,
                     num_vecs)
-                proc_col_tasks = _parallel.find_assignments(list(range(
-                    start_col_index, end_col_index)))[_parallel.get_rank()]
+                proc_col_tasks = parallel.find_assignments(list(range(
+                    start_col_index, end_col_index)))[parallel.get_rank()]
 
                 # Pass the col vecs to proc with rank -> mod(rank+1,numProcs)
                 # Must do this for each processor, until data makes a circle
@@ -676,7 +675,7 @@ class VectorSpaceHandles(object):
                 else:
                     col_indices = []
 
-                for num_passes in range(_parallel.get_num_procs()):
+                for num_passes in range(parallel.get_num_procs()):
                     # If on the first pass, get the col vecs, no send/recv
                     # This is all that is called when in serial, loop iterates
                     # once.
@@ -689,25 +688,25 @@ class VectorSpaceHandles(object):
                             col_vecs = []
                     else:
                         # Determine whom to communicate with
-                        dest = (_parallel.get_rank() + 1) % _parallel.\
+                        dest = (parallel.get_rank() + 1) % parallel.\
                             get_num_procs()
-                        source = (_parallel.get_rank() - 1) % _parallel.\
+                        source = (parallel.get_rank() - 1) % parallel.\
                             get_num_procs()
 
                         # Create unique tag based on ranks
-                        send_tag = _parallel.get_rank() * (_parallel.\
+                        send_tag = parallel.get_rank() * (parallel.\
                             get_num_procs() + 1) + dest
-                        recv_tag = source*(_parallel.get_num_procs() + 1) +\
-                            _parallel.get_rank()
+                        recv_tag = source*(parallel.get_num_procs() + 1) +\
+                            parallel.get_rank()
 
                         # Collect data and send/receive
                         col_vecs_send = (col_vecs, col_indices)
-                        request = _parallel.comm.isend(col_vecs_send, dest=\
+                        request = parallel.comm.isend(col_vecs_send, dest=\
                             dest, tag=send_tag)
-                        col_vecs_recv = _parallel.comm.recv(source=source,
+                        col_vecs_recv = parallel.comm.recv(source=source,
                             tag=recv_tag)
                         request.Wait()
-                        _parallel.barrier()
+                        parallel.barrier()
                         col_indices = col_vecs_recv[1]
                         col_vecs = col_vecs_recv[0]
 
@@ -727,7 +726,7 @@ class VectorSpaceHandles(object):
                             self.print_interval):
                             num_completed_IPs = (np.abs(IP_mat)>0).sum()
                             percent_completed_IPs = (100.*2*num_completed_IPs *
-                                _parallel.get_num_MPI_workers())/(num_vecs**2)
+                                parallel.get_num_MPI_workers())/(num_vecs**2)
                             self.print_msg(('Completed %.1f%% of inner ' +
                                 'products')%percent_completed_IPs, sys.stderr)
                             self.prev_print_time = time()
@@ -737,8 +736,8 @@ class VectorSpaceHandles(object):
             del row_vecs
 
         # Assign the triangular portion chunks into IP_mat.
-        if _parallel.is_distributed():
-            IP_mat = _parallel.custom_comm.allreduce(IP_mat)
+        if parallel.is_distributed():
+            IP_mat = parallel.custom_comm.allreduce(IP_mat)
 
         # Create a mask for the repeated values.  Select values that are zero
         # in the upper triangular portion (not computed there) but nonzero in
@@ -758,7 +757,7 @@ class VectorSpaceHandles(object):
             'products')%percent_completed_IPs, sys.stderr)
         self.prev_print_time = time()
 
-        _parallel.barrier()
+        parallel.barrier()
         return IP_mat
 
 
@@ -829,25 +828,25 @@ class VectorSpaceHandles(object):
         add_scale_time = time() - start_time
         del test_vec, test_vec_3
 
-        vecs_per_worker = self.max_vecs_per_node * _parallel.get_num_nodes() / \
-            _parallel.get_num_MPI_workers()
-        num_gets = num_sums/(_parallel.get_num_MPI_workers()*(\
+        vecs_per_worker = self.max_vecs_per_node * parallel.get_num_nodes() / \
+            parallel.get_num_MPI_workers()
+        num_gets = num_sums/(parallel.get_num_MPI_workers()*(\
             vecs_per_worker-2)) + \
-            num_bases/_parallel.get_num_MPI_workers()
-        num_add_scales = num_sums*num_bases/_parallel.get_num_MPI_workers()
+            num_bases/parallel.get_num_MPI_workers()
+        num_add_scales = num_sums*num_bases/parallel.get_num_MPI_workers()
         self.print_msg('Linear combinations will take at least %.1f minutes'%
             (num_gets*get_time/60. + num_add_scales*add_scale_time/60.))
 
         # convenience
-        rank = _parallel.get_rank()
+        rank = parallel.get_rank()
 
         # num_bases_per_proc_chunk is the num of bases each proc gets at once.
         num_bases_per_proc_chunk = 1
         num_sums_per_proc_chunk = self.max_vecs_per_proc - \
             num_bases_per_proc_chunk
 
-        basis_tasks = _parallel.find_assignments(list(range(num_bases)))
-        sum_tasks = _parallel.find_assignments(list(range(num_sums)))
+        basis_tasks = parallel.find_assignments(list(range(num_bases)))
+        sum_tasks = parallel.find_assignments(list(range(num_sums)))
 
         # Find max number tasks among all processors
         max_num_basis_tasks = max([len(tasks) for tasks in basis_tasks])
@@ -897,8 +896,7 @@ class VectorSpaceHandles(object):
                 # Pass the basis vecs to proc with rank -> mod(rank+1,num_procs)
                 # Must do this for each processor, until data makes a circle
                 basis_vecs_recv = (None, None)
-
-                for pass_index in range(_parallel.get_num_procs()):
+                for pass_index in range(parallel.get_num_procs()):
                     # If on the first pass, retrieve the basis vecs,
                     # no send/recv.
                     # This is all that is called when in serial,
@@ -912,25 +910,25 @@ class VectorSpaceHandles(object):
                             basis_vecs = []
                     else:
                         # Figure out with whom to communicate
-                        source = (_parallel.get_rank()-1) % \
-                            _parallel.get_num_procs()
-                        dest = (_parallel.get_rank()+1) % \
-                            _parallel.get_num_procs()
+                        source = (parallel.get_rank()-1) % \
+                            parallel.get_num_procs()
+                        dest = (parallel.get_rank()+1) % \
+                            parallel.get_num_procs()
 
                         #Create unique tags based on ranks
-                        send_tag = _parallel.get_rank() * \
-                            (_parallel.get_num_procs()+1) + dest
-                        recv_tag = source*(_parallel.get_num_procs()+1) + \
-                            _parallel.get_rank()
+                        send_tag = parallel.get_rank() * \
+                            (parallel.get_num_procs()+1) + dest
+                        recv_tag = source*(parallel.get_num_procs()+1) + \
+                            parallel.get_rank()
 
                         # Send/receive data
                         basis_vecs_send = (basis_vecs, basis_indices)
-                        request = _parallel.comm.isend(basis_vecs_send,
+                        request = parallel.comm.isend(basis_vecs_send,
                             dest=dest, tag=send_tag)
-                        basis_vecs_recv = _parallel.comm.recv(
+                        basis_vecs_recv = parallel.comm.recv(
                             source=source, tag=recv_tag)
                         request.Wait()
-                        _parallel.barrier()
+                        parallel.barrier()
                         basis_indices = basis_vecs_recv[1]
                         basis_vecs = basis_vecs_recv[0]
 
@@ -964,7 +962,7 @@ class VectorSpaceHandles(object):
 
         self.print_msg('Completed %.1f%% of linear combinations' % 100.)
         self.prev_print_time = time()
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def __eq__(self, other):
