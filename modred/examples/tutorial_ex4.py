@@ -25,7 +25,7 @@ parallel = mr.parallel_default_instance
 if parallel.is_rank_zero():
     for i,snap in enumerate(snapshots):
         snap.put(np.sin(X * i) + np.cos(Y * i))
-        parallel.barrier()
+parallel.barrier()
 
 weighted_IP = mr.InnerProductTrapz(x_grid, y_grid)
 
