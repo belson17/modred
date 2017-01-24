@@ -17,12 +17,12 @@ for i in range(1, 7):
         execfile('tutorial_ex%d.py'%i)
         parallel.barrier()
 
-if not parallel.is_distributed():
-    execfile('main_CGL.py')
-
 for i in range(1, 3):
     if not parallel.is_distributed():
         execfile('rom_ex%d.py'%i)
     if parallel.is_distributed() and i > 1:
         execfile('rom_ex%d.py'%i)
         parallel.barrier()
+
+if not parallel.is_distributed():
+    execfile('main_CGL.py')
