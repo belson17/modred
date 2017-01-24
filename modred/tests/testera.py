@@ -86,7 +86,7 @@ class testERA(unittest.TestCase):
                     np.testing.assert_allclose(outputs_computed, outputs_true)
 
                     # Test that if there is a wrong time value, get an error
-                    time_values[num_time_steps/2] = -1
+                    time_values[num_time_steps//2] = -1
                     self.assertRaises(ValueError, era.make_sampled_format,
                         time_values, outputs)
 
@@ -151,7 +151,7 @@ class testERA(unittest.TestCase):
         """
         num_time_steps = 40
         num_states_plant = 12
-        num_states_model = num_states_plant/3
+        num_states_model = num_states_plant//3
         for num_inputs in [1, 3]:
             for num_outputs in [1, 2]:
                 for sample_interval in [1, 2, 4]:
