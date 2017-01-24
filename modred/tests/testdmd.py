@@ -450,13 +450,9 @@ class TestDMDHandles(unittest.TestCase):
         adj_modes_list = [
             np.array(adj_modes[:, i]) for i in range(adj_modes.shape[1])]
 
-        # Compute spectrum
-        spectral_coeffs = np.abs(np.array(
-            inner_product(adj_modes_list, vecs[0:1])).squeeze())
-
         return (
-            modes_exact, modes_proj, spectral_coeffs, eigvals,
-            R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
+            modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
+            L_low_order_eigvecs, correlation_mat_eigvals,
             correlation_mat_eigvecs, cross_correlation_mat, adj_modes)
 
 
@@ -620,9 +616,9 @@ class TestDMDHandles(unittest.TestCase):
                 handle.put(np.array(seq_vec_array[:, vec_index]).squeeze())
 
         # Compute DMD directly from data
-        (modes_exact, modes_proj, spectral_coeffs, eigvals,
-            R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
-            correlation_mat_eigvecs) = self._helper_compute_DMD_from_data(
+        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
+        L_low_order_eigvecs, correlation_mat_eigvals,
+        correlation_mat_eigvecs) = self._helper_compute_DMD_from_data(
             seq_vec_array, util.InnerProductBlock(np.vdot))[:-2]
 
         # Set the build_coeffs attribute of an empty DMD object each time, so
@@ -679,9 +675,9 @@ class TestDMDHandles(unittest.TestCase):
                 adv_handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
 
         # Compute DMD directly from data
-        (modes_exact, modes_proj, spectral_coeffs, eigvals,
-            R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
-            correlation_mat_eigvecs) = self._helper_compute_DMD_from_data(
+        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
+        L_low_order_eigvecs, correlation_mat_eigvals,
+        correlation_mat_eigvecs) = self._helper_compute_DMD_from_data(
             vec_array, util.InnerProductBlock(np.vdot),
             adv_vec_array=adv_vec_array)[:-2]
 
@@ -721,11 +717,11 @@ class TestDMDHandles(unittest.TestCase):
         self._helper_check_modes(modes_proj, mode_path_list)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_spectrum(self):
         """Test DMD spectrum"""
-        rtol = 1e-10
-        atol = 1e-16
+        rtol = 1e-12
+        atol = 1e-14
 
         # Define an array of vectors, with corresponding handles
         vec_array = parallel.call_and_bcast(np.random.random,
@@ -734,18 +730,26 @@ class TestDMDHandles(unittest.TestCase):
             for vec_index, handle in enumerate(self.vec_handles):
                 handle.put(np.array(vec_array[:, vec_index]).squeeze())
 
+        # Compute DMD manually and then set the data in a DMDHandles object.
+        # This way, we test only the task of computing the spectral
+        # coefficients, and not also the task of computing the decomposition.
+        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
+        L_low_order_eigvecs, correlation_mat_eigvals,
+        correlation_mat_eigvecs, cross_correlation_mat, adj_modes) =\
+            self._helper_compute_DMD_from_data(
+            vec_array, util.InnerProductBlock(np.vdot))
+        self.my_DMD.L_low_order_eigvecs = L_low_order_eigvecs
+        self.my_DMD.correlation_mat_eigvals = correlation_mat_eigvals
+        self.my_DMD.correlation_mat_eigvecs = correlation_mat_eigvecs
+
         # Check that spectral coefficients computed using adjoints match those
-        # computed using a pseudoinverse.  Perform the decomp only once using
-        # the DMD object, so that the spectral coefficients are computed from
-        # the same data, but in two different ways.
+        # computed using a projection onto the adjoint modes.
         parallel.barrier()
-        self.my_DMD.compute_decomp(self.vec_handles)
-        spectral_coeffs_computed = self.my_DMD.compute_spectrum()
-        spectral_coeffs_true = self._helper_compute_DMD_from_data(
-            vec_array, util.InnerProductBlock(np.vdot))[2]
-        self._helper_test_1D_array_to_sign(
-            spectral_coeffs_true, spectral_coeffs_computed, rtol=rtol,
-            atol=atol)
+        spectral_coeffs = self.my_DMD.compute_spectrum()
+        spectral_coeffs_true = np.abs(np.array(
+            np.dot(adj_modes.conj().T, vec_array[:, 0])).squeeze())
+        np.testing.assert_allclose(
+            spectral_coeffs, spectral_coeffs_true, rtol=rtol, atol=atol)
 
         # Create more data, to check a non-sequential dataset
         adv_vec_array = parallel.call_and_bcast(np.random.random,
@@ -754,21 +758,30 @@ class TestDMDHandles(unittest.TestCase):
             for vec_index, handle in enumerate(self.adv_vec_handles):
                 handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
 
+        # Compute DMD manually and then set the data in a DMDHandles object.
+        # This way, we test only the task of computing the spectral
+        # coefficients, and not also the task of computing the decomposition.
+        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
+        L_low_order_eigvecs, correlation_mat_eigvals,
+        correlation_mat_eigvecs, cross_correlation_mat, adj_modes) =\
+            self._helper_compute_DMD_from_data(
+            vec_array, util.InnerProductBlock(np.vdot),
+            adv_vec_array=adv_vec_array)
+        self.my_DMD.L_low_order_eigvecs = L_low_order_eigvecs
+        self.my_DMD.correlation_mat_eigvals = correlation_mat_eigvals
+        self.my_DMD.correlation_mat_eigvecs = correlation_mat_eigvecs
+
         # Check that spectral coefficients computed using adjoints match those
         # computed using a pseudoinverse
         parallel.barrier()
-        self.my_DMD.compute_decomp(
-            self.vec_handles, adv_vec_handles=self.adv_vec_handles)
-        spectral_coeffs_computed = self.my_DMD.compute_spectrum()
-        spectral_coeffs_true = self._helper_compute_DMD_from_data(
-            vec_array, util.InnerProductBlock(np.vdot),
-            adv_vec_array=adv_vec_array)[2]
-        self._helper_test_1D_array_to_sign(
-            spectral_coeffs_true, spectral_coeffs_computed, rtol=rtol,
-            atol=atol)
+        spectral_coeffs = self.my_DMD.compute_spectrum()
+        spectral_coeffs_true = np.abs(np.array(
+            np.dot(adj_modes.conj().T, vec_array[:, 0])).squeeze())
+        np.testing.assert_allclose(
+            spectral_coeffs, spectral_coeffs_true, rtol=rtol, atol=atol)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):
         """Test projection coefficients"""
         rtol = 1e-10
@@ -784,13 +797,11 @@ class TestDMDHandles(unittest.TestCase):
         # Compute DMD manually and then set the data in a DMDHandles object.
         # This way, we test only the task of computing the projection
         # coefficients, and not also the task of computing the decomposition.
-        (modes_exact, modes_proj, spectral_coeffs, eigvals,
-        R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
+        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
+        L_low_order_eigvecs, correlation_mat_eigvals,
         correlation_mat_eigvecs, cross_correlation_mat, adj_modes) =\
             self._helper_compute_DMD_from_data(
             vec_array, util.InnerProductBlock(np.vdot))
-        self.my_DMD.eigvals = eigvals
-        self.my_DMD.R_low_order_eigvecs = R_low_order_eigvecs
         self.my_DMD.L_low_order_eigvecs = L_low_order_eigvecs
         self.my_DMD.correlation_mat_eigvals = correlation_mat_eigvals
         self.my_DMD.correlation_mat_eigvecs = correlation_mat_eigvecs
@@ -818,14 +829,12 @@ class TestDMDHandles(unittest.TestCase):
         # Compute DMD manually and then set the data in a DMDHandles object.
         # This way, we test only the task of computing the projection
         # coefficients, and not also the task of computing the decomposition.
-        (modes_exact, modes_proj, spectral_coeffs, eigvals,
-        R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
+        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
+        L_low_order_eigvecs, correlation_mat_eigvals,
         correlation_mat_eigvecs, cross_correlation_mat, adj_modes) =\
             self._helper_compute_DMD_from_data(
             vec_array, util.InnerProductBlock(np.vdot),
             adv_vec_array=adv_vec_array)
-        self.my_DMD.eigvals = eigvals
-        self.my_DMD.R_low_order_eigvecs = R_low_order_eigvecs
         self.my_DMD.L_low_order_eigvecs = L_low_order_eigvecs
         self.my_DMD.correlation_mat_eigvals = correlation_mat_eigvals
         self.my_DMD.correlation_mat_eigvecs = correlation_mat_eigvecs
