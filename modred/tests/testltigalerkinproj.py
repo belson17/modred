@@ -11,8 +11,7 @@ from shutil import rmtree
 
 import numpy as np
 
-import modred.parallel as parallel_mod
-_parallel = parallel_mod.parallel_default_instance
+import modred.parallel as parallel
 import modred.ltigalerkinproj as LGP
 from modred import util
 import modred.vectors as V
@@ -23,15 +22,15 @@ class TestLTIGalerkinProjectionBase(unittest.TestCase):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         self.test_dir ='DELETE_ME_test_files_ltigalerkinproj'
-        if _parallel.is_rank_zero() and not os.path.exists(self.test_dir):
+        if parallel.is_rank_zero() and not os.path.exists(self.test_dir):
             os.mkdir(self.test_dir)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def tearDown(self):
-        _parallel.barrier()
-        _parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
-        _parallel.barrier()
+        parallel.barrier()
+        parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
+        parallel.barrier()
 
 
     def test_put_reduced_mats(self):
@@ -39,9 +38,9 @@ class TestLTIGalerkinProjectionBase(unittest.TestCase):
         A_reduced_path = join(self.test_dir, 'A.txt')
         B_reduced_path = join(self.test_dir, 'B.txt')
         C_reduced_path = join(self.test_dir, 'C.txt')
-        A = _parallel.call_and_bcast(np.random.random, ((10,10)))
-        B = _parallel.call_and_bcast(np.random.random, ((1,10)))
-        C = _parallel.call_and_bcast(np.random.random, ((10,2)))
+        A = parallel.call_and_bcast(np.random.random, ((10,10)))
+        B = parallel.call_and_bcast(np.random.random, ((1,10)))
+        C = parallel.call_and_bcast(np.random.random, ((10,2)))
         LTI_proj = LGP.LTIGalerkinProjectionBase()
         LTI_proj.A_reduced = A.copy()
         LTI_proj.B_reduced = B.copy()
@@ -52,7 +51,7 @@ class TestLTIGalerkinProjectionBase(unittest.TestCase):
         np.testing.assert_equal(util.load_array_text(C_reduced_path), C)
 
 
-@unittest.skipIf(_parallel.is_distributed(), 'Serial only')
+@unittest.skipIf(parallel.is_distributed(), 'Serial only')
 class TestLTIGalerkinProjectionMatrices(unittest.TestCase):
     """Tests that can find the correct A, B, and C matrices."""
     def setUp(self):
@@ -81,22 +80,22 @@ class TestLTIGalerkinProjectionMatrices(unittest.TestCase):
     def generate_data_set(self, num_basis_vecs, num_adjoint_basis_vecs,
         num_states, num_inputs, num_outputs):
         """Generates random data, saves, and computes true reduced A,B,C."""
-        self.basis_vecs = _parallel.call_and_bcast(np.random.random,
+        self.basis_vecs = parallel.call_and_bcast(np.random.random,
             (num_states, num_basis_vecs))
-        self.adjoint_basis_vecs = _parallel.call_and_bcast(np.random.random,
+        self.adjoint_basis_vecs = parallel.call_and_bcast(np.random.random,
             (num_states, num_adjoint_basis_vecs))
-        self.A_array = _parallel.call_and_bcast(np.random.random,
+        self.A_array = parallel.call_and_bcast(np.random.random,
             (num_states, num_states))
-        self.B_array = _parallel.call_and_bcast(np.random.random,
+        self.B_array = parallel.call_and_bcast(np.random.random,
             (num_states, num_inputs))
-        self.C_array = _parallel.call_and_bcast(np.random.random,
+        self.C_array = parallel.call_and_bcast(np.random.random,
             (num_outputs, num_states))
 
         self.A_on_basis_vecs = np.dot(self.A_array, self.basis_vecs)
         self.B_on_standard_basis_array = self.B_array
         self.C_on_basis_vecs = self.C_array.dot(self.basis_vecs).squeeze()
 
-        _parallel.barrier()
+        parallel.barrier()
 
         self.A_true = np.dot(self.adjoint_basis_vecs.T,
             np.dot(self.A_array, self.basis_vecs))
@@ -156,7 +155,7 @@ class TestLTIGalerkinProjectionMatrices(unittest.TestCase):
             self.basis_vecs)
 
 
-#@unittest.skipIf(_parallel.is_distributed(), 'Only test in serial')
+#@unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
 #@unittest.skip('others')
 class TestLTIGalerkinProjectionHandles(unittest.TestCase):
     """Tests that can find the correct A, B, and C matrices from modes."""
@@ -165,9 +164,9 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
             raise RuntimeError('Cannot write to current directory')
 
         self.test_dir ='DELETE_ME_test_files_ltigalerkinproj'
-        if _parallel.is_rank_zero() and not os.path.exists(self.test_dir):
+        if parallel.is_rank_zero() and not os.path.exists(self.test_dir):
             os.mkdir(self.test_dir)
-        _parallel.barrier()
+        parallel.barrier()
 
         self.basis_vec_path = join(self.test_dir, 'basis_vec_%02d.txt')
         self.adjoint_basis_vec_path = join(
@@ -191,10 +190,10 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
 
 
     def tearDown(self):
-        _parallel.barrier()
-        if _parallel.is_rank_zero():
+        parallel.barrier()
+        if parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def test_init(self):
@@ -221,15 +220,15 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
             V.VecHandleArrayText(self.C_on_basis_vec_path%i)
             for i in range(self.num_basis_vecs)]
 
-        self.basis_vec_array = _parallel.call_and_bcast(np.random.random,
+        self.basis_vec_array = parallel.call_and_bcast(np.random.random,
             (num_states, num_basis_vecs))
-        self.adjoint_basis_vec_array = _parallel.call_and_bcast(
+        self.adjoint_basis_vec_array = parallel.call_and_bcast(
             np.random.random, (num_states, num_adjoint_basis_vecs))
-        self.A_array = _parallel.call_and_bcast(np.random.random,
+        self.A_array = parallel.call_and_bcast(np.random.random,
             (num_states, num_states))
-        self.B_array = _parallel.call_and_bcast(np.random.random,
+        self.B_array = parallel.call_and_bcast(np.random.random,
             (num_states, num_inputs))
-        self.C_array = _parallel.call_and_bcast(np.random.random,
+        self.C_array = parallel.call_and_bcast(np.random.random,
             (num_outputs, num_states))
 
         self.basis_vecs = [self.basis_vec_array[:, i].squeeze()
@@ -244,7 +243,7 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
             np.dot(self.C_array, basis_vec).squeeze(), ndmin=1)
             for basis_vec in self.basis_vecs]
 
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for handle,vec in zip(self.basis_vec_handles, self.basis_vecs):
                 handle.put(vec)
             for handle,vec in zip(
@@ -259,7 +258,7 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
             for handle,vec in zip(self.C_on_basis_vec_handles,
                 self.C_on_basis_vecs):
                 handle.put(vec)
-        _parallel.barrier()
+        parallel.barrier()
 
         self.A_true = np.dot(self.adjoint_basis_vec_array.T,
             np.dot(self.A_array, self.basis_vec_array))

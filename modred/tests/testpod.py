@@ -10,15 +10,14 @@ import copy
 
 import numpy as np
 
-import modred.parallel as parallel_mod
-_parallel = parallel_mod.parallel_default_instance
+import modred.parallel as parallel
 from modred.pod import *
 from modred.vectorspace import *
 import modred.vectors as V
 from modred import util
 
 
-@unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
+@unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestPODArraysFunctions(unittest.TestCase):
     def setUp(self):
         self.mode_indices = [2, 4, 6, 3]
@@ -72,18 +71,18 @@ class TestPODHandles(unittest.TestCase):
         self.test_dir = 'DELETE_ME_test_files_pod'
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        if not os.path.isdir(self.test_dir) and _parallel.is_rank_zero():
+        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
             os.mkdir(self.test_dir)
         self.mode_indices = [2, 4, 3, 6]
         self.num_vecs = 10
         self.num_states = 30
-        self.vec_array = _parallel.call_and_bcast(np.random.random,
+        self.vec_array = parallel.call_and_bcast(np.random.random,
             (self.num_states, self.num_vecs))
         self.correlation_mat_true = self.vec_array.conj().transpose().dot(
             self.vec_array)
 
         self.eigvals_true, self.eigvecs_true = \
-            _parallel.call_and_bcast(util.eigh, self.correlation_mat_true)
+            parallel.call_and_bcast(util.eigh, self.correlation_mat_true)
 
         self.mode_array = np.dot(self.vec_array, np.dot(self.eigvecs_true,
             np.diag(self.eigvals_true**-0.5)))
@@ -94,13 +93,13 @@ class TestPODHandles(unittest.TestCase):
             handle.put(self.vec_array[:, vec_index])
 
         self.my_POD = PODHandles(np.vdot, verbosity=0)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def tearDown(self):
-        _parallel.barrier()
-        _parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
-        _parallel.barrier()
+        parallel.barrier()
+        parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
+        parallel.barrier()
 
 
     def test_puts_gets(self):
@@ -108,14 +107,14 @@ class TestPODHandles(unittest.TestCase):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         if not os.path.isdir(test_dir):
-            _parallel.call_from_rank_zero(os.mkdir, test_dir)
+            parallel.call_from_rank_zero(os.mkdir, test_dir)
         num_vecs = 10
         num_states = 30
-        correlation_mat_true = _parallel.call_and_bcast(
+        correlation_mat_true = parallel.call_and_bcast(
             np.random.random, ((num_vecs, num_vecs)))
-        eigvals_true = _parallel.call_and_bcast(
+        eigvals_true = parallel.call_and_bcast(
             np.random.random, num_vecs)
-        eigvecs_true = _parallel.call_and_bcast(
+        eigvecs_true = parallel.call_and_bcast(
             np.random.random, ((num_states, num_vecs)))
 
         my_POD = PODHandles(None, verbosity=0)
@@ -128,7 +127,7 @@ class TestPODHandles(unittest.TestCase):
         correlation_mat_path = join(test_dir, 'correlation.txt')
         my_POD.put_decomp(eigvals_path, eigvecs_path)
         my_POD.put_correlation_mat(correlation_mat_path)
-        _parallel.barrier()
+        parallel.barrier()
 
         POD_load = PODHandles(None, verbosity=0)
         POD_load.get_decomp(eigvals_path, eigvecs_path)
@@ -183,8 +182,8 @@ class TestPODHandles(unittest.TestCase):
         data_members_modified['vec_space'].max_vecs_per_node = \
             max_vecs_per_node
         data_members_modified['vec_space'].max_vecs_per_proc = \
-            max_vecs_per_node * _parallel.get_num_nodes() / \
-            _parallel.get_num_procs()
+            max_vecs_per_node * parallel.get_num_nodes() / \
+            parallel.get_num_procs()
         for k,v in util.get_data_members(my_POD).items():
             self.assertEqual(v, data_members_modified[k])
 

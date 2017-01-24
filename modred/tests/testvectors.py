@@ -8,8 +8,7 @@ from shutil import rmtree
 
 import numpy as np
 
-import modred.parallel as parallel_mod
-parallel = parallel_mod.parallel_default_instance
+import modred.parallel as parallel
 import modred.vectors as V
 
 

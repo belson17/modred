@@ -8,8 +8,7 @@ import unittest
 
 import numpy as np
 
-import modred.parallel as parallel_mod
-_parallel = parallel_mod.parallel_default_instance
+import modred.parallel as parallel
 from modred.okid import OKID
 from modred import util
 
@@ -31,7 +30,7 @@ def diff(arr_measured, arr_true, normalize=False):
         return err
 
 
-@unittest.skipIf(_parallel.is_distributed(), 'Only test OKID in serial')
+@unittest.skipIf(parallel.is_distributed(), 'Only test OKID in serial')
 class TestOKID(unittest.TestCase):
     def setUp(self):
         self.test_dir = join(os.path.dirname(__file__), 'files_okid')

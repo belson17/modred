@@ -8,8 +8,7 @@ from os.path import join
 
 import numpy as np
 
-import modred.parallel as parallel_mod
-_parallel = parallel_mod.parallel_default_instance
+import modred.parallel as parallel
 from modred import util
 
 
@@ -22,20 +21,20 @@ class TestUtil(unittest.TestCase):
         self.test_dir = 'DELETE_ME_test_files_util'
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             if not os.path.isdir(self.test_dir):
                 os.mkdir(self.test_dir)
 
 
     def tearDown(self):
-        _parallel.barrier()
-        if _parallel.is_rank_zero():
+        parallel.barrier()
+        if parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     @unittest.skipIf(
-        _parallel.is_distributed(), 'Only save/load matrices in serial')
+        parallel.is_distributed(), 'Only save/load matrices in serial')
     def test_load_save_array_text(self):
         """Test that can read/write text matrices"""
         #tol = 1e-8
@@ -68,7 +67,7 @@ class TestUtil(unittest.TestCase):
                             np.testing.assert_allclose(mat_read, mat)#,rtol=tol)
 
 
-    @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
+    @unittest.skipIf(parallel.is_distributed(), 'Only load matrices in serial')
     def test_svd(self):
         # Set tolerance for testing eigval/eigvec property
         test_tol = 1e-10
@@ -138,7 +137,7 @@ class TestUtil(unittest.TestCase):
                                 abs(sing_vals[0]) / abs(sing_vals[-1]) > rtol)
 
 
-    @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
+    @unittest.skipIf(parallel.is_distributed(), 'Only load matrices in serial')
     def test_eigh(self):
         # Set tolerance for test of eigval/eigvec properties.  Value necessary
         # for test to pass depends on matrix size, as well as atol and rtol
@@ -232,7 +231,7 @@ class TestUtil(unittest.TestCase):
                         self.assertTrue(abs(eigvals).min() > atol)
 
 
-    @unittest.skipIf(_parallel.is_distributed(), 'Only load matrices in serial')
+    @unittest.skipIf(parallel.is_distributed(), 'Only load matrices in serial')
     def test_eig_biorthog(self):
         test_tol = 1e-10
         num_rows = 100
@@ -277,7 +276,7 @@ class TestUtil(unittest.TestCase):
             ValueError, util.eig_biorthog, mat, **{'scale_choice':'invalid'})
 
 
-    @unittest.skipIf(_parallel.is_distributed(), 'Only load data in serial')
+    @unittest.skipIf(parallel.is_distributed(), 'Only load data in serial')
     def test_load_impulse_outputs(self):
         """
         Test loading multiple signal files in [t sig1 sig2 ...] format.
@@ -309,7 +308,7 @@ class TestUtil(unittest.TestCase):
                     np.testing.assert_allclose(time_values, time_values_true)
 
 
-    @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
+    @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
     def test_solve_Lyapunov(self):
         """Test solution of Lyapunov w/known solution from Matlab's dlyap"""
         A = np.array([[0.725404224946106, 0.714742903826096],
@@ -329,7 +328,7 @@ class TestUtil(unittest.TestCase):
         np.testing.assert_allclose(X_computed_mats, X_true)
 
 
-    @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
+    @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
     def test_balanced_truncation(self):
         """Test balanced system is close to original."""
         for num_inputs in [1, 3]:
@@ -343,7 +342,7 @@ class TestUtil(unittest.TestCase):
                     np.testing.assert_allclose(yr, y, rtol=1e-5)
 
 
-    @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
+    @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
     def test_drss(self):
         """Test drss gives correct mat dimensions and stable dynamics."""
         for num_states in [1, 5, 14]:
@@ -356,7 +355,7 @@ class TestUtil(unittest.TestCase):
                     self.assertTrue(np.amax(np.abs(np.linalg.eig(A)[0])) < 1)
 
 
-    @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
+    @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
     def test_lsim(self):
         """Test that lsim has right shapes, does not test result"""
         for num_states in [1, 4, 9]:
@@ -373,7 +372,7 @@ class TestUtil(unittest.TestCase):
                     self.assertEqual(outputs.shape, (nt, num_outputs))
 
 
-    @unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
+    @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
     def test_impulse(self):
         """Test impulse response of discrete system"""
         for num_states in [1, 10]:

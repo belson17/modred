@@ -11,15 +11,14 @@ from shutil import rmtree
 
 import numpy as np
 
-import modred.parallel as parallel_mod
-_parallel = parallel_mod.parallel_default_instance
+import modred.parallel as parallel
 from modred.bpod import *
 from modred.vectorspace import *
 from modred import util
 from modred import vectors as V
 
 
-@unittest.skipIf(_parallel.is_distributed(),'Serial only.')
+@unittest.skipIf(parallel.is_distributed(),'Serial only.')
 @unittest.skip('Testing others')
 class TestBPODMatrices(unittest.TestCase):
     def setUp(self):
@@ -38,9 +37,9 @@ class TestBPODMatrices(unittest.TestCase):
             A_powers = A_powers.dot(A)
             self.direct_vecs.append(A_powers.dot(B))
         self.direct_vecs = np.array(self.direct_vecs).squeeze().T
-        #self.direct_vecs = _parallel.call_and_bcast(np.random.random,
+        #self.direct_vecs = parallel.call_and_bcast(np.random.random,
         #    (self.num_states, self.num_direct_vec_handles))
-        #self.adjoint_vecs = _parallel.call_and_bcast(np.random.random,
+        #self.adjoint_vecs = parallel.call_and_bcast(np.random.random,
         #    (self.num_states, self.num_adjoint_vec_handles))
 
 
@@ -70,7 +69,7 @@ class TestBPODMatrices(unittest.TestCase):
             Hankel_mat_true = IP(adjoint_vecs, self.direct_vecs)
 
             L_sing_vecs_true, sing_vals_true, R_sing_vecs_true = \
-                _parallel.call_and_bcast(util.svd, Hankel_mat_true)
+                parallel.call_and_bcast(util.svd, Hankel_mat_true)
             direct_modes_array_true = self.direct_vecs.dot(
                 R_sing_vecs_true).dot(np.diag(sing_vals_true**-0.5))
             adjoint_modes_array_true = adjoint_vecs.dot(
@@ -103,7 +102,7 @@ class TestBPODHandles(unittest.TestCase):
 
         self.test_dir = 'DELETE_ME_test_files_bpod'
         if not os.path.isdir(self.test_dir):
-            _parallel.call_from_rank_zero(os.mkdir, self.test_dir)
+            parallel.call_from_rank_zero(os.mkdir, self.test_dir)
 
         self.mode_nums = [2, 3, 0]
         self.num_direct_vecs = 10
@@ -113,10 +112,10 @@ class TestBPODHandles(unittest.TestCase):
         self.num_states = 20
 
         #A = np.mat(np.random.random((self.num_states, self.num_states)))
-        A = np.mat(_parallel.call_and_bcast(util.drss, self.num_states,1,1)[0])
-        B = np.mat(_parallel.call_and_bcast(np.random.random,
+        A = np.mat(parallel.call_and_bcast(util.drss, self.num_states,1,1)[0])
+        B = np.mat(parallel.call_and_bcast(np.random.random,
             (self.num_states, self.num_inputs)))
-        C = np.mat(_parallel.call_and_bcast(np.random.random,
+        C = np.mat(parallel.call_and_bcast(np.random.random,
             (self.num_outputs, self.num_states)))
         self.direct_vecs = [B]
         A_powers = np.identity(A.shape[0])
@@ -143,7 +142,7 @@ class TestBPODHandles(unittest.TestCase):
             V.VecHandleArrayText(self.adjoint_vec_path%i)
             for i in range(self.num_adjoint_vecs)]
 
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for i, handle in enumerate(self.direct_vec_handles):
                 handle.put(self.direct_vecs[i])
             for i, handle in enumerate(self.adjoint_vec_handles):
@@ -153,7 +152,7 @@ class TestBPODHandles(unittest.TestCase):
             self.direct_vec_array)
 
         self.L_sing_vecs_true, self.sing_vals_true, self.R_sing_vecs_true = \
-            _parallel.call_and_bcast(util.svd, self.Hankel_mat_true, atol=1e-10)
+            parallel.call_and_bcast(util.svd, self.Hankel_mat_true, atol=1e-10)
 
         self.direct_mode_array = self.direct_vec_array * \
             np.mat(self.R_sing_vecs_true) * \
@@ -163,13 +162,13 @@ class TestBPODHandles(unittest.TestCase):
             np.mat(np.diag(self.sing_vals_true ** -0.5))
 
         self.my_BPOD = BPODHandles(np.vdot, verbosity=0)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def tearDown(self):
-        _parallel.barrier()
-        _parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
-        _parallel.barrier()
+        parallel.barrier()
+        parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
+        parallel.barrier()
 
 
     def test_init(self):
@@ -220,7 +219,7 @@ class TestBPODHandles(unittest.TestCase):
         data_members_modified['vec_space'].max_vecs_per_node = \
             max_vecs_per_node
         data_members_modified['vec_space'].max_vecs_per_proc = \
-            max_vecs_per_node * _parallel.get_num_nodes() / _parallel.\
+            max_vecs_per_node * parallel.get_num_nodes() / parallel.\
             get_num_procs()
         for k,v in util.get_data_members(my_BPOD).items():
             self.assertEqual(v, data_members_modified[k])
@@ -231,14 +230,14 @@ class TestBPODHandles(unittest.TestCase):
         test_dir = 'DELETE_ME_test_files_bpod'
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        if not os.path.isdir(test_dir) and _parallel.is_rank_zero():
+        if not os.path.isdir(test_dir) and parallel.is_rank_zero():
             os.mkdir(test_dir)
         num_vecs = 10
         num_states = 30
-        Hankel_mat_true = _parallel.call_and_bcast(
+        Hankel_mat_true = parallel.call_and_bcast(
             np.random.random, ((num_vecs, num_vecs)))
         L_sing_vecs_true, sing_vals_true, R_sing_vecs_true = \
-            _parallel.call_and_bcast(util.svd, Hankel_mat_true)
+            parallel.call_and_bcast(util.svd, Hankel_mat_true)
 
         my_BPOD = BPODHandles(None, verbosity=0)
         my_BPOD.Hankel_mat = Hankel_mat_true
@@ -252,13 +251,13 @@ class TestBPODHandles(unittest.TestCase):
         Hankel_mat_path = join(test_dir, 'Hankel_mat.txt')
         my_BPOD.put_decomp(sing_vals_path, L_sing_vecs_path, R_sing_vecs_path)
         my_BPOD.put_Hankel_mat(Hankel_mat_path)
-        _parallel.barrier()
+        parallel.barrier()
 
         BPOD_load = BPODHandles(None, verbosity=0)
 
         BPOD_load.get_decomp(
             sing_vals_path, L_sing_vecs_path, R_sing_vecs_path)
-        Hankel_mat_loaded = _parallel.call_and_bcast(
+        Hankel_mat_loaded = parallel.call_and_bcast(
             util.load_array_text, Hankel_mat_path)
 
         np.testing.assert_allclose(Hankel_mat_loaded, Hankel_mat_true)

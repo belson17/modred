@@ -5,8 +5,7 @@ import numpy as np
 
 from .vectorspace import VectorSpaceMatrices, VectorSpaceHandles
 from . import util
-from .parallel import parallel_default_instance
-_parallel = parallel_default_instance
+from . import parallel
 
 
 def compute_BPOD_matrices(
@@ -58,7 +57,7 @@ def compute_BPOD_matrices(
 
     See also :py:class:`BPODHandles`.
     """
-    if _parallel.is_distributed():
+    if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
     vec_space = VectorSpaceMatrices(weights=inner_product_weights)
     direct_vecs = util.make_mat(direct_vecs)
@@ -155,11 +154,11 @@ class BPODHandles(object):
             ``R_sing_vecs_src``: Source from which to retrieve right singular
             vectors of Hankel matrix.
         """
-        self.sing_vals = np.squeeze(_parallel.call_and_bcast(
+        self.sing_vals = np.squeeze(parallel.call_and_bcast(
             self.get_mat, sing_vals_src))
-        self.L_sing_vecs = _parallel.call_and_bcast(
+        self.L_sing_vecs = parallel.call_and_bcast(
             self.get_mat, L_sing_vecs_src)
-        self.R_sing_vecs = _parallel.call_and_bcast(
+        self.R_sing_vecs = parallel.call_and_bcast(
             self.get_mat, R_sing_vecs_src)
 
 
@@ -184,44 +183,44 @@ class BPODHandles(object):
 
     def put_L_sing_vecs(self, dest):
         """Puts left singular vectors of Hankel matrix to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.L_sing_vecs, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_sing_vals(self, dest):
         """Puts Hankel singular values to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.sing_vals, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_R_sing_vecs(self, dest):
         """Puts right singular vectors of Hankel matrix to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.R_sing_vecs, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_Hankel_mat(self, dest):
         """Puts Hankel matrix to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.Hankel_mat, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_direct_proj_coeffs(self, dest):
         """Puts direct projection coefficients to ``dest``"""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.proj_coeffs, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_adjoint_proj_coeffs(self, dest):
         """Puts adjoint projection coefficients to ``dest``"""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.adjoint_proj_coeffs, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def compute_SVD(self, atol=1e-13, rtol=None):
@@ -244,7 +243,7 @@ class BPODHandles(object):
               range(10), mode_handles, direct_vec_handles=direct_vec_handles)
         """
         self.L_sing_vecs, self.sing_vals, self.R_sing_vecs =\
-            _parallel.call_and_bcast(
+            parallel.call_and_bcast(
             util.svd, self.Hankel_mat, atol=atol, rtol=rtol)
 
 

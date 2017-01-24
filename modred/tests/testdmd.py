@@ -10,15 +10,14 @@ from shutil import rmtree
 
 import numpy as np
 
-import modred.parallel as parallel_mod
-_parallel = parallel_mod.parallel_default_instance
+import modred.parallel as parallel
 from modred.dmd import *
 from modred.vectorspace import *
 import modred.vectors as V
 from modred import util
 
 
-@unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
+@unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestDMDArraysFunctions(unittest.TestCase):
     def setUp(self):
         # Generate vecs if we are on the first processor
@@ -223,7 +222,7 @@ class TestDMDHandles(unittest.TestCase):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         self.test_dir = 'DELETE_ME_test_files_dmd'
-        if not os.path.isdir(self.test_dir) and _parallel.is_rank_zero():
+        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
             os.mkdir(self.test_dir)
 
         self.num_vecs = 10
@@ -238,14 +237,14 @@ class TestDMDHandles(unittest.TestCase):
         self.adv_vec_handles = [
             V.VecHandlePickle(self.adv_vec_path%i)
             for i in range(self.num_vecs)]
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def tearDown(self):
-        _parallel.barrier()
-        if _parallel.is_rank_zero():
+        parallel.barrier()
+        if parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     #@unittest.skip('Testing something else.')
@@ -298,8 +297,8 @@ class TestDMDHandles(unittest.TestCase):
         data_members_modified['vec_space'].max_vecs_per_node = \
             max_vecs_per_node
         data_members_modified['vec_space'].max_vecs_per_proc = \
-            max_vecs_per_node * _parallel.get_num_nodes() / \
-            _parallel.get_num_procs()
+            max_vecs_per_node * parallel.get_num_nodes() / \
+            parallel.get_num_procs()
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
 
@@ -310,22 +309,22 @@ class TestDMDHandles(unittest.TestCase):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         test_dir = 'DELETE_ME_test_files_dmd'
-        if not os.path.isdir(test_dir) and _parallel.is_rank_zero():
+        if not os.path.isdir(test_dir) and parallel.is_rank_zero():
             os.mkdir(test_dir)
-        eigvals = _parallel.call_and_bcast(np.random.random, 5)
-        R_low_order_eigvecs = _parallel.call_and_bcast(
+        eigvals = parallel.call_and_bcast(np.random.random, 5)
+        R_low_order_eigvecs = parallel.call_and_bcast(
             np.random.random, (10,10))
-        L_low_order_eigvecs = _parallel.call_and_bcast(
+        L_low_order_eigvecs = parallel.call_and_bcast(
             np.random.random, (10,10))
-        correlation_mat_eigvals = _parallel.call_and_bcast(np.random.random, 5)
-        correlation_mat_eigvecs = _parallel.call_and_bcast(
+        correlation_mat_eigvals = parallel.call_and_bcast(np.random.random, 5)
+        correlation_mat_eigvecs = parallel.call_and_bcast(
             np.random.random, (10,10))
-        correlation_mat = _parallel.call_and_bcast(np.random.random, (10,10))
-        cross_correlation_mat = _parallel.call_and_bcast(
+        correlation_mat = parallel.call_and_bcast(np.random.random, (10,10))
+        cross_correlation_mat = parallel.call_and_bcast(
             np.random.random, (10,10))
-        spectral_coeffs = _parallel.call_and_bcast(np.random.random, 5)
-        proj_coeffs = _parallel.call_and_bcast(np.random.random, 5)
-        adv_proj_coeffs = _parallel.call_and_bcast(np.random.random, 5)
+        spectral_coeffs = parallel.call_and_bcast(np.random.random, 5)
+        proj_coeffs = parallel.call_and_bcast(np.random.random, 5)
+        adv_proj_coeffs = parallel.call_and_bcast(np.random.random, 5)
 
         my_DMD = DMDHandles(None, verbosity=0)
         my_DMD.eigvals = eigvals
@@ -361,7 +360,7 @@ class TestDMDHandles(unittest.TestCase):
         my_DMD.put_cross_correlation_mat(cross_correlation_mat_path)
         my_DMD.put_spectral_coeffs(spectral_coeffs_path)
         my_DMD.put_proj_coeffs(proj_coeffs_path, adv_proj_coeffs_path)
-        _parallel.barrier()
+        parallel.barrier()
 
         DMD_load = DMDHandles(None, verbosity=0)
         DMD_load.get_decomp(
@@ -564,14 +563,14 @@ class TestDMDHandles(unittest.TestCase):
     def test_compute_decomp(self):
         """Test DMD decomposition"""
         # Define an array of vectors, with corresponding handles
-        vec_array = _parallel.call_and_bcast(np.random.random,
+        vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for vec_index, handle in enumerate(self.vec_handles):
                 handle.put(np.array(vec_array[:, vec_index]).squeeze())
 
         # Check modred against direct computation, for a sequential dataset
-        _parallel.barrier()
+        parallel.barrier()
         self._helper_check_decomp(vec_array, self.vec_handles)
 
         # Make sure truncation works
@@ -580,14 +579,14 @@ class TestDMDHandles(unittest.TestCase):
             max_num_eigvals=max_num_eigvals)
 
         # Create more data, to check a non-sequential dataset
-        adv_vec_array = _parallel.call_and_bcast(np.random.random,
+        adv_vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for vec_index, handle in enumerate(self.adv_vec_handles):
                 handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
 
         # Check modred against direct computation, for a non-sequential dataset
-        _parallel.barrier()
+        parallel.barrier()
         self._helper_check_decomp(
             vec_array, self.vec_handles, adv_vec_array=adv_vec_array,
             adv_vec_handles=self.adv_vec_handles)
@@ -612,9 +611,9 @@ class TestDMDHandles(unittest.TestCase):
 
         ### SEQUENTIAL DATASET ###
         # Generate data
-        seq_vec_array = _parallel.call_and_bcast(np.random.random,
+        seq_vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for vec_index, handle in enumerate(self.vec_handles):
                 handle.put(np.array(seq_vec_array[:, vec_index]).squeeze())
 
@@ -627,7 +626,7 @@ class TestDMDHandles(unittest.TestCase):
         # Set the build_coeffs attribute of an empty DMD object each time, so
         # that the modred computation uses the same coefficients as the direct
         # computation.
-        _parallel.barrier()
+        parallel.barrier()
         self.my_DMD.eigvals = eigvals
         self.my_DMD.R_low_order_eigvecs = R_low_order_eigvecs
         self.my_DMD.correlation_mat_eigvals = correlation_mat_eigvals
@@ -667,11 +666,11 @@ class TestDMDHandles(unittest.TestCase):
 
         ### NONSEQUENTIAL DATA ###
         # Generate data
-        vec_array = _parallel.call_and_bcast(np.random.random,
+        vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        adv_vec_array = _parallel.call_and_bcast(np.random.random,
+        adv_vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for vec_index, (handle, adv_handle) in enumerate(
                 zip(self.vec_handles, self.adv_vec_handles)):
                 handle.put(np.array(vec_array[:, vec_index]).squeeze())
@@ -687,7 +686,7 @@ class TestDMDHandles(unittest.TestCase):
         # Set the build_coeffs attribute of an empty DMD object each time, so
         # that the modred computation uses the same coefficients as the direct
         # computation.
-        _parallel.barrier()
+        parallel.barrier()
         self.my_DMD.eigvals = eigvals
         self.my_DMD.R_low_order_eigvecs = R_low_order_eigvecs
         self.my_DMD.correlation_mat_eigvals = correlation_mat_eigvals
@@ -727,9 +726,9 @@ class TestDMDHandles(unittest.TestCase):
         atol = 1e-16
 
         # Define an array of vectors, with corresponding handles
-        vec_array = _parallel.call_and_bcast(np.random.random,
+        vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for vec_index, handle in enumerate(self.vec_handles):
                 handle.put(np.array(vec_array[:, vec_index]).squeeze())
 
@@ -737,7 +736,7 @@ class TestDMDHandles(unittest.TestCase):
         # computed using a pseudoinverse.  Perform the decomp only once using
         # the DMD object, so that the spectral coefficients are computed from
         # the same data, but in two different ways.
-        _parallel.barrier()
+        parallel.barrier()
         self.my_DMD.compute_decomp(self.vec_handles)
         spectral_coeffs_computed = self.my_DMD.compute_spectrum()
         spectral_coeffs_true = self._helper_compute_DMD_from_data(
@@ -747,15 +746,15 @@ class TestDMDHandles(unittest.TestCase):
             atol=atol)
 
         # Create more data, to check a non-sequential dataset
-        adv_vec_array = _parallel.call_and_bcast(np.random.random,
+        adv_vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for vec_index, handle in enumerate(self.adv_vec_handles):
                 handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
 
         # Check that spectral coefficients computed using adjoints match those
         # computed using a pseudoinverse
-        _parallel.barrier()
+        parallel.barrier()
         self.my_DMD.compute_decomp(
             self.vec_handles, adv_vec_handles=self.adv_vec_handles)
         spectral_coeffs_computed = self.my_DMD.compute_spectrum()
@@ -774,9 +773,9 @@ class TestDMDHandles(unittest.TestCase):
         atol = 1e-10    # Sometimes fails if tol too high
 
         # Define an array of vectors, with corresponding handles
-        vec_array = _parallel.call_and_bcast(np.random.random,
+        vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for vec_index, handle in enumerate(self.vec_handles):
                 handle.put(np.array(vec_array[:, vec_index]).squeeze())
 
@@ -784,7 +783,7 @@ class TestDMDHandles(unittest.TestCase):
         # projections are not just scaled by -1 column-wise, but element-wise.
         # So just test that the projection coefficients differ by sign at most,
         # element-wise.
-        _parallel.barrier()
+        parallel.barrier()
         self.my_DMD.compute_decomp(self.vec_handles)
         proj_coeffs, adv_proj_coeffs = self.my_DMD.compute_proj_coeffs()
         adj_modes = self._helper_compute_DMD_from_data(
@@ -799,9 +798,9 @@ class TestDMDHandles(unittest.TestCase):
             np.ones(adv_proj_coeffs.shape), rtol=rtol, atol=atol)
 
         # Create more data, to check a non-sequential dataset
-        adv_vec_array = _parallel.call_and_bcast(np.random.random,
+        adv_vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for vec_index, handle in enumerate(self.adv_vec_handles):
                 handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
 
@@ -809,7 +808,7 @@ class TestDMDHandles(unittest.TestCase):
         # projections are not just scaled by -1 column-wise, but element-wise.
         # So just test that the projection coefficients differ by sign at most,
         # element-wise.
-        _parallel.barrier()
+        parallel.barrier()
         self.my_DMD.compute_decomp(
             self.vec_handles, adv_vec_handles=self.adv_vec_handles)
         adj_modes = self._helper_compute_DMD_from_data(
@@ -826,7 +825,7 @@ class TestDMDHandles(unittest.TestCase):
             np.ones(adv_proj_coeffs.shape), rtol=rtol, atol=atol)
 
 
-@unittest.skipIf(_parallel.is_distributed(), 'Serial only.')
+@unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestTLSqrDMDArraysFunctions(unittest.TestCase):
     def setUp(self):
         # Generate vecs if we are on the first processor
@@ -1052,7 +1051,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         self.test_dir = 'DELETE_ME_test_files_dmd'
-        if not os.path.isdir(self.test_dir) and _parallel.is_rank_zero():
+        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
             os.mkdir(self.test_dir)
 
         self.num_vecs = 10
@@ -1068,14 +1067,14 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         self.adv_vec_handles = [
             V.VecHandlePickle(self.adv_vec_path%i)
             for i in range(self.num_vecs)]
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def tearDown(self):
-        _parallel.barrier()
-        if _parallel.is_rank_zero():
+        parallel.barrier()
+        if parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     #@unittest.skip('Testing something else.')
@@ -1131,8 +1130,8 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         data_members_modified['vec_space'].max_vecs_per_node = \
             max_vecs_per_node
         data_members_modified['vec_space'].max_vecs_per_proc = \
-            max_vecs_per_node * _parallel.get_num_nodes() / \
-            _parallel.get_num_procs()
+            max_vecs_per_node * parallel.get_num_nodes() / \
+            parallel.get_num_procs()
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
 
@@ -1143,29 +1142,29 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         test_dir = 'DELETE_ME_test_files_dmd'
-        if not os.path.isdir(test_dir) and _parallel.is_rank_zero():
+        if not os.path.isdir(test_dir) and parallel.is_rank_zero():
             os.mkdir(test_dir)
-        eigvals = _parallel.call_and_bcast(np.random.random, 5)
-        R_low_order_eigvecs = _parallel.call_and_bcast(
+        eigvals = parallel.call_and_bcast(np.random.random, 5)
+        R_low_order_eigvecs = parallel.call_and_bcast(
             np.random.random, (10,10))
-        L_low_order_eigvecs = _parallel.call_and_bcast(
+        L_low_order_eigvecs = parallel.call_and_bcast(
             np.random.random, (10,10))
-        summed_correlation_mats_eigvals = _parallel.call_and_bcast(
+        summed_correlation_mats_eigvals = parallel.call_and_bcast(
             np.random.random, 5)
-        summed_correlation_mats_eigvecs = _parallel.call_and_bcast(
+        summed_correlation_mats_eigvecs = parallel.call_and_bcast(
             np.random.random, (10,10))
-        proj_correlation_mat_eigvals = _parallel.call_and_bcast(
+        proj_correlation_mat_eigvals = parallel.call_and_bcast(
             np.random.random, 5)
-        proj_correlation_mat_eigvecs = _parallel.call_and_bcast(
+        proj_correlation_mat_eigvecs = parallel.call_and_bcast(
             np.random.random, (10,10))
-        correlation_mat = _parallel.call_and_bcast(np.random.random, (10,10))
-        cross_correlation_mat = _parallel.call_and_bcast(
+        correlation_mat = parallel.call_and_bcast(np.random.random, (10,10))
+        cross_correlation_mat = parallel.call_and_bcast(
             np.random.random, (10,10))
-        adv_correlation_mat = _parallel.call_and_bcast(
+        adv_correlation_mat = parallel.call_and_bcast(
             np.random.random, (10,10))
-        spectral_coeffs = _parallel.call_and_bcast(np.random.random, 5)
-        proj_coeffs = _parallel.call_and_bcast(np.random.random, 5)
-        adv_proj_coeffs = _parallel.call_and_bcast(np.random.random, 5)
+        spectral_coeffs = parallel.call_and_bcast(np.random.random, 5)
+        proj_coeffs = parallel.call_and_bcast(np.random.random, 5)
+        adv_proj_coeffs = parallel.call_and_bcast(np.random.random, 5)
 
         my_DMD = TLSqrDMDHandles(None, verbosity=0)
         my_DMD.eigvals = eigvals
@@ -1215,7 +1214,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         my_DMD.put_adv_correlation_mat(adv_correlation_mat_path)
         my_DMD.put_spectral_coeffs(spectral_coeffs_path)
         my_DMD.put_proj_coeffs(proj_coeffs_path, adv_proj_coeffs_path)
-        _parallel.barrier()
+        parallel.barrier()
 
         DMD_load = TLSqrDMDHandles(None, verbosity=0)
         DMD_load.get_decomp(
@@ -1507,28 +1506,28 @@ class TestTLSqrDMDHandles(unittest.TestCase):
     def test_compute_decomp(self):
         """Test DMD decomposition"""
         # Define an array of vectors, with corresponding handles
-        vec_array = _parallel.call_and_bcast(np.random.random,
+        vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for vec_index, handle in enumerate(self.vec_handles):
                 handle.put(np.array(vec_array[:, vec_index]).squeeze())
 
         # Check modred against direct computation, for a sequential dataset
         # (always need to truncate for TLSDMD).
-        _parallel.barrier()
+        parallel.barrier()
         self._helper_check_decomp(vec_array, self.vec_handles,
             max_num_eigvals=self.max_num_eigvals)
 
         # Create more data, to check a non-sequential dataset
-        adv_vec_array = _parallel.call_and_bcast(np.random.random,
+        adv_vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for vec_index, handle in enumerate(self.adv_vec_handles):
                 handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
 
         # Check modred against direct computation, for a non-sequential dataset
         # (always need to truncate for TLSDMD).
-        _parallel.barrier()
+        parallel.barrier()
         self._helper_check_decomp(
             vec_array, self.vec_handles, adv_vec_array=adv_vec_array,
             adv_vec_handles=self.adv_vec_handles,
@@ -1548,9 +1547,9 @@ class TestTLSqrDMDHandles(unittest.TestCase):
 
         ### SEQUENTIAL DATASET ###
         # Generate data
-        seq_vec_array = _parallel.call_and_bcast(np.random.random,
+        seq_vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for vec_index, handle in enumerate(self.vec_handles):
                 handle.put(np.array(seq_vec_array[:, vec_index]).squeeze())
 
@@ -1568,7 +1567,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         # Set the build_coeffs attribute of an empty DMD object each time, so
         # that the modred computation uses the same coefficients as the direct
         # computation.
-        _parallel.barrier()
+        parallel.barrier()
         self.my_DMD.eigvals = eigvals
         self.my_DMD.R_low_order_eigvecs = R_low_order_eigvecs
         self.my_DMD.summed_correlation_mats_eigvals =\
@@ -1612,11 +1611,11 @@ class TestTLSqrDMDHandles(unittest.TestCase):
 
         ### NONSEQUENTIAL DATA ###
         # Generate data
-        vec_array = _parallel.call_and_bcast(np.random.random,
+        vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        adv_vec_array = _parallel.call_and_bcast(np.random.random,
+        adv_vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for vec_index, (handle, adv_handle) in enumerate(
                 zip(self.vec_handles, self.adv_vec_handles)):
                 handle.put(np.array(vec_array[:, vec_index]).squeeze())
@@ -1637,7 +1636,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         # Set the build_coeffs attribute of an empty DMD object each time, so
         # that the modred computation uses the same coefficients as the direct
         # computation.
-        _parallel.barrier()
+        parallel.barrier()
         self.my_DMD.eigvals = eigvals
         self.my_DMD.R_low_order_eigvecs = R_low_order_eigvecs
         self.my_DMD.summed_correlation_mats_eigvals =\
@@ -1681,15 +1680,15 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         atol = 1e-16
 
         # Define an array of vectors, with corresponding handles
-        vec_array = _parallel.call_and_bcast(np.random.random,
+        vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for vec_index, handle in enumerate(self.vec_handles):
                 handle.put(np.array(vec_array[:, vec_index]).squeeze())
 
         # Check spectral coefficients using a direct projection onto the
         # adjoint modes.  (Must always truncate for TLSDMD.)
-        _parallel.barrier()
+        parallel.barrier()
         self.my_DMD.compute_decomp(
             self.vec_handles, max_num_eigvals=self.max_num_eigvals)
         spectral_coeffs_computed = self.my_DMD.compute_spectrum()
@@ -1701,15 +1700,15 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             atol=atol)
 
         # Create more data, to check a non-sequential dataset
-        adv_vec_array = _parallel.call_and_bcast(np.random.random,
+        adv_vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for vec_index, handle in enumerate(self.adv_vec_handles):
                 handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
 
         # Check spectral coefficients using a direct projection onto the
         # adjoint modes.  (Must always truncate for TLSDMD.)
-        _parallel.barrier()
+        parallel.barrier()
         self.my_DMD.compute_decomp(
             self.vec_handles, adv_vec_handles=self.adv_vec_handles,
             max_num_eigvals=self.max_num_eigvals)
@@ -1730,9 +1729,9 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         atol = 1e-10    # Sometimes fails if tol too high
 
         # Define an array of vectors, with corresponding handles
-        vec_array = _parallel.call_and_bcast(np.random.random,
+        vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for vec_index, handle in enumerate(self.vec_handles):
                 handle.put(np.array(vec_array[:, vec_index]).squeeze())
 
@@ -1740,7 +1739,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         # projections are not just scaled by -1 column-wise, but element-wise.
         # So just test that the projection coefficients differ by sign at most,
         # element-wise.
-        _parallel.barrier()
+        parallel.barrier()
         self.my_DMD.compute_decomp(
             self.vec_handles, max_num_eigvals=self.max_num_eigvals)
         vec_array_proj = np.array(
@@ -1767,9 +1766,9 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             np.ones(adv_proj_coeffs.shape), rtol=rtol, atol=atol)
 
         # Create more data, to check a non-sequential dataset
-        adv_vec_array = _parallel.call_and_bcast(np.random.random,
+        adv_vec_array = parallel.call_and_bcast(np.random.random,
             ((self.num_states, self.num_vecs)))
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             for vec_index, handle in enumerate(self.adv_vec_handles):
                 handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
 
@@ -1777,7 +1776,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         # projections are not just scaled by -1 column-wise, but element-wise.
         # So just test that the projection coefficients differ by sign at most,
         # element-wise.
-        _parallel.barrier()
+        parallel.barrier()
         self.my_DMD.compute_decomp(
             self.vec_handles, adv_vec_handles=self.adv_vec_handles,
             max_num_eigvals=self.max_num_eigvals)

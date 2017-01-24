@@ -6,8 +6,7 @@ import numpy as np
 
 from .vectorspace import VectorSpaceMatrices, VectorSpaceHandles
 from . import util
-from .parallel import parallel_default_instance
-_parallel = parallel_default_instance
+from . import parallel
 
 
 def compute_POD_matrices_snaps_method(
@@ -62,7 +61,7 @@ def compute_POD_matrices_snaps_method(
     However, this method is faster when :math:`X` has more rows than columns,
     i.e. there are more elements in each vector than there are vectors.
     """
-    if _parallel.is_distributed():
+    if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
     vec_space = VectorSpaceMatrices(weights=inner_product_weights)
     # compute decomp
@@ -133,7 +132,7 @@ def compute_POD_matrices_direct_method(
     slower when :math:`X` has more rows than columns, i.e. there are fewer
     vectors than elements in each vector.
     """
-    if _parallel.is_distributed():
+    if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
     vecs = util.make_mat(vecs)
     if inner_product_weights is None:
@@ -224,9 +223,9 @@ class PODHandles(object):
             ``eigvecs_src``: Source from which to retrieve eigenvectors of
             correlation matrix.
         """
-        self.eigvals = np.squeeze(np.array(_parallel.call_and_bcast(
+        self.eigvals = np.squeeze(np.array(parallel.call_and_bcast(
             self.get_mat, eigvals_src)))
-        self.eigvecs = _parallel.call_and_bcast(self.get_mat,
+        self.eigvecs = parallel.call_and_bcast(self.get_mat,
             eigvecs_src)
 
 
@@ -247,30 +246,30 @@ class PODHandles(object):
 
     def put_eigvals(self, dest):
         """Puts eigenvalues of correlation matrix to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.eigvals, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_eigvecs(self, dest):
         """Puts eigenvectors of correlation matrix to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.eigvecs, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_correlation_mat(self, dest):
         """Puts correlation matrix to ``dest``."""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.correlation_mat, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def put_proj_coeffs(self, dest):
         """Puts projection coefficients to ``dest``"""
-        if _parallel.is_rank_zero():
+        if parallel.is_rank_zero():
             self.put_mat(self.proj_coeffs, dest)
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def sanity_check(self, test_vec_handle):
@@ -304,7 +303,7 @@ class PODHandles(object):
           POD.compute_eigendecomp()
           POD.compute_modes(range(10), mode_handles, vec_handles=vec_handles)
         """
-        self.eigvals, self.eigvecs = _parallel.call_and_bcast(
+        self.eigvals, self.eigvecs = parallel.call_and_bcast(
             util.eigh, self.correlation_mat, atol=atol, rtol=rtol,
             is_positive_definite=True)
 

@@ -12,8 +12,7 @@ import unittest
 
 import numpy as np
 
-import modred.parallel as parallel_mod
-_parallel = parallel_mod.parallel_default_instance
+import modred.parallel as parallel
 from modred.vectorspace import *
 import modred.vectors as V
 import modred.util
@@ -25,12 +24,12 @@ class TestVectorSpaceHandles(unittest.TestCase):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         self.test_dir = 'DELETE_ME_test_files_vecoperations'
-        if not os.path.isdir(self.test_dir) and _parallel.is_rank_zero():
+        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
             os.mkdir(self.test_dir)
 
         self.max_vecs_per_proc = 10
         self.total_num_vecs_in_mem = (
-            _parallel.get_num_procs() * self.max_vecs_per_proc)
+            parallel.get_num_procs() * self.max_vecs_per_proc)
 
         self.my_vec_ops = VectorSpaceHandles(inner_product=np.vdot, verbosity=0)
         self.my_vec_ops.max_vecs_per_proc = self.max_vecs_per_proc
@@ -40,15 +39,15 @@ class TestVectorSpaceHandles(unittest.TestCase):
         self.default_data_members = {'inner_product': np.vdot,
             'max_vecs_per_node': 10000,
             'max_vecs_per_proc': (
-                10000 * _parallel.get_num_nodes() // _parallel.get_num_procs()),
+                10000 * parallel.get_num_nodes() // parallel.get_num_procs()),
             'verbosity': 0, 'print_interval': 10, 'prev_print_time': 0.}
-        _parallel.barrier()
+        parallel.barrier()
 
 
     def tearDown(self):
-        _parallel.barrier()
-        _parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
-        _parallel.barrier()
+        parallel.barrier()
+        parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
+        parallel.barrier()
 
 
     #@unittest.skip('testing other things')
@@ -64,7 +63,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
         data_members = copy.deepcopy(data_members_original)
         data_members['max_vecs_per_node'] = max_vecs_per_node
         data_members['max_vecs_per_proc'] = max_vecs_per_node * \
-            _parallel.get_num_nodes() // _parallel.get_num_procs()
+            parallel.get_num_nodes() // parallel.get_num_procs()
         self.assertEqual(util.get_data_members(my_VS), data_members)
 
 
@@ -158,13 +157,13 @@ class TestVectorSpaceHandles(unittest.TestCase):
                 vec_handles = [V.VecHandleArrayText(vec_path%i)
                     for i in range(num_vecs)]
                 vec_array, mode_indices, build_coeff_mat, true_modes = \
-                    _parallel.call_and_bcast(self.generate_vecs_modes,
+                    parallel.call_and_bcast(self.generate_vecs_modes,
                     num_states, num_vecs, num_modes)
 
-                if _parallel.is_rank_zero():
+                if parallel.is_rank_zero():
                     for vec_index, vec_handle in enumerate(vec_handles):
                         vec_handle.put(vec_array[:,vec_index])
-                _parallel.barrier()
+                parallel.barrier()
                 mode_handles = [V.VecHandleArrayText(mode_path%mode_num)
                     for mode_num in mode_indices]
 
@@ -190,7 +189,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
                 if not isinstance(mode_indices, list):
                     mode_indices = [mode_indices]
 
-                _parallel.barrier()
+                parallel.barrier()
                 #print 'mode_indices',mode_indices
                 for mode_index in mode_indices:
                     computed_mode = V.VecHandleArrayText(
@@ -202,13 +201,13 @@ class TestVectorSpaceHandles(unittest.TestCase):
                     np.testing.assert_allclose(
                         computed_mode, true_modes[:,mode_index])
 
-                _parallel.barrier()
+                parallel.barrier()
 
-        _parallel.barrier()
+        parallel.barrier()
 
 
     #@unittest.skip('testing others')
-    @unittest.skipIf(_parallel.is_distributed(), 'Serial only')
+    @unittest.skipIf(parallel.is_distributed(), 'Serial only')
     def test_compute_inner_product_mat_types(self):
         class ArrayTextComplexHandle(V.VecHandleArrayText):
             def get(self):
@@ -256,7 +255,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
         """Test computation of matrix of inner products."""
         num_row_vecs_list = [1, int(round(self.total_num_vecs_in_mem / 2.)),
             self.total_num_vecs_in_mem, self.total_num_vecs_in_mem * 2,
-            _parallel.get_num_procs() + 1]
+            parallel.get_num_procs() + 1]
         num_col_vecs_list = num_row_vecs_list
         num_states = 6
 
@@ -266,10 +265,10 @@ class TestVectorSpaceHandles(unittest.TestCase):
         for num_row_vecs in num_row_vecs_list:
             for num_col_vecs in num_col_vecs_list:
                 # generate vecs
-                _parallel.barrier()
-                row_vec_array = _parallel.call_and_bcast(np.random.random,
+                parallel.barrier()
+                row_vec_array = parallel.call_and_bcast(np.random.random,
                     (num_states, num_row_vecs))
-                col_vec_array = _parallel.call_and_bcast(np.random.random,
+                col_vec_array = parallel.call_and_bcast(np.random.random,
                     (num_states, num_col_vecs))
                 row_vec_handles = [V.VecHandleArrayText(row_vec_path%i)
                     for i in range(num_row_vecs)]
@@ -277,12 +276,12 @@ class TestVectorSpaceHandles(unittest.TestCase):
                     for i in range(num_col_vecs)]
 
                 # Save vecs
-                if _parallel.is_rank_zero():
+                if parallel.is_rank_zero():
                     for i,h in enumerate(row_vec_handles):
                         h.put(row_vec_array[:,i])
                     for i,h in enumerate(col_vec_handles):
                         h.put(col_vec_array[:,i])
-                _parallel.barrier()
+                parallel.barrier()
 
                 # If number of rows/cols is 1, check case of passing a handle
                 if len(row_vec_handles) == 1:
