@@ -4,6 +4,6 @@
 *~
 *temp
 
-doc/build
+doc/_build
 
 modred.egg-info/
