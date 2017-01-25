@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 from pkg_resources import parse_version
-
+import glob
 import os
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -24,6 +24,10 @@ elif any(w in ['*b', '*beta'] for w in parsed_version):
 else:
     devstatus = 'Development Status :: 5 - Production/Stable'
 
+OKID_test_data_files = list()
+for c in ['SISO', 'SIMO', 'MISO', 'MIMO']:
+    OKID_test_data_files.append((os.path.join('modred', 'test_files_okid' , c), 
+        glob.glob(os.path.join('modred', 'test_files_okid', c, '*'))))
 setup(
     name='modred',
     version=__version__,
@@ -33,13 +37,13 @@ setup(
     # long_description=long_description,
     # keywords='',
     author=('Brandt Belson, Jonathan Tu, and Clancy Rowley;'
-            'repacked and ported for Python 3 by Pierre Augier'),
+            'ported for Python 3 by Pierre Augier'),
     author_email=(
-        'bbelson@princeton.edu, jhtu@princeton.edu, cwrowley@princeton.edu'),
+        'brandt.belson@gmail.com, jonathantu@gmail.com, cwrowley@princeton.edu'),
     url='https://pythonhosted.org/modred',
     maintainer=('Brandt Belson, Jonathan Tu, and Clancy Rowley;'
-            'repacked and ported for Python 3 by Pierre Augier'),
-    maintainer_email='bbelson@princeton.edu',
+            'ported for Python 3 by Pierre Augier'),
+    maintainer_email='brandt.belson@gmail.com',
     license='Free BSD',
     classifiers=[
         # How mature is this project? Common values are
@@ -59,10 +63,6 @@ setup(
         'Programming Language :: Python :: 3.4'
         ],
     packages=find_packages(exclude=['doc', 'matlab']),
-    package_data={'modred':[
-            'modred/tests/files_okid/SISO/*',
-            'modred/tests/files_okid/SIMO/*',
-            'modred/tests/files_okid/MISO/*',
-            'modred/tests/files_okid/MIMO/*']},
-      install_requires=['numpy', 'future']
+    data_files=OKID_test_data_files,
+    install_requires=['numpy', 'future']
     )
