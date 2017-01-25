@@ -340,9 +340,9 @@ class TestBPODHandles(unittest.TestCase):
                     adjoint_mode)
                 if self.mode_nums[direct_mode_index] != \
                     self.mode_nums[adjoint_mode_index]:
-                    self.assertAlmostEqual(IP, 0., places=6)
+                    self.assertAlmostEqual(IP, 0., places=5)
                 else:
-                    self.assertAlmostEqual(IP, 1., places=6)
+                    self.assertAlmostEqual(IP, 1., places=5)
 
 
     def test_compute_proj_coeffs(self):
