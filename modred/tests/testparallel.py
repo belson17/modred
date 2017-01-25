@@ -32,6 +32,13 @@ class TestParallel(unittest.TestCase):
 
 
     def tearDown(self):
+        # Reset the number of MPI workers in the parallel module, which is
+        # modified in some tests.  This ensures that it takes on the right
+        # value for any subsequent tests, which is important, as this is
+        # essentially a global variable.  For instance, using automatic test
+        # detection, changes to this variable will affect subsequent tests that
+        # make use of the parallel module.
+        parallel._num_MPI_workers = self.num_MPI_workers
         if distributed:
             MPI.COMM_WORLD.Barrier()
 
@@ -52,11 +59,6 @@ class TestParallel(unittest.TestCase):
         with many different numbers of procs the behavior of this function
         is mimicked by manually setting num_MPI_workers
         """
-        # Store original number of MPI workers, as this value will be globally
-        # modified for testing the parallel module, and needs to be changed
-        # back to its original value
-        num_MPI_workers_true = parallel.get_num_MPI_workers()
-
         # Assume each item in task list has equal weight
         tasks = ['1', '2', '4', '3', '6', '7', '5']
         copy_task_list = copy.deepcopy(tasks)
@@ -102,10 +104,6 @@ class TestParallel(unittest.TestCase):
         self.assertEqual(parallel.find_assignments(
             tasks, task_weights=task_weights), correct_assignments)
         self.assertEqual(task_weights, copy_task_weights)
-
-        # Reset number of MPI workers in parallel module, as this is
-        # essentially a global variable
-        parallel._num_MPI_workers = num_MPI_workers_true
 
 
     def test_call_and_bcast(self):
