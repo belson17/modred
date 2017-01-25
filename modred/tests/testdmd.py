@@ -17,7 +17,7 @@ import modred.vectors as V
 from modred import util
 
 
-@unittest.skip('others')
+#@unittest.skip('others')
 @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestDMDArraysFunctions(unittest.TestCase):
     def setUp(self):
@@ -156,7 +156,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
 
 
     def test_all(self):
-        rtol = 1e-8
+        rtol = 1e-7
         atol = 1e-15
         mode_indices = [2, 0, 3]
 
@@ -562,7 +562,7 @@ class TestDMDHandles(unittest.TestCase):
             modes_true, modes_computed, rtol=rtol, atol=atol)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_decomp(self):
         """Test DMD decomposition"""
         # Define an array of vectors, with corresponding handles
