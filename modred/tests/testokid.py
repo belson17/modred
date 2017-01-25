@@ -33,7 +33,7 @@ def diff(arr_measured, arr_true, normalize=False):
 @unittest.skipIf(parallel.is_distributed(), 'Only test OKID in serial')
 class TestOKID(unittest.TestCase):
     def setUp(self):
-        self.test_dir = join(os.path.dirname(__file__), 'files_okid')
+        self.test_dir = join(os.path.dirname(__file__), 'OKID_files')
 
 
     def tearDown(self):

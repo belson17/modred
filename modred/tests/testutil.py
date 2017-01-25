@@ -386,12 +386,12 @@ class TestUtil(unittest.TestCase):
                         (num_time_steps, num_outputs, num_inputs))
                     for ti in range(num_time_steps):
                         outputs_true[ti] = C * (A**ti) * B
-                    np.testing.assert_allclose(outputs, outputs_true)
+                    np.testing.assert_allclose(outputs, outputs_true, rtol=1e-8, atol=1e-8)
 
                     # Check can give num_time_steps as an argument
                     outputs = util.impulse(
                         A, B, C, num_time_steps=num_time_steps)
-                    np.testing.assert_allclose(outputs, outputs_true)
+                    np.testing.assert_allclose(outputs, outputs_true, rtol=1e-8, atol=1e-8)
 
 
     def test_Hankel(self):
