@@ -1,4 +1,4 @@
 include *.txt
 include *.rst
 recursive-include doc *.rst
-recursive-include modred/test_files_okid *
+recursive-include modred/tests/OKID_files *
