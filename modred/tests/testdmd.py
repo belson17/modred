@@ -551,8 +551,8 @@ class TestDMDHandles(unittest.TestCase):
 
     def _helper_check_modes(self, modes_true, mode_path_list):
         # Set tolerance
-        rtol = 1e-12
-        atol = 1e-14
+        rtol = 1e-10
+        atol = 1e-12
 
         # Load all modes into matrix, compare to modes from direct computation
         modes_computed = np.zeros(modes_true.shape, dtype=complex)
@@ -725,8 +725,8 @@ class TestDMDHandles(unittest.TestCase):
     #@unittest.skip('Testing something else.')
     def test_compute_spectrum(self):
         """Test DMD spectrum"""
-        rtol = 1e-12
-        atol = 1e-14
+        rtol = 1e-10
+        atol = 1e-12
 
         # Define an array of vectors, with corresponding handles
         vec_array = parallel.call_and_bcast(np.random.random,
@@ -1519,8 +1519,8 @@ class TestTLSqrDMDHandles(unittest.TestCase):
 
     def _helper_check_modes(self, modes_true, mode_path_list):
         # Set tolerance.
-        rtol = 1e-12
-        atol = 1e-14
+        rtol = 1e-10
+        atol = 1e-12
 
         # Load all modes into matrix, compare to modes from direct computation
         modes_computed = np.zeros(modes_true.shape, dtype=complex)
@@ -1698,8 +1698,8 @@ class TestTLSqrDMDHandles(unittest.TestCase):
     #@unittest.skip('Testing something else.')
     def test_compute_spectrum(self):
         """Test DMD spectrum"""
-        rtol = 1e-12
-        atol = 1e-14
+        rtol = 1e-10
+        atol = 1e-12
 
         # Define an array of vectors, with corresponding handles
         vec_array = parallel.call_and_bcast(np.random.random,
