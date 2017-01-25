@@ -547,14 +547,16 @@ class TestDMDHandles(unittest.TestCase):
 
 
     def _helper_check_modes(self, modes_true, mode_path_list):
-        # Set tolerance.
-        tol = 1e-10
+        # Set tolerance
+        rtol = 1e-12
+        atol = 1e-14
 
         # Load all modes into matrix, compare to modes from direct computation
         modes_computed = np.zeros(modes_true.shape, dtype=complex)
         for i, path in enumerate(mode_path_list):
             modes_computed[:, i] = V.VecHandlePickle(path).get()
-        np.testing.assert_allclose(modes_true, modes_computed, rtol=tol)
+        np.testing.assert_allclose(
+            modes_true, modes_computed, rtol=rtol, atol=atol)
 
 
     @unittest.skip('Testing something else.')
@@ -601,7 +603,7 @@ class TestDMDHandles(unittest.TestCase):
             self.vec_handles, self.adv_vec_handles[:-1])
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_modes(self):
         """Test building of modes."""
         # Generate path names for saving modes to disk
@@ -717,7 +719,7 @@ class TestDMDHandles(unittest.TestCase):
         self._helper_check_modes(modes_proj, mode_path_list)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_spectrum(self):
         """Test DMD spectrum"""
         rtol = 1e-12
