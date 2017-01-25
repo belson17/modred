@@ -19,15 +19,15 @@ def herdif(n, m, b):
     """Computes differentiation matrices D1, D2, ..., Dm on Hermite points.
 
     Args:
-        n: np.mber of points, which is also the order of accuracy.
-        m: np.mber of derivative matrices to return.
+        n: Number of points, which is also the order of accuracy.
+        m: Number of derivative matrices to return.
         b: Scaling parameter. Real and positive.
 
     Returns:
         x: Array of nodes, zeros of Hermite polynomial of degree n, scaled by b.
         Dm: A list s.t. Dm[i] is the (i+1)-th derivative matrix, i=0...m-1.
 
-    np.te: 0 < m < n-1.
+    Note: 0 < m < n-1.
     """
     x = herroots(n)
     # Compute weights
@@ -52,7 +52,7 @@ def herdif(n, m, b):
     return x, Dm
 
 
-def poldif(x, m=np.ne, alpha=np.ne, B=np.ne):
+def poldif(x, m=None, alpha=None, B=None):
     """
     Computes the differentiation matrices D1, D2, ..., Dm on arbitrary nodes.
 
@@ -65,7 +65,7 @@ def poldif(x, m=np.ne, alpha=np.ne, B=np.ne):
         x: 1D array of n distinct nodes.
 
     Kwargs:
-        m: np.mber of derivatives.
+        m: Number of derivatives.
         alpha: 1D array of weight values alpha[x], evaluated at x = x[k].
         B: Array of size m x n where B[i,j] = beta[i,j] = ((i+1)-th derivative
             of alpha(x))/alpha(x), evaluated at x = x[j].
@@ -73,14 +73,14 @@ def poldif(x, m=np.ne, alpha=np.ne, B=np.ne):
     Returns:
         Dm: A list s.t. Dm[i] is the (i+1)-th derivative matrix, i=0...m-1.
 
-    np.te: 0 < m < n-1.
+    Note: 0 < m < n-1.
     """
     x = x.flatten()
     n = x.shape[0]
-    if m is not np.ne and B is np.ne and alpha is np.ne:
+    if m is not None and B is None and alpha is None:
         alpha = np.ones(n)
         B = np.zeros((m, n))
-    elif m is np.ne and B is not np.ne and alpha is not np.ne:
+    elif m is None and B is not None and alpha is not None:
        alpha = alpha.flatten()
        m = B.shape[0]
     else:
