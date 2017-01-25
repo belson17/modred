@@ -61,7 +61,7 @@ mu = (mu_0 - c_u**2) + mu_2 * x**2/2.
 A = np.mat(-nu * Ds[0] + gamma * Ds[1] + np.diag(mu))
 
 # Compute optimal disturbance and use it as B matrix
-A_discrete = np.mat(spla.expm(A*dt))
+A_discrete = np.mat(spla.expm(np.array(A*dt)))
 exp_mat = np.mat(np.identity(nx, dtype=complex))
 max_sing_val = 0
 for i in range(1, 100):
