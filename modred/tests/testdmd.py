@@ -1446,7 +1446,8 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         self, vec_array,  vec_handles, adv_vec_array=None,
         adv_vec_handles=None, max_num_eigvals=None):
         # Set tolerance.
-        tol = 1e-9
+        rtol = 1e-10
+        atol = 1e-12
 
         # Compute reference DMD values
         (eigvals_true, R_low_order_eigvecs_true, L_low_order_eigvecs_true,
@@ -1457,7 +1458,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             self._helper_compute_DMD_from_data(
             vec_array, util.InnerProductBlock(np.vdot),
             adv_vec_array=adv_vec_array,
-            max_num_eigvals=max_num_eigvals))[3:-2]
+            max_num_eigvals=max_num_eigvals))[2:-2]
 
         # Compute DMD using modred
         (eigvals_returned,  R_low_order_eigvecs_returned,
@@ -1473,45 +1474,47 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         # Test that matrices were correctly computed.  For build coeffs, check
         # column by column, as it is ok to be off by a negative sign.
         np.testing.assert_allclose(
-            self.my_DMD.eigvals, eigvals_true, rtol=tol)
+            self.my_DMD.eigvals, eigvals_true, rtol=rtol, atol=atol)
         self._helper_test_mat_to_sign(
             self.my_DMD.R_low_order_eigvecs, R_low_order_eigvecs_true,
-            rtol=tol)
+            rtol=rtol, atol=atol)
         self._helper_test_mat_to_sign(
             self.my_DMD.L_low_order_eigvecs, L_low_order_eigvecs_true,
-            rtol=tol)
+            rtol=rtol, atol=atol)
         np.testing.assert_allclose(
             self.my_DMD.summed_correlation_mats_eigvals,
-            summed_correlation_mats_eigvals_true, rtol=tol)
+            summed_correlation_mats_eigvals_true, rtol=rtol, atol=atol)
         self._helper_test_mat_to_sign(
             self.my_DMD.summed_correlation_mats_eigvecs,
-            summed_correlation_mats_eigvecs_true, rtol=tol)
+            summed_correlation_mats_eigvecs_true, rtol=rtol, atol=atol)
         np.testing.assert_allclose(
             self.my_DMD.proj_correlation_mat_eigvals,
-            proj_correlation_mat_eigvals_true, rtol=tol)
+            proj_correlation_mat_eigvals_true, rtol=rtol, atol=atol)
         self._helper_test_mat_to_sign(
             self.my_DMD.proj_correlation_mat_eigvecs,
-            proj_correlation_mat_eigvecs_true, rtol=tol)
+            proj_correlation_mat_eigvecs_true, rtol=rtol, atol=atol)
 
         # Test that matrices were correctly returned
         np.testing.assert_allclose(
-            eigvals_returned, eigvals_true, rtol=tol)
+            eigvals_returned, eigvals_true, rtol=rtol, atol=atol)
         self._helper_test_mat_to_sign(
-            R_low_order_eigvecs_returned, R_low_order_eigvecs_true, rtol=tol)
+            R_low_order_eigvecs_returned, R_low_order_eigvecs_true, rtol=rtol,
+            atol=atol)
         self._helper_test_mat_to_sign(
-            L_low_order_eigvecs_returned, L_low_order_eigvecs_true, rtol=tol)
+            L_low_order_eigvecs_returned, L_low_order_eigvecs_true, rtol=rtol,
+            atol=atol)
         np.testing.assert_allclose(
             summed_correlation_mats_eigvals_returned,
-            summed_correlation_mats_eigvals_true, rtol=tol)
+            summed_correlation_mats_eigvals_true, rtol=rtol, atol=atol)
         self._helper_test_mat_to_sign(
             summed_correlation_mats_eigvecs_returned,
-            summed_correlation_mats_eigvecs_true, rtol=tol)
+            summed_correlation_mats_eigvecs_true, rtol=rtol, atol=atol)
         np.testing.assert_allclose(
             proj_correlation_mat_eigvals_returned,
-            proj_correlation_mat_eigvals_true, rtol=tol)
+            proj_correlation_mat_eigvals_true, rtol=rtol, atol=atol)
         self._helper_test_mat_to_sign(
             proj_correlation_mat_eigvecs_returned,
-            proj_correlation_mat_eigvecs_true, rtol=tol)
+            proj_correlation_mat_eigvecs_true, rtol=rtol, atol=atol)
 
 
     def _helper_check_modes(self, modes_true, mode_path_list):
@@ -1527,7 +1530,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             modes_true, modes_computed, rtol=rtol, atol=atol)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_decomp(self):
         """Test DMD decomposition"""
         # Define an array of vectors, with corresponding handles
@@ -1564,7 +1567,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             self.vec_handles, self.adv_vec_handles[:-1])
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_modes(self):
         """Test building of modes."""
         # Generate path names for saving modes to disk
