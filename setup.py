@@ -26,8 +26,8 @@ else:
 
 OKID_test_data_files = list()
 for c in ['SISO', 'SIMO', 'MISO', 'MIMO']:
-    OKID_test_data_files.append((os.path.join('modred', 'test_files_okid' , c), 
-        glob.glob(os.path.join('modred', 'test_files_okid', c, '*'))))
+    OKID_test_data_files.append((os.path.join('modred', 'tests', 'OKID_files' , c), 
+        glob.glob(os.path.join('modred', 'tests', 'OKID_files', c, '*'))))
 setup(
     name='modred',
     version=__version__,

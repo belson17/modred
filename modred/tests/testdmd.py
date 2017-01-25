@@ -769,8 +769,8 @@ class TestDMDHandles(unittest.TestCase):
     #@unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):
         """Test projection coefficients"""
-        rtol = 1e-8
-        atol = 1e-10    # Sometimes fails if tol too high
+        rtol = 1e-6
+        atol = 1e-8    # Sometimes fails if tol too high
 
         # Define an array of vectors, with corresponding handles
         vec_array = parallel.call_and_bcast(np.random.random,
@@ -1005,8 +1005,8 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
 
 
     def test_all(self):
-        rtol = 1e-8
-        atol = 1e-15
+        rtol = 1e-7
+        atol = 1e-14
         mode_indices = [2, 0, 3]
 
         # Generate weight matrices for inner products, which should all be
@@ -1423,7 +1423,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         self, vec_array,  vec_handles, adv_vec_array=None,
         adv_vec_handles=None, max_num_eigvals=None):
         # Set tolerance.
-        tol = 1e-10
+        tol = 1e-9
 
         # Compute reference DMD values
         (eigvals_true, R_low_order_eigvecs_true, L_low_order_eigvecs_true,
@@ -1493,7 +1493,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
 
     def _helper_check_modes(self, modes_true, mode_path_list):
         # Set tolerance.
-        tol = 1e-10
+        tol = 1e-9
 
         # Load all modes into matrix, compare to modes from direct computation
         modes_computed = np.zeros(modes_true.shape, dtype=complex)
@@ -1676,8 +1676,8 @@ class TestTLSqrDMDHandles(unittest.TestCase):
     #@unittest.skip('Testing something else.')
     def test_compute_spectrum(self):
         """Test DMD spectrum"""
-        rtol = 1e-10
-        atol = 1e-16
+        rtol = 1e-9
+        atol = 1e-14
 
         # Define an array of vectors, with corresponding handles
         vec_array = parallel.call_and_bcast(np.random.random,
@@ -1725,8 +1725,8 @@ class TestTLSqrDMDHandles(unittest.TestCase):
     #@unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):
         """Test projection coefficients"""
-        rtol = 1e-8
-        atol = 1e-10    # Sometimes fails if tol too high
+        rtol = 1e-6
+        atol = 1e-8    # Sometimes fails if tol too high
 
         # Define an array of vectors, with corresponding handles
         vec_array = parallel.call_and_bcast(np.random.random,

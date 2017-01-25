@@ -269,24 +269,19 @@ class TestBPODHandles(unittest.TestCase):
     #@unittest.skip('testing others')
     def test_compute_decomp(self):
         """Test that can take vecs, compute the Hankel and SVD matrices. """
-        tol = 1e-6
-
+        tol = 1e-5
         sing_vals_return, L_sing_vecs_return, R_sing_vecs_return = \
             self.my_BPOD.compute_decomp(self.direct_vec_handles,
                 self.adjoint_vec_handles)
-
         np.testing.assert_allclose(self.my_BPOD.Hankel_mat,
             self.Hankel_mat_true, rtol=tol)
-
         num_sing_vals = len(self.sing_vals_true)
         np.testing.assert_allclose(self.my_BPOD.L_sing_vecs[:,:num_sing_vals],
             self.L_sing_vecs_true, rtol=tol, atol=tol)
-
         np.testing.assert_allclose(self.my_BPOD.R_sing_vecs[:,:num_sing_vals],
             self.R_sing_vecs_true, rtol=tol, atol=tol)
         np.testing.assert_allclose(self.my_BPOD.sing_vals[:num_sing_vals],
             self.sing_vals_true, rtol=tol, atol=tol)
-
         np.testing.assert_allclose(L_sing_vecs_return[:,:num_sing_vals],
             self.L_sing_vecs_true, rtol=tol, atol=tol)
         np.testing.assert_allclose(R_sing_vecs_return[:,:num_sing_vals],
@@ -298,7 +293,7 @@ class TestBPODHandles(unittest.TestCase):
     #@unittest.skip('testing others')
     def test_compute_modes(self):
         """Test computing modes in serial and parallel."""
-        atol = 1e-6
+        atol = 1e-5
         direct_mode_path = join(self.test_dir, 'direct_mode_%03d.txt')
         adjoint_mode_path = join(self.test_dir, 'adjoint_mode_%03d.txt')
 
@@ -373,8 +368,8 @@ class TestBPODHandles(unittest.TestCase):
     def test_compute_adj_proj_coeffs(self):
         # Tests fail if tolerance is too tight, likely due to random nature of
         # data.  Maximum error (elementwise) seems to come out ~1e-11.
-        rtol = 1e-8
-        atol = 1e-10
+        rtol = 1e-7
+        atol = 1e-8
 
         # Compute true projection coefficients by simply projecting directly
         # onto the modes.
