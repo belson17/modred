@@ -777,7 +777,7 @@ class TestDMDHandles(unittest.TestCase):
         self.my_DMD.correlation_mat_eigvecs = correlation_mat_eigvecs
 
         # Check that spectral coefficients computed using adjoints match those
-        # computed using a pseudoinverse
+        # computed using a direct projection onto the adjoint modes
         parallel.barrier()
         spectral_coeffs = self.my_DMD.compute_spectrum()
         spectral_coeffs_true = np.abs(np.array(
@@ -1398,23 +1398,11 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         adj_modes_list = [
             np.array(adj_modes[:, i]) for i in range(adj_modes.shape[1])]
 
-        # Compute spectrum using pesudoinverse, which is analytically
-        # equivalent to the adjoint approach used in the DMD class.  This
-        # should work so long as the eigenvector matrices are full rank, which
-        # is the case as long as there are no Jordan blocks.  For random data,
-        # this should be ok.
-        spectral_coeffs = np.abs(np.array(
-            inner_product(adj_modes_list, vecs_proj[0:1]))).squeeze()
-
         return (
-            modes_exact, modes_proj, spectral_coeffs, eigvals,
-            R_low_order_eigvecs, L_low_order_eigvecs,
-            summed_correlation_mats_eigvals,
-            summed_correlation_mats_eigvecs,
-            proj_correlation_mat_eigvals,
-            proj_correlation_mat_eigvecs,
-            cross_correlation_mat,
-            adj_modes)
+            modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
+            L_low_order_eigvecs, summed_correlation_mats_eigvals,
+            summed_correlation_mats_eigvecs, proj_correlation_mat_eigvals,
+            proj_correlation_mat_eigvecs, cross_correlation_mat, adj_modes)
 
 
     def _helper_test_1D_array_to_sign(
@@ -1589,13 +1577,10 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 handle.put(np.array(seq_vec_array[:, vec_index]).squeeze())
 
         # Compute DMD directly from data (must truncate for TLSDMD)
-        (modes_exact, modes_proj, spectral_coeffs, eigvals,
-            R_low_order_eigvecs, L_low_order_eigvecs,
-            summed_correlation_mats_eigvals,
-            summed_correlation_mats_eigvecs,
-            proj_correlation_mat_eigvals,
-            proj_correlation_mat_eigvecs
-            ) = self._helper_compute_DMD_from_data(
+        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
+        L_low_order_eigvecs, summed_correlation_mats_eigvals,
+        summed_correlation_mats_eigvecs, proj_correlation_mat_eigvals,
+        proj_correlation_mat_eigvecs) = self._helper_compute_DMD_from_data(
             seq_vec_array, util.InnerProductBlock(np.vdot),
             max_num_eigvals=self.max_num_eigvals)[:-2]
 
@@ -1657,13 +1642,10 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 adv_handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
 
         # Compute DMD directly from data (must truncate for TLSDMD)
-        (modes_exact, modes_proj, spectral_coeffs, eigvals,
-            R_low_order_eigvecs, L_low_order_eigvecs,
-            summed_correlation_mats_eigvals,
-            summed_correlation_mats_eigvecs,
-            proj_correlation_mat_eigvals,
-            proj_correlation_mat_eigvecs
-            ) = self._helper_compute_DMD_from_data(
+        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
+        L_low_order_eigvecs, summed_correlation_mats_eigvals,
+        summed_correlation_mats_eigvecs, proj_correlation_mat_eigvals,
+        proj_correlation_mat_eigvecs ) = self._helper_compute_DMD_from_data(
             vec_array, util.InnerProductBlock(np.vdot),
             adv_vec_array=adv_vec_array,
             max_num_eigvals=self.max_num_eigvals)[:-2]
@@ -1708,10 +1690,10 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         self._helper_check_modes(modes_proj, mode_path_list)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_spectrum(self):
         """Test DMD spectrum"""
-        rtol = 1e-9
+        rtol = 1e-12
         atol = 1e-14
 
         # Define an array of vectors, with corresponding handles
@@ -1721,18 +1703,32 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             for vec_index, handle in enumerate(self.vec_handles):
                 handle.put(np.array(vec_array[:, vec_index]).squeeze())
 
-        # Check spectral coefficients using a direct projection onto the
-        # adjoint modes.  (Must always truncate for TLSDMD.)
-        parallel.barrier()
-        self.my_DMD.compute_decomp(
-            self.vec_handles, max_num_eigvals=self.max_num_eigvals)
-        spectral_coeffs_computed = self.my_DMD.compute_spectrum()
-        spectral_coeffs_true = self._helper_compute_DMD_from_data(
+        # Compute DMD manually and then set the data in a DMDHandles object.
+        # This way, we test only the task of computing the spectral
+        # coefficients, and not also the task of computing the decomposition.
+        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
+        L_low_order_eigvecs, summed_correlation_mats_eigvals,
+        summed_correlation_mats_eigvecs, proj_correlation_mat_eigvals,
+        proj_correlation_mat_eigvecs, cross_correlation_mat, adj_modes) =\
+            self._helper_compute_DMD_from_data(
             vec_array, util.InnerProductBlock(np.vdot),
-            max_num_eigvals=self.max_num_eigvals)[2]
-        self._helper_test_1D_array_to_sign(
-            spectral_coeffs_true, spectral_coeffs_computed, rtol=rtol,
-            atol=atol)
+            max_num_eigvals=self.max_num_eigvals)
+        self.my_DMD.L_low_order_eigvecs = L_low_order_eigvecs
+        self.my_DMD.proj_correlation_mat_eigvals = proj_correlation_mat_eigvals
+        self.my_DMD.proj_correlation_mat_eigvecs = proj_correlation_mat_eigvecs
+
+        # Check that spectral coefficients computed using adjoints match those
+        # computed using a direct projection onto the adjoint modes
+        parallel.barrier()
+        spectral_coeffs = self.my_DMD.compute_spectrum()
+        vec_array_proj = np.array(
+            vec_array[:, :-1] *
+            summed_correlation_mats_eigvecs *
+            summed_correlation_mats_eigvecs.H)
+        spectral_coeffs_true = np.abs(np.array(
+            np.dot(adj_modes.conj().T, vec_array_proj[:, 0]))).squeeze()
+        np.testing.assert_allclose(
+            spectral_coeffs, spectral_coeffs_true, rtol=rtol, atol=atol)
 
         # Create more data, to check a non-sequential dataset
         adv_vec_array = parallel.call_and_bcast(np.random.random,
@@ -1741,23 +1737,36 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             for vec_index, handle in enumerate(self.adv_vec_handles):
                 handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
 
+        # Compute DMD manually and then set the data in a DMDHandles object.
+        # This way, we test only the task of computing the spectral
+        # coefficients, and not also the task of computing the decomposition.
+        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
+        L_low_order_eigvecs, summed_correlation_mats_eigvals,
+        summed_correlation_mats_eigvecs, proj_correlation_mat_eigvals,
+        proj_correlation_mat_eigvecs, cross_correlation_mat, adj_modes) =\
+            self._helper_compute_DMD_from_data(
+            vec_array, util.InnerProductBlock(np.vdot),
+            adv_vec_array=adv_vec_array,
+            max_num_eigvals=self.max_num_eigvals)
+        self.my_DMD.L_low_order_eigvecs = L_low_order_eigvecs
+        self.my_DMD.proj_correlation_mat_eigvals = proj_correlation_mat_eigvals
+        self.my_DMD.proj_correlation_mat_eigvecs = proj_correlation_mat_eigvecs
+
         # Check spectral coefficients using a direct projection onto the
         # adjoint modes.  (Must always truncate for TLSDMD.)
         parallel.barrier()
-        self.my_DMD.compute_decomp(
-            self.vec_handles, adv_vec_handles=self.adv_vec_handles,
-            max_num_eigvals=self.max_num_eigvals)
-        spectral_coeffs_computed = self.my_DMD.compute_spectrum()
-        spectral_coeffs_true = self._helper_compute_DMD_from_data(
-            vec_array, util.InnerProductBlock(np.vdot),
-            adv_vec_array=adv_vec_array,
-            max_num_eigvals=self.max_num_eigvals)[2]
-        self._helper_test_1D_array_to_sign(
-            spectral_coeffs_true, spectral_coeffs_computed, rtol=rtol,
-            atol=atol)
+        spectral_coeffs = self.my_DMD.compute_spectrum()
+        vec_array_proj = np.array(
+            vec_array *
+            summed_correlation_mats_eigvecs *
+            summed_correlation_mats_eigvecs.H)
+        spectral_coeffs_true = np.abs(np.array(
+            np.dot(adj_modes.conj().T, vec_array_proj[:, 0]))).squeeze()
+        np.testing.assert_allclose(
+            spectral_coeffs, spectral_coeffs_true, rtol=rtol, atol=atol)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):
         """Test projection coefficients"""
         rtol = 1e-10
@@ -1773,7 +1782,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         # Compute DMD manually and then set the data in a TLSqrDMDHandles
         # object.  This way, we test only the task of computing the projection
         # coefficients, and not also the task of computing the decomposition.
-        (modes_exact, modes_proj, spectral_coeffs, eigvals, R_low_order_eigvecs,
+        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
         L_low_order_eigvecs, summed_correlation_mats_eigvals,
         summed_correlation_mats_eigvecs, proj_correlation_mat_eigvals,
         proj_correlation_mat_eigvecs, cross_correlation_mat, adj_modes) =\
@@ -1793,12 +1802,10 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         proj_coeffs, adv_proj_coeffs = self.my_DMD.compute_proj_coeffs()
         vec_array_proj = np.array(
             vec_array[:, :-1] *
-            self.my_DMD.summed_correlation_mats_eigvecs *
-            self.my_DMD.summed_correlation_mats_eigvecs.H)
+            summed_correlation_mats_eigvecs * summed_correlation_mats_eigvecs.H)
         adv_vec_array_proj = np.array(
             vec_array[:, 1:] *
-            self.my_DMD.summed_correlation_mats_eigvecs *
-            self.my_DMD.summed_correlation_mats_eigvecs.H)
+            summed_correlation_mats_eigvecs * summed_correlation_mats_eigvecs.H)
         proj_coeffs_true = np.dot(
             adj_modes.conj().T, vec_array_proj)
         adv_proj_coeffs_true = np.dot(
@@ -1818,7 +1825,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         # Compute DMD manually and then set the data in a TLSqrDMDHandles
         # object.  This way, we test only the task of computing the projection
         # coefficients, and not also the task of computing the decomposition.
-        (modes_exact, modes_proj, spectral_coeffs, eigvals, R_low_order_eigvecs,
+        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
         L_low_order_eigvecs, summed_correlation_mats_eigvals,
         summed_correlation_mats_eigvecs, proj_correlation_mat_eigvals,
         proj_correlation_mat_eigvecs, cross_correlation_mat, adj_modes) =\
@@ -1838,12 +1845,10 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         proj_coeffs, adv_proj_coeffs= self.my_DMD.compute_proj_coeffs()
         vec_array_proj = np.array(
             vec_array *
-            self.my_DMD.summed_correlation_mats_eigvecs *
-            self.my_DMD.summed_correlation_mats_eigvecs.H)
+            summed_correlation_mats_eigvecs * summed_correlation_mats_eigvecs.H)
         adv_vec_array_proj = np.array(
             adv_vec_array *
-            self.my_DMD.summed_correlation_mats_eigvecs *
-            self.my_DMD.summed_correlation_mats_eigvecs.H)
+            summed_correlation_mats_eigvecs * summed_correlation_mats_eigvecs.H)
         proj_coeffs_true = np.dot(adj_modes.conj().T, vec_array_proj)
         adv_proj_coeffs_true = np.dot(adj_modes.conj().T, adv_vec_array_proj)
         np.testing.assert_allclose(
