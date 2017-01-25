@@ -17,7 +17,7 @@ import modred.vectors as V
 from modred import util
 
 
-#@unittest.skip('others')
+@unittest.skip('others')
 @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestDMDArraysFunctions(unittest.TestCase):
     def setUp(self):
@@ -217,7 +217,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
                 adv_vecs=adv_vecs, max_num_eigvals=max_num_eigvals)
 
 
-#@unittest.skip('others')
+@unittest.skip('others')
 class TestDMDHandles(unittest.TestCase):
     def setUp(self):
         if not os.access('.', os.W_OK):
@@ -857,7 +857,7 @@ class TestDMDHandles(unittest.TestCase):
             adv_proj_coeffs, adv_proj_coeffs_true, rtol=rtol, atol=atol)
 
 
-@unittest.skip('Testing something else.')
+#@unittest.skip('Testing something else.')
 @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestTLSqrDMDArraysFunctions(unittest.TestCase):
     def setUp(self):
@@ -1039,7 +1039,7 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
 
     def test_all(self):
         rtol = 1e-7
-        atol = 1e-14
+        atol = 1e-15
         mode_indices = [2, 0, 3]
 
         # Generate weight matrices for inner products, which should all be
