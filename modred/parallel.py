@@ -149,7 +149,7 @@ def call_and_bcast(func, *args, **kwargs):
         outputs = func(*args, **kwargs)
     else:
         outputs = None
-    if is_distributed:
+    if _is_distributed:
         outputs = comm.bcast(outputs, root=0)
     return outputs
 
