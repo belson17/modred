@@ -9,25 +9,38 @@ from . import parallel
 
 
 def compute_BPOD_matrices(
-    direct_vecs, adjoint_vecs, direct_mode_indices, adjoint_mode_indices,
+    direct_vecs, adjoint_vecs, num_inputs=1, num_outputs=1,
+    direct_mode_indices=None, adjoint_mode_indices=None,
     inner_product_weights=None, atol=1e-13, rtol=None, return_all=False):
     """Computes BPOD modes using data stored in matrices, using method of
     snapshots.
 
     Args:
         ``direct_vecs``: Matrix whose columns are direct data vectors
-        (:math:`X`).
+        (:math:`X`). They should be stacked so that if there are :math:`p`
+        inputs, the first :math:`p` columns should all correspond to the same
+        timestep.  For instance, these are often all initial conditions of
+        :math:`p` different impulse responses.
 
         ``adjoint_vecs``: Matrix whose columns are adjoint data vectors
-        (:math:`Y`).
-
-        ``direct_mode_indices``: List of indices describing which direct modes
-        to compute.  Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
-
-        ``adjoint_mode_indices``: List of indices describing which adjoint
-        modes to compute.  Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
+        (:math:`Y`). They should be stacked so that if there are :math:`q`
+        outputs, the first :math:`q` columns should all correspond to the same
+        timestep.  For instance, these are often all initial conditions of
+        :math:`q` different adjoint impulse responses.
 
     Kwargs:
+        ``num_inputs``: Number of inputs to the system.
+
+        ``num_outputs``: Number of outputs of the system.
+
+        ``direct_mode_indices``: List of indices describing which direct modes
+        to compute.  Examples are ``range(10)`` or ``[3, 0, 6, 8]``.  If no
+        mode indices are specified, then all modes will be computed.
+
+        ``adjoint_mode_indices``: List of indices describing which adjoint
+        modes to compute.  Examples are ``range(10)`` or ``[3, 0, 6, 8]``.  If
+        no mode indices are specified, then all modes will be computed.
+
         ``inner_product_weights``: 1D array or matrix of inner product weights.
         Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
 
@@ -63,23 +76,37 @@ def compute_BPOD_matrices(
     direct_vecs = util.make_mat(direct_vecs)
     adjoint_vecs = util.make_mat(adjoint_vecs)
 
-    first_adjoint_all_direct = vec_space.compute_inner_product_mat(
-        adjoint_vecs[:, 0], direct_vecs)
-    all_adjoint_last_direct = vec_space.compute_inner_product_mat(
-        adjoint_vecs, direct_vecs[:, -1])
-    Hankel_mat = util.Hankel(first_adjoint_all_direct, all_adjoint_last_direct)
+    # Compute first column (of chunks) of Hankel matrix
+    all_adjoint_first_direct = np.array(vec_space.compute_inner_product_mat(
+        adjoint_vecs, direct_vecs[:, :num_inputs]))
+    all_adjoint_first_direct_list = [
+        all_adjoint_first_direct[
+            i * num_outputs:(i + 1) * num_outputs, :num_inputs]
+        for i in xrange(all_adjoint_first_direct.shape[0] // num_outputs)]
+
+    # Compute last row (of chunks) of Hankel matrix
+    last_adjoint_all_direct = np.array(vec_space.compute_inner_product_mat(
+        adjoint_vecs[:, -num_outputs:], direct_vecs))
+    last_adjoint_all_direct_list = [
+        last_adjoint_all_direct[:, j * num_inputs:(j + 1) * num_inputs]
+        for j in xrange(last_adjoint_all_direct.shape[1] // num_inputs)]
+
+    # Compute Hankel matrix
+    Hankel_mat = np.mat(util.Hankel_chunks(
+        all_adjoint_first_direct_list, last_adjoint_all_direct_list))
+    #Hankel_mat2 = vec_space.compute_inner_product_mat(adjoint_vecs,
+    #    direct_vecs)
+    #print 'diff in Hankels', Hankel_mat - Hankel_mat2
+    #Hankel_mat = Hankel_mat2
+
+    # Compute BPOD modes
     L_sing_vecs, sing_vals, R_sing_vecs = util.svd(
         Hankel_mat, atol=atol, rtol=rtol)
-    #Hankel_mat = vec_space.compute_inner_product_mat(adjoint_vecs,
-    #    direct_vecs)
-    #print 'diff in Hankels',Hankel_mat - Hankel_mat2
-    #Hankel_mat = Hankel_mat2
     sing_vals_sqrt_mat = np.mat(np.diag(sing_vals ** -0.5))
     direct_build_coeff_mat = R_sing_vecs * sing_vals_sqrt_mat
     direct_mode_array = vec_space.lin_combine(
         direct_vecs, direct_build_coeff_mat,
         coeff_mat_col_indices=direct_mode_indices)
-
     adjoint_build_coeff_mat = L_sing_vecs * sing_vals_sqrt_mat
     adjoint_mode_array = vec_space.lin_combine(
         adjoint_vecs, adjoint_build_coeff_mat,
