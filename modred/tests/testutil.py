@@ -386,12 +386,14 @@ class TestUtil(unittest.TestCase):
                         (num_time_steps, num_outputs, num_inputs))
                     for ti in range(num_time_steps):
                         outputs_true[ti] = C * (A**ti) * B
-                    np.testing.assert_allclose(outputs, outputs_true, rtol=1e-7, atol=1e-7)
+                    np.testing.assert_allclose(
+                        outputs, outputs_true, rtol=1e-7, atol=1e-7)
 
                     # Check can give num_time_steps as an argument
                     outputs = util.impulse(
                         A, B, C, num_time_steps=num_time_steps)
-                    np.testing.assert_allclose(outputs, outputs_true, rtol=1e-7, atol=1e-7)
+                    np.testing.assert_allclose(
+                        outputs, outputs_true, rtol=1e-7, atol=1e-7)
 
 
     def test_Hankel(self):
@@ -399,13 +401,16 @@ class TestUtil(unittest.TestCase):
         for num_rows in [1, 4, 6]:
             for num_cols in [1, 3, 6]:
 
-                # Generate random values
-                first_col = np.random.random((num_rows))
-                last_row = np.random.random((num_cols))
+                # Generate simple integer values so structure of matrix is easy
+                # to see.  This doesn't affect the robustness of the test, as
+                # all we are concerned about is structure.
+                first_col = np.arange(1, num_rows + 1)
+                last_row = np.arange(1, num_cols + 1) * 10
                 last_row[0] = first_col[-1]
-                Hankel_true = np.zeros((num_rows, num_cols))
 
-                # Along skew diagonals, i + j is constant.
+                # Fill in Hankel matrix.  Recall that along skew diagonals, i +
+                # j is constant.
+                Hankel_true = np.zeros((num_rows, num_cols))
                 for i in xrange(num_rows):
                     for j in xrange(num_cols):
 
@@ -423,6 +428,52 @@ class TestUtil(unittest.TestCase):
 
                 # Compute Hankel matrix using util
                 Hankel_test = util.Hankel(first_col, last_row)
+
+                np.testing.assert_equal(Hankel_test, Hankel_true)
+
+
+    def test_Hankel_chunks(self):
+        """Test forming Hankel matrix using chunks."""
+        chunk_num_rows = 2
+        chunk_num_cols = 2
+        chunk_shape = (chunk_num_rows, chunk_num_cols)
+        for num_row_chunks in [1, 4, 6]:
+            for num_col_chunks in [1, 3, 6]:
+
+                # Generate simple values that make it easy to see the matrix
+                # structure
+                first_col_chunks = [
+                    np.ones(chunk_shape) * (i + 1)
+                    for i in xrange(num_row_chunks)]
+                last_row_chunks = [
+                    np.ones(chunk_shape) * (j + 1) * 10
+                    for j in xrange(num_col_chunks)]
+                last_row_chunks[0] = first_col_chunks[-1]
+
+                # Fill in Hankel matrix chunk by chunk
+                Hankel_true = np.zeros((
+                    num_row_chunks * chunk_shape[0],
+                    num_col_chunks * chunk_shape[1]))
+                for i in xrange(num_row_chunks):
+                    for j in xrange(num_col_chunks):
+
+                        # Upper left triangle of values
+                        if i + j < num_row_chunks:
+                            Hankel_true[
+                                i * chunk_num_rows:(i + 1) * chunk_num_rows,
+                                j * chunk_num_cols:(j + 1) * chunk_num_cols] =\
+                                first_col_chunks[i + j]
+
+                        # Lower right triangle of values
+                        else:
+                            Hankel_true[
+                                i * chunk_num_rows:(i + 1) * chunk_num_rows,
+                                j * chunk_num_cols:(j + 1) * chunk_num_cols] =\
+                                last_row_chunks[i + j - num_row_chunks + 1]
+
+                # Compute Hankel matrix using util
+                Hankel_test = util.Hankel_chunks(
+                    first_col_chunks, last_row_chunks)
 
                 np.testing.assert_equal(Hankel_test, Hankel_true)
 

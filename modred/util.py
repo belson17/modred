@@ -713,3 +713,42 @@ def Hankel(first_col, last_row=None):
     a, b = np.ogrid[0:len(first_col), 0:len(last_row)]
     indices = a + b
     return unique_vals[indices]
+
+
+def Hankel_chunks(first_col_chunks, last_row_chunks=None):
+    """
+    Construct a Hankel matrix using chunks, whose elements have Hankel structure
+    at the chunk level (constant along skew diagonals),rather than at the
+    element level.
+
+    Args:
+        ``first_col_chunks``: List of 2D arrays corresponding to the first
+        column of Hankel matrix chunks.
+
+    Kwargs:
+        ``last_row_chunks``: List of 2D arrays corresponding to the last row of
+        Hankel matrix chunks.  Default is a list of arrays of zeros.
+
+    Returns:
+        Hankel:  2D array with dimension
+        ``[len(first_col) * first_col[0].shape[0],
+        len(last_row) * last_row[0].shape[1]]``.
+    """
+    # If nothing is passed in for last row, use a list of chunks where each
+    # chunk is an array of zeros, and each chunk has the same size as the chunks
+    # in the first column.
+    if last_row_chunks is None:
+        last_row_chunks = [
+            np.zeros(first_col_chunks[0].shape)] * len(first_col_chunks)
+
+    # Gather the unique chunks in one list
+    unique_chunks = first_col_chunks + last_row_chunks[1:]
+
+    # Use a list comprehension to create a list where each element of the list
+    # is an array corresponding a all the chunks in a row.  To get that array,
+    # slice the list of unique chunks using the right index and call hstack on
+    # it.  Finally, call vstack on the list comprehension to get the whole
+    # Hankel matrix.
+    return np.vstack([np.hstack(
+        unique_chunks[idx:idx + len(last_row_chunks)])
+        for idx in xrange(len(first_col_chunks))])
