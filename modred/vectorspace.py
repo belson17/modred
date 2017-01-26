@@ -59,9 +59,10 @@ class VectorSpaceMatrices(object):
             return False
 
 
-    def lin_combine(self, basis_vecs, coeff_mat,
-        coeff_mat_col_indices=None):
-        return np.mat(basis_vecs) * np.mat(coeff_mat[:,coeff_mat_col_indices])
+    def lin_combine(self, basis_vecs, coeff_mat, coeff_mat_col_indices=None):
+        if coeff_mat_col_indices is not None:
+            coeff_mat = coeff_mat[:, coeff_mat_col_indices]
+        return np.mat(basis_vecs) * np.mat(coeff_mat)
 
 
     def compute_symmetric_inner_product_mat(self, vecs):
