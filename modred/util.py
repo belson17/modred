@@ -688,27 +688,28 @@ def load_multiple_signals(signal_paths, delimiter=None):
     return time_values, all_signals
 
 
-def Hankel(first_row, last_col=None):
+def Hankel(first_col, last_row=None):
     """
-    Construct a Hankel matrix.
+    Construct a Hankel matrix, whose skew diagonals are constant.
 
     Args:
-        ``first_row``: 1D array corresponding to first row of Hankel matrix.
+        ``first_col``: 1D array corresponding to first column of Hankel matrix.
 
     Kwargs:
-        ``last_col``: 1D array corresponding to the last column of Hankel
-        matrix.  Default is an array of zeros.
+        ``last_row``: 1D array corresponding to the last row of Hankel matrix.
+        First element will be ignored.  Default is an array of zeros of the same
+        size as ``first_col``.
 
     Returns:
-        Hankel: 2D array with dimensions ``[len(last_col), len(first_row)]``.
+        Hankel: 2D array with dimensions ``[len(first_col), len(last_row)]``.
     """
-    first_row = np.asarray(first_row).flatten()
-    if last_col is None:
-        last_col = np.zeros(first_row.shape)
+    first_col = np.asarray(first_col).flatten()
+    if last_row is None:
+        last_row = np.zeros(first_col.shape)
     else:
-        last_col = np.asarray(last_col).flatten()
+        last_row = np.asarray(last_row).flatten()
 
-    unique_vals = np.concatenate((first_row, last_col[1:]))
-    a, b = np.ogrid[0:len(last_col), 0:len(first_row)]
+    unique_vals = np.concatenate((first_col, last_row[1:]))
+    a, b = np.ogrid[0:len(first_col), 0:len(last_row)]
     indices = a + b
     return unique_vals[indices]

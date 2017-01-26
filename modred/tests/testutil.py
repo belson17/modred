@@ -395,21 +395,36 @@ class TestUtil(unittest.TestCase):
 
 
     def test_Hankel(self):
-        """Test forming Hankel matrix from first row and last column."""
+        """Test forming Hankel matrix from first column and last row."""
         for num_rows in [1, 4, 6]:
             for num_cols in [1, 3, 6]:
-                first_row = np.random.random((num_cols))
-                last_col = np.random.random((num_rows))
-                last_col[0] = first_row[-1]
+
+                # Generate random values
+                first_col = np.random.random((num_rows))
+                last_row = np.random.random((num_cols))
+                last_row[0] = first_col[-1]
                 Hankel_true = np.zeros((num_rows, num_cols))
-                for r in range(num_rows):
-                    for c in range(num_cols):
-                        if r+c < num_cols:
-                            Hankel_true[r,c] = first_row[r+c]
+
+                # Along skew diagonals, i + j is constant.
+                for i in xrange(num_rows):
+                    for j in xrange(num_cols):
+
+                        # Upper left triangle of values.  Fill skew diagonals
+                        # until we hit the lower left corner of the matrix, where
+                        # i + j = num_rows - 1.
+                        if i + j < num_rows:
+                            Hankel_true[i, j] = first_col[i + j]
+
+                        # Lower right triangle of values.  Starting on skew
+                        # diagonal just to right of lower left corner of matrix,
+                        # fill in rest of values.
                         else:
-                            Hankel_true[r,c] = last_col[r+c-num_cols+1]
-                Hankel_comp = util.Hankel(first_row, last_col)
-                np.testing.assert_equal(Hankel_comp, Hankel_true)
+                            Hankel_true[i, j] = last_row[i + j - num_rows + 1]
+
+                # Compute Hankel matrix using util
+                Hankel_test = util.Hankel(first_col, last_row)
+
+                np.testing.assert_equal(Hankel_test, Hankel_true)
 
 
 if __name__ == '__main__':
