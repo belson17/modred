@@ -68,7 +68,7 @@ class TestPODArraysFunctions(unittest.TestCase):
 
 class TestPODHandles(unittest.TestCase):
     def setUp(self):
-        self.test_dir = 'DELETE_ME_test_files_pod'
+        self.test_dir = 'POD_files'
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
@@ -103,7 +103,7 @@ class TestPODHandles(unittest.TestCase):
 
 
     def test_puts_gets(self):
-        test_dir = 'DELETE_ME_test_files_pod'
+        test_dir = 'POD_files'
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         if not os.path.isdir(test_dir):

@@ -222,7 +222,7 @@ class TestDMDHandles(unittest.TestCase):
     def setUp(self):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        self.test_dir = 'DELETE_ME_test_files_dmd'
+        self.test_dir = 'DMD_files'
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
             os.mkdir(self.test_dir)
 
@@ -309,7 +309,7 @@ class TestDMDHandles(unittest.TestCase):
         """Test get and put functions"""
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        test_dir = 'DELETE_ME_test_files_dmd'
+        test_dir = 'DMD_files'
         if not os.path.isdir(test_dir) and parallel.is_rank_zero():
             os.mkdir(test_dir)
         eigvals = parallel.call_and_bcast(np.random.random, 5)
@@ -1083,7 +1083,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
     def setUp(self):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        self.test_dir = 'DELETE_ME_test_files_dmd'
+        self.test_dir = 'DMD_files'
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
             os.mkdir(self.test_dir)
 
@@ -1174,7 +1174,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         """Test get and put functions"""
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        test_dir = 'DELETE_ME_test_files_dmd'
+        test_dir = 'DMD_files'
         if not os.path.isdir(test_dir) and parallel.is_rank_zero():
             os.mkdir(test_dir)
         eigvals = parallel.call_and_bcast(np.random.random, 5)

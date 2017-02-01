@@ -23,7 +23,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
     def setUp(self):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        self.test_dir = 'DELETE_ME_test_files_vecoperations'
+        self.test_dir = 'vectorspace_files'
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
             os.mkdir(self.test_dir)
 

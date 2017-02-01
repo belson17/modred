@@ -39,7 +39,7 @@ class testERA(unittest.TestCase):
     def setUp(self):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        self.test_dir = 'DELETE_ME_test_files_era'
+        self.test_dir = 'ERA_files'
         if not os.path.exists(self.test_dir):
             os.mkdir(self.test_dir)
         self.impulse_file_path = join(self.test_dir, 'impulse_input%03d.txt')

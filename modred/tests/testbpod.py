@@ -150,7 +150,7 @@ class TestBPODHandles(unittest.TestCase):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
 
-        self.test_dir = 'DELETE_ME_test_files_bpod'
+        self.test_dir = 'BPOD_files'
         if not os.path.isdir(self.test_dir):
             parallel.call_from_rank_zero(os.mkdir, self.test_dir)
 
@@ -277,7 +277,7 @@ class TestBPODHandles(unittest.TestCase):
 
     def test_puts_gets(self):
         """Test that put/get work in base class."""
-        test_dir = 'DELETE_ME_test_files_bpod'
+        test_dir = 'BPOD_files'
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         if not os.path.isdir(test_dir) and parallel.is_rank_zero():

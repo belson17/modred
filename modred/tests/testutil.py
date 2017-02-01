@@ -18,7 +18,7 @@ class TestUtil(unittest.TestCase):
     To test all parallel features, use "mpiexec -n 2 python testutil.py"
     """
     def setUp(self):
-        self.test_dir = 'DELETE_ME_test_files_util'
+        self.test_dir = 'util_files'
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         if parallel.is_rank_zero():

@@ -16,7 +16,7 @@ import modred.vectors as V
 class TestVectors(unittest.TestCase):
     """Test the vector methods """
     def setUp(self):
-        self.test_dir ='DELETE_ME_test_files_vectors'
+        self.test_dir = 'vectors_files'
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():

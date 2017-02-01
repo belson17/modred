@@ -21,7 +21,7 @@ class TestLTIGalerkinProjectionBase(unittest.TestCase):
     def setUp(self):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        self.test_dir ='DELETE_ME_test_files_ltigalerkinproj'
+        self.test_dir ='LTIGalerkinProj_files'
         if parallel.is_rank_zero() and not os.path.exists(self.test_dir):
             os.mkdir(self.test_dir)
         parallel.barrier()
@@ -163,7 +163,7 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
 
-        self.test_dir ='DELETE_ME_test_files_ltigalerkinproj'
+        self.test_dir ='LTIGalerkinProj_files'
         if parallel.is_rank_zero() and not os.path.exists(self.test_dir):
             os.mkdir(self.test_dir)
         parallel.barrier()
