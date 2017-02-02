@@ -23,14 +23,10 @@ from modred import vectors as V
 class TestBPODMatrices(unittest.TestCase):
     def setUp(self):
         self.num_states = 10
-        self.num_inputs = self.num_states
-        self.num_outputs = self.num_states
 
         # Later, test various SISO, MIMO configurations
-        #self.num_inputs = np.random.randint(0, high=self.num_states + 1)
-        #self.num_outputs = np.random.randint(0, high=self.num_states + 1)
-        #self.num_inputs = 1
-        #self.num_outputs = 1
+        self.num_inputs = np.random.randint(1, high=self.num_states + 1)
+        self.num_outputs = np.random.randint(1, high=self.num_states + 1)
 
         # Generate random, stable A matrix
         self.A = util.drss(self.num_states, 1, 1)[0]
@@ -38,6 +34,7 @@ class TestBPODMatrices(unittest.TestCase):
         # Generate random B and C matrix
         self.B = np.mat(np.random.random((self.num_states, self.num_inputs)))
         self.C = np.mat(np.random.random((self.num_outputs, self.num_states)))
+
 
         # Compute direct snapshots
         self.num_steps = self.num_states * 2
@@ -52,15 +49,22 @@ class TestBPODMatrices(unittest.TestCase):
 
 
     def test_all(self):
+        # Set test tolerances.  Separate, more relaxed tolerances are required
+        # for testing the BPOD modes, since that test requires "squaring" the
+        # gramians and thus involves more ill-conditioned matrices.
         rtol = 1e-8
         atol = 1e-10
+        rtol_grams = 1e-8
+        atol_grams = 1e-8
 
-        # Generate weights to test different inner products
+        # Generate weights to test different inner products.  Keep most of the
+        # weights close to one, to avoid overly weighting certain states over
+        # others.
         ws = np.identity(self.num_states)
-        ws[0,0] = 2
-        ws[1,0] = 1.1
-        ws[0,1] = 1.1
-        weights_list = [None, np.random.random(self.num_states), ws]
+        ws[0,0] = 1.1
+        ws[1,0] = 0.1
+        ws[0,1] = 0.1
+        weights_list = [None, 0.1 * np.random.random(self.num_states) + 1., ws]
         weights_mats = [
             np.mat(np.identity(self.num_states)),
             np.mat(np.diag(weights_list[1])),
@@ -117,8 +121,6 @@ class TestBPODMatrices(unittest.TestCase):
             # Check that the modes diagonalize the gramians.  This test requires
             # looser tolerances than the other tests, likely due to the
             # "squaring" of the matrices in computing the gramians.
-            rtol_grams = 1e-8
-            atol_grams = 1e-8
             np.testing.assert_allclose((
                 IP(adjoint_modes_mat, self.direct_vecs_mat) *
                 IP(self.direct_vecs_mat, adjoint_modes_mat)),
@@ -130,7 +132,8 @@ class TestBPODMatrices(unittest.TestCase):
                 np.diag(sing_vals),
                 rtol=rtol_grams, atol=atol_grams)
 
-            # For debugging
+            # For debugging.  Check each mode individually and print some
+            # information if the test fails.
             '''
             for mode_idx in xrange(sing_vals.size):
                 try:
