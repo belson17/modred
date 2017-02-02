@@ -26,6 +26,12 @@ class TestBPODMatrices(unittest.TestCase):
         self.num_inputs = self.num_states
         self.num_outputs = self.num_states
 
+        # Later, test various SISO, MIMO configurations
+        #self.num_inputs = np.random.randint(0, high=self.num_states + 1)
+        #self.num_outputs = np.random.randint(0, high=self.num_states + 1)
+        #self.num_inputs = 1
+        #self.num_outputs = 1
+
         # Generate random, stable A matrix
         self.A = util.drss(self.num_states, 1, 1)[0]
 
@@ -83,7 +89,7 @@ class TestBPODMatrices(unittest.TestCase):
             L_sing_vecs, R_sing_vecs, Hankel_mat) =  compute_BPOD_matrices(
                 self.direct_vecs_mat, adjoint_vecs_mat,
                 num_inputs=self.num_inputs, num_outputs=self.num_outputs,
-                inner_product_weights=weights, rtol=1e-12, atol=1e-12,
+                inner_product_weights=weights, rtol=1e-10, atol=1e-12,
                 return_all=True)
 
             # Check Hankel mat values.  These are computed fast internally by
@@ -111,17 +117,67 @@ class TestBPODMatrices(unittest.TestCase):
             # Check that the modes diagonalize the gramians.  This test requires
             # looser tolerances than the other tests, likely due to the
             # "squaring" of the matrices in computing the gramians.
+            rtol_grams = 1e-8
             atol_grams = 1e-8
             np.testing.assert_allclose((
                 IP(adjoint_modes_mat, self.direct_vecs_mat) *
                 IP(self.direct_vecs_mat, adjoint_modes_mat)),
                 np.diag(sing_vals),
-                rtol=rtol, atol=atol_grams)
+                rtol=rtol_grams, atol=atol_grams)
             np.testing.assert_allclose((
                 IP(direct_modes_mat, adjoint_vecs_mat) *
                 IP(adjoint_vecs_mat, direct_modes_mat)),
                 np.diag(sing_vals),
-                rtol=rtol, atol=atol_grams)
+                rtol=rtol_grams, atol=atol_grams)
+
+            # For debugging
+            '''
+            for mode_idx in xrange(sing_vals.size):
+                try:
+
+                    np.testing.assert_allclose(
+                        self.direct_vecs_mat *
+                        IP(self.direct_vecs_mat,
+                           adjoint_modes_mat[:, mode_idx]),
+                        sing_vals[mode_idx] * direct_modes_mat[:, mode_idx],
+                        rtol=rtol_grams, atol=atol_grams)
+                    np.testing.assert_allclose(
+                        adjoint_vecs_mat *
+                        IP(adjoint_vecs_mat, direct_modes_mat[:, mode_idx]),
+                        sing_vals[mode_idx] * adjoint_modes_mat[:, mode_idx],
+                        rtol=rtol_grams, atol=atol_grams)
+                except:
+                    dir_LHS = self.direct_vecs_mat * IP(
+                        self.direct_vecs_mat, adjoint_modes_mat[:, mode_idx])
+                    dir_RHS = (
+                        sing_vals[mode_idx] * direct_modes_mat[:, mode_idx])
+                    dir_diff = dir_LHS - dir_RHS
+                    adj_LHS = adjoint_vecs_mat * IP(
+                        adjoint_vecs_mat, direct_modes_mat[:, mode_idx])
+                    adj_RHS = (
+                        sing_vals[mode_idx] * adjoint_modes_mat[:, mode_idx])
+                    adj_diff = adj_LHS - adj_RHS
+                    print '\n\nFailed modes test at mode idx %d' % mode_idx
+                    print 'Weights', weights
+                    print 'HSVs', sing_vals
+                    print (
+                        '    Curr HSV val %0.3E,    ratio %0.3E' % (
+                            sing_vals[mode_idx],
+                            sing_vals[mode_idx] / sing_vals.max()))
+                    print (
+                        '    HSV max %0.3E,    min %.3E,    ratio %0.3E' % (
+                            sing_vals.max(),
+                            sing_vals.min(),
+                            sing_vals.min() / sing_vals.max()))
+                    print (
+                        '    Direct error abs %0.3E,    rel %0.3E' % (
+                            np.abs(dir_diff).max(),
+                            np.abs(dir_diff / dir_RHS).max()))
+                    print (
+                        '    Adjoint error abs %0.3E,    rel %0.3E' % (
+                        np.abs(adj_diff).max(),
+                        np.abs(adj_diff / dir_RHS).max()))
+            '''
 
             # Check that if mode indices are passed in, the correct modes are
             # returned.

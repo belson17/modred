@@ -473,7 +473,7 @@ class TestUtil(unittest.TestCase):
 
                 # Compute Hankel matrix using util
                 Hankel_test = util.Hankel_chunks(
-                    first_col_chunks, last_row_chunks)
+                    first_col_chunks, last_row_chunks=last_row_chunks)
 
                 np.testing.assert_equal(Hankel_test, Hankel_true)
 
