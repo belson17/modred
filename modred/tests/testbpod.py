@@ -195,18 +195,31 @@ class TestBPODMatrices(unittest.TestCase):
 class TestBPODHandles(unittest.TestCase):
     """Test the BPOD class methods """
     def setUp(self):
+        # Specify output locations
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-
         self.test_dir = 'BPOD_files'
         if not os.path.isdir(self.test_dir):
             parallel.call_from_rank_zero(os.mkdir, self.test_dir)
-
         self.direct_vec_path = join(self.test_dir, 'direct_vec_%03d.txt')
         self.adjoint_vec_path = join(self.test_dir, 'adjoint_vec_%03d.txt')
+        self.direct_mode_path = join(self.test_dir, 'direct_mode_%03d.txt')
+        self.adjoint_mode_path = join(self.test_dir, 'adjoint_mode_%03d.txt')
 
+        # Specify system dimensions.  Test single inputs/outputs as well as
+        # multiple inputs/outputs.  Also allow for more inputs/outputs than
+        # states.
         self.num_states = 10
+        self.num_inputs_list = [
+            1,
+            parallel.call_and_bcast(np.random.randint, 2, self.num_states + 2)]
+        self.num_outputs_list = [
+            1,
+            parallel.call_and_bcast(np.random.randint, 2, self.num_states + 2)]
+
+        # Specify how long to run impulse responses
         self.num_steps = 2 * self.num_states
+
         parallel.barrier()
 
 
@@ -356,15 +369,9 @@ class TestBPODHandles(unittest.TestCase):
         atol_sqr = 1e-8
 
         # Test a single input/output as well as multiple inputs/outputs.  Allow
-        # for more inputs/outputs than states.
-        num_inputs_list = [
-            1,
-            parallel.call_and_bcast(np.random.randint, 2, self.num_states + 2)]
-        num_outputs_list = [
-            1,
-            parallel.call_and_bcast(np.random.randint, 2, self.num_states + 2)]
-        for num_inputs in num_inputs_list:
-            for num_outputs in num_outputs_list:
+        # for more inputs/outputs than states.  (This is determined in setUp()).
+        for num_inputs in self.num_inputs_list:
+            for num_outputs in self.num_outputs_list:
 
                 # Get impulse response data
                 direct_vec_handles, adjoint_vec_handles =\
@@ -407,7 +414,7 @@ class TestBPODHandles(unittest.TestCase):
                 np.testing.assert_equal(R_sing_vecs, BPOD.R_sing_vecs)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_modes(self):
         """Test computing modes in serial and parallel."""
         # Set test tolerances.  More relaxed tolerances are required for testing
@@ -416,20 +423,10 @@ class TestBPODHandles(unittest.TestCase):
         rtol_sqr = 1e-8
         atol_sqr = 1e-8
 
-        # Specify where to save modes
-        direct_mode_path = join(self.test_dir, 'direct_mode_%03d.txt')
-        adjoint_mode_path = join(self.test_dir, 'adjoint_mode_%03d.txt')
-
         # Test a single input/output as well as multiple inputs/outputs.  Allow
-        # for more inputs/outputs than states.
-        num_inputs_list = [
-            1,
-            parallel.call_and_bcast(np.random.randint, 2, self.num_states + 2)]
-        num_outputs_list = [
-            1,
-            parallel.call_and_bcast(np.random.randint, 2, self.num_states + 2)]
-        for num_inputs in num_inputs_list:
-            for num_outputs in num_outputs_list:
+        # for more inputs/outputs than states.  (This is determined in setUp()).
+        for num_inputs in self.num_inputs_list:
+            for num_outputs in self.num_outputs_list:
 
                 # Get impulse response data
                 direct_vec_handles, adjoint_vec_handles =\
@@ -439,7 +436,16 @@ class TestBPODHandles(unittest.TestCase):
                 # Create BPOD object and perform decomposition.  (The properties
                 # defining a BPOD mode require manipulations involving the
                 # correct decomposition, so we cannot isolate the mode
-                # computation from the decomposition step.)
+                # computation from the decomposition step.)  Use relative
+                # tolerance to avoid Hankel singular values which may correspond
+                # to very uncontrollable/unobservable states.  It is ok to use a
+                # more relaxed tolerance here than in the actual test/assert
+                # statements, as here we are saying it is ok to ignore highly
+                # uncontrollable/unobservable states, rather than allowing loose
+                # tolerances in the comparison of two numbers.  Furthermore, it
+                # is likely that in actual use, users would want to ignore
+                # relatively small Hankel singular values anyway, as that is the
+                # point of doing a balancing transformation.
                 BPOD = BPODHandles(np.vdot, verbosity=0)
                 BPOD.compute_decomp(
                     direct_vec_handles, adjoint_vec_handles,
@@ -455,14 +461,13 @@ class TestBPODHandles(unittest.TestCase):
                 mode_idxs = np.unique(parallel.call_and_bcast(
                     np.random.randint,
                     0, BPOD.sing_vals.size, num_modes))
-                print BPOD.sing_vals.size, mode_idxs
 
                 # Create handles for the modes
                 direct_mode_handles = [
-                    V.VecHandleArrayText(direct_mode_path % i)
+                    V.VecHandleArrayText(self.direct_mode_path % i)
                     for i in mode_idxs]
                 adjoint_mode_handles = [
-                    V.VecHandleArrayText(adjoint_mode_path % i)
+                    V.VecHandleArrayText(self.adjoint_mode_path % i)
                     for i in mode_idxs]
 
                 # Compute modes
@@ -491,56 +496,78 @@ class TestBPODHandles(unittest.TestCase):
                     rtol=rtol_sqr, atol=atol_sqr)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):
-        # Tests fail if tolerance is too tight, likely due to random nature of
-        # data.  Maximum error (elementwise) seems to come out ~1e-11.
         rtol = 1e-8
         atol = 1e-10
 
-        # Compute true projection coefficients by simply projecting directly
-        # onto the modes.
-        proj_coeffs_true = (
-            self.adjoint_mode_array.H * self.direct_vec_array)
+        # Test a single input/output as well as multiple inputs/outputs.  Allow
+        # for more inputs/outputs than states.  (This is determined in setUp()).
+        for num_inputs in self.num_inputs_list:
+            for num_outputs in self.num_outputs_list:
 
-        # Initialize the POD object with the known correct decomposition
-        # matrices, to avoid errors in computing those matrices.
-        self.my_BPOD.R_sing_vecs = self.R_sing_vecs_true
-        self.my_BPOD.L_sing_vecs = self.L_sing_vecs_true
-        self.my_BPOD.sing_vals = self.sing_vals_true
+                # Get impulse response data
+                direct_vec_handles, adjoint_vec_handles =\
+                self._helper_get_impulse_response_handles(
+                    num_inputs, num_outputs)
 
-        # Compute projection coefficients
-        proj_coeffs = self.my_BPOD.compute_proj_coeffs()
+                # Create BPOD object and compute decomposition, modes.  (The
+                # properties defining a projection onto BPOD modes require
+                # manipulations involving the correct decomposition and modes,
+                # so we cannot isolate the projection step from those
+                # computations.)  Use relative tolerance to avoid Hankel
+                # singular values which may correspond to very
+                # uncontrollable/unobservable states.  It is ok to use a
+                # more relaxed tolerance here than in the actual test/assert
+                # statements, as here we are saying it is ok to ignore
+                # highly uncontrollable/unobservable states, rather than
+                # allowing loose tolerances in the comparison of two
+                # numbers.  Furthermore, it is likely that in actual use,
+                # users would want to ignore relatively small Hankel
+                # singular values anyway, as that is the point of doing a
+                # balancing transformation.
+                BPOD = BPODHandles(np.vdot, verbosity=0)
+                BPOD.compute_decomp(
+                    direct_vec_handles, adjoint_vec_handles,
+                    num_inputs=num_inputs, num_outputs=num_outputs,
+                    rtol=1e-6, atol=1e-12)
+                mode_idxs = np.arange(BPOD.sing_vals.size)
+                direct_mode_handles = [
+                    V.VecHandleArrayText(self.direct_mode_path % i)
+                    for i in mode_idxs]
+                adjoint_mode_handles = [
+                    V.VecHandleArrayText(self.adjoint_mode_path % i)
+                    for i in mode_idxs]
+                BPOD.compute_direct_modes(
+                    mode_idxs, direct_mode_handles,
+                    direct_vec_handles=direct_vec_handles)
+                BPOD.compute_adjoint_modes(
+                    mode_idxs, adjoint_mode_handles,
+                    adjoint_vec_handles=adjoint_vec_handles)
 
-        # Test values
-        np.testing.assert_allclose(
-            proj_coeffs, proj_coeffs_true, rtol=rtol, atol=atol)
+                # Compute true projection coefficients by computing the inner
+                # products between modes and snapshots.
+                direct_proj_coeffs_true =\
+                BPOD.vec_space.compute_inner_product_mat(
+                    adjoint_mode_handles, direct_vec_handles)
+                adjoint_proj_coeffs_true =\
+                BPOD.vec_space.compute_inner_product_mat(
+                    direct_mode_handles, adjoint_vec_handles)
 
+                # Compute projection coefficients using BPOD object, which
+                # avoids actually manipulating handles and computing inner
+                # products, instead using elements of the decomposition for a
+                # more efficient computation.
+                direct_proj_coeffs = BPOD.compute_proj_coeffs()
+                adjoint_proj_coeffs = BPOD.compute_adjoint_proj_coeffs()
 
-    @unittest.skip('Testing something else.')
-    def test_compute_adj_proj_coeffs(self):
-        # Tests fail if tolerance is too tight, likely due to random nature of
-        # data.  Maximum error (elementwise) seems to come out ~1e-11.
-        rtol = 1e-7
-        atol = 1e-8
-
-        # Compute true projection coefficients by simply projecting directly
-        # onto the modes.
-        adj_proj_coeffs_true = (
-            self.direct_mode_array.H * self.adjoint_vec_array)
-
-        # Initialize the POD object with the known correct decomposition
-        # matrices, to avoid errors in computing those matrices.
-        self.my_BPOD.R_sing_vecs = self.R_sing_vecs_true
-        self.my_BPOD.L_sing_vecs = self.L_sing_vecs_true
-        self.my_BPOD.sing_vals = self.sing_vals_true
-
-        # Compute projection coefficients
-        adj_proj_coeffs = self.my_BPOD.compute_adjoint_proj_coeffs()
-
-        # Test values
-        np.testing.assert_allclose(
-            adj_proj_coeffs, adj_proj_coeffs_true, rtol=rtol, atol=atol)
+                # Test values
+                np.testing.assert_allclose(
+                    direct_proj_coeffs, direct_proj_coeffs_true,
+                    rtol=rtol, atol=atol)
+                np.testing.assert_allclose(
+                    adjoint_proj_coeffs, adjoint_proj_coeffs_true,
+                    rtol=rtol, atol=atol)
 
 
 if __name__ == '__main__':
