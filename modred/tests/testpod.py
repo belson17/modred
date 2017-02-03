@@ -243,7 +243,7 @@ class TestPODHandles(unittest.TestCase):
         np.testing.assert_equal(eigvals, POD.eigvals)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_modes(self):
         rtol = 1e-10
         atol = 1e-12
@@ -281,22 +281,32 @@ class TestPODHandles(unittest.TestCase):
             rtol=rtol, atol=atol)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):
         rtol = 1e-10
-        atol = 1e-13
+        atol = 1e-12
 
-        # Compute true projection coefficients by simply projecting directly
-        # onto the modes.
-        proj_coeffs_true = np.dot(self.mode_array.conj().T, self.vec_array)
+        # Compute POD using modred.  (The properties defining a projection onto
+        # POD modes require manipulations involving the correct decomposition
+        # and modes, so we cannot isolate the mode computation from those
+        # computations.)
+        POD = PODHandles(np.vdot, verbosity=0)
+        POD.compute_decomp(self.vec_handles)
+        mode_idxs = range(POD.eigvals.size)
+        mode_handles = [
+            V.VecHandleArrayText(self.mode_path % i) for i in mode_idxs]
+        POD.compute_modes(mode_idxs, mode_handles, vec_handles=self.vec_handles)
 
-        # Initialize the POD object with the known correct decomposition
-        # matrices, to avoid errors in computing those matrices.
-        self.my_POD.eigvecs = self.eigvecs_true
-        self.my_POD.eigvals = self.eigvals_true
+        # Compute true projection coefficients by computing the inner products
+        # between modes and snapshots.
+        proj_coeffs_true = POD.vec_space.compute_inner_product_mat(
+            mode_handles, self.vec_handles)
 
-        # Compute projection coefficients
-        proj_coeffs = self.my_POD.compute_proj_coeffs()
+        # Compute projection coefficients using POD object, which avoids
+        # actually manipulating handles and computing their inner products,
+        # instead using elements of the decomposition for a more efficient
+        # computations.
+        proj_coeffs = POD.compute_proj_coeffs()
 
         # Test values
         np.testing.assert_allclose(
