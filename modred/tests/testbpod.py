@@ -530,7 +530,7 @@ class TestBPODHandles(unittest.TestCase):
                     direct_vec_handles, adjoint_vec_handles,
                     num_inputs=num_inputs, num_outputs=num_outputs,
                     rtol=1e-6, atol=1e-12)
-                mode_idxs = np.arange(BPOD.sing_vals.size)
+                mode_idxs = range(BPOD.sing_vals.size)
                 direct_mode_handles = [
                     V.VecHandleArrayText(self.direct_mode_path % i)
                     for i in mode_idxs]
