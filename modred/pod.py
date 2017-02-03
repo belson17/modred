@@ -242,19 +242,13 @@ class PODHandles(object):
         self.eigvecs = parallel.call_and_bcast(self.get_mat, eigvecs_src)
 
 
-    def get_correlation_mat(self, correlation_mat_src):
+    def get_correlation_mat(self, src):
         """Gets the correlation matrix from source (memory or file).
 
         Args:
-            ``eigvals_src``: Source from which to retrieve eigenvalues of
-            correlation matrix.
-
-            ``eigvecs_src``: Source from which to retrieve eigenvectors of
-            correlation matrix.
+            ``src``: Source from which to retrieve correlation matrix.
         """
-        self.correlation_mat = parallel.call_and_bcast(
-            self.get_mat, correlation_mat_src)
-
+        self.correlation_mat = parallel.call_and_bcast(self.get_mat, src)
 
 
     def put_decomp(self, eigvals_dest, eigvecs_dest):

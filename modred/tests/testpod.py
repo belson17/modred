@@ -203,17 +203,17 @@ class TestPODHandles(unittest.TestCase):
             np.random.random, ((self.num_states, self.num_vecs)))
 
         # Create a POD object and store the data in it
-        my_POD = PODHandles(None, verbosity=0)
-        my_POD.correlation_mat = correlation_mat_true
-        my_POD.eigvals = eigvals_true
-        my_POD.eigvecs = eigvecs_true
+        POD_save = PODHandles(None, verbosity=0)
+        POD_save.correlation_mat = correlation_mat_true
+        POD_save.eigvals = eigvals_true
+        POD_save.eigvecs = eigvecs_true
 
         # Write the data to disk
         eigvecs_path = join(self.test_dir, 'eigvecs.txt')
         eigvals_path = join(self.test_dir, 'eigvals.txt')
         correlation_mat_path = join(self.test_dir, 'correlation.txt')
-        my_POD.put_decomp(eigvals_path, eigvecs_path)
-        my_POD.put_correlation_mat(correlation_mat_path)
+        POD_save.put_decomp(eigvals_path, eigvecs_path)
+        POD_save.put_correlation_mat(correlation_mat_path)
         parallel.barrier()
 
         # Create a new POD object and use it to load the data
