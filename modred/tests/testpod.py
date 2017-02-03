@@ -17,58 +17,98 @@ import modred.vectors as V
 from modred import util
 
 
+#@unittest.skip('Testing something else.')
 @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestPODArraysFunctions(unittest.TestCase):
     def setUp(self):
-        self.mode_indices = [2, 4, 6, 3]
-        self.num_vecs = 10
         self.num_states = 30
+        self.num_vecs = 10
 
 
     def test_compute_modes(self):
-        ws = np.identity(self.num_states)
-        tol = 1e-6
+        rtol = 1e-10
+        atol = 1e-12
 
-        # Generate different inner product weights.  Each weight matrix should
-        # be positive definite semidefinite.
-        weights_full = np.mat(
-            np.random.random((self.num_states, self.num_states)))
-        weights_full = 0.5 * (weights_full + weights_full.T)
-        weights_full = weights_full + self.num_states * np.eye(self.num_states)
-        weights_diag = np.random.random(self.num_states)
-        weights_list = [None, weights_diag, weights_full]
-        vec_array = np.random.random((self.num_states, self.num_vecs))
+        # Generate weights to test different inner products.
+        ws = np.identity(self.num_states)
+        ws[0, 0] = 2.
+        ws[2, 1] = 0.3
+        ws[1, 2] = 0.3
+        weights_list = [None, np.random.random(self.num_states), ws]
+
+        # Generate random snapshot data
+        vec_mat = np.mat(np.random.random((self.num_states, self.num_vecs)))
+
+        # Loop through different inner product weights
         for weights in weights_list:
             IP = VectorSpaceMatrices(weights=weights).compute_inner_product_mat
-            correlation_mat_true = IP(vec_array, vec_array)
-            eigvals_true, eigvecs_true = util.eigh(correlation_mat_true)
-            build_coeff_mat_true = eigvecs_true * np.mat(np.diag(
-                eigvals_true**-0.5))
-            modes_true = vec_array.dot(build_coeff_mat_true)
 
-            modes, eigvals, eigvecs, correlation_mat = \
-                compute_POD_matrices_snaps_method(vec_array, self.mode_indices,
-                inner_product_weights=weights, return_all=True)
+            # Compute POD using method of snapshots
+            modes_snaps, eigvals_snaps, eigvecs_snaps, correlation_mat_snaps =\
+            compute_POD_matrices_snaps_method(
+                vec_mat, inner_product_weights=weights, return_all=True)
 
-            np.testing.assert_allclose(eigvals, eigvals_true, rtol=tol)
-            np.testing.assert_allclose(eigvecs, eigvecs_true)
-            np.testing.assert_allclose(correlation_mat, correlation_mat_true)
-            np.testing.assert_allclose(modes, modes_true[:,self.mode_indices])
-
-            modes, eigvals, eigvecs = \
-                compute_POD_matrices_direct_method(
-                vec_array, self.mode_indices, inner_product_weights=weights,
-                return_all=True)
-
-            np.testing.assert_allclose(eigvals, eigvals_true)
-            np.testing.assert_allclose(np.abs(eigvecs), np.abs(eigvecs_true))
+            # Test correlation mat values
             np.testing.assert_allclose(
-                np.abs(modes), np.abs(modes_true[:,self.mode_indices]))
+                IP(vec_mat, vec_mat), correlation_mat_snaps,
+                rtol=rtol, atol=atol)
+
+            # Check POD eigenvalues and eigenvectors
+            np.testing.assert_allclose(
+                correlation_mat_snaps * eigvecs_snaps,
+                eigvecs_snaps * np.mat(np.diag(eigvals_snaps)),
+                rtol=rtol, atol=atol)
+
+            # Check POD modes
+            np.testing.assert_allclose(
+                vec_mat * IP(vec_mat, modes_snaps),
+                modes_snaps * np.mat(np.diag(eigvals_snaps)),
+                rtol=rtol, atol=atol)
+
+            # Check that if mode indices are passed in, the correct
+            # modes are returned.
+            mode_indices_snaps = np.unique(np.random.randint(
+                0, high=eigvals_snaps.size, size=(eigvals_snaps.size // 2)))
+            modes_sliced_snaps = compute_POD_matrices_snaps_method(
+                vec_mat, mode_indices=mode_indices_snaps,
+                inner_product_weights=weights, return_all=True)[0]
+            np.testing.assert_allclose(
+                modes_sliced_snaps, modes_snaps[:, mode_indices_snaps],
+                rtol=rtol, atol=atol)
+
+            # Compute POD using direct method
+            modes_direct, eigvals_direct, eigvecs_direct =\
+            compute_POD_matrices_direct_method(
+                vec_mat, inner_product_weights=weights, return_all=True)
+
+            # Check POD eigenvalues and eigenvectors
+            np.testing.assert_allclose(
+                IP(vec_mat, vec_mat) * eigvecs_direct,
+                eigvecs_direct * np.mat(np.diag(eigvals_direct)),
+                rtol=rtol, atol=atol)
+
+            # Check POD modes
+            np.testing.assert_allclose(
+                vec_mat * IP(vec_mat, modes_direct),
+                modes_direct * np.mat(np.diag(eigvals_direct)),
+                rtol=rtol, atol=atol)
+
+            # Check that if mode indices are passed in, the correct
+            # modes are returned.
+            mode_indices_direct = np.unique(np.random.randint(
+                0, high=eigvals_direct.size, size=(eigvals_direct.size // 2)))
+            modes_sliced_direct = compute_POD_matrices_direct_method(
+                vec_mat, mode_indices=mode_indices_direct,
+                inner_product_weights=weights, return_all=True)[0]
+            np.testing.assert_allclose(
+                modes_sliced_direct, modes_direct[:, mode_indices_direct],
+                rtol=rtol, atol=atol)
 
 
+@unittest.skip('Testing something else.')
 class TestPODHandles(unittest.TestCase):
     def setUp(self):
-        self.test_dir = 'DELETE_ME_test_files_pod'
+        self.test_dir = 'POD_files'
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
@@ -102,6 +142,7 @@ class TestPODHandles(unittest.TestCase):
         parallel.barrier()
 
 
+    @unittest.skip('Testing something else.')
     def test_puts_gets(self):
         test_dir = 'DELETE_ME_test_files_pod'
         if not os.access('.', os.W_OK):
@@ -139,6 +180,7 @@ class TestPODHandles(unittest.TestCase):
         np.testing.assert_allclose(POD_load.eigvecs, eigvecs_true)
 
 
+    @unittest.skip('Testing something else.')
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
@@ -188,6 +230,7 @@ class TestPODHandles(unittest.TestCase):
             self.assertEqual(v, data_members_modified[k])
 
 
+    @unittest.skip('Testing something else.')
     def test_compute_decomp(self):
         """Test computation of the correlation mat and SVD matrices."""
         tol = 1e-6
@@ -207,6 +250,7 @@ class TestPODHandles(unittest.TestCase):
             self.eigvals_true, rtol=tol)
 
 
+    @unittest.skip('Testing something else.')
     def test_compute_modes(self):
         mode_path = join(self.test_dir, 'mode_%03d.txt')
         mode_handles = [V.VecHandleArrayText(mode_path%i)
@@ -235,6 +279,7 @@ class TestPODHandles(unittest.TestCase):
                     self.assertAlmostEqual(IP, 1.)
 
 
+    @unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):
         rtol = 1e-10
         atol = 1e-13
