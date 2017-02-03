@@ -17,7 +17,7 @@ import modred.vectors as V
 from modred import util
 
 
-@unittest.skip('Testing something else.')
+#@unittest.skip('Testing something else.')
 @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestPODArraysFunctions(unittest.TestCase):
     def setUp(self):
@@ -139,7 +139,7 @@ class TestPODHandles(unittest.TestCase):
         parallel.barrier()
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
@@ -189,7 +189,7 @@ class TestPODHandles(unittest.TestCase):
             self.assertEqual(v, data_members_modified[k])
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_puts_gets(self):
         # Generate some random data
         correlation_mat_true = parallel.call_and_bcast(
@@ -224,7 +224,7 @@ class TestPODHandles(unittest.TestCase):
         np.testing.assert_equal(POD_load.eigvecs, eigvecs_true)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_decomp(self):
         """Test computation of the correlation mat and SVD matrices."""
         rtol = 1e-10
@@ -243,7 +243,7 @@ class TestPODHandles(unittest.TestCase):
         np.testing.assert_equal(eigvals, POD.eigvals)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_modes(self):
         rtol = 1e-10
         atol = 1e-12
