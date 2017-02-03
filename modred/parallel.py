@@ -101,7 +101,7 @@ def barrier():
 def print_from_rank_zero(msgs):
     """Prints ``msgs`` from rank zero processor/MPI worker only."""
     if is_rank_zero():
-        print(msg)
+        print(msgs)
 
 
 def call_from_rank_zero(func, *args, **kwargs):
