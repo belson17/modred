@@ -224,7 +224,7 @@ class TestPODHandles(unittest.TestCase):
         np.testing.assert_equal(POD_load.eigvecs, eigvecs_true)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_decomp(self):
         """Test computation of the correlation mat and SVD matrices."""
         rtol = 1e-10
@@ -243,33 +243,42 @@ class TestPODHandles(unittest.TestCase):
         np.testing.assert_equal(eigvals, POD.eigvals)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_modes(self):
-        mode_path = join(self.test_dir, 'mode_%03d.txt')
-        mode_handles = [V.VecHandleArrayText(mode_path%i)
-            for i in self.mode_indices]
-        # starts with the CORRECT decomposition.
-        self.my_POD.eigvecs = self.eigvecs_true
-        self.my_POD.eigvals = self.eigvals_true
+        rtol = 1e-10
+        atol = 1e-12
 
-        self.my_POD.compute_modes(self.mode_indices, mode_handles,
-            vec_handles=self.vec_handles)
+        # Compute POD using modred.  (The properties defining a POD mode require
+        # manipulations involving the correct decomposition, so we cannot
+        # isolate the mode computation from the decomposition step.)
+        POD = PODHandles(np.vdot, verbosity=0)
+        POD.compute_decomp(self.vec_handles)
 
-        for mode_index, mode_handle in enumerate(mode_handles):
-            mode = mode_handle.get()
-            np.testing.assert_allclose(
-                mode, self.mode_array[:,self.mode_indices[mode_index]])
+        # Select a subset of modes to compute.  Compute at least half
+        # the modes, and up to all of them.  Make sure to use unique
+        # values.  (This may reduce the number of modes computed.)
+        num_modes = parallel.call_and_bcast(
+            np.random.randint,
+            POD.eigvals.size // 2, POD.eigvals.size + 1)
+        mode_idxs = np.unique(parallel.call_and_bcast(
+            np.random.randint,
+            0, POD.eigvals.size, num_modes))
 
-        for mode_index1, handle1 in enumerate(mode_handles):
-            mode1 = handle1.get()
-            for mode_index2, handle2 in enumerate(mode_handles):
-                mode2 = handle2.get()
-                IP = self.my_POD.vec_space.inner_product(mode1, mode2)
-                if self.mode_indices[mode_index1] != \
-                    self.mode_indices[mode_index2]:
-                    self.assertAlmostEqual(IP, 0.)
-                else:
-                    self.assertAlmostEqual(IP, 1.)
+        # Create handles for the modes
+        mode_handles = [
+            V.VecHandleArrayText(self.mode_path % i) for i in mode_idxs]
+
+        # Compute modes
+        POD.compute_modes(mode_idxs, mode_handles, vec_handles=self.vec_handles)
+
+        # Test modes
+        np.testing.assert_allclose(
+            POD.vec_space.compute_inner_product_mat(
+                mode_handles, self.vec_handles) *
+            POD.vec_space.compute_inner_product_mat(
+                self.vec_handles, mode_handles),
+            np.diag(POD.eigvals[mode_idxs]),
+            rtol=rtol, atol=atol)
 
 
     @unittest.skip('Testing something else.')
