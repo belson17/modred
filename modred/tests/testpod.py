@@ -108,31 +108,28 @@ class TestPODArraysFunctions(unittest.TestCase):
 #@unittest.skip('Testing something else.')
 class TestPODHandles(unittest.TestCase):
     def setUp(self):
-        self.test_dir = 'POD_files'
+        # Specify output ocations
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
-            os.mkdir(self.test_dir)
-        self.mode_indices = [2, 4, 3, 6]
-        self.num_vecs = 10
-        self.num_states = 30
-        self.vec_array = parallel.call_and_bcast(np.random.random,
-            (self.num_states, self.num_vecs))
-        self.correlation_mat_true = self.vec_array.conj().transpose().dot(
-            self.vec_array)
-
-        self.eigvals_true, self.eigvecs_true = \
-            parallel.call_and_bcast(util.eigh, self.correlation_mat_true)
-
-        self.mode_array = np.dot(self.vec_array, np.dot(self.eigvecs_true,
-            np.diag(self.eigvals_true**-0.5)))
+        self.test_dir = 'POD_files'
+        if not os.path.isdir(self.test_dir):
+            parallel.call_from_rank_zero(os.mkdir, self.test_dir)
         self.vec_path = join(self.test_dir, 'vec_%03d.txt')
-        self.vec_handles = [V.VecHandleArrayText(self.vec_path%i)
-            for i in range(self.num_vecs)]
-        for vec_index, handle in enumerate(self.vec_handles):
-            handle.put(self.vec_array[:, vec_index])
+        self.mode_path = join(self.test_dir, 'mode_%03d.txt')
 
-        self.my_POD = PODHandles(np.vdot, verbosity=0)
+        # Specify data dimensions
+        self.num_states = 30
+        self.num_vecs = 10
+
+        # Generate random data and write to disk using handles
+        self.vec_mat = np.mat(parallel.call_and_bcast(
+            np.random.random, (self.num_states, self.num_vecs)))
+        self.vec_handles = [
+            V.VecHandleArrayText(self.vec_path % i)
+            for i in range(self.num_vecs)]
+        for idx, hdl in enumerate(self.vec_handles):
+            hdl.put(self.vec_mat[:, idx])
+
         parallel.barrier()
 
 
@@ -192,7 +189,7 @@ class TestPODHandles(unittest.TestCase):
             self.assertEqual(v, data_members_modified[k])
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_puts_gets(self):
         # Generate some random data
         correlation_mat_true = parallel.call_and_bcast(
@@ -227,24 +224,23 @@ class TestPODHandles(unittest.TestCase):
         np.testing.assert_equal(POD_load.eigvecs, eigvecs_true)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_decomp(self):
         """Test computation of the correlation mat and SVD matrices."""
-        tol = 1e-6
-        eigvals_returned, eigvecs_returned = \
-            self.my_POD.compute_decomp(self.vec_handles)
+        rtol = 1e-10
+        atol = 1e-12
 
-        np.testing.assert_allclose(self.my_POD.correlation_mat,
-            self.correlation_mat_true, rtol=tol)
-        np.testing.assert_allclose(self.my_POD.eigvecs,
-            self.eigvecs_true, rtol=tol)
-        np.testing.assert_allclose(self.my_POD.eigvals,
-            self.eigvals_true, rtol=tol)
+        # Compute POD using modred
+        POD = PODHandles(np.vdot, verbosity=0)
+        eigvals, eigvecs = POD.compute_decomp(self.vec_handles)
 
-        np.testing.assert_allclose(eigvecs_returned,
-            self.eigvecs_true, rtol=tol)
-        np.testing.assert_allclose(eigvals_returned,
-            self.eigvals_true, rtol=tol)
+        # Check POD eigenvectors and eigenvalues
+        np.testing.assert_allclose(
+            self.vec_mat.T * self.vec_mat * eigvecs,
+            eigvecs * np.mat(np.diag(eigvals)), rtol=rtol, atol=atol)
+
+        # Check that returned values match internal values
+        np.testing.assert_equal(eigvals, POD.eigvals)
 
 
     @unittest.skip('Testing something else.')
