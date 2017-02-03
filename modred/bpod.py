@@ -290,18 +290,29 @@ class BPODHandles(object):
 
 
     def compute_decomp(
-        self, direct_vec_handles, adjoint_vec_handles, atol=1e-13, rtol=None):
+        self, direct_vec_handles, adjoint_vec_handles, num_inputs=1,
+        num_outputs=1, atol=1e-13, rtol=None):
         """Computes Hankel matrix :math:`H=Y^*X` and its singular value
         decomposition :math:`UEV^*=H`.
 
         Args:
             ``direct_vec_handles``: List of handles for direct vector objects
-            (:math:`X`).
+            (:math:`X`).  They should be stacked so that if there are :math:`p`
+            inputs, the first :math:`p` handles should all correspond to the
+            same timestep.  For instance, these are often all initial conditions
+            of :math:`p` different impulse responses.
 
             ``adjoint_vec_handles``: List of handles for adjoint vector objects
-            (:math:`Y`).
+            (:math:`Y`).  They should be stacked so that if there are :math:`a`
+            outputs, the first :math:`q` handles should all correspond to the
+            same timestep.  For instance, these are often all initial conditions
+            of :math:`p` different adjointimpulse responses.
 
         Kwargs:
+            ``num_inputs``: Number of inputs to the system.
+
+            ``num_outputs``: Number of outputs of the system.
+
             ``atol``: Level below which Hankel singular values are truncated.
 
             ``rtol``: Maximum relative difference between largest and smallest
@@ -318,8 +329,34 @@ class BPODHandles(object):
         """
         self.direct_vec_handles = direct_vec_handles
         self.adjoint_vec_handles = adjoint_vec_handles
-        self.Hankel_mat = self.vec_space.compute_inner_product_mat(
-            self.adjoint_vec_handles, self.direct_vec_handles)
+
+        # Compute first column (of chunks) of Hankel matrix
+        all_adjoint_first_direct = np.array(
+            self.vec_space.compute_inner_product_mat(
+            self.adjoint_vec_handles, self.direct_vec_handles[:num_inputs]))
+
+        # Compute last row (of chunks) of Hankel matrix
+        last_adjoint_all_direct = np.array(
+            self.vec_space.compute_inner_product_mat(
+            self.adjoint_vec_handles[-num_outputs:], self.direct_vec_handles))
+
+        # Convert arrays of inner products into lists of array chunks
+        all_adjoint_first_direct_list = [
+            all_adjoint_first_direct[
+                i * num_outputs:(i + 1) * num_outputs, :num_inputs]
+            for i in xrange(all_adjoint_first_direct.shape[0] // num_outputs)]
+        last_adjoint_all_direct_list = [
+            last_adjoint_all_direct[:, j * num_inputs:(j + 1) * num_inputs]
+            for j in xrange(last_adjoint_all_direct.shape[1] // num_inputs)]
+
+        # Compute Hankel matrix
+        self.Hankel_mat = np.mat(parallel.call_and_bcast(
+            util.Hankel_chunks,
+            all_adjoint_first_direct_list, last_adjoint_all_direct_list))
+        #self.Hankel_mat = self.vec_space.compute_inner_product_mat(
+        #    self.adjoint_vec_handles, self.direct_vec_handles)
+
+        # Compute BPOD decomposition
         self.compute_SVD(atol=atol, rtol=rtol)
         return self.sing_vals, self.L_sing_vecs, self.R_sing_vecs
 

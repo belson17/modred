@@ -18,7 +18,7 @@ from modred import util
 from modred import vectors as V
 
 
-def get_system(num_states, num_inputs, num_outputs):
+def get_system_mats(num_states, num_inputs, num_outputs):
     eig_vals = 0.05 * np.random.random(num_states) + 0.8
     eig_vecs = 2. * np.random.random((num_states, num_states)) - 1.
     A = np.mat(
@@ -28,7 +28,7 @@ def get_system(num_states, num_inputs, num_outputs):
     return A, B, C
 
 
-def get_direct_impulse_response(A, B, num_steps):
+def get_direct_impulse_response_mats(A, B, num_steps):
     num_states, num_inputs = B.shape
     direct_vecs_mat = np.mat(np.zeros((num_states, num_steps * num_inputs)))
     A_powers = np.mat(np.identity(num_states))
@@ -39,7 +39,7 @@ def get_direct_impulse_response(A, B, num_steps):
     return direct_vecs_mat
 
 
-def get_adjoint_impulse_response(A, C, num_steps, weights_mat):
+def get_adjoint_impulse_response_mats(A, C, num_steps, weights_mat):
     num_outputs, num_states = C.shape
     A_adjoint = np.linalg.inv(weights_mat) * A.H * weights_mat
     C_adjoint = np.linalg.inv(weights_mat) * C.H
@@ -52,7 +52,7 @@ def get_adjoint_impulse_response(A, C, num_steps, weights_mat):
     return adjoint_vecs_mat
 
 
-#@unittest.skip('Testing something else.')
+@unittest.skip('Testing something else.')
 @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestBPODMatrices(unittest.TestCase):
     def setUp(self):
@@ -99,15 +99,15 @@ class TestBPODMatrices(unittest.TestCase):
                         weights=weights).compute_inner_product_mat
 
                     # Get state space system
-                    A, B, C = get_system(
+                    A, B, C = get_system_mats(
                         self.num_states, num_inputs, num_outputs)
 
                     # Compute direct impulse response
-                    direct_vecs_mat = get_direct_impulse_response(
+                    direct_vecs_mat = get_direct_impulse_response_mats(
                         A, B, self.num_steps)
 
                     # Compute adjoint impulse response
-                    adjoint_vecs_mat = get_adjoint_impulse_response(
+                    adjoint_vecs_mat = get_adjoint_impulse_response_mats(
                         A, C, self.num_steps, weights_mat)
 
                     # Compute BPOD using modred.  Use absolute tolerance to
@@ -191,7 +191,7 @@ class TestBPODMatrices(unittest.TestCase):
                         rtol=rtol, atol=atol)
 
 
-@unittest.skip('Testing something else.')
+#@unittest.skip('Testing something else.')
 class TestBPODHandles(unittest.TestCase):
     """Test the BPOD class methods """
     def setUp(self):
@@ -202,64 +202,11 @@ class TestBPODHandles(unittest.TestCase):
         if not os.path.isdir(self.test_dir):
             parallel.call_from_rank_zero(os.mkdir, self.test_dir)
 
-        self.mode_nums = [2, 3, 0]
-        self.num_direct_vecs = 10
-        self.num_adjoint_vecs = 12
-        self.num_inputs = 1
-        self.num_outputs = 1
-        self.num_states = 20
-
-        #A = np.mat(np.random.random((self.num_states, self.num_states)))
-        A = np.mat(parallel.call_and_bcast(util.drss, self.num_states,1,1)[0])
-        B = np.mat(parallel.call_and_bcast(np.random.random,
-            (self.num_states, self.num_inputs)))
-        C = np.mat(parallel.call_and_bcast(np.random.random,
-            (self.num_outputs, self.num_states)))
-        self.direct_vecs = [B]
-        A_powers = np.identity(A.shape[0])
-        for t in range(self.num_direct_vecs-1):
-            A_powers = A_powers.dot(A)
-            self.direct_vecs.append(A_powers.dot(B))
-        self.direct_vec_array = np.array(self.direct_vecs).squeeze().T
-
-        A_adjoint = A.H
-        C_adjoint = C.H
-        A_adjoint_powers = np.identity(A_adjoint.shape[0])
-        self.adjoint_vecs = [C_adjoint]
-        for t in range(self.num_adjoint_vecs-1):
-            A_adjoint_powers = A_adjoint_powers.dot(A_adjoint)
-            self.adjoint_vecs.append(A_adjoint_powers.dot(C_adjoint))
-        self.adjoint_vec_array = np.array(self.adjoint_vecs).squeeze().T
-
         self.direct_vec_path = join(self.test_dir, 'direct_vec_%03d.txt')
         self.adjoint_vec_path = join(self.test_dir, 'adjoint_vec_%03d.txt')
 
-        self.direct_vec_handles = [V.VecHandleArrayText(self.direct_vec_path%i)
-            for i in range(self.num_direct_vecs)]
-        self.adjoint_vec_handles = [
-            V.VecHandleArrayText(self.adjoint_vec_path%i)
-            for i in range(self.num_adjoint_vecs)]
-
-        if parallel.is_rank_zero():
-            for i, handle in enumerate(self.direct_vec_handles):
-                handle.put(self.direct_vecs[i])
-            for i, handle in enumerate(self.adjoint_vec_handles):
-                handle.put(self.adjoint_vecs[i])
-
-        self.Hankel_mat_true = np.dot(self.adjoint_vec_array.T,
-            self.direct_vec_array)
-
-        self.L_sing_vecs_true, self.sing_vals_true, self.R_sing_vecs_true = \
-            parallel.call_and_bcast(util.svd, self.Hankel_mat_true, atol=1e-10)
-
-        self.direct_mode_array = self.direct_vec_array * \
-            np.mat(self.R_sing_vecs_true) * \
-            np.mat(np.diag(self.sing_vals_true ** -0.5))
-        self.adjoint_mode_array = self.adjoint_vec_array * \
-            np.mat(self.L_sing_vecs_true) *\
-            np.mat(np.diag(self.sing_vals_true ** -0.5))
-
-        self.my_BPOD = BPODHandles(np.vdot, verbosity=0)
+        self.num_states = 10
+        self.num_steps = 2 * self.num_states
         parallel.barrier()
 
 
@@ -269,6 +216,7 @@ class TestBPODHandles(unittest.TestCase):
         parallel.barrier()
 
 
+    @unittest.skip('Testing something else.')
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
 
@@ -323,6 +271,7 @@ class TestBPODHandles(unittest.TestCase):
             self.assertEqual(v, data_members_modified[k])
 
 
+    @unittest.skip('Testing something else.')
     def test_puts_gets(self):
         """Test that put/get work in base class."""
         test_dir = 'BPOD_files'
@@ -364,80 +313,185 @@ class TestBPODHandles(unittest.TestCase):
         np.testing.assert_allclose(BPOD_load.sing_vals, sing_vals_true)
 
 
-    #@unittest.skip('testing others')
+    # Compute impulse responses and generate corresponding handles
+    def _helper_get_impulse_response_handles(self, num_inputs, num_outputs):
+        # Get state space system
+        A, B, C = parallel.call_and_bcast(
+            get_system_mats, self.num_states, num_inputs, num_outputs)
+
+        # Run impulse responses
+        direct_vec_mat = parallel.call_and_bcast(
+            get_direct_impulse_response_mats, A, B, self.num_steps)
+        adjoint_vec_mat = parallel.call_and_bcast(
+            get_adjoint_impulse_response_mats, A, C, self.num_steps,
+            np.identity(self.num_states))
+
+        # Save data to disk
+        direct_vec_handles = [
+            V.VecHandleArrayText(self.direct_vec_path % i)
+            for i in xrange(direct_vec_mat.shape[1])]
+        adjoint_vec_handles = [
+            V.VecHandleArrayText(self.adjoint_vec_path % i)
+            for i in xrange(adjoint_vec_mat.shape[1])]
+        if parallel.is_rank_zero():
+            for idx, handle in enumerate(direct_vec_handles):
+                handle.put(direct_vec_mat[:, idx])
+            for idx, handle in enumerate(adjoint_vec_handles):
+                handle.put(adjoint_vec_mat[:, idx])
+
+        parallel.barrier()
+        return direct_vec_handles, adjoint_vec_handles
+
+
+    @unittest.skip('Testing something else.')
     def test_compute_decomp(self):
         """Test that can take vecs, compute the Hankel and SVD matrices. """
-        tol = 1e-5
-        sing_vals_return, L_sing_vecs_return, R_sing_vecs_return = \
-            self.my_BPOD.compute_decomp(self.direct_vec_handles,
-                self.adjoint_vec_handles)
-        np.testing.assert_allclose(self.my_BPOD.Hankel_mat,
-            self.Hankel_mat_true, rtol=tol)
-        num_sing_vals = len(self.sing_vals_true)
-        np.testing.assert_allclose(self.my_BPOD.L_sing_vecs[:,:num_sing_vals],
-            self.L_sing_vecs_true, rtol=tol, atol=tol)
-        np.testing.assert_allclose(self.my_BPOD.R_sing_vecs[:,:num_sing_vals],
-            self.R_sing_vecs_true, rtol=tol, atol=tol)
-        np.testing.assert_allclose(self.my_BPOD.sing_vals[:num_sing_vals],
-            self.sing_vals_true, rtol=tol, atol=tol)
-        np.testing.assert_allclose(L_sing_vecs_return[:,:num_sing_vals],
-            self.L_sing_vecs_true, rtol=tol, atol=tol)
-        np.testing.assert_allclose(R_sing_vecs_return[:,:num_sing_vals],
-            self.R_sing_vecs_true, rtol=tol, atol=tol)
-        np.testing.assert_allclose(sing_vals_return[:num_sing_vals],
-            self.sing_vals_true, rtol=tol, atol=tol)
+        # Set test tolerances.  Separate, more relaxed tolerances may be
+        # required for testing the SVD matrices, since that test requires
+        # "squaring" the Hankel matrix and thus involves more ill-conditioned
+        # matrices.
+        rtol = 1e-8
+        atol = 1e-10
+        rtol_sqr = 1e-8
+        atol_sqr = 1e-8
+
+        # Test a single input/output as well as multiple inputs/outputs.  Allow
+        # for more inputs/outputs than states.
+        num_inputs_list = [
+            1,
+            parallel.call_and_bcast(np.random.randint, 2, self.num_states + 2)]
+        num_outputs_list = [
+            1,
+            parallel.call_and_bcast(np.random.randint, 2, self.num_states + 2)]
+        for num_inputs in num_inputs_list:
+            for num_outputs in num_outputs_list:
+
+                # Get impulse response data
+                direct_vec_handles, adjoint_vec_handles =\
+                self._helper_get_impulse_response_handles(
+                    num_inputs, num_outputs)
+
+                # Compute BPOD using modred.
+                BPOD = BPODHandles(np.vdot, verbosity=0)
+                sing_vals, L_sing_vecs, R_sing_vecs = BPOD.compute_decomp(
+                    direct_vec_handles, adjoint_vec_handles,
+                    num_inputs=num_inputs, num_outputs=num_outputs)
+
+                # Check Hankel mat values.  These are computed fast
+                # internally by only computing the first column and last row
+                # of chunks.  Here, simply take all the inner products.
+                Hankel_mat_slow = BPOD.vec_space.compute_inner_product_mat(
+                    adjoint_vec_handles, direct_vec_handles)
+                np.testing.assert_allclose(
+                    BPOD.Hankel_mat, Hankel_mat_slow, rtol=rtol, atol=atol)
+
+                # Check properties of SVD of Hankel matrix.  Since the SVD
+                # may be truncated, instead of checking orthogonality and
+                # reconstruction of the Hankel matrix, check that the left
+                # and right singular vectors satisfy eigendecomposition
+                # properties with respect to the Hankel matrix.  Since this
+                # involves "squaring" the Hankel matrix, it may require more
+                # relaxed test tolerances.
+                np.testing.assert_allclose(
+                    BPOD.Hankel_mat * BPOD.Hankel_mat.T * BPOD.L_sing_vecs,
+                    BPOD.L_sing_vecs * np.mat(np.diag(BPOD.sing_vals ** 2.)),
+                    rtol=rtol_sqr, atol=atol_sqr)
+                np.testing.assert_allclose(
+                    BPOD.Hankel_mat.T * BPOD.Hankel_mat * BPOD.R_sing_vecs,
+                    BPOD.R_sing_vecs * np.mat(np.diag(BPOD.sing_vals ** 2.)),
+                    rtol=rtol_sqr, atol=atol_sqr)
+
+                # Check that returned values match internal values
+                np.testing.assert_equal(sing_vals, BPOD.sing_vals)
+                np.testing.assert_equal(L_sing_vecs, BPOD.L_sing_vecs)
+                np.testing.assert_equal(R_sing_vecs, BPOD.R_sing_vecs)
 
 
-    #@unittest.skip('testing others')
+    #@unittest.skip('Testing something else.')
     def test_compute_modes(self):
         """Test computing modes in serial and parallel."""
-        atol = 1e-5
+        # Set test tolerances.  More relaxed tolerances are required for testing
+        # the BPOD modes, since that test requires "squaring" the gramians and
+        # thus involves more ill-conditioned matrices.
+        rtol_sqr = 1e-8
+        atol_sqr = 1e-8
+
+        # Specify where to save modes
         direct_mode_path = join(self.test_dir, 'direct_mode_%03d.txt')
         adjoint_mode_path = join(self.test_dir, 'adjoint_mode_%03d.txt')
 
-        # starts with the correct decomposition.
-        self.my_BPOD.R_sing_vecs = self.R_sing_vecs_true
-        self.my_BPOD.L_sing_vecs = self.L_sing_vecs_true
-        self.my_BPOD.sing_vals = self.sing_vals_true
+        # Test a single input/output as well as multiple inputs/outputs.  Allow
+        # for more inputs/outputs than states.
+        num_inputs_list = [
+            1,
+            parallel.call_and_bcast(np.random.randint, 2, self.num_states + 2)]
+        num_outputs_list = [
+            1,
+            parallel.call_and_bcast(np.random.randint, 2, self.num_states + 2)]
+        for num_inputs in num_inputs_list:
+            for num_outputs in num_outputs_list:
 
-        direct_mode_handles = [V.VecHandleArrayText(direct_mode_path%i)
-            for i in self.mode_nums]
-        adjoint_mode_handles = [V.VecHandleArrayText(adjoint_mode_path%i)
-            for i in self.mode_nums]
+                # Get impulse response data
+                direct_vec_handles, adjoint_vec_handles =\
+                    self._helper_get_impulse_response_handles(
+                        num_inputs, num_outputs)
 
-        self.my_BPOD.compute_direct_modes(self.mode_nums, direct_mode_handles,
-            direct_vec_handles=self.direct_vec_handles)
-        self.my_BPOD.compute_adjoint_modes(self.mode_nums,
-            adjoint_mode_handles,
-            adjoint_vec_handles=self.adjoint_vec_handles)
+                # Create BPOD object and perform decomposition.  (The properties
+                # defining a BPOD mode require manipulations involving the
+                # correct decomposition, so we cannot isolate the mode
+                # computation from the decomposition step.)
+                BPOD = BPODHandles(np.vdot, verbosity=0)
+                BPOD.compute_decomp(
+                    direct_vec_handles, adjoint_vec_handles,
+                    num_inputs=num_inputs, num_outputs=num_outputs,
+                    rtol=1e-6, atol=1e-12)
 
-        for mode_index, mode_handle in enumerate(direct_mode_handles):
-            mode = mode_handle.get()
-            np.testing.assert_allclose(mode,
-                self.direct_mode_array[:,self.mode_nums[mode_index]], atol=atol)
+                # Select a subset of modes to compute.  Compute at least half
+                # the modes, and up to all of them.  Make sure to use unique
+                # values.  (This may reduce the number of modes computed.)
+                num_modes = parallel.call_and_bcast(
+                    np.random.randint,
+                    BPOD.sing_vals.size // 2, BPOD.sing_vals.size + 1)
+                mode_idxs = np.unique(parallel.call_and_bcast(
+                    np.random.randint,
+                    0, BPOD.sing_vals.size, num_modes))
+                print BPOD.sing_vals.size, mode_idxs
 
-        for mode_index, mode_handle in enumerate(adjoint_mode_handles):
-            mode = mode_handle.get()
-            np.testing.assert_allclose(
-                mode,
-                self.adjoint_mode_array[:,self.mode_nums[mode_index]],
-                atol=atol)
+                # Create handles for the modes
+                direct_mode_handles = [
+                    V.VecHandleArrayText(direct_mode_path % i)
+                    for i in mode_idxs]
+                adjoint_mode_handles = [
+                    V.VecHandleArrayText(adjoint_mode_path % i)
+                    for i in mode_idxs]
 
-        for direct_mode_index, direct_handle in \
-            enumerate(direct_mode_handles):
-            direct_mode = direct_handle.get()
-            for adjoint_mode_index, adjoint_handle in \
-                enumerate(adjoint_mode_handles):
-                adjoint_mode = adjoint_handle.get()
-                IP = self.my_BPOD.vec_space.inner_product(direct_mode,
-                    adjoint_mode)
-                if self.mode_nums[direct_mode_index] != \
-                    self.mode_nums[adjoint_mode_index]:
-                    self.assertAlmostEqual(IP, 0., places=5)
-                else:
-                    self.assertAlmostEqual(IP, 1., places=5)
+                # Compute modes
+                BPOD.compute_direct_modes(
+                    mode_idxs, direct_mode_handles,
+                    direct_vec_handles=direct_vec_handles)
+                BPOD.compute_adjoint_modes(
+                    mode_idxs, adjoint_mode_handles,
+                    adjoint_vec_handles=adjoint_vec_handles)
+
+                # Test modes against empirical gramians
+                np.testing.assert_allclose(
+                    np.array(BPOD.vec_space.compute_inner_product_mat(
+                        adjoint_mode_handles, direct_vec_handles) *
+                    BPOD.vec_space.compute_inner_product_mat(
+                        direct_vec_handles, adjoint_mode_handles)),
+                    np.diag(BPOD.sing_vals[mode_idxs]),
+                    rtol=rtol_sqr, atol=atol_sqr)
+                np.testing.assert_allclose(
+                    np.array(
+                    BPOD.vec_space.compute_inner_product_mat(
+                        direct_mode_handles, adjoint_vec_handles) *
+                    BPOD.vec_space.compute_inner_product_mat(
+                        adjoint_vec_handles, direct_mode_handles)),
+                    np.diag(BPOD.sing_vals[mode_idxs]),
+                    rtol=rtol_sqr, atol=atol_sqr)
 
 
+    @unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):
         # Tests fail if tolerance is too tight, likely due to random nature of
         # data.  Maximum error (elementwise) seems to come out ~1e-11.
@@ -463,6 +517,7 @@ class TestBPODHandles(unittest.TestCase):
             proj_coeffs, proj_coeffs_true, rtol=rtol, atol=atol)
 
 
+    @unittest.skip('Testing something else.')
     def test_compute_adj_proj_coeffs(self):
         # Tests fail if tolerance is too tight, likely due to random nature of
         # data.  Maximum error (elementwise) seems to come out ~1e-11.
