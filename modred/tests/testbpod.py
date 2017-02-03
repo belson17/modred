@@ -498,8 +498,13 @@ class TestBPODHandles(unittest.TestCase):
 
     #@unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):
+        # Set test tolerances.  Use a slightly more relaxed absolute tolerance
+        # here because the projection test uses modes that may correspond to
+        # smaller Hankel singular values (i.e., less controllable/unobservable
+        # states).  Those mode pairs are not as close to biorthogonal, so a more
+        # relaxed tolerance is required.
         rtol = 1e-8
-        atol = 1e-10
+        atol = 1e-8
 
         # Test a single input/output as well as multiple inputs/outputs.  Allow
         # for more inputs/outputs than states.  (This is determined in setUp()).
