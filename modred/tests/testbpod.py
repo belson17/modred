@@ -91,20 +91,20 @@ class TestBPODMatrices(unittest.TestCase):
             for num_outputs in [
                 1, np.random.randint(2, high=self.num_states + 2)]:
 
+                # Get state space system
+                A, B, C = get_system_mats(
+                    self.num_states, num_inputs, num_outputs)
+
+                # Compute direct impulse response
+                direct_vecs_mat = get_direct_impulse_response_mats(
+                    A, B, self.num_steps)
+
                 # Loop through different inner product weights
                 for weights, weights_mat in zip(weights_list, weights_mats):
 
                     # Define inner product based on weights
                     IP = VectorSpaceMatrices(
                         weights=weights).compute_inner_product_mat
-
-                    # Get state space system
-                    A, B, C = get_system_mats(
-                        self.num_states, num_inputs, num_outputs)
-
-                    # Compute direct impulse response
-                    direct_vecs_mat = get_direct_impulse_response_mats(
-                        A, B, self.num_steps)
 
                     # Compute adjoint impulse response
                     adjoint_vecs_mat = get_adjoint_impulse_response_mats(
