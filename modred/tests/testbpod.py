@@ -57,7 +57,7 @@ def get_adjoint_impulse_response_mats(A, C, num_steps, weights_mat):
 class TestBPODMatrices(unittest.TestCase):
     def setUp(self):
         self.num_states = 10
-        self.num_steps = self.num_states * 2
+        self.num_steps = self.num_states + 1
 
 
     def test_all(self):
@@ -171,8 +171,8 @@ class TestBPODMatrices(unittest.TestCase):
 
                     # Check that if mode indices are passed in, the correct
                     # modes are returned.
-                    mode_indices = np.random.randint(
-                        0, high=sing_vals.size, size=(sing_vals.size // 2))
+                    mode_indices = np.unique(np.random.randint(
+                        0, high=sing_vals.size, size=(sing_vals.size // 2)))
                     direct_modes_mat_sliced, adjoint_modes_mat_sliced =\
                     compute_BPOD_matrices(
                         direct_vecs_mat, adjoint_vecs_mat,
@@ -218,7 +218,7 @@ class TestBPODHandles(unittest.TestCase):
             parallel.call_and_bcast(np.random.randint, 2, self.num_states + 2)]
 
         # Specify how long to run impulse responses
-        self.num_steps = 2 * self.num_states
+        self.num_steps = self.num_states + 1
 
         parallel.barrier()
 
