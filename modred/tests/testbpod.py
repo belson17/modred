@@ -475,18 +475,17 @@ class TestBPODHandles(unittest.TestCase):
 
                 # Test modes against empirical gramians
                 np.testing.assert_allclose(
-                    np.array(BPOD.vec_space.compute_inner_product_mat(
+                    BPOD.vec_space.compute_inner_product_mat(
                         adjoint_mode_handles, direct_vec_handles) *
                     BPOD.vec_space.compute_inner_product_mat(
-                        direct_vec_handles, adjoint_mode_handles)),
+                        direct_vec_handles, adjoint_mode_handles),
                     np.diag(BPOD.sing_vals[mode_idxs]),
                     rtol=rtol_sqr, atol=atol_sqr)
                 np.testing.assert_allclose(
-                    np.array(
                     BPOD.vec_space.compute_inner_product_mat(
                         direct_mode_handles, adjoint_vec_handles) *
                     BPOD.vec_space.compute_inner_product_mat(
-                        adjoint_vec_handles, direct_mode_handles)),
+                        adjoint_vec_handles, direct_mode_handles),
                     np.diag(BPOD.sing_vals[mode_idxs]),
                     rtol=rtol_sqr, atol=atol_sqr)
 
