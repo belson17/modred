@@ -52,7 +52,7 @@ def get_adjoint_impulse_response_mats(A, C, num_steps, weights_mat):
     return adjoint_vecs_mat
 
 
-@unittest.skip('Testing something else.')
+#@unittest.skip('Testing something else.')
 @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestBPODMatrices(unittest.TestCase):
     def setUp(self):
@@ -229,7 +229,7 @@ class TestBPODHandles(unittest.TestCase):
         parallel.barrier()
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
 
@@ -284,7 +284,7 @@ class TestBPODHandles(unittest.TestCase):
             self.assertEqual(v, data_members_modified[k])
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_puts_gets(self):
         """Test that put/get work in base class."""
         test_dir = 'BPOD_files'
@@ -356,7 +356,7 @@ class TestBPODHandles(unittest.TestCase):
         return direct_vec_handles, adjoint_vec_handles
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_decomp(self):
         """Test that can take vecs, compute the Hankel and SVD matrices. """
         # Set test tolerances.  Separate, more relaxed tolerances may be
@@ -414,7 +414,7 @@ class TestBPODHandles(unittest.TestCase):
                 np.testing.assert_equal(R_sing_vecs, BPOD.R_sing_vecs)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_modes(self):
         """Test computing modes in serial and parallel."""
         # Set test tolerances.  More relaxed tolerances are required for testing
