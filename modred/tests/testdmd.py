@@ -217,7 +217,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
                 adv_vecs=adv_vecs, max_num_eigvals=max_num_eigvals)
 
 
-#@unittest.skip('Testing something else.')
+@unittest.skip('Testing something else.')
 class TestDMDHandles(unittest.TestCase):
     def setUp(self):
         if not os.access('.', os.W_OK):
@@ -248,7 +248,7 @@ class TestDMDHandles(unittest.TestCase):
         parallel.barrier()
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
@@ -304,7 +304,7 @@ class TestDMDHandles(unittest.TestCase):
             self.assertEqual(v, data_members_modified[k])
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_puts_gets(self):
         """Test get and put functions"""
         if not os.access('.', os.W_OK):
@@ -562,7 +562,7 @@ class TestDMDHandles(unittest.TestCase):
             modes_true, modes_computed, rtol=rtol, atol=atol)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_decomp(self):
         """Test DMD decomposition"""
         # Define an array of vectors, with corresponding handles
@@ -606,7 +606,7 @@ class TestDMDHandles(unittest.TestCase):
             self.vec_handles, self.adv_vec_handles[:-1])
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_modes(self):
         """Test building of modes."""
         # Generate path names for saving modes to disk
@@ -722,7 +722,7 @@ class TestDMDHandles(unittest.TestCase):
         self._helper_check_modes(modes_proj, mode_path_list)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_spectrum(self):
         """Test DMD spectrum"""
         rtol = 1e-10
@@ -786,7 +786,7 @@ class TestDMDHandles(unittest.TestCase):
             spectral_coeffs, spectral_coeffs_true, rtol=rtol, atol=atol)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):
         """Test projection coefficients"""
         rtol = 1e-10
@@ -857,7 +857,7 @@ class TestDMDHandles(unittest.TestCase):
             adv_proj_coeffs, adv_proj_coeffs_true, rtol=rtol, atol=atol)
 
 
-#@unittest.skip('Testing something else.')
+@unittest.skip('Testing something else.')
 @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestTLSqrDMDArraysFunctions(unittest.TestCase):
     def setUp(self):
@@ -1078,7 +1078,7 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                 adv_vecs=adv_vecs, max_num_eigvals=self.max_num_eigvals)
 
 
-#@unittest.skip('others')
+@unittest.skip('others')
 class TestTLSqrDMDHandles(unittest.TestCase):
     def setUp(self):
         if not os.access('.', os.W_OK):
@@ -1110,7 +1110,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         parallel.barrier()
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
@@ -1169,7 +1169,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             self.assertEqual(v, data_members_modified[k])
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_puts_gets(self):
         """Test get and put functions"""
         if not os.access('.', os.W_OK):
@@ -1530,7 +1530,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             modes_true, modes_computed, rtol=rtol, atol=atol)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_decomp(self):
         """Test DMD decomposition"""
         # Define an array of vectors, with corresponding handles
@@ -1567,7 +1567,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             self.vec_handles, self.adv_vec_handles[:-1])
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_modes(self):
         """Test building of modes."""
         # Generate path names for saving modes to disk
@@ -1695,7 +1695,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         self._helper_check_modes(modes_proj, mode_path_list)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_spectrum(self):
         """Test DMD spectrum"""
         rtol = 1e-10
@@ -1771,7 +1771,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             spectral_coeffs, spectral_coeffs_true, rtol=rtol, atol=atol)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):
         """Test projection coefficients"""
         rtol = 1e-10
