@@ -192,8 +192,17 @@ class BPODHandles(object):
             self.get_mat, R_sing_vecs_src)
 
 
+    def get_Hankel_mat(self, src):
+        """Gets the Hankel matrix from source (memory or file).
+
+        Args:
+            ``src``: Source from which to retrieve Hankel singular values.
+        """
+        self.Hankel_mat = parallel.call_and_bcast(self.get_mat, src)
+
+
     def put_decomp(self, sing_vals_dest, L_sing_vecs_dest, R_sing_vecs_dest):
-        """Puts the decomposition matrices in destinations (file or memory).
+        """Puts the decomposition matrices in destinations (memory or file).
 
         Args:
             ``sing_vals_dest``: Destination in which to put Hankel singular

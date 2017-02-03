@@ -287,43 +287,38 @@ class TestBPODHandles(unittest.TestCase):
     #@unittest.skip('Testing something else.')
     def test_puts_gets(self):
         """Test that put/get work in base class."""
-        test_dir = 'BPOD_files'
-        if not os.access('.', os.W_OK):
-            raise RuntimeError('Cannot write to current directory')
-        if not os.path.isdir(test_dir) and parallel.is_rank_zero():
-            os.mkdir(test_dir)
-        num_vecs = 10
-        num_states = 30
+        # Generate some random data
         Hankel_mat_true = parallel.call_and_bcast(
-            np.random.random, ((num_vecs, num_vecs)))
+            np.random.random, ((self.num_states, self.num_states)))
         L_sing_vecs_true, sing_vals_true, R_sing_vecs_true = \
             parallel.call_and_bcast(util.svd, Hankel_mat_true)
 
-        my_BPOD = BPODHandles(None, verbosity=0)
-        my_BPOD.Hankel_mat = Hankel_mat_true
-        my_BPOD.sing_vals = sing_vals_true
-        my_BPOD.L_sing_vecs = L_sing_vecs_true
-        my_BPOD.R_sing_vecs = R_sing_vecs_true
+        # Store the data in a BPOD object
+        BPOD_save = BPODHandles(None, verbosity=0)
+        BPOD_save.Hankel_mat = Hankel_mat_true
+        BPOD_save.sing_vals = sing_vals_true
+        BPOD_save.L_sing_vecs = L_sing_vecs_true
+        BPOD_save.R_sing_vecs = R_sing_vecs_true
 
-        L_sing_vecs_path = join(test_dir, 'L_sing_vecs.txt')
-        R_sing_vecs_path = join(test_dir, 'R_sing_vecs.txt')
-        sing_vals_path = join(test_dir, 'sing_vals.txt')
-        Hankel_mat_path = join(test_dir, 'Hankel_mat.txt')
-        my_BPOD.put_decomp(sing_vals_path, L_sing_vecs_path, R_sing_vecs_path)
-        my_BPOD.put_Hankel_mat(Hankel_mat_path)
+        # Use the BPOD object to save the data to disk
+        sing_vals_path = join(self.test_dir, 'sing_vals.txt')
+        L_sing_vecs_path = join(self.test_dir, 'L_sing_vecs.txt')
+        R_sing_vecs_path = join(self.test_dir, 'R_sing_vecs.txt')
+        Hankel_mat_path = join(self.test_dir, 'Hankel_mat.txt')
+        BPOD_save.put_decomp(sing_vals_path, L_sing_vecs_path, R_sing_vecs_path)
+        BPOD_save.put_Hankel_mat(Hankel_mat_path)
         parallel.barrier()
 
+        # Create a BPOD object and use it to load the data from disk
         BPOD_load = BPODHandles(None, verbosity=0)
+        BPOD_load.get_Hankel_mat(Hankel_mat_path)
+        BPOD_load.get_decomp(sing_vals_path, L_sing_vecs_path, R_sing_vecs_path)
 
-        BPOD_load.get_decomp(
-            sing_vals_path, L_sing_vecs_path, R_sing_vecs_path)
-        Hankel_mat_loaded = parallel.call_and_bcast(
-            util.load_array_text, Hankel_mat_path)
-
-        np.testing.assert_allclose(Hankel_mat_loaded, Hankel_mat_true)
-        np.testing.assert_allclose(BPOD_load.L_sing_vecs, L_sing_vecs_true)
-        np.testing.assert_allclose(BPOD_load.R_sing_vecs, R_sing_vecs_true)
-        np.testing.assert_allclose(BPOD_load.sing_vals, sing_vals_true)
+        # Compare loaded data or original data
+        np.testing.assert_equal(BPOD_load.Hankel_mat, Hankel_mat_true)
+        np.testing.assert_equal(BPOD_load.sing_vals, sing_vals_true)
+        np.testing.assert_equal(BPOD_load.L_sing_vecs, L_sing_vecs_true)
+        np.testing.assert_equal(BPOD_load.R_sing_vecs, R_sing_vecs_true)
 
 
     # Compute impulse responses and generate corresponding handles
