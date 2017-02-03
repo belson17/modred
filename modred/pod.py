@@ -239,12 +239,26 @@ class PODHandles(object):
         """
         self.eigvals = np.squeeze(np.array(parallel.call_and_bcast(
             self.get_mat, eigvals_src)))
-        self.eigvecs = parallel.call_and_bcast(self.get_mat,
-            eigvecs_src)
+        self.eigvecs = parallel.call_and_bcast(self.get_mat, eigvecs_src)
+
+
+    def get_correlation_mat(self, correlation_mat_src):
+        """Gets the correlation matrix from source (memory or file).
+
+        Args:
+            ``eigvals_src``: Source from which to retrieve eigenvalues of
+            correlation matrix.
+
+            ``eigvecs_src``: Source from which to retrieve eigenvectors of
+            correlation matrix.
+        """
+        self.correlation_mat = parallel.call_and_bcast(
+            self.get_mat, correlation_mat_src)
+
 
 
     def put_decomp(self, eigvals_dest, eigvecs_dest):
-        """Puts the decomposition matrices in destinations (file or memory).
+        """Puts the decomposition matrices in destinations (memory or file).
 
         Args:
             ``eigvals_dest``: Destination in which to put eigenvalues of

@@ -17,7 +17,7 @@ import modred.vectors as V
 from modred import util
 
 
-#@unittest.skip('Testing something else.')
+@unittest.skip('Testing something else.')
 @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestPODArraysFunctions(unittest.TestCase):
     def setUp(self):
@@ -105,7 +105,7 @@ class TestPODArraysFunctions(unittest.TestCase):
                 rtol=rtol, atol=atol)
 
 
-@unittest.skip('Testing something else.')
+#@unittest.skip('Testing something else.')
 class TestPODHandles(unittest.TestCase):
     def setUp(self):
         self.test_dir = 'POD_files'
@@ -143,44 +143,6 @@ class TestPODHandles(unittest.TestCase):
 
 
     @unittest.skip('Testing something else.')
-    def test_puts_gets(self):
-        test_dir = 'DELETE_ME_test_files_pod'
-        if not os.access('.', os.W_OK):
-            raise RuntimeError('Cannot write to current directory')
-        if not os.path.isdir(test_dir):
-            parallel.call_from_rank_zero(os.mkdir, test_dir)
-        num_vecs = 10
-        num_states = 30
-        correlation_mat_true = parallel.call_and_bcast(
-            np.random.random, ((num_vecs, num_vecs)))
-        eigvals_true = parallel.call_and_bcast(
-            np.random.random, num_vecs)
-        eigvecs_true = parallel.call_and_bcast(
-            np.random.random, ((num_states, num_vecs)))
-
-        my_POD = PODHandles(None, verbosity=0)
-        my_POD.correlation_mat = correlation_mat_true
-        my_POD.eigvals = eigvals_true
-        my_POD.eigvecs = eigvecs_true
-
-        eigvecs_path = join(test_dir, 'eigvecs.txt')
-        eigvals_path = join(test_dir, 'eigvals.txt')
-        correlation_mat_path = join(test_dir, 'correlation.txt')
-        my_POD.put_decomp(eigvals_path, eigvecs_path)
-        my_POD.put_correlation_mat(correlation_mat_path)
-        parallel.barrier()
-
-        POD_load = PODHandles(None, verbosity=0)
-        POD_load.get_decomp(eigvals_path, eigvecs_path)
-        correlation_mat_loaded = util.load_array_text(correlation_mat_path)
-
-        np.testing.assert_allclose(correlation_mat_loaded,
-            correlation_mat_true)
-        np.testing.assert_allclose(POD_load.eigvals, eigvals_true)
-        np.testing.assert_allclose(POD_load.eigvecs, eigvecs_true)
-
-
-    @unittest.skip('Testing something else.')
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
@@ -189,8 +151,8 @@ class TestPODHandles(unittest.TestCase):
         def my_save(): pass
         def my_IP(): pass
 
-        data_members_default = {'put_mat': util.save_array_text, 'get_mat':
-            util.load_array_text,
+        data_members_default = {
+            'put_mat': util.save_array_text, 'get_mat':util.load_array_text,
             'verbosity': 0, 'eigvecs': None, 'eigvals': None,
             'correlation_mat': None, 'vec_handles': None, 'vecs': None,
             'vec_space': VectorSpaceHandles(inner_product=my_IP, verbosity=0)}
@@ -221,13 +183,48 @@ class TestPODHandles(unittest.TestCase):
         my_POD = PODHandles(
             my_IP, max_vecs_per_node=max_vecs_per_node, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_space'].max_vecs_per_node = \
-            max_vecs_per_node
-        data_members_modified['vec_space'].max_vecs_per_proc = \
-            max_vecs_per_node * parallel.get_num_nodes() / \
-            parallel.get_num_procs()
+        data_members_modified['vec_space'].max_vecs_per_node = max_vecs_per_node
+        data_members_modified['vec_space'].max_vecs_per_proc = (
+            max_vecs_per_node *
+            parallel.get_num_nodes() /
+            parallel.get_num_procs())
         for k,v in util.get_data_members(my_POD).items():
             self.assertEqual(v, data_members_modified[k])
+
+
+    #@unittest.skip('Testing something else.')
+    def test_puts_gets(self):
+        # Generate some random data
+        correlation_mat_true = parallel.call_and_bcast(
+            np.random.random, ((self.num_vecs, self.num_vecs)))
+        eigvals_true = parallel.call_and_bcast(
+            np.random.random, self.num_vecs)
+        eigvecs_true = parallel.call_and_bcast(
+            np.random.random, ((self.num_states, self.num_vecs)))
+
+        # Create a POD object and store the data in it
+        my_POD = PODHandles(None, verbosity=0)
+        my_POD.correlation_mat = correlation_mat_true
+        my_POD.eigvals = eigvals_true
+        my_POD.eigvecs = eigvecs_true
+
+        # Write the data to disk
+        eigvecs_path = join(self.test_dir, 'eigvecs.txt')
+        eigvals_path = join(self.test_dir, 'eigvals.txt')
+        correlation_mat_path = join(self.test_dir, 'correlation.txt')
+        my_POD.put_decomp(eigvals_path, eigvecs_path)
+        my_POD.put_correlation_mat(correlation_mat_path)
+        parallel.barrier()
+
+        # Create a new POD object and use it to load the data
+        POD_load = PODHandles(None, verbosity=0)
+        POD_load.get_correlation_mat(correlation_mat_path)
+        POD_load.get_decomp(eigvals_path, eigvecs_path)
+
+        # Check that the loaded data is correct
+        np.testing.assert_equal(POD_load.correlation_mat, correlation_mat_true)
+        np.testing.assert_equal(POD_load.eigvals, eigvals_true)
+        np.testing.assert_equal(POD_load.eigvecs, eigvecs_true)
 
 
     @unittest.skip('Testing something else.')
