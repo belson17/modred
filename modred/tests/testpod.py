@@ -191,31 +191,37 @@ class TestPODHandles(unittest.TestCase):
             np.random.random, self.num_vecs)
         eigvecs_true = parallel.call_and_bcast(
             np.random.random, ((self.num_states, self.num_vecs)))
+        proj_coeffs_true = parallel.call_and_bcast(
+            np.random.random, ((self.num_vecs, self.num_vecs)))
 
         # Create a POD object and store the data in it
         POD_save = PODHandles(None, verbosity=0)
         POD_save.correlation_mat = correlation_mat_true
         POD_save.eigvals = eigvals_true
         POD_save.eigvecs = eigvecs_true
+        POD_save.proj_coeffs = proj_coeffs_true
 
         # Write the data to disk
         eigvecs_path = join(self.test_dir, 'eigvecs.txt')
         eigvals_path = join(self.test_dir, 'eigvals.txt')
         correlation_mat_path = join(self.test_dir, 'correlation.txt')
+        proj_coeffs_path = join(self.test_dir, 'proj_coeffs.txt')
         POD_save.put_decomp(eigvals_path, eigvecs_path)
         POD_save.put_correlation_mat(correlation_mat_path)
+        POD_save.put_proj_coeffs(proj_coeffs_path)
         parallel.barrier()
 
         # Create a new POD object and use it to load the data
         POD_load = PODHandles(None, verbosity=0)
-        POD_load.get_correlation_mat(correlation_mat_path)
         POD_load.get_decomp(eigvals_path, eigvecs_path)
+        POD_load.get_correlation_mat(correlation_mat_path)
+        POD_load.get_proj_coeffs(proj_coeffs_path)
 
         # Check that the loaded data is correct
-        np.testing.assert_equal(POD_load.correlation_mat, correlation_mat_true)
         np.testing.assert_equal(POD_load.eigvals, eigvals_true)
         np.testing.assert_equal(POD_load.eigvecs, eigvecs_true)
-
+        np.testing.assert_equal(POD_load.correlation_mat, correlation_mat_true)
+        np.testing.assert_equal(POD_load.proj_coeffs, proj_coeffs_true)
 
     #@unittest.skip('Testing something else.')
     def test_compute_decomp(self):

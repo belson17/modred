@@ -250,6 +250,13 @@ class PODHandles(object):
         """
         self.correlation_mat = parallel.call_and_bcast(self.get_mat, src)
 
+    def get_proj_coeffs(self, src):
+        """Gets projection coefficients from source (memory or file).
+
+        Args:
+            ``src``: Source from which to retrieve projection coefficients.
+        """
+        self.proj_coeffs = parallel.call_and_bcast(self.get_mat, src)
 
     def put_decomp(self, eigvals_dest, eigvecs_dest):
         """Puts the decomposition matrices in destinations (memory or file).
