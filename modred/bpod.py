@@ -201,6 +201,27 @@ class BPODHandles(object):
         self.Hankel_mat = parallel.call_and_bcast(self.get_mat, src)
 
 
+    def get_direct_proj_coeffs(self, src):
+        """Gets the direct projection coefficients from source (memory or file).
+
+        Args:
+            ``src``: Source from which to retrieve direct projection
+            coefficients.
+        """
+        self.proj_coeffs = parallel.call_and_bcast(self.get_mat, src)
+
+
+    def get_adjoint_proj_coeffs(self, src):
+        """Gets the adjoint projection coefficients from source (memory or
+        file).
+
+        Args:
+            ``src``: Source from which to retrieve adjoint projection
+            coefficients.
+        """
+        self.adjoint_proj_coeffs = parallel.call_and_bcast(self.get_mat, src)
+
+
     def put_decomp(self, sing_vals_dest, L_sing_vecs_dest, R_sing_vecs_dest):
         """Puts the decomposition matrices in destinations (memory or file).
 
@@ -215,22 +236,22 @@ class BPODHandles(object):
             vectors of Hankel matrix.
         """
         # Don't check if rank is zero because the following methods do.
+        self.put_sing_vals(sing_vals_dest)
         self.put_L_sing_vecs(L_sing_vecs_dest)
         self.put_R_sing_vecs(R_sing_vecs_dest)
-        self.put_sing_vals(sing_vals_dest)
-
-
-    def put_L_sing_vecs(self, dest):
-        """Puts left singular vectors of Hankel matrix to ``dest``."""
-        if parallel.is_rank_zero():
-            self.put_mat(self.L_sing_vecs, dest)
-        parallel.barrier()
 
 
     def put_sing_vals(self, dest):
         """Puts Hankel singular values to ``dest``."""
         if parallel.is_rank_zero():
             self.put_mat(self.sing_vals, dest)
+            parallel.barrier()
+
+
+    def put_L_sing_vecs(self, dest):
+        """Puts left singular vectors of Hankel matrix to ``dest``."""
+        if parallel.is_rank_zero():
+            self.put_mat(self.L_sing_vecs, dest)
         parallel.barrier()
 
 

@@ -292,6 +292,10 @@ class TestBPODHandles(unittest.TestCase):
             np.random.random, ((self.num_states, self.num_states)))
         L_sing_vecs_true, sing_vals_true, R_sing_vecs_true = \
             parallel.call_and_bcast(util.svd, Hankel_mat_true)
+        proj_coeffs_true = parallel.call_and_bcast(
+            np.random.random, ((self.num_steps, self.num_steps)))
+        adj_proj_coeffs_true = parallel.call_and_bcast(
+            np.random.random, ((self.num_steps, self.num_steps)))
 
         # Store the data in a BPOD object
         BPOD_save = BPODHandles(None, verbosity=0)
@@ -299,26 +303,37 @@ class TestBPODHandles(unittest.TestCase):
         BPOD_save.sing_vals = sing_vals_true
         BPOD_save.L_sing_vecs = L_sing_vecs_true
         BPOD_save.R_sing_vecs = R_sing_vecs_true
+        BPOD_save.proj_coeffs = proj_coeffs_true
+        BPOD_save.adjoint_proj_coeffs = adj_proj_coeffs_true
 
         # Use the BPOD object to save the data to disk
         sing_vals_path = join(self.test_dir, 'sing_vals.txt')
         L_sing_vecs_path = join(self.test_dir, 'L_sing_vecs.txt')
         R_sing_vecs_path = join(self.test_dir, 'R_sing_vecs.txt')
         Hankel_mat_path = join(self.test_dir, 'Hankel_mat.txt')
+        proj_coeffs_path = join(self.test_dir, 'proj_coeffs.txt')
+        adj_proj_coeffs_path = join(self.test_dir, 'adj_proj_coeffs.txt')
         BPOD_save.put_decomp(sing_vals_path, L_sing_vecs_path, R_sing_vecs_path)
         BPOD_save.put_Hankel_mat(Hankel_mat_path)
+        BPOD_save.put_direct_proj_coeffs(proj_coeffs_path)
+        BPOD_save.put_adjoint_proj_coeffs(adj_proj_coeffs_path)
         parallel.barrier()
 
         # Create a BPOD object and use it to load the data from disk
         BPOD_load = BPODHandles(None, verbosity=0)
-        BPOD_load.get_Hankel_mat(Hankel_mat_path)
         BPOD_load.get_decomp(sing_vals_path, L_sing_vecs_path, R_sing_vecs_path)
+        BPOD_load.get_Hankel_mat(Hankel_mat_path)
+        BPOD_load.get_direct_proj_coeffs(proj_coeffs_path)
+        BPOD_load.get_adjoint_proj_coeffs(adj_proj_coeffs_path)
 
         # Compare loaded data or original data
-        np.testing.assert_equal(BPOD_load.Hankel_mat, Hankel_mat_true)
         np.testing.assert_equal(BPOD_load.sing_vals, sing_vals_true)
         np.testing.assert_equal(BPOD_load.L_sing_vecs, L_sing_vecs_true)
         np.testing.assert_equal(BPOD_load.R_sing_vecs, R_sing_vecs_true)
+        np.testing.assert_equal(BPOD_load.Hankel_mat, Hankel_mat_true)
+        np.testing.assert_equal(BPOD_load.proj_coeffs, proj_coeffs_true)
+        np.testing.assert_equal(
+            BPOD_load.adjoint_proj_coeffs, adj_proj_coeffs_true)
 
 
     # Compute impulse responses and generate corresponding handles
