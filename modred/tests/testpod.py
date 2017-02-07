@@ -47,11 +47,21 @@ class TestPODArraysFunctions(unittest.TestCase):
                 IP = VectorSpaceMatrices(
                     weights=weights).compute_inner_product_mat
 
-                # Compute POD using appropriate method
+                # Choose a random subset of modes to compute, for testing mode
+                # indices argument
+                mode_indices = np.unique(np.random.randint(
+                    0, high=np.linalg.matrix_rank(vec_mat),
+                    size=np.linalg.matrix_rank(vec_mat) // 2))
+
+                # Compute POD using appropriate method.  Also compute a subset
+                # of modes, for later testing mode indices argument.
                 if method == 'snaps':
                     modes, eigvals, eigvecs, correlation_mat =\
                     compute_POD_matrices_snaps_method(
                         vec_mat, inner_product_weights=weights, return_all=True)
+                    modes_sliced = compute_POD_matrices_snaps_method(
+                        vec_mat, mode_indices=mode_indices,
+                        inner_product_weights=weights, return_all=True)[0]
 
                     # For method of snapshots, test correlation mat values
                     np.testing.assert_allclose(
@@ -62,6 +72,9 @@ class TestPODArraysFunctions(unittest.TestCase):
                     modes, eigvals, eigvecs =\
                     compute_POD_matrices_direct_method(
                         vec_mat, inner_product_weights=weights, return_all=True)
+                    modes_sliced = compute_POD_matrices_direct_method(
+                        vec_mat, mode_indices=mode_indices,
+                        inner_product_weights=weights, return_all=True)[0]
 
                 else:
                     raise ValueError('Invalid POD method.')
@@ -80,18 +93,6 @@ class TestPODArraysFunctions(unittest.TestCase):
 
                 # Check that if mode indices are passed in, the correct
                 # modes are returned.
-                mode_indices = np.unique(np.random.randint(
-                    0, high=eigvals.size, size=(eigvals.size // 2)))
-                if method == 'snaps':
-                    modes_sliced = compute_POD_matrices_snaps_method(
-                        vec_mat, mode_indices=mode_indices,
-                        inner_product_weights=weights, return_all=True)[0]
-                elif method == 'direct':
-                    modes_sliced = compute_POD_matrices_direct_method(
-                        vec_mat, mode_indices=mode_indices,
-                        inner_product_weights=weights, return_all=True)[0]
-                else:
-                    raise ValueError('Invalid POD method.')
                 np.testing.assert_allclose(
                     modes_sliced, modes[:, mode_indices],
                     rtol=rtol, atol=atol)
