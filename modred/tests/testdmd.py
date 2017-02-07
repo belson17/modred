@@ -18,7 +18,7 @@ from modred import util
 from modred import pod
 
 
-#@unittest.skip('Testing something else.')
+@unittest.skip('Testing something else.')
 @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestDMDArraysFunctions(unittest.TestCase):
     def setUp(self):
@@ -210,38 +210,49 @@ class TestDMDArraysFunctions(unittest.TestCase):
                             rtol=rtol, atol=atol)
 
 
-@unittest.skip('Testing something else.')
+#@unittest.skip('Testing something else.')
 class TestDMDHandles(unittest.TestCase):
     def setUp(self):
+        # Specify output locations
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        self.test_dir = 'DELETE_ME_test_files_dmd'
-        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
-            os.mkdir(self.test_dir)
-
-        self.num_vecs = 10
-        self.num_states = 20
-        self.my_DMD = DMDHandles(np.vdot, verbosity=0)
-
+        self.test_dir = 'DMD_files'
+        if not os.path.isdir(self.test_dir):
+            parallel.call_from_rank_zero(os.mkdir, self.test_dir)
         self.vec_path = join(self.test_dir, 'dmd_vec_%03d.pkl')
         self.adv_vec_path = join(self.test_dir, 'dmd_adv_vec_%03d.pkl')
         self.mode_path = join(self.test_dir, 'dmd_truemode_%03d.pkl')
-        self.vec_handles = [V.VecHandlePickle(self.vec_path%i)
+
+        # Specify data dimensions
+        self.num_states = 30
+        self.num_vecs = 10
+
+        # Generate random data and write to disk using handles
+        self.vec_mat = np.mat(parallel.call_and_bcast(
+            np.random.random, (self.num_states, self.num_vecs)))
+        self.adv_vec_mat = np.mat(parallel.call_and_bcast(
+            np.random.random, (self.num_states, self.num_vecs)))
+        self.vec_handles = [
+            V.VecHandleArrayText(self.vec_path % i)
             for i in range(self.num_vecs)]
         self.adv_vec_handles = [
-            V.VecHandlePickle(self.adv_vec_path%i)
+            V.VecHandleArrayText(self.adv_vec_path % i)
             for i in range(self.num_vecs)]
+        for idx, (hdl, adv_hdl) in enumerate(
+            zip(self.vec_handles, self.adv_vec_handles)):
+            hdl.put(self.vec_mat[:, idx])
+            adv_hdl.put(self.adv_vec_mat[:, idx])
+
         parallel.barrier()
 
 
     def tearDown(self):
         parallel.barrier()
-        if parallel.is_rank_zero():
-            rmtree(self.test_dir, ignore_errors=True)
+        parallel.call_from_rank_zero(rmtree, self.test_dir, ignore_errors=True)
         parallel.barrier()
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
@@ -285,14 +296,14 @@ class TestDMDHandles(unittest.TestCase):
             self.assertEqual(v, data_members_modified[k])
 
         max_vecs_per_node = 500
-        my_DMD = DMDHandles(my_IP, max_vecs_per_node=max_vecs_per_node,
-            verbosity=0)
+        my_DMD = DMDHandles(
+            my_IP, max_vecs_per_node=max_vecs_per_node, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_space'].max_vecs_per_node = \
-            max_vecs_per_node
-        data_members_modified['vec_space'].max_vecs_per_proc = \
-            max_vecs_per_node * parallel.get_num_nodes() / \
-            parallel.get_num_procs()
+        data_members_modified['vec_space'].max_vecs_per_node = max_vecs_per_node
+        data_members_modified['vec_space'].max_vecs_per_proc = (
+            max_vecs_per_node *
+            parallel.get_num_nodes() /
+            parallel.get_num_procs())
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
 
