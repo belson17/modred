@@ -10,22 +10,23 @@ from . import parallel
 
 
 def compute_DMD_matrices_snaps_method(
-    vecs, mode_indices, adv_vecs=None, inner_product_weights=None, atol=1e-13,
-    rtol=None, max_num_eigvals=None, return_all=False):
+    vecs, adv_vecs=None, mode_indices=None, inner_product_weights=None,
+    atol=1e-13, rtol=None, max_num_eigvals=None, return_all=False):
     """Computes DMD modes using data stored in matrices, using method of
     snapshots.
 
     Args:
         ``vecs``: Matrix whose columns are data vectors.
 
-        ``mode_indices``: List of indices describing which modes to compute.
-        Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
-
     Kwargs:
         ``adv_vecs``: Matrix whose columns are data vectors advanced in time.
         If not provided, then it is assumed that the vectors describe a
         sequential time-series. Thus ``vecs`` becomes ``vecs[:, :-1]`` and
         ``adv_vecs`` becomes ``vecs[:, 1:]``.
+
+        ``mode_indices``: List of indices describing which modes to compute.
+        Examples are ``range(10)`` or ``[3, 0, 6, 8]``.  If no mode indices are
+        specified, then all modes will be computed.
 
         ``inner_product_weights``: 1D array or matrix of inner product weights.
         Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
@@ -50,8 +51,11 @@ def compute_DMD_matrices_snaps_method(
 
         ``proj_modes``: Matrix whose columns are projected DMD modes.
 
-        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on
-        projection of first data vector.
+        ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
+        as the magnitudes of the projection coefficients of first data vector.
+        The projection is onto the span of the DMD modes using the
+        (biorthogonal) adjoint DMD modes.  Note that this is the same as a
+        least-squares projection onto the span of the DMD modes.
 
         ``eigvals``: 1D array of eigenvalues of approximating low-order linear
         map (DMD eigenvalues).
@@ -165,21 +169,22 @@ def compute_DMD_matrices_snaps_method(
 
 
 def compute_DMD_matrices_direct_method(
-    vecs, mode_indices, adv_vecs=None, inner_product_weights=None, atol=1e-13,
-    rtol=None, max_num_eigvals=None, return_all=False):
+    vecs, adv_vecs=None, mode_indices=None, inner_product_weights=None,
+    atol=1e-13, rtol=None, max_num_eigvals=None, return_all=False):
     """Computes DMD modes using data stored in matrices, using direct method.
 
     Args:
         ``vecs``: Matrix whose columns are data vectors.
-
-        ``mode_indices``: List of indices describing which modes to compute.
-        Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
 
     Kwargs:
         ``adv_vecs``: Matrix whose columns are data vectors advanced in time.
         If not provided, then it is assumed that the vectors describe a
         sequential time-series. Thus ``vecs`` becomes ``vecs[:, :-1]`` and
         ``adv_vecs`` becomes ``vecs[:, 1:]``.
+
+        ``mode_indices``: List of indices describing which modes to compute.
+        Examples are ``range(10)`` or ``[3, 0, 6, 8]``.  If no mode indices are
+        specified, then all modes will be computed.
 
         ``inner_product_weights``: 1D array or matrix of inner product weights.
         Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
@@ -205,8 +210,11 @@ def compute_DMD_matrices_direct_method(
 
         ``proj_modes``: Matrix whose columns are projected DMD modes.
 
-        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on
-        projection of first data vector.
+        ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
+        as the magnitudes of the projection coefficients of first data vector.
+        The projection is onto the span of the DMD modes using the
+        (biorthogonal) adjoint DMD modes.  Note that this is the same as a
+        least-squares projection onto the span of the DMD modes.
 
         ``eigvals``: 1D array of eigenvalues of approximating low-order linear
         map (DMD eigenvalues).
@@ -823,7 +831,12 @@ class DMDHandles(object):
         projection onto the projected DMD modes.
 
         Returns:
-            ``spectral_coeffs``: 1D array of DMD spectral coefficients.
+            ``spectral_coeffs``: 1D array of DMD spectral coefficients,
+            calculated as the magnitudes of the projection coefficients of first
+            data vector.  The projection is onto the span of the DMD modes using
+            the (biorthogonal) adjoint DMD modes.  Note that this is the same as
+            a least-squares projection onto the span of the DMD modes.
+
         """
         # TODO: maybe allow for user to choose which column to spectrum from?
         # ie first, last, or mean?
