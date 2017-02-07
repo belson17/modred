@@ -438,10 +438,51 @@ class DMDHandles(object):
             self.get_mat, correlation_mat_eigvecs_src)
 
 
+    def get_correlation_mat(self, src):
+      """Gets the correlation matrix from source (memory or file).
+
+        Args:
+            ``src``: Source from which to retrieve correlation matrix.
+        """
+      self.correlation_mat = parallel.call_and_bcast(self.get_mat, src)
+
+
+    def get_cross_correlation_mat(self, src):
+        """Gets the cross-correlation matrix from source (memory or file).
+
+        Args:
+            ``src``: Source from which to retrieve cross-correlation matrix.
+        """
+        self.cross_correlation_mat = parallel.call_and_bcast(self.get_mat, src)
+
+
+    def get_spectral_coeffs(self, src):
+        """Gets the spectral coefficients from source (memory or file).
+
+        Args:
+            ``src``: Source from which to retrieve spectral coefficients.
+        """
+        self.spectral_coeffs = parallel.call_and_bcast(self.get_mat, src)
+
+
+    def get_proj_coeffs(self, src, adv_src):
+        """Gets the projection coefficients and advanced projection coefficients
+        from sources (memory or file).
+
+        Args:
+            ``src``: Source from which to retrieve projection coefficients.
+
+            ``adv_src``: Source from which to retrieve advanced projection
+            coefficients.
+        """
+        self.proj_coeffs = parallel.call_and_bcast(self.get_mat, src)
+        self.adv_proj_coeffs = parallel.call_and_bcast(self.get_mat, adv_src)
+
+
     def put_decomp(
         self, eigvals_dest, R_low_order_eigvecs_dest, L_low_order_eigvecs_dest,
         correlation_mat_eigvals_dest, correlation_mat_eigvecs_dest):
-        """Puts the decomposition matrices in destinations (file or memory).
+        """Puts the decomposition matrices in destinations (memory or file).
 
         Args:
             ``eigvals_dest``: Destination in which to put eigenvalues of

@@ -252,7 +252,7 @@ class TestDMDHandles(unittest.TestCase):
         parallel.barrier()
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
@@ -308,14 +308,10 @@ class TestDMDHandles(unittest.TestCase):
             self.assertEqual(v, data_members_modified[k])
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_puts_gets(self):
         """Test get and put functions"""
-        if not os.access('.', os.W_OK):
-            raise RuntimeError('Cannot write to current directory')
-        test_dir = 'DELETE_ME_test_files_dmd'
-        if not os.path.isdir(test_dir) and parallel.is_rank_zero():
-            os.mkdir(test_dir)
+        # Generate some random data
         eigvals = parallel.call_and_bcast(np.random.random, 5)
         R_low_order_eigvecs = parallel.call_and_bcast(
             np.random.random, (10,10))
@@ -328,74 +324,74 @@ class TestDMDHandles(unittest.TestCase):
         cross_correlation_mat = parallel.call_and_bcast(
             np.random.random, (10,10))
         spectral_coeffs = parallel.call_and_bcast(np.random.random, 5)
-        proj_coeffs = parallel.call_and_bcast(np.random.random, 5)
-        adv_proj_coeffs = parallel.call_and_bcast(np.random.random, 5)
+        proj_coeffs = parallel.call_and_bcast(np.random.random, (5, 5))
+        adv_proj_coeffs = parallel.call_and_bcast(np.random.random, (5, 5))
 
-        my_DMD = DMDHandles(None, verbosity=0)
-        my_DMD.eigvals = eigvals
-        my_DMD.R_low_order_eigvecs = R_low_order_eigvecs
-        my_DMD.L_low_order_eigvecs = L_low_order_eigvecs
-        my_DMD.correlation_mat_eigvals = correlation_mat_eigvals
-        my_DMD.correlation_mat_eigvecs = correlation_mat_eigvecs
-        my_DMD.correlation_mat = correlation_mat
-        my_DMD.cross_correlation_mat = cross_correlation_mat
-        my_DMD.spectral_coeffs = spectral_coeffs
-        my_DMD.proj_coeffs = proj_coeffs
-        my_DMD.adv_proj_coeffs = adv_proj_coeffs
+        # Create a DMD object and store the data in it
+        DMD_save = DMDHandles(None, verbosity=0)
+        DMD_save.eigvals = eigvals
+        DMD_save.R_low_order_eigvecs = R_low_order_eigvecs
+        DMD_save.L_low_order_eigvecs = L_low_order_eigvecs
+        DMD_save.correlation_mat_eigvals = correlation_mat_eigvals
+        DMD_save.correlation_mat_eigvecs = correlation_mat_eigvecs
+        DMD_save.correlation_mat = correlation_mat
+        DMD_save.cross_correlation_mat = cross_correlation_mat
+        DMD_save.spectral_coeffs = spectral_coeffs
+        DMD_save.proj_coeffs = proj_coeffs
+        DMD_save.adv_proj_coeffs = adv_proj_coeffs
 
-        eigvals_path = join(test_dir, 'dmd_eigvals.txt')
+        # Write the data to disk
+        eigvals_path = join(self.test_dir, 'dmd_eigvals.txt')
         R_low_order_eigvecs_path = join(
-            test_dir, 'dmd_R_low_order_eigvecs.txt')
+            self.test_dir, 'dmd_R_low_order_eigvecs.txt')
         L_low_order_eigvecs_path = join(
-            test_dir, 'dmd_L_low_order_eigvecs.txt')
+            self.test_dir, 'dmd_L_low_order_eigvecs.txt')
         correlation_mat_eigvals_path = join(
-            test_dir, 'dmd_corr_mat_eigvals.txt')
+            self.test_dir, 'dmd_corr_mat_eigvals.txt')
         correlation_mat_eigvecs_path = join(
-            test_dir, 'dmd_corr_mat_eigvecs.txt')
-        correlation_mat_path = join(test_dir, 'dmd_corr_mat.txt')
-        cross_correlation_mat_path = join(test_dir, 'dmd_cross_corr_mat.txt')
-        spectral_coeffs_path = join(test_dir, 'dmd_spectral_coeffs.txt')
-        proj_coeffs_path = join(test_dir, 'dmd_proj_coeffs.txt')
-        adv_proj_coeffs_path = join(test_dir, 'dmd_adv_proj_coeffs.txt')
-
-        my_DMD.put_decomp(
+            self.test_dir, 'dmd_corr_mat_eigvecs.txt')
+        correlation_mat_path = join(self.test_dir, 'dmd_corr_mat.txt')
+        cross_correlation_mat_path = join(
+            self.test_dir, 'dmd_cross_corr_mat.txt')
+        spectral_coeffs_path = join(self.test_dir, 'dmd_spectral_coeffs.txt')
+        proj_coeffs_path = join(self.test_dir, 'dmd_proj_coeffs.txt')
+        adv_proj_coeffs_path = join(self.test_dir, 'dmd_adv_proj_coeffs.txt')
+        DMD_save.put_decomp(
             eigvals_path, R_low_order_eigvecs_path, L_low_order_eigvecs_path,
             correlation_mat_eigvals_path , correlation_mat_eigvecs_path)
-        my_DMD.put_correlation_mat(correlation_mat_path)
-        my_DMD.put_cross_correlation_mat(cross_correlation_mat_path)
-        my_DMD.put_spectral_coeffs(spectral_coeffs_path)
-        my_DMD.put_proj_coeffs(proj_coeffs_path, adv_proj_coeffs_path)
+        DMD_save.put_correlation_mat(correlation_mat_path)
+        DMD_save.put_cross_correlation_mat(cross_correlation_mat_path)
+        DMD_save.put_spectral_coeffs(spectral_coeffs_path)
+        DMD_save.put_proj_coeffs(proj_coeffs_path, adv_proj_coeffs_path)
         parallel.barrier()
 
+        # Create a new DMD object and use it to load data
         DMD_load = DMDHandles(None, verbosity=0)
         DMD_load.get_decomp(
             eigvals_path, R_low_order_eigvecs_path, L_low_order_eigvecs_path,
             correlation_mat_eigvals_path, correlation_mat_eigvecs_path)
-        correlation_mat_loaded = util.load_array_text(correlation_mat_path)
-        cross_correlation_mat_loaded = util.load_array_text(
-            cross_correlation_mat_path)
-        spectral_coeffs_loaded = np.squeeze(np.array(
-            util.load_array_text(spectral_coeffs_path)))
-        proj_coeffs_loaded = np.squeeze(np.array(
-            util.load_array_text(proj_coeffs_path)))
-        adv_proj_coeffs_loaded = np.squeeze(np.array(
-            util.load_array_text(adv_proj_coeffs_path)))
+        DMD_load.get_correlation_mat(correlation_mat_path)
+        DMD_load.get_cross_correlation_mat(cross_correlation_mat_path)
+        DMD_load.get_spectral_coeffs(spectral_coeffs_path)
+        DMD_load.get_proj_coeffs(proj_coeffs_path, adv_proj_coeffs_path)
 
-        np.testing.assert_allclose(DMD_load.eigvals, eigvals)
-        np.testing.assert_allclose(
-            DMD_load.R_low_order_eigvecs, R_low_order_eigvecs)
-        np.testing.assert_allclose(
+        # Check that the loaded data is correct
+        np.testing.assert_equal(DMD_load.eigvals, eigvals)
+        np.testing.assert_equal(
             DMD_load.L_low_order_eigvecs, L_low_order_eigvecs)
-        np.testing.assert_allclose(
+        np.testing.assert_equal(
+            DMD_load.R_low_order_eigvecs, R_low_order_eigvecs)
+        np.testing.assert_equal(
             DMD_load.correlation_mat_eigvals, correlation_mat_eigvals)
-        np.testing.assert_allclose(
+        np.testing.assert_equal(
             DMD_load.correlation_mat_eigvecs, correlation_mat_eigvecs)
-        np.testing.assert_allclose(correlation_mat_loaded, correlation_mat)
-        np.testing.assert_allclose(
-            cross_correlation_mat_loaded, cross_correlation_mat)
-        np.testing.assert_allclose(spectral_coeffs_loaded, spectral_coeffs)
-        np.testing.assert_allclose(proj_coeffs_loaded, proj_coeffs)
-        np.testing.assert_allclose(adv_proj_coeffs_loaded, adv_proj_coeffs)
+        np.testing.assert_equal(DMD_load.correlation_mat, correlation_mat)
+        np.testing.assert_equal(
+            DMD_load.cross_correlation_mat, cross_correlation_mat)
+        np.testing.assert_equal(
+            np.array(DMD_load.spectral_coeffs).squeeze(), spectral_coeffs)
+        np.testing.assert_equal(DMD_load.proj_coeffs, proj_coeffs)
+        np.testing.assert_equal(DMD_load.adv_proj_coeffs, adv_proj_coeffs)
 
 
     def _helper_compute_DMD_from_data(
