@@ -101,7 +101,7 @@ class TestPODArraysFunctions(unittest.TestCase):
 #@unittest.skip('Testing something else.')
 class TestPODHandles(unittest.TestCase):
     def setUp(self):
-        # Specify output ocations
+        # Specify output locations
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         self.test_dir = 'POD_files'
