@@ -249,6 +249,7 @@ class TestPODHandles(unittest.TestCase):
 
         # Check that returned values match internal values
         np.testing.assert_equal(eigvals, POD.eigvals)
+        np.testing.assert_equal(eigvecs, POD.eigvecs)
 
 
     #@unittest.skip('Testing something else.')
