@@ -219,18 +219,18 @@ class TestDMDHandles(unittest.TestCase):
         self.test_dir = 'DMD_files'
         if not os.path.isdir(self.test_dir):
             parallel.call_from_rank_zero(os.mkdir, self.test_dir)
-        self.vec_path = join(self.test_dir, 'dmd_vec_%03d.pkl')
-        self.adv_vec_path = join(self.test_dir, 'dmd_adv_vec_%03d.pkl')
-        self.mode_path = join(self.test_dir, 'dmd_truemode_%03d.pkl')
+        self.vec_path = join(self.test_dir, 'dmd_vec_%03d.txt')
+        self.adv_vec_path = join(self.test_dir, 'dmd_adv_vec_%03d.txt')
+        self.mode_path = join(self.test_dir, 'dmd_truemode_%03d.txt')
 
         # Specify data dimensions
         self.num_states = 30
         self.num_vecs = 10
 
         # Generate random data and write to disk using handles
-        self.vec_mat = np.mat(parallel.call_and_bcast(
+        self.vecs_mat = np.mat(parallel.call_and_bcast(
             np.random.random, (self.num_states, self.num_vecs)))
-        self.adv_vec_mat = np.mat(parallel.call_and_bcast(
+        self.adv_vecs_mat = np.mat(parallel.call_and_bcast(
             np.random.random, (self.num_states, self.num_vecs)))
         self.vec_handles = [
             V.VecHandleArrayText(self.vec_path % i)
@@ -240,8 +240,8 @@ class TestDMDHandles(unittest.TestCase):
             for i in range(self.num_vecs)]
         for idx, (hdl, adv_hdl) in enumerate(
             zip(self.vec_handles, self.adv_vec_handles)):
-            hdl.put(self.vec_mat[:, idx])
-            adv_hdl.put(self.adv_vec_mat[:, idx])
+            hdl.put(self.vecs_mat[:, idx])
+            adv_hdl.put(self.adv_vecs_mat[:, idx])
 
         parallel.barrier()
 
@@ -308,7 +308,7 @@ class TestDMDHandles(unittest.TestCase):
             self.assertEqual(v, data_members_modified[k])
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_puts_gets(self):
         """Test get and put functions"""
         # Generate some random data
@@ -394,216 +394,95 @@ class TestDMDHandles(unittest.TestCase):
         np.testing.assert_equal(DMD_load.adv_proj_coeffs, adv_proj_coeffs)
 
 
-    def _helper_compute_DMD_from_data(
-        self, vec_array, inner_product, adv_vec_array=None,
-        max_num_eigvals=None):
-        # Generate adv_vec_array for the case of a sequential dataset
-        if adv_vec_array is None:
-            adv_vec_array = vec_array[:, 1:]
-            vec_array = vec_array[:, :-1]
-
-        # Create lists of vecs, advanced vecs for inner product function
-        vecs = [vec_array[:, i] for i in range(vec_array.shape[1])]
-        adv_vecs = [adv_vec_array[:, i] for i in range(adv_vec_array.shape[1])]
-
-        # Compute SVD of data vectors
-        correlation_mat = inner_product(vecs, vecs)
-        correlation_mat_eigvals, correlation_mat_eigvecs = util.eigh(
-            correlation_mat)
-        cross_correlation_mat = inner_product(vecs, adv_vecs)
-        U = vec_array.dot(np.array(correlation_mat_eigvecs)).dot(
-            np.diag(correlation_mat_eigvals ** -0.5))
-        U_list = [U[:, i] for i in range(U.shape[1])]
-
-        # Truncate SVD if necessary
-        if max_num_eigvals is not None and (
-            max_num_eigvals < correlation_mat_eigvals.size):
-            correlation_mat_eigvals = correlation_mat_eigvals[:max_num_eigvals]
-            correlation_mat_eigvecs = correlation_mat_eigvecs[
-                :, :max_num_eigvals]
-            U = U[:, :max_num_eigvals]
-            U_list = U_list[:max_num_eigvals]
-
-        # Compute eigendecomposition of low order linear operator
-        A_tilde = inner_product(U_list, adv_vecs).dot(
-            np.array(correlation_mat_eigvecs)).dot(
-            np.diag(correlation_mat_eigvals ** -0.5))
-        eigvals, R_low_order_eigvecs, L_low_order_eigvecs =\
-            util.eig_biorthog(A_tilde, scale_choice='left')
-        R_low_order_eigvecs = np.mat(R_low_order_eigvecs)
-        L_low_order_eigvecs = np.mat(L_low_order_eigvecs)
-
-        # Compute build coefficients
-        build_coeffs_proj = (
-            correlation_mat_eigvecs.dot(
-            np.diag(correlation_mat_eigvals ** -0.5)).dot(R_low_order_eigvecs))
-        build_coeffs_exact = (
-            correlation_mat_eigvecs.dot(
-            np.diag(correlation_mat_eigvals ** -0.5)).dot(
-            R_low_order_eigvecs).dot(
-            np.diag(eigvals ** -1.)))
-
-        # Compute modes
-        modes_proj = vec_array.dot(build_coeffs_proj)
-        modes_exact = adv_vec_array.dot(build_coeffs_exact)
-        adj_modes = U.dot(L_low_order_eigvecs)
-        adj_modes_list = [
-            np.array(adj_modes[:, i]) for i in range(adj_modes.shape[1])]
-
-        return (
-            modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
-            L_low_order_eigvecs, correlation_mat_eigvals,
-            correlation_mat_eigvecs, cross_correlation_mat, adj_modes)
-
-
-    def _helper_test_1D_array_to_sign(
-        self, true_vals, test_vals, rtol=1e-12, atol=1e-16):
-        # Check that shapes are the same
-        self.assertEqual(len(true_vals.shape), 1)
-        self.assertEqual(len(test_vals.shape), 1)
-        self.assertEqual(true_vals.size, test_vals.size)
-
-        # Check values entry by entry.
-        for idx in range(true_vals.size):
-            true_val = true_vals[idx]
-            test_val = test_vals[idx]
-            self.assertTrue(
-                np.allclose(true_val, test_val, rtol=rtol, atol=atol)
-                or
-                np.allclose(-true_val, test_val, rtol=rtol, atol=atol))
-
-
-    def _helper_test_mat_to_sign(
-        self, true_vals, test_vals, rtol=1e-12, atol=1e-16):
-        # Check that shapes are the same
-        self.assertEqual(len(true_vals.shape), len(test_vals.shape))
-        for shape_idx in range(len(true_vals.shape)):
-            self.assertEqual(
-                true_vals.shape[shape_idx], test_vals.shape[shape_idx])
-
-        # Check values column by columns.  To allow for matrices or arrays,
-        # turn columns into arrays and squeeze them (forcing 1D arrays).  This
-        # avoids failures due to trivial shape mismatches.
-        for col_idx in range(true_vals.shape[1]):
-            true_col = np.array(true_vals[:, col_idx]).squeeze()
-            test_col = np.array(test_vals[:, col_idx]).squeeze()
-            self.assertTrue(
-                np.allclose(true_col, test_col, rtol=rtol, atol=atol)
-                or
-                np.allclose(-true_col, test_col, rtol=rtol, atol=atol))
-
-
-    def _helper_check_decomp(
-        self, vec_array,  vec_handles, adv_vec_array=None,
-        adv_vec_handles=None, max_num_eigvals=None):
-        # Set tolerance
-        rtol = 1e-10
-        atol = 1e-12
-
-        # Compute reference DMD values
-        (eigvals_true, R_low_order_eigvecs_true, L_low_order_eigvecs_true,
-            correlation_mat_eigvals_true, correlation_mat_eigvecs_true) = (
-            self._helper_compute_DMD_from_data(
-            vec_array, util.InnerProductBlock(np.vdot),
-            adv_vec_array=adv_vec_array,
-            max_num_eigvals=max_num_eigvals))[2:-2]
-
-        # Compute DMD using modred
-        (eigvals_returned,  R_low_order_eigvecs_returned,
-            L_low_order_eigvecs_returned, correlation_mat_eigvals_returned,
-            correlation_mat_eigvecs_returned) = self.my_DMD.compute_decomp(
-            vec_handles, adv_vec_handles=adv_vec_handles,
-            max_num_eigvals=max_num_eigvals)
-
-        # Test that matrices were correctly computed.  For build coeffs, check
-        # column by column, as it is ok to be off by a negative sign.
-        np.testing.assert_allclose(
-            self.my_DMD.eigvals, eigvals_true, rtol=rtol, atol=atol)
-        self._helper_test_mat_to_sign(
-            self.my_DMD.R_low_order_eigvecs, R_low_order_eigvecs_true,
-            rtol=rtol, atol=atol)
-        self._helper_test_mat_to_sign(
-            self.my_DMD.L_low_order_eigvecs, L_low_order_eigvecs_true,
-            rtol=rtol, atol=atol)
-        np.testing.assert_allclose(
-            self.my_DMD.correlation_mat_eigvals, correlation_mat_eigvals_true,
-            rtol=rtol, atol=atol)
-        self._helper_test_mat_to_sign(
-            self.my_DMD.correlation_mat_eigvecs, correlation_mat_eigvecs_true,
-            rtol=rtol, atol=atol)
-
-        # Test that matrices were correctly returned
-        np.testing.assert_allclose(
-            eigvals_returned, eigvals_true, rtol=rtol, atol=atol)
-        self._helper_test_mat_to_sign(
-            R_low_order_eigvecs_returned, R_low_order_eigvecs_true, rtol=rtol,
-            atol=atol)
-        self._helper_test_mat_to_sign(
-            L_low_order_eigvecs_returned, L_low_order_eigvecs_true, rtol=rtol,
-            atol=atol)
-        np.testing.assert_allclose(
-            correlation_mat_eigvals_returned, correlation_mat_eigvals_true,
-            rtol=rtol, atol=atol)
-        self._helper_test_mat_to_sign(
-            correlation_mat_eigvecs_returned, correlation_mat_eigvecs_true,
-            rtol=rtol, atol=atol)
-
-
-    def _helper_check_modes(self, modes_true, mode_path_list):
-        # Set tolerance
-        rtol = 1e-10
-        atol = 1e-12
-
-        # Load all modes into matrix, compare to modes from direct computation
-        modes_computed = np.zeros(modes_true.shape, dtype=complex)
-        for i, path in enumerate(mode_path_list):
-            modes_computed[:, i] = V.VecHandlePickle(path).get()
-        np.testing.assert_allclose(
-            modes_true, modes_computed, rtol=rtol, atol=atol)
-
-
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_decomp(self):
         """Test DMD decomposition"""
-        # Define an array of vectors, with corresponding handles
-        vec_array = parallel.call_and_bcast(np.random.random,
-            ((self.num_states, self.num_vecs)))
-        if parallel.is_rank_zero():
-            for vec_index, handle in enumerate(self.vec_handles):
-                handle.put(np.array(vec_array[:, vec_index]).squeeze())
+        rtol = 1e-10
+        atol = 1e-12
 
-        # Check modred against direct computation, for a sequential dataset
-        parallel.barrier()
-        self._helper_check_decomp(vec_array, self.vec_handles)
+        # Consider sequential time series as well as non-sequential.  In the
+        # below for loop, the first elements of each zipped list correspond to a
+        # sequential time series.  The second elements correspond to a
+        # non-sequential time series.
+        for vecs_arg, adv_vecs_arg, vecs_vals, adv_vecs_vals in zip(
+            [self.vec_handles, self.vec_handles],
+            [None, self.adv_vec_handles],
+            [self.vec_handles[:-1], self.vec_handles],
+            [self.vec_handles[1:], self.adv_vec_handles]):
 
-        # Make sure truncation works
-        max_num_eigvals = int(np.round(self.num_vecs / 2))
-        self._helper_check_decomp(vec_array, self.vec_handles,
-            max_num_eigvals=max_num_eigvals)
+            # Test that results hold for truncated or untruncated DMD
+            # (i.e., whether or not the underlying POD basis is
+            # truncated).
+            for max_num_eigvals in [None, self.num_vecs // 2]:
 
-        # Create more data, to check a non-sequential dataset
-        adv_vec_array = parallel.call_and_bcast(np.random.random,
-            ((self.num_states, self.num_vecs)))
-        if parallel.is_rank_zero():
-            for vec_index, handle in enumerate(self.adv_vec_handles):
-                handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
+                # Compute DMD using modred
+                DMD = DMDHandles(np.vdot, verbosity=0)
+                (eigvals, R_low_order_eigvecs, L_low_order_eigvecs,
+                correlation_mat_eigvals, correlation_mat_eigvecs) =\
+                DMD.compute_decomp(
+                    vecs_arg, adv_vec_handles=adv_vecs_arg,
+                    max_num_eigvals=max_num_eigvals)
 
-        # Check modred against direct computation, for a non-sequential dataset
-        parallel.barrier()
-        self._helper_check_decomp(
-            vec_array, self.vec_handles, adv_vec_array=adv_vec_array,
-            adv_vec_handles=self.adv_vec_handles)
+                # Test correlation mats values by simply recomputing them.
+                np.testing.assert_allclose(
+                    DMD.vec_space.compute_inner_product_mat(
+                        vecs_vals, vecs_vals),
+                    DMD.correlation_mat,
+                    rtol=rtol, atol=atol)
+                np.testing.assert_allclose(
+                    DMD.vec_space.compute_inner_product_mat(
+                        vecs_vals, adv_vecs_vals),
+                    DMD.cross_correlation_mat,
+                    rtol=rtol, atol=atol)
 
-        # Make sure truncation works
-        self._helper_check_decomp(
-            vec_array, self.vec_handles, adv_vec_array=adv_vec_array,
-            adv_vec_handles=self.adv_vec_handles,
-            max_num_eigvals=max_num_eigvals)
+                # Test correlation mat eigenvalues and eigenvectors.
+                np.testing.assert_allclose(
+                    DMD.correlation_mat * correlation_mat_eigvecs,
+                    correlation_mat_eigvecs * np.mat(np.diag(
+                        correlation_mat_eigvals)),
+                    rtol=rtol, atol=atol)
+
+                # Compute the projection of the approximating linear operator
+                # relating the vecs to the adv_vecs.  Do this using the POD of
+                # the vecs rather than using the outputs of the DMD object
+                # above, as this helps maintain the independence of the
+                # reference data for the tests.  This also makes sure that the
+                # inner product weights are correctly accounted for in computing
+                # the pseudo-inverse of the vecs.  (Make sure to truncate the
+                # POD basis as necessary.)
+                POD = pod.PODHandles(DMD.vec_space.inner_product, verbosity=0)
+                POD.compute_decomp(vecs_vals)
+                POD.eigvals = POD.eigvals[:eigvals.size]
+                POD.eigvecs = POD.eigvecs[:, :eigvals.size]
+                POD_mode_path = join(self.test_dir, 'pod_mode_%03d.txt')
+                POD_mode_handles = [
+                    V.VecHandleArrayText(POD_mode_path % i)
+                    for i in range(eigvals.size)]
+                POD.compute_modes(range(eigvals.size), POD_mode_handles)
+                low_order_linear_op = (
+                    DMD.vec_space.compute_inner_product_mat(
+                        POD_mode_handles, adv_vecs_vals) *
+                    POD.eigvecs *
+                    np.mat(np.diag(POD.eigvals ** -0.5)))
+
+                # Test the left and right eigenvectors of the low-order
+                # (projected) approximating linear operator.
+                np.testing.assert_allclose(
+                    low_order_linear_op * R_low_order_eigvecs,
+                    R_low_order_eigvecs * np.mat(np.diag(eigvals)),
+                    rtol=rtol, atol=atol)
+                np.testing.assert_allclose(
+                    L_low_order_eigvecs.H * low_order_linear_op,
+                    np.mat(np.diag(eigvals)) * L_low_order_eigvecs.H,
+                    rtol=rtol, atol=atol)
+
 
         # Check that if mismatched sets of handles are passed in, an error is
         # raised.
-        self.assertRaises(ValueError, self.my_DMD.compute_decomp,
-            self.vec_handles, self.adv_vec_handles[:-1])
+        DMD = DMDHandles(np.vdot, verbosity=0)
+        self.assertRaises(
+            ValueError, DMD.compute_decomp, self.vec_handles,
+            self.adv_vec_handles[:-1])
 
 
     @unittest.skip('Testing something else.')
