@@ -423,7 +423,9 @@ class TestDMDHandles(unittest.TestCase):
                     vecs_arg, adv_vec_handles=adv_vecs_arg,
                     max_num_eigvals=max_num_eigvals)
 
-                # Test correlation mats values by simply recomputing them.
+                # Test correlation mats values by simply recomputing them.  Here
+                # compute the full inner product matrix, rather than assuming it
+                # is symmetric.
                 np.testing.assert_allclose(
                     DMD.vec_space.compute_inner_product_mat(
                         vecs_vals, vecs_vals),
@@ -476,6 +478,16 @@ class TestDMDHandles(unittest.TestCase):
                     np.mat(np.diag(eigvals)) * L_low_order_eigvecs.H,
                     rtol=rtol, atol=atol)
 
+                # Check that returned values match internal values
+                np.testing.assert_equal(eigvals, DMD.eigvals)
+                np.testing.assert_equal(
+                    R_low_order_eigvecs, DMD.R_low_order_eigvecs)
+                np.testing.assert_equal(
+                    L_low_order_eigvecs, DMD.L_low_order_eigvecs)
+                np.testing.assert_equal(
+                    correlation_mat_eigvals, DMD.correlation_mat_eigvals)
+                np.testing.assert_equal(
+                    correlation_mat_eigvecs, DMD.correlation_mat_eigvecs)
 
         # Check that if mismatched sets of handles are passed in, an error is
         # raised.
