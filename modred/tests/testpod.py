@@ -233,10 +233,13 @@ class TestPODHandles(unittest.TestCase):
         POD = PODHandles(np.vdot, verbosity=0)
         eigvals, eigvecs = POD.compute_decomp(self.vec_handles)
 
-        # Test correlation mats values by simply recomputing them.
+        # Test correlation mats values by simply recomputing them.  Here simply
+        # take all inner products, rather than assuming a symmetric inner
+        # product.
         np.testing.assert_allclose(
             POD.correlation_mat,
-            self.vec_mat.T * self.vec_mat,
+            POD.vec_space.compute_inner_product_mat(
+                self.vec_handles, self.vec_handles),
             rtol=rtol, atol=atol)
 
         # Check POD eigenvectors and eigenvalues
