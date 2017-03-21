@@ -127,6 +127,24 @@ def call_from_rank_zero(func, *args, **kwargs):
     return out
 
 
+def bcast(vals):
+    """Broadcasts values from rank zero processor/MPI worker to all others.
+
+    Args:
+        ``vals``: Values to broadcast from rank zero processor/MPI worker.
+
+    Returns:
+        ``outputs``: Broadcasted values
+    """
+    if is_rank_zero():
+        outputs = vals
+    else:
+        outputs = None
+    if _is_distributed:
+        outputs = comm.bcast(outputs, root=0)
+    return outputs
+
+
 def call_and_bcast(func, *args, **kwargs):
     """Calls function on rank zero processor/MPI worker and broadcasts
     outputs to all others.
