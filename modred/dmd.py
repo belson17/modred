@@ -770,8 +770,8 @@ class DMDHandles(object):
         return (
             self.correlation_mat_eigvecs *
             np.mat(np.diag(self.correlation_mat_eigvals ** -0.5)) *
-            self.R_low_order_eigvecs
-            * np.mat(np.diag(self.eigvals ** -1.)))
+            self.R_low_order_eigvecs)# *
+            #np.mat(np.diag(self.eigvals ** -1.)))
 
 
     def _compute_build_coeffs_proj(self):
@@ -782,8 +782,8 @@ class DMDHandles(object):
             self.R_low_order_eigvecs)
 
 
-    def compute_exact_modes(self, mode_indices, mode_handles,
-        adv_vec_handles=None):
+    def compute_exact_modes(
+        self, mode_indices, mode_handles, adv_vec_handles=None):
         """Computes exact DMD modes and calls ``put`` on them using mode
         handles.
 
