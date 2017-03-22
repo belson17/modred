@@ -887,6 +887,7 @@ class DMDHandles(object):
             np.mat(self.correlation_mat_eigvecs[0, :]).T).squeeze())
         return self.spectral_coeffs
 
+
     # Note that a biorthogonal projection onto the exact DMD modes is the same
     # as a least squares projection onto the projected DMD modes, so there is
     # only one method for computing the projection coefficients.

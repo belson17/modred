@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 """Test dmd module"""
 from __future__ import division
@@ -223,7 +222,7 @@ class TestDMDHandles(unittest.TestCase):
         self.vec_path = join(self.test_dir, 'dmd_vec_%03d.pkl')
         self.adv_vec_path = join(self.test_dir, 'dmd_adv_vec_%03d.pkl')
         self.exact_mode_path = join(self.test_dir, 'dmd_exactmode_%03d.pkl')
-        self.projected_mode_path = join(self.test_dir, 'dmd_projmode_%03d.pkl')
+        self.proj_mode_path = join(self.test_dir, 'dmd_projmode_%03d.pkl')
 
         # Specify data dimensions
         self.num_states = 30
@@ -498,7 +497,7 @@ class TestDMDHandles(unittest.TestCase):
             self.adv_vec_handles[:-1])
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_modes(self):
         """Test building of modes."""
         rtol = 1e-10
@@ -561,7 +560,7 @@ class TestDMDHandles(unittest.TestCase):
                     VecHandlePickle(self.exact_mode_path % i)
                     for i in mode_idxs]
                 DMD_proj_mode_handles = [
-                    VecHandlePickle(self.projected_mode_path % i)
+                    VecHandlePickle(self.proj_mode_path % i)
                     for i in mode_idxs]
 
                 # Compute modes
@@ -625,68 +624,56 @@ class TestDMDHandles(unittest.TestCase):
                         LHS.get(), RHS.get(), rtol=rtol, atol=atol)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_spectrum(self):
         """Test DMD spectrum"""
         rtol = 1e-10
         atol = 1e-12
 
-        # Define an array of vectors, with corresponding handles
-        vec_array = parallel.call_and_bcast(np.random.random,
-            ((self.num_states, self.num_vecs)))
-        if parallel.is_rank_zero():
-            for vec_index, handle in enumerate(self.vec_handles):
-                handle.put(np.array(vec_array[:, vec_index]).squeeze())
+        # Consider sequential time series as well as non-sequential.  In the
+        # below for loop, the first elements of each zipped list correspond to a
+        # sequential time series.  The second elements correspond to a
+        # non-sequential time series.
+        for vecs_arg, adv_vecs_arg, vecs_vals, adv_vecs_vals in zip(
+            [self.vec_handles, self.vec_handles],
+            [None, self.adv_vec_handles],
+            [self.vec_handles[:-1], self.vec_handles],
+            [self.vec_handles[1:], self.adv_vec_handles]):
 
-        # Compute DMD manually and then set the data in a DMDHandles object.
-        # This way, we test only the task of computing the spectral
-        # coefficients, and not also the task of computing the decomposition.
-        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
-        L_low_order_eigvecs, correlation_mat_eigvals,
-        correlation_mat_eigvecs, cross_correlation_mat, adj_modes) =\
-            self._helper_compute_DMD_from_data(
-            vec_array, util.InnerProductBlock(np.vdot))
-        self.my_DMD.L_low_order_eigvecs = L_low_order_eigvecs
-        self.my_DMD.correlation_mat_eigvals = correlation_mat_eigvals
-        self.my_DMD.correlation_mat_eigvecs = correlation_mat_eigvecs
+            # Test that results hold for truncated or untruncated DMD
+            # (i.e., whether or not the underlying POD basis is
+            # truncated).
+            for max_num_eigvals in [None, self.num_vecs // 2]:
 
-        # Check that spectral coefficients computed using adjoints match those
-        # computed using a projection onto the adjoint modes.
-        parallel.barrier()
-        spectral_coeffs = self.my_DMD.compute_spectrum()
-        spectral_coeffs_true = np.abs(np.array(
-            np.dot(adj_modes.conj().T, vec_array[:, 0])).squeeze())
-        np.testing.assert_allclose(
-            spectral_coeffs, spectral_coeffs_true, rtol=rtol, atol=atol)
+                # Compute DMD using modred.  (The DMD spectral coefficients are
+                # defined by a projection onto DMD modes.  As such, testing them
+                # requires manipulations involving the correct decomposition and
+                # modes, so we cannot isolate the spectral coefficient
+                # computation from those computations.)
+                DMD = DMDHandles(np.vdot, verbosity=0)
+                DMD.compute_decomp(
+                    vecs_arg, adv_vec_handles=adv_vecs_arg,
+                    max_num_eigvals=max_num_eigvals)
+                mode_idxs = range(DMD.eigvals.size)
+                proj_mode_handles = [
+                    V.VecHandlePickle(self.proj_mode_path % i)
+                    for i in mode_idxs]
 
-        # Create more data, to check a non-sequential dataset
-        adv_vec_array = parallel.call_and_bcast(np.random.random,
-            ((self.num_states, self.num_vecs)))
-        if parallel.is_rank_zero():
-            for vec_index, handle in enumerate(self.adv_vec_handles):
-                handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
-
-        # Compute DMD manually and then set the data in a DMDHandles object.
-        # This way, we test only the task of computing the spectral
-        # coefficients, and not also the task of computing the decomposition.
-        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
-        L_low_order_eigvecs, correlation_mat_eigvals,
-        correlation_mat_eigvecs, cross_correlation_mat, adj_modes) =\
-            self._helper_compute_DMD_from_data(
-            vec_array, util.InnerProductBlock(np.vdot),
-            adv_vec_array=adv_vec_array)
-        self.my_DMD.L_low_order_eigvecs = L_low_order_eigvecs
-        self.my_DMD.correlation_mat_eigvals = correlation_mat_eigvals
-        self.my_DMD.correlation_mat_eigvecs = correlation_mat_eigvecs
-
-        # Check that spectral coefficients computed using adjoints match those
-        # computed using a direct projection onto the adjoint modes
-        parallel.barrier()
-        spectral_coeffs = self.my_DMD.compute_spectrum()
-        spectral_coeffs_true = np.abs(np.array(
-            np.dot(adj_modes.conj().T, vec_array[:, 0])).squeeze())
-        np.testing.assert_allclose(
-            spectral_coeffs, spectral_coeffs_true, rtol=rtol, atol=atol)
+                # Test by checking a least-squares projection onto the projected
+                # modes, which is analytically equivalent to a biorthogonal
+                # projection onto the exact modes.  The latter is implemented
+                # (using various identities) in modred.  Here, test using the
+                # former approach, as it doesn't require adjoint modes.
+                DMD.compute_proj_modes(mode_idxs, proj_mode_handles)
+                spectral_coeffs_true = np.array(np.abs(
+                    np.linalg.inv(
+                        DMD.vec_space.compute_symmetric_inner_product_mat(
+                            proj_mode_handles)) *
+                    DMD.vec_space.compute_inner_product_mat(
+                        proj_mode_handles, vecs_arg[0]))).squeeze()
+                spectral_coeffs = DMD.compute_spectrum().squeeze()
+                np.testing.assert_allclose(
+                    spectral_coeffs, spectral_coeffs_true, rtol=rtol, atol=atol)
 
 
     @unittest.skip('Testing something else.')
