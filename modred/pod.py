@@ -10,18 +10,19 @@ from . import parallel
 
 
 def compute_POD_matrices_snaps_method(
-    vecs, mode_indices, inner_product_weights=None, atol=1e-13, rtol=None,
+    vecs, mode_indices=None, inner_product_weights=None, atol=1e-13, rtol=None,
     return_all=False):
     """Computes POD modes using data stored in a matrix, using the method of
     snapshots.
 
     Args:
-       ``vecs``: Matrix whose columns are data vectors (:math:`X`).
-
-       ``mode_indices``: List of indices describing which modes to compute.
-       Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
+        ``vecs``: Matrix whose columns are data vectors (:math:`X`).
 
     Kwargs:
+        ``mode_indices``: List of indices describing which modes to compute.
+        Examples are ``range(10)`` or ``[3, 0, 6, 8]``.  If no mode indices are
+        specified, then all modes will be computed.
+
         ``inner_product_weights``: 1D array or matrix of inner product weights.
         Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
 
@@ -63,17 +64,21 @@ def compute_POD_matrices_snaps_method(
     """
     if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
+
+    # Set up vector space (for inner products)
     vec_space = VectorSpaceMatrices(weights=inner_product_weights)
-    # compute decomp
+
+    # Compute decomp
     vecs = util.make_mat(vecs)
-    correlation_mat = \
-        vec_space.compute_symmetric_inner_product_mat(vecs)
+    correlation_mat = vec_space.compute_symmetric_inner_product_mat(vecs)
     eigvals, eigvecs = util.eigh(
         correlation_mat, atol=atol, rtol=rtol, is_positive_definite=True)
-    # compute modes
-    build_coeff_mat = eigvecs * np.mat(np.diag(eigvals**-0.5))
-    modes = vec_space.lin_combine(vecs,
-        build_coeff_mat, coeff_mat_col_indices=mode_indices)
+
+    # Compute modes
+    build_coeff_mat = eigvecs * np.mat(np.diag(eigvals ** -0.5))
+    modes = vec_space.lin_combine(
+        vecs, build_coeff_mat, coeff_mat_col_indices=mode_indices)
+
     if return_all:
         return modes, eigvals, eigvecs, correlation_mat
     else:
@@ -81,17 +86,18 @@ def compute_POD_matrices_snaps_method(
 
 
 def compute_POD_matrices_direct_method(
-    vecs, mode_indices, inner_product_weights=None, atol=1e-13, rtol=None,
+    vecs, mode_indices=None, inner_product_weights=None, atol=1e-13, rtol=None,
     return_all=False):
     """Computes POD modes using data stored in a matrix, using direct method.
 
     Args:
-       ``vecs``: Matrix whose columns are data vectors (:math:`X`).
-
-       ``mode_indices``: List of indices describing which modes to compute.
-       Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
+        ``vecs``: Matrix whose columns are data vectors (:math:`X`).
 
     Kwargs:
+        ``mode_indices``: List of indices describing which modes to compute.
+        Examples are ``range(10)`` or ``[3, 0, 6, 8]``.  If no mode indices are
+        specified, then all modes will be computed.
+
         ``inner_product_weights``: 1D array or matrix of inner product weights.
         Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
 
@@ -134,31 +140,39 @@ def compute_POD_matrices_direct_method(
     """
     if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
+
     vecs = util.make_mat(vecs)
+
     if inner_product_weights is None:
         modes, sing_vals, eigvecs = util.svd(vecs, atol=atol, rtol=rtol)
+        if mode_indices is None:
+            mode_indices = range(sing_vals.size)
         modes = modes[:, mode_indices]
 
     elif inner_product_weights.ndim == 1:
-        sqrt_weights = inner_product_weights**0.5
+        sqrt_weights = inner_product_weights ** 0.5
         vecs_weighted = np.mat(np.diag(sqrt_weights)) * vecs
         modes_weighted, sing_vals, eigvecs = util.svd(
             vecs_weighted, atol=atol, rtol=rtol)
+        if mode_indices is None:
+            mode_indices = range(sing_vals.size)
         modes = np.mat(
-            np.diag(sqrt_weights**-1.0)) * modes_weighted[:,mode_indices]
+            np.diag(sqrt_weights ** -1.)) * modes_weighted[:, mode_indices]
 
     elif inner_product_weights.ndim == 2:
         if inner_product_weights.shape[0] > 500:
             print('Warning: Cholesky decomposition could be time consuming.')
-        sqrt_weights = np.linalg.cholesky(inner_product_weights).H
+        sqrt_weights = np.mat(np.linalg.cholesky(inner_product_weights)).H
         vecs_weighted = sqrt_weights * vecs
         modes_weighted, sing_vals, eigvecs = util.svd(
             vecs_weighted, atol=atol, rtol=rtol)
+        if mode_indices is None:
+            mode_indices = range(sing_vals.size)
         modes = np.linalg.solve(sqrt_weights, modes_weighted[:, mode_indices])
         #inv_sqrt_weights = np.linalg.inv(sqrt_weights)
         #modes = inv_sqrt_weights.dot(modes_weighted[:, mode_indices])
 
-    eigvals = sing_vals**2
+    eigvals = sing_vals ** 2.
 
     if return_all:
         return modes, eigvals, eigvecs
@@ -225,12 +239,27 @@ class PODHandles(object):
         """
         self.eigvals = np.squeeze(np.array(parallel.call_and_bcast(
             self.get_mat, eigvals_src)))
-        self.eigvecs = parallel.call_and_bcast(self.get_mat,
-            eigvecs_src)
+        self.eigvecs = parallel.call_and_bcast(self.get_mat, eigvecs_src)
 
+
+    def get_correlation_mat(self, src):
+        """Gets the correlation matrix from source (memory or file).
+
+        Args:
+            ``src``: Source from which to retrieve correlation matrix.
+        """
+        self.correlation_mat = parallel.call_and_bcast(self.get_mat, src)
+
+    def get_proj_coeffs(self, src):
+        """Gets projection coefficients from source (memory or file).
+
+        Args:
+            ``src``: Source from which to retrieve projection coefficients.
+        """
+        self.proj_coeffs = parallel.call_and_bcast(self.get_mat, src)
 
     def put_decomp(self, eigvals_dest, eigvecs_dest):
-        """Puts the decomposition matrices in destinations (file or memory).
+        """Puts the decomposition matrices in destinations (memory or file).
 
         Args:
             ``eigvals_dest``: Destination in which to put eigenvalues of
