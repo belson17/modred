@@ -441,7 +441,7 @@ class VectorSpaceHandles(object):
             IP_mat = parallel.custom_comm.allreduce(IP_mat)
 
         if transpose:
-            IP_mat = IP_mat.T
+            IP_mat = IP_mat.H
 
         percent_completed_IPs = 100.
         self.print_msg(('Completed %.1f%% of inner ' +
@@ -557,17 +557,16 @@ class VectorSpaceHandles(object):
                 for row_index in range(proc_row_tasks[0],
                     proc_row_tasks[-1] + 1):
                     # Diagonal term
-                    IP_mat[row_index, row_index] = self.\
-                        inner_product(row_vecs[row_index - proc_row_tasks[
-                        0]], row_vecs[row_index - proc_row_tasks[0]])
+                    IP_mat[row_index, row_index] = self.inner_product(
+                        row_vecs[row_index - proc_row_tasks[0]],
+                        row_vecs[row_index - proc_row_tasks[0]])
 
                     # Off-diagonal terms
-                    for col_index in range(row_index + 1, proc_row_tasks[
-                        -1] + 1):
-                        IP_mat[row_index, col_index] = self.\
-                            inner_product(row_vecs[row_index -\
-                            proc_row_tasks[0]], row_vecs[col_index -\
-                            proc_row_tasks[0]])
+                    for col_index in range(
+                        row_index + 1, proc_row_tasks[-1] + 1):
+                        IP_mat[row_index, col_index] = self.inner_product(
+                            row_vecs[row_index - proc_row_tasks[0]],
+                            row_vecs[col_index - proc_row_tasks[0]])
 
             # Number of square chunks to fill in is n * (n-1) / 2.  At each
             # iteration we fill in n of them, so we need (n-1) / 2
@@ -745,13 +744,13 @@ class VectorSpaceHandles(object):
         # the lower triangular portion (computed there).  For the case where
         # the inner product is not perfectly symmetric, this will select the
         # computation done in the upper triangular portion.
-        mask = np.multiply(IP_mat == 0, IP_mat.T != 0)
+        mask = np.multiply(IP_mat == 0, IP_mat.H != 0)
 
         # Collect values below diagonal
-        IP_mat += np.multiply(np.triu(IP_mat.T, 1), mask)
+        IP_mat += np.multiply(np.triu(IP_mat.H, 1), mask)
 
         # Symmetrize matrix
-        IP_mat = np.triu(IP_mat) + np.triu(IP_mat, 1).T
+        IP_mat = np.mat(np.triu(IP_mat) + np.triu(IP_mat, 1).conj().T)
 
         percent_completed_IPs = 100.
         self.print_msg(('Completed %.1f%% of inner ' +
