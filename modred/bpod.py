@@ -245,7 +245,7 @@ class BPODHandles(object):
         """Puts Hankel singular values to ``dest``."""
         if parallel.is_rank_zero():
             self.put_mat(self.sing_vals, dest)
-            parallel.barrier()
+        parallel.barrier()
 
 
     def put_L_sing_vecs(self, dest):

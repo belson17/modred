@@ -317,7 +317,6 @@ class TestBPODHandles(unittest.TestCase):
         BPOD_save.put_Hankel_mat(Hankel_mat_path)
         BPOD_save.put_direct_proj_coeffs(proj_coeffs_path)
         BPOD_save.put_adjoint_proj_coeffs(adj_proj_coeffs_path)
-        parallel.barrier()
 
         # Create a BPOD object and use it to load the data from disk
         BPOD_load = BPODHandles(None, verbosity=0)
@@ -366,7 +365,7 @@ class TestBPODHandles(unittest.TestCase):
         return direct_vec_handles, adjoint_vec_handles
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_decomp(self):
         """Test that can take vecs, compute the Hankel and SVD matrices. """
         # Set test tolerances.  Separate, more relaxed tolerances may be
@@ -424,7 +423,7 @@ class TestBPODHandles(unittest.TestCase):
                 np.testing.assert_equal(R_sing_vecs, BPOD.R_sing_vecs)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_modes(self):
         """Test computing modes in serial and parallel."""
         # Set test tolerances.  More relaxed tolerances are required for testing
@@ -505,7 +504,7 @@ class TestBPODHandles(unittest.TestCase):
                     rtol=rtol_sqr, atol=atol_sqr)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):
         # Set test tolerances.  Use a slightly more relaxed absolute tolerance
         # here because the projection test uses modes that may correspond to
