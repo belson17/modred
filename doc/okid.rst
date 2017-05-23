@@ -1,6 +1,5 @@
-OKID 
-***** 
+OKID
+****
 
 .. automodule:: modred.okid
    :members:
-

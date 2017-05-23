@@ -1,12 +1,13 @@
 .. _sec_model_reduction:
 
--------------------------------------------------
+---------------
 Model reduction
--------------------------------------------------
+---------------
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Linear reduced-order models
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 We provide a class to find reduced-order models (continuous and discrete time)
 by projecting linear dynamics onto modes (Petrov-Galerkin projection).
 The governing equation of the full system is assumed to be either continuous
@@ -14,29 +15,29 @@ time:
 
 .. math::
 
-  \partial x(t)/ \partial t &= A x(t) + B u(t) 
+  \partial x(t)/ \partial t &= A x(t) + B u(t)
   \\
-  y(t) &= C x(t) 
+  y(t) &= C x(t)
 
 or discrete time:
 
 .. math::
 
-  x(k+1) &= A x(k) + B u(k) 
+  x(k+1) &= A x(k) + B u(k)
   \\
-  y(k) &= C x(k) 
-  
+  y(k) &= C x(k)
+
 where :math:`k` is the time step.
-Here :math:`x` is the state vector. 
+Here :math:`x` is the state vector.
 :math:`A`, :math:`B`, and :math:`C` are, in general, linear operators (often
-matrices).  
+matrices).
 In cases where there are no inputs and outputs, :math:`B` and :math:`C` are
 zero.
-:math:`A` acts on :math:`x` and returns a vector that lives in the same vector 
+:math:`A` acts on :math:`x` and returns a vector that lives in the same vector
 space as :math:`x`.
 :math:`B` acts on elements of the input space, :math:`\mathbb{R}^p`, where :math:`p` is
 the number of inputs and returns elements of the vector space in which :math:`x`
-lives. 
+lives.
 :math:`C` acts on :math:`x` and returns elements of the output space,
 :math:`\mathbb{R}^q`, where :math:`q` is the number of outputs.
 
@@ -65,7 +66,7 @@ The adjoint, :math:`(\,\,)^+`, is defined with respect to inner product weight
   B_r &= (\Psi^+ \Phi)^{-1} \Psi^+ B \\
   C_r &= C \Phi
 
-An analagous result exists for continuous time.  
+An analagous result exists for continuous time.
 
 If the modes are not stacked into matrices, then the following equations are
 used, where :math:`[\,\,]_{i,j}` denotes row :math:`i` and column :math:`j`.
@@ -82,14 +83,16 @@ used, where :math:`[\,\,]_{i,j}` denotes row :math:`i` and column :math:`j`.
 
 The :math:`A`, :math:`B`, and :math:`C` operators may or may not be available
 within Python.
-For example, you may do simulations using code written in another language. 
+For example, you may do simulations using code written in another language.
 For this reason, modred requires only the *action* of the operators on the
 vectors, i.e., the products :math:`A \phi_j`, :math:`Be_j`, and :math:`C
 \phi_j`, and *not* the operators :math:`A`, :math:`B`, and :math:`C` themselves.
 
-*****************************************
+
+************************************
 Example 1: Smaller data and matrices
-*****************************************
+************************************
+
 Here's an example that uses matrices.
 
 .. literalinclude:: ../modred/examples/rom_ex1.py
@@ -97,9 +100,9 @@ Here's an example that uses matrices.
 The array ``basis_vecs`` contains the vectors that define the basis onto which
 the dynamics are projected.
 
-A few variations of this are illustrative. 
+A few variations of this are illustrative.
 First, if no inputs or outputs exist, then there is only :math:`A_r` and no
-:math:`B_r` or :math:`C_r`. 
+:math:`B_r` or :math:`C_r`.
 The last two lines would then be replaced with::
 
   A_reduced = LTI_proj.reduce_A(A.dot(basis_vec_array))
@@ -113,9 +116,10 @@ Specifying the constructor keyword argument ``is_basis_orthonormal=True`` tells
 modred this matrix is identity and to not compute it.
 
 
-**********************************************
+*****************************************
 Example 2: Larger data and vector handles
-**********************************************
+*****************************************
+
 Here's an example similar to what might arise when doing large simulations in
 another language or program.
 
@@ -125,12 +129,13 @@ This example works in parallel with no modifications.
 
 If you do not have the time-derivatives of the direct modes but want a
 continuous time model, see
-:py:func:`ltigalerkinproj.compute_derivs_arrays` and 
+:py:func:`ltigalerkinproj.compute_derivs_arrays` and
 :py:func:`ltigalerkinproj.compute_derivs_handles`.
 
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Eigensystem Realization Algorithm (ERA)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-See the documentation and examples provided in :py:func:`era.compute_ERA_model` 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+See the documentation and examples provided in :py:func:`era.compute_ERA_model`
 and :py:class:`era.ERA`.

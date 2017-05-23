@@ -5,7 +5,7 @@ can cause memory problems for large objects, as in our case. After emailing
 the mpi4py mailing list (4/19/11), Lisandro sent me a link to this file:
 http://code.google.com/p/mpi4py/source/browse/trunk/demo/reductions/reductions.py
 It implements point-to-point reductions that are scalable. I'm not sure
-why this isn't the default, maybe it will be in a future release. 
+why this isn't the default, maybe it will be in a future release.
 To use this reduce, Lisandro says:
 
 from reductions import Intracomm
@@ -22,9 +22,9 @@ class Intracomm(MPI.Intracomm):
     Intracommunicator class with scalable, point-to-point based
     implementations of global reduction operations.
     """
-
     def __new__(cls, comm=None):
         return super(Intracomm, cls).__new__(cls, comm)
+
 
     def reduce(self, sendobj=None, recvobj=None, op=MPI.SUM, root=0):
         size = self.size
@@ -60,10 +60,12 @@ class Intracomm(MPI.Intracomm):
 
         return recvobj
 
+
     def allreduce(self, sendobj=None, recvobj=None, op=MPI.SUM):
         recvobj = self.reduce(sendobj, recvobj, op, 0)
         recvobj = self.bcast(recvobj, 0)
         return recvobj
+
 
     def scan(self, sendobj=None, recvobj=None, op=MPI.SUM):
         size = self.size
@@ -91,6 +93,7 @@ class Intracomm(MPI.Intracomm):
             mask <<= 1
 
         return recvobj
+
 
     def exscan(self, sendobj=None, recvobj=None, op=MPI.SUM):
         size = self.size

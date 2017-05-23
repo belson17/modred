@@ -1,10 +1,10 @@
 function save_mat_text(mat, filename, delimiter)
 %Saves a matrix to filename.
 %   Matches the same format as in modaldecomp's save_mat_text.
-    
+
     [nrows,ncols] = size(mat);
     is_complex = ~isreal(mat);
-    
+
     if is_complex ~= 0
         mat_real = real(mat);
         mat_imag = imag(mat);
@@ -15,7 +15,7 @@ function save_mat_text(mat, filename, delimiter)
     else
         mat_write = mat;
     end
-    
+
     file_ID = fopen(filename,'w');
     format = '%.16e';
     for row=1:nrows
@@ -25,4 +25,3 @@ function save_mat_text(mat, filename, delimiter)
         fprintf(file_ID, [format, '\n'], mat_write(row,ncols));
     end
 end
-

@@ -6,15 +6,17 @@ from __future__ import absolute_import
 from future.builtins import range
 
 import numpy as np
-import scipy.linalg as SL
+import scipy.linalg as spla
+
 import modred as mr
-from . import hermite as H
+import hermite as hr
+
 
 plots = False
 
 if plots:
     try:
-        import matplotlib.pyplot as PLT
+        import matplotlib.pyplot as plt
     except:
         plots = False
 
@@ -33,7 +35,7 @@ x_s = x_2
 nu = U + 2J * c_u
 gamma = 1. + 1J * c_d
 # chi: decay rate of global modes
-chi = (-mu_2 / (2.*gamma))**0.25 
+chi = (-mu_2 / (2.*gamma))**0.25
 
 print('----- Parameters ------')
 for var in ['nx','dt','U','c_u','c_d','mu_0','mu_2','s','x_s',
@@ -42,7 +44,7 @@ for var in ['nx','dt','U','c_u','c_d','mu_0','mu_2','s','x_s',
 print('-----------------------')
 
 # Collocation points in x are roughly [-85, 85], as in Ilak 2010
-x, Ds = H.herdif(nx, 2, np.real(chi))
+x, Ds = hr.herdif(nx, 2, np.real(chi))
 
 # Inner product weights, trapezoidal rule
 weights = np.zeros(nx)
@@ -59,7 +61,7 @@ mu = (mu_0 - c_u**2) + mu_2 * x**2/2.
 A = np.mat(-nu * Ds[0] + gamma * Ds[1] + np.diag(mu))
 
 # Compute optimal disturbance and use it as B matrix
-A_discrete = np.mat(SL.expm(A*dt))
+A_discrete = np.mat(spla.expm(np.array(A*dt)))
 exp_mat = np.mat(np.identity(nx, dtype=complex))
 max_sing_val = 0
 for i in range(1, 100):
@@ -77,26 +79,25 @@ C_adj = inv_M * C.H
 
 # Plot spatial distributions of B and C
 if plots:
-    PLT.figure()
-    PLT.hold(True)
-    PLT.plot(x, B.real,'b')
-    PLT.plot(x, B.imag,'r')
-    PLT.xlabel('x')
-    PLT.ylabel('B')
-    PLT.legend(['Real','Imag'])
-    PLT.xlim([-20, 20])
-    PLT.grid(True)
+    plt.figure()
+    plt.hold(True)
+    plt.plot(x, B.real,'b')
+    plt.plot(x, B.imag,'r')
+    plt.xlabel('x')
+    plt.ylabel('B')
+    plt.legend(['Real','Imag'])
+    plt.xlim([-20, 20])
+    plt.grid(True)
 
-    PLT.figure()
-    PLT.hold(True)
-    PLT.plot(x, C.T.real,'b')
-    PLT.plot(x, C.T.imag,'r')
-    PLT.xlabel('x')
-    PLT.ylabel('C')
-    PLT.legend(['Real','Imag'])
-    PLT.xlim([-20, 20])
-    PLT.grid(True)
-    
+    plt.figure()
+    plt.hold(True)
+    plt.plot(x, C.T.real,'b')
+    plt.plot(x, C.T.imag,'r')
+    plt.xlabel('x')
+    plt.ylabel('C')
+    plt.legend(['Real','Imag'])
+    plt.xlim([-20, 20])
+    plt.grid(True)
 
 # Simulate impulse responses to the direct and adjoint systems w/Crank-np.colson
 # (q(i+1) - q(i)) / dt = 1/2 (A q(i+1) + A q(i)) + B u(i)
@@ -117,22 +118,22 @@ q_adj[:,0] = C_adj
 for ti in range(nt-1):
     q[:,ti+1] = np.linalg.solve(LHS, RHS*q[:,ti])
     q_adj[:,ti+1] = np.linalg.solve(LHS_adj, RHS_adj*q_adj[:,ti])
-    
+
 # Plot all snapshots as a contour plot
 if plots:
     t = np.arange(0, nt*dt, dt)
     X, T = np.meshgrid(x, t)
-    PLT.figure()
-    PLT.contourf(T, X, np.array(q.real).T, 20, cmap=PLT.cm.binary)
-    PLT.xlabel('t')
-    PLT.ylabel('x')
-    PLT.colorbar()
-    PLT.figure()
-    PLT.contourf(T, X, np.array(q_adj.real).T, 20, cmap=PLT.cm.binary)
-    PLT.xlabel('t')
-    PLT.ylabel('x')
-    PLT.title('adjoint')
-    PLT.colorbar()
+    plt.figure()
+    plt.contourf(T, X, np.array(q.real).T, 20, cmap=plt.cm.binary)
+    plt.xlabel('t')
+    plt.ylabel('x')
+    plt.colorbar()
+    plt.figure()
+    plt.contourf(T, X, np.array(q_adj.real).T, 20, cmap=plt.cm.binary)
+    plt.xlabel('t')
+    plt.ylabel('x')
+    plt.title('adjoint')
+    plt.colorbar()
 
 # Compute the BPOD modes
 r = 10
@@ -142,19 +143,19 @@ direct_modes, adjoint_modes, sing_vals = mr.compute_BPOD_matrices(
 # Plot the first 3 modes
 if plots:
     for i in range(3):
-        PLT.figure()
-        PLT.hold(True)
-        PLT.plot(x, direct_modes[:,i].real, '-o')
-        PLT.plot(x, adjoint_modes[:,i].real,'-x')
-        PLT.xlabel('Space')
-        PLT.ylabel('Real(q)')
-        PLT.legend(['direct', 'adjoint'])
-        PLT.title('Direct and adjoint mode %d'%(i+1))
+        plt.figure()
+        plt.hold(True)
+        plt.plot(x, direct_modes[:,i].real, '-o')
+        plt.plot(x, adjoint_modes[:,i].real,'-x')
+        plt.xlabel('Space')
+        plt.ylabel('Real(q)')
+        plt.legend(['direct', 'adjoint'])
+        plt.title('Direct and adjoint mode %d'%(i+1))
 
 # Project the linear dynamics onto the modes
-projection = mr.LTIGalerkinProjectionMatrices(direct_modes,
-    adjoint_basis_vecs=adjoint_modes, inner_product_weights=weights,
-    is_basis_orthonormal=True)
+projection = mr.LTIGalerkinProjectionMatrices(
+    direct_modes, adjoint_basis_vecs=adjoint_modes,
+    inner_product_weights=weights,is_basis_orthonormal=True)
 A_direct_modes = A * direct_modes
 Ar, Br, Cr = projection.compute_model(A_direct_modes, B, C.dot(direct_modes))
 
@@ -168,15 +169,17 @@ for ti in range(nt-1):
 y = C*q
 yr = Cr*qr
 
-print('Max error in reduced system impulse response output y is', np.amax(np.abs(y-yr)))
+print(
+    'Max error in reduced system impulse response output y is',
+    np.amax(np.abs(y-yr)))
 
 if plots:
-    PLT.figure()
-    PLT.plot(t, y.T.real)
-    PLT.hold(True)
-    PLT.plot(t, yr.T.real)
-    PLT.legend(['Full','Reduced, r=%d'%r])
-    PLT.xlabel('t')
-    PLT.ylabel('real(y)')
+    plt.figure()
+    plt.plot(t, y.T.real)
+    plt.hold(True)
+    plt.plot(t, yr.T.real)
+    plt.legend(['Full','Reduced, r=%d'%r])
+    plt.xlabel('t')
+    plt.ylabel('real(y)')
 
-    PLT.show()
+    plt.show()

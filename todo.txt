@@ -39,4 +39,3 @@ might not be possible since some memory is used by the vector objects
 when doing inner products, etc. We could leave a safety factor though,
 and maybe leave space for 1-2 vecs/modes for scratch space for the
 user's functions.
-

@@ -64,7 +64,7 @@ end
 if saveFiles == 1
     save_mat_text(squeeze(u), sprintf('%sinputs.txt', saveDir), ' ')
     save_mat_text(squeeze(y), sprintf('%soutputs.txt', saveDir), ' ');
-    
+
     for iOut=1:numOutputs
         save_mat_text(squeeze(Markovs(iOut,:,:)), ...
             sprintf('%sMarkovs_Matlab_output%d.txt', saveDir, iOut),' ');

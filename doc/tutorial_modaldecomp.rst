@@ -1,50 +1,53 @@
 .. _sec_modaldecomp:
 
--------------------------------------------------
+------------------------------------------
 Modal decompositions -- POD, BPOD, and DMD
--------------------------------------------------
+------------------------------------------
 
 This tutorial discusses computing modes from data, using the Proper Orthogonal
 Decomposition (POD), Balanced Proper Orthogonal Decomposition (BPOD), and
-Dynamic Mode Decomposition (DMD).  
-For details of these algorithms, see [HLBR]_ for POD and BPOD and [TRLBK]_ for 
+Dynamic Mode Decomposition (DMD).
+For details of these algorithms, see [HLBR]_ for POD and BPOD and [TRLBK]_ for
 DMD.
 
-The first step is to collect your data.  
-We call each piece of data a "vector" or "vector object".  
-**By vector, we don't mean a 1D array.**  
-Rather, we mean an element of a vector space.  
-This could be a 1D, 2D, or 3D array, or any other object that satisfies the 
-properties of a vector space.  
+The first step is to collect your data.
+We call each piece of data a "vector" or "vector object".
+**By vector, we don't mean a 1D array.**
+Rather, we mean an element of a vector space.
+This could be a 1D, 2D, or 3D array, or any other object that satisfies the
+properties of a vector space.
 The examples below build on one another, each introducing new aspects.
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 1 -- All data in a matrix
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 A simple way to find POD modes is:
 
 .. literalinclude:: ../modred/examples/tutorial_ex1.py
 
-Let's walk through the important steps.  
-First, we create an array of random data.  
-Each column is a vector represented as a 1D array.  
+Let's walk through the important steps.
+First, we create an array of random data.
+Each column is a vector represented as a 1D array.
 Then we call the function ``compute_POD_matrices_direct_method``, which returns
 the first ``num_modes`` modes as columns of the matrix ``modes``, and all of the
 non-zero eigenvalues, sorted from largest to smallest.
 
 This function implements the "method of snapshots", as described in Section 3.4
-of [HLBR]_.  
+of [HLBR]_.
 In short, it computes the correlation matrix :math:`X^* X`, where :math:`X` is `
-`vecs``, then finds its eigenvectors and eigenvalues, which are related to the 
+`vecs``, then finds its eigenvectors and eigenvalues, which are related to the
 modes.
 
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 2 -- Inner products with all data in a matrix
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 You can use a weighted inner product, specified here by a 1D array of weights,
 so that the correlation matrix is :math:`X^* W X`, where :math:`X` is ``vecs``
-and :math:`W` contains the inner product weights.  
+and :math:`W` contains the inner product weights.
 The weights also can, more generally, be a matrix.
 The vectors are again represented as columns of a matrix.
 
@@ -52,17 +55,18 @@ The vectors are again represented as columns of a matrix.
 
 This function computes the singular value decomposition (SVD) of :math:`W^(1/2)
 X`, and we refer to this as the "direct method" to distinguish it from the
-method of snapshots in the previous example.  
-The differences between the two are insignificant in most cases.  
+method of snapshots in the previous example.
+The differences between the two are insignificant in most cases.
 For details, see :py:func:`pod.compute_POD_arrays_direct_method`.
 
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 3 -- Vector handles for loading and saving
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 This example demonstrates *vector handles*, which are very important because
 they allow modred to interact with large and complicated datasets without
-requiring that all of the vectors be stacked into a single matrix.  
+requiring that all of the vectors be stacked into a single matrix.
 This is necessary, for example, if the data is too large to all fit in memory
 simultaneously.
 
@@ -72,18 +76,18 @@ POD (see Chapter 5 of [HLBR]_):
 .. literalinclude:: ../modred/examples/tutorial_ex3.py
 
 First, we create lists ``direct_snapshots`` and ``adjoint_snapshots``.
-("Snapshots" is just a common word to describe vectors that come from 
+("Snapshots" is just a common word to describe vectors that come from
 time-sampling a system as it evolves.)
 Each element in these lists is a vector handle (in particular, an instance of
 ``VecHandleArrayText``).
 All vector handles have member functions to load, ``vec = vec_handle.get()``,
 and save, ``vec_handle.put(vec)``, but themselves use very little memory because
 they do *not* internally contain a vector.
-modred uses these vector handles to load and save individual vectors only as it 
+modred uses these vector handles to load and save individual vectors only as it
 needs them.
 
 All the snapshots are vectors and each is represented as an array, but they are
-*not* stacked into a single 2D array. 
+*not* stacked into a single 2D array.
 Ordinarily the snapshots would already exist, for instance as files from a
 simulation or experiment.
 Here, we artificially generate snapshots and write them to file using the
@@ -110,7 +114,7 @@ whereas saving to text is only written for 1D and 2D arrays.
 To run this example in parallel is easy.
 The only complication is the data must be saved by only one processor, and
 moving these lines inside an ``if`` block solves this::
-  
+
   parallel = mr.parallel_default_instance
   if parallel.is_rank_zero():
       # Loops that call handles.put
@@ -119,49 +123,51 @@ moving these lines inside an ``if`` block solves this::
 
 After this change, the code will still work in serial, even if mpi4py is not
 installed.
-To run this, where the above script is saved as ``main_bpod.py``, execute:: 
-  
+To run this, where the above script is saved as ``main_bpod.py``, execute::
+
   mpiexec -n 8 python main_bpod.py
 
-It is rare to need to handle parallelization yourself, but if you do, 
+It is rare to need to handle parallelization yourself, but if you do,
 you should use the provided ``mr.parallel_default_instance`` instance
 as above.
-Also provided are member functions ``parallel.get_rank()`` and 
+Also provided are member functions ``parallel.get_rank()`` and
 ``parallel.get_num_procs()`` (see :py:mod:`parallel` for details).
 
 If you're curious, the text files are saved in a format defined in
-:py:func:`util.load_array_text` and :py:func:`util.save_array_text`. 
+:py:func:`util.load_array_text` and :py:func:`util.save_array_text`.
 
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 4 -- Inner product function
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-You are free to use any inner product function, as long as it has the interface 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You are free to use any inner product function, as long as it has the interface
 ``value = inner_product(vec1, vec2)`` and satisfies the mathematical
 definition of an inner product (see :ref:`sec_details`).
-This example uses the trapezoidal rule for inner products on an arbitrary 
+This example uses the trapezoidal rule for inner products on an arbitrary
 n-dimensional cartesian grid (see :py:class:`vectors.InnerProductTrapz`).
 The object ``weighted_IP`` is callable (it has a special method ``__call__``) so
 it acts as the inner product the usual way: ``value = weighted_IP(vec1, vec2)``.
 
 .. literalinclude:: ../modred/examples/tutorial_ex4.py
 
-Also shown in this example is the useful ``put_decomp``, which, by default 
+Also shown in this example is the useful ``put_decomp``, which, by default
 saves the arrays associated with the decomposition to text files.
 (See :ref:`sec_matrices`.)
 
 Again, this code can be executed in parallel without any modifications.
 
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 5 -- Shifting and scaling vectors using vector handles
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Often vectors contain an offset (also called a shift or translation) such as a
 mean or equilibrium state, and one might want to do model reduction with this
 known offset removed.
 We call this offset the base vector, and it can be subtracted off by the vector
-handle class as shown in this example. 
-  
+handle class as shown in this example.
+
 Note that ``handle.put`` does *not* use the base vector; the base vector is only
 subtracted by ``handle.get``.
 
@@ -181,13 +187,14 @@ At the end of this example, we use an instance of the low-level class
 :class:`vectorspace.VectorSpaceHandles` to check that the POD modes are
 orthonormal.
 It's generally not necessary to use this class (or do this check), but if the
-need arises, it should be used (instead of writing new code) since it is tested 
+need arises, it should be used (instead of writing new code) since it is tested
 and parallelized.
 
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example 6 -- User-defined vectors and handles
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 So far, all of the vectors have been arrays, but you may want to apply modred to
 data saved in your own custom format with more complicated inner products and
 other operations.
@@ -198,7 +205,7 @@ pretty easy.
 You just need to define and use your own vector handle and vector objects.
 
 There are two important new features of this example: a custom vector class
-``CustomVector`` and a custom vector handle class ``CustomVecHandle``.  
+``CustomVector`` and a custom vector handle class ``CustomVecHandle``.
 These definitions may be collected together in a file, for instance called
 ``customvector.py``:
 
@@ -217,10 +224,10 @@ This example also uses the trapezoidal rule for inner products to account for a
 
 The class ``CustomVecHandle`` inherits from a base class ``mr.VecHandle``, and
 defines methods ``_get`` and ``_put``, which load and save vectors from/to
-Pickle files.  
+Pickle files.
 Note the leading underscore: the functions ``get`` and ``put`` (without leading
 underscore) are defined in the ``VecHandle`` base class, and take care of
-scaling or subtracting a base vector.  
+scaling or subtracting a base vector.
 The methods ``_get`` and ``_put`` defined here are in turn called by the base
 class (the "template method" design pattern).
 While you don't need to understand the guts of these base classes, more is
@@ -254,20 +261,21 @@ As usual, this example can be executed in parallel without any modifications.
 
 .. _sec_matrices:
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
 Matrix input and output
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
 
 By default, ``put_mat`` and ``get_mat`` save and load to text files.
 If you prefer a different format, you can pass your own functions as keyword
 arguments ``put_mat`` and ``get_mat`` to the constructors.
-The functions should have the following interfaces: ``put_mat(mat, mat_dest)`` 
+The functions should have the following interfaces: ``put_mat(mat, mat_dest)``
 and ``mat = get_mat(mat_source)``.
-The ``mat`` argument could be a numpy matrix, 1D array, or 2D array. 
+The ``mat`` argument could be a numpy matrix, 1D array, or 2D array.
 
-^^^^^^^^^^^^^^
+
+^^^^^^^^^^
 References
-^^^^^^^^^^^^^^
+^^^^^^^^^^
 
 .. [HLBR] P. Holmes, J. L. Lumley, G. Berkooz, and C. W. Rowley.
    *Turbulence, Coherent Structures, Dynamical Systems and Symmetry*,

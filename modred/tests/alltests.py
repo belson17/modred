@@ -3,7 +3,7 @@ import os
 import unittest
 
 
-# Check if we have discover function, if not use unittest2 
+# Check if we have discover function, if not use unittest2
 # This might be compatible with some python versions < 2.7
 """
 try:

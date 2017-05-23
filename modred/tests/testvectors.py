@@ -8,8 +8,7 @@ from shutil import rmtree
 
 import numpy as np
 
-import modred.parallel as parallel_mod
-parallel = parallel_mod.parallel_default_instance
+import modred.parallel as parallel
 import modred.vectors as V
 
 
@@ -17,10 +16,10 @@ import modred.vectors as V
 class TestVectors(unittest.TestCase):
     """Test the vector methods """
     def setUp(self):
-        self.test_dir ='DELETE_ME_test_files_vectors'
+        self.test_dir = 'vectors_files'
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():        
+        if not os.path.isdir(self.test_dir) and parallel.is_rank_zero():
             os.mkdir(self.test_dir)
         parallel.barrier()
         self.mode_nums = [2, 4, 3, 6, 9, 8, 10, 11, 30]
@@ -28,37 +27,39 @@ class TestVectors(unittest.TestCase):
         self.num_states = 100
         self.index_from = 2
 
+
     def tearDown(self):
         parallel.barrier()
         if parallel.is_rank_zero():
             rmtree(self.test_dir, ignore_errors=True)
         parallel.barrier()
-    
+
+
     def test_in_memory_handle(self):
         """Test in memory and base class vector handles"""
         base_vec1 = np.random.random((3, 4))
         base_vec2 = np.random.random((3, 4))
         vec_true = np.random.random((3, 4))
         scale = np.random.random()
-        
+
         # Test base class functionality
-        vec_handle = V.VecHandleInMemory(vec=vec_true, 
+        vec_handle = V.VecHandleInMemory(vec=vec_true,
             base_vec_handle=V.VecHandleInMemory(vec=base_vec1),
             scale=scale)
         vec_comp = vec_handle.get()
         np.testing.assert_equal(vec_comp, scale*(vec_true - base_vec1))
-        
-        vec_handle = V.VecHandleInMemory(vec=vec_true, 
+
+        vec_handle = V.VecHandleInMemory(vec=vec_true,
             base_vec_handle=V.VecHandleInMemory(vec=base_vec2),
             scale=scale)
         vec_comp = vec_handle.get()
         np.testing.assert_equal(vec_comp, scale*(vec_true - base_vec2))
-        
-        vec_handle = V.VecHandleInMemory(vec=vec_true, 
+
+        vec_handle = V.VecHandleInMemory(vec=vec_true,
             base_vec_handle=V.VecHandleInMemory(vec=base_vec1))
         vec_comp = vec_handle.get()
         np.testing.assert_equal(vec_comp, vec_true - base_vec1)
-        
+
         vec_handle = V.VecHandleInMemory(vec=vec_true)
         vec_comp = vec_handle.get()
         np.testing.assert_equal(vec_comp, vec_true)
@@ -67,7 +68,7 @@ class TestVectors(unittest.TestCase):
         vec_handle = V.VecHandleInMemory()
         vec_handle.put(vec_true)
         np.testing.assert_equal(vec_handle.vec, vec_true)
-        
+
         # Test __eq__ operator
         vec_handle1 = V.VecHandleInMemory(vec=np.ones(2))
         vec_handle2 = V.VecHandleInMemory(vec=np.ones(2))
@@ -77,6 +78,7 @@ class TestVectors(unittest.TestCase):
         self.assertEqual(vec_handle1, vec_handle2)
         self.assertNotEqual(vec_handle1, vec_handle3)
         self.assertNotEqual(vec_handle1, vec_handle4)
+
 
     def test_handles_which_save(self):
         """Test handles whose get/put load/save from file"""
@@ -109,7 +111,8 @@ class TestVectors(unittest.TestCase):
             self.assertEqual(vec_handle1, vec_handle2)
             self.assertNotEqual(vec_handle1, vec_handle3)
             self.assertNotEqual(vec_handle1, vec_handle4)
-            
+
+
     def test_IP_trapz(self):
         """Test trapezoidal rule inner product for 2nd-order convergence"""
         # Known inner product of x**2 + 1.2y**2 and x**2 over interval
@@ -133,9 +136,4 @@ class TestVectors(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()    
-
-        
-        
-        
-        
+    unittest.main()

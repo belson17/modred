@@ -1,6 +1,6 @@
 function [ mat ] = load_mat_text(filename, is_complex)
-% Loads a text matrix file. 
-% is_complex is 0 for real data, 1 for complex. Corresponds to the 
+% Loads a text matrix file.
+% is_complex is 0 for real data, 1 for complex. Corresponds to the
 % functions in modaldecomp.
 
     mat_raw = load(filename);
@@ -16,6 +16,5 @@ function [ mat ] = load_mat_text(filename, is_complex)
     else
         mat = mat_raw;
     end
-    
-end
 
+end

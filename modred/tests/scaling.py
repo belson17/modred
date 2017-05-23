@@ -1,4 +1,4 @@
-"""Makes plots of parallel scaling. 
+"""Makes plots of parallel scaling.
 
 To use this, must copy in the
 scaling times from profiling benchmark.py with cProfile."""
@@ -7,7 +7,7 @@ from __future__ import print_function
 from future.builtins import object
 
 import numpy as np
-import matplotlib.pyplot as PLT
+import matplotlib.pyplot as plt
 
 
 class Scaling(object):
@@ -36,7 +36,7 @@ def lin():
     s.barriers=0
     s.workers = 1
     cases.append(s)
-       
+
     s = Scaling()
     s.total = 71956.340
     s.loads = 54121.326
@@ -56,7 +56,7 @@ def lin():
     s.barriers = 5549.159
     s.workers = 12
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 38372.495
     s.loads = 17996.821
@@ -66,7 +66,7 @@ def lin():
     s.barriers = 5077.610
     s.workers = 24
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 42727.516
     s.loads = 10257.985
@@ -76,7 +76,7 @@ def lin():
     s.barriers = 7292.715
     s.workers = 36
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 21455.413
     s.loads = 7398.958
@@ -86,7 +86,7 @@ def lin():
     s.barriers = 4088.371
     s.workers = 48
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 18999.739
     s.loads = 5840.044
@@ -96,7 +96,7 @@ def lin():
     s.barriers = 3648.425
     s.workers = 60
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 18481.499
     s.loads = 4961.553
@@ -106,7 +106,7 @@ def lin():
     s.barriers = 4266.667
     s.workers = 72
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 19403.340
     s.loads = 4522.620
@@ -116,7 +116,7 @@ def lin():
     s.barriers = 5296.319
     s.workers = 84
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 20059.660
     s.loads = 3844.509
@@ -126,7 +126,7 @@ def lin():
     s.barriers = 6554.987
     s.workers = 96
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 17326.856
     s.loads = 2933.798
@@ -136,7 +136,7 @@ def lin():
     s.barriers = 4922.009
     s.workers = 144
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 17125.556
     s.loads = 2454.333
@@ -146,7 +146,7 @@ def lin():
     s.barriers = 5155.768
     s.workers = 192
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 17159.692
     s.loads = 2229.482
@@ -166,10 +166,10 @@ def lin():
     s.barriers = 6553.161
     s.workers = 288
     cases.append(s)
-    
+
     workers = np.array([c.workers for c in cases])
-    
-    # Find the average for each processor, so now in Wall time instead of 
+
+    # Find the average for each processor, so now in Wall time instead of
     # CPU time.
     for s in cases:
         s.total /= s.workers
@@ -178,55 +178,55 @@ def lin():
         s.sends /= s.workers
         s.recvs /= s.workers
         s.barriers /= s.workers
-    
+
     # Speedup plot
-    PLT.figure(figsize=(5.5, 4))
+    plt.figure(figsize=(5.5, 4))
     width = .4
-    PLT.hold(True)
-    #PLT.plot(workers, workers,'k-')
-    PLT.plot(workers, [cases[0].total*cases[0].workers/c.total for c in cases], 
+    plt.hold(True)
+    #plt.plot(workers, workers,'k-')
+    plt.plot(workers, [cases[0].total*cases[0].workers/c.total for c in cases],
         'ro-')
-    PLT.xlabel('Workers')
-    PLT.ylabel('Speedup')
-    PLT.grid(True)
-    #PLT.legend(['Linear','Measured'], loc='upper left')
-    PLT.savefig('lin_combine_speedup.eps')
-    
+    plt.xlabel('Workers')
+    plt.ylabel('Speedup')
+    plt.grid(True)
+    #plt.legend(['Linear','Measured'], loc='upper left')
+    plt.savefig('lin_combine_speedup.eps')
+
     # Table of time spent in each operation for diff num of workers
     print('Workers |   Total Wall   |        Loads       |' +\
         '      Send-recvs     |   Barriers')
     for s in cases:
         print('  %d    |  %.1f   | %.1f (%f) | %.1f (%f) | %.1f (%f)'%(
-            s.workers, s.total, s.loads, s.loads/s.total, (s.sends+s.recvs), 
+            s.workers, s.total, s.loads, s.loads/s.total, (s.sends+s.recvs),
             (s.sends+s.recvs)/s.total, s.barriers, s.barriers/s.total))
-    
+
     # Time spent breakdown
     """
-    PLT.figure()
-    PLT.hold(True)
-    PLT.plot(workers, cases[0].total/workers,'k-')
-    PLT.plot(workers, [c.total for c in cases],'bx-')
+    plt.figure()
+    plt.hold(True)
+    plt.plot(workers, cases[0].total/workers,'k-')
+    plt.plot(workers, [c.total for c in cases],'bx-')
     for c in cases:
         bottom = 0
         top = c.sends + c.recvs + c.barriers
-        PLT.bar(c.workers-width/2, top-bottom, width=width, 
+        plt.bar(c.workers-width/2, top-bottom, width=width,
             bottom=bottom,color='r')
-        
+
         bottom = top
         top += c.loads
-        PLT.bar(c.workers-width/2, top-bottom, width=width, 
+        plt.bar(c.workers-width/2, top-bottom, width=width,
             bottom=bottom,color='g')
-        
+
         bottom = top
         top = c.total
-        PLT.bar(c.workers-width/2, top-bottom, width=width, 
+        plt.bar(c.workers-width/2, top-bottom, width=width,
             bottom=bottom,color='k')
-    PLT.legend(['Linear', 'Measured', 'Send/Recvs', 'Loads', 'Other'])
-    PLT.xlabel('Workers')
-    PLT.ylabel('Time [s]')
-    PLT.savefig('lin_combine_time_n1.eps')
+    plt.legend(['Linear', 'Measured', 'Send/Recvs', 'Loads', 'Other'])
+    plt.xlabel('Workers')
+    plt.ylabel('Time [s]')
+    plt.savefig('lin_combine_time_n1.eps')
     """
-    PLT.show()
+    plt.show()
 
 def ips():
     """
@@ -251,7 +251,7 @@ def ips():
     s.barriers = 3123.360
     s.workers = 12
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 35854.704
     s.loads = 7995.548
@@ -260,7 +260,7 @@ def ips():
     s.barriers = 2382.156
     s.workers = 24
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 32539.035
     s.loads = 5385.914
@@ -269,7 +269,7 @@ def ips():
     s.barriers = 2219.718
     s.workers = 36
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 32570.517
     s.loads = 3902.635
@@ -278,7 +278,7 @@ def ips():
     s.barriers = 2830.686
     s.workers = 60
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 32557.001
     s.loads = 2548.582
@@ -287,7 +287,7 @@ def ips():
     s.barriers = 4054.294
     s.workers = 96
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 32474.814
     s.loads = 1902.123
@@ -296,7 +296,7 @@ def ips():
     s.barriers = 4278.013
     s.workers = 144
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 36558.071
     s.loads = 1713.744
@@ -305,7 +305,7 @@ def ips():
     s.barriers = 7221.375
     s.workers = 192
     cases.append(s)
-    
+
     s = Scaling()
     s.total = 33431.981
     s.loads = 1267.041
@@ -314,10 +314,10 @@ def ips():
     s.barriers = 5608.543
     s.workers = 288
     cases.append(s)
-    
+
     workers = np.array([c.workers for c in cases])
-    
-    # Find the average for each processor, so now in Wall time instead of 
+
+    # Find the average for each processor, so now in Wall time instead of
     # CPU time.
     for s in cases:
         s.total /= s.workers
@@ -325,20 +325,20 @@ def ips():
         s.ips /= s.workers
         s.sendrecvs /= s.workers
         s.barriers /= s.workers
-    
+
     # Speedup plot
-    PLT.figure(figsize=(5.5,4))
+    plt.figure(figsize=(5.5,4))
     width = .4
-    PLT.hold(True)
-    #PLT.plot(workers, workers,'k-')
-    PLT.plot(
+    plt.hold(True)
+    #plt.plot(workers, workers,'k-')
+    plt.plot(
         workers, [cases[0].total*cases[0].workers/c.total for c in cases],'ro-')
-    PLT.xlabel('Workers')
-    PLT.ylabel('Speedup')
-    PLT.grid(True)
-    #PLT.legend(['Linear','Measured'], loc='upper left')
-    PLT.savefig('IPs_speedup.eps')
-    
+    plt.xlabel('Workers')
+    plt.ylabel('Speedup')
+    plt.grid(True)
+    #plt.legend(['Linear','Measured'], loc='upper left')
+    plt.savefig('IPs_speedup.eps')
+
     # Table of time spent in each operation for diff num of workers
     print('Workers |   Total Wall   |        Loads       |' +\
         '     IPs     |      sends+recvs     |   barriers')
@@ -347,36 +347,36 @@ def ips():
             '%.1f (%.2f)')%(
             s.workers, s.total, s.loads, s.loads/s.total, s.ips, s.ips/s.total,
             s.sendrecvs, s.sendrecvs/s.total, s.barriers, s.barriers/s.total))
-    
+
     # Time spent breakdown
     """
-    PLT.figure()
-    PLT.hold(True)
-    PLT.plot(workers, cases[0].total/workers,'k-')
-    PLT.plot(workers, [c.total for c in cases],'bx-')
+    plt.figure()
+    plt.hold(True)
+    plt.plot(workers, cases[0].total/workers,'k-')
+    plt.plot(workers, [c.total for c in cases],'bx-')
     for c in cases:
         bottom = 0
         top = c.sends + c.recvs + c.barriers
-        PLT.bar(
+        plt.bar(
             c.workers-width/2, top-bottom, width=width,bottom=bottom,color='r')
-        
+
         bottom = top
         top += c.loads
-        PLT.bar(
+        plt.bar(
             c.workers-width/2, top-bottom, width=width,bottom=bottom,color='g')
-        
+
         bottom = top
         top = c.total
-        PLT.bar(
+        plt.bar(
             c.workers-width/2, top-bottom, width=width,bottom=bottom,color='k')
-    PLT.legend(['Linear','Measured','Send/Recvs','Loads','Other'])
-    PLT.xlabel('Workers')
-    PLT.ylabel('Time [s]')
-    PLT.savefig('lin_combine_time_n1.eps')
+    plt.legend(['Linear','Measured','Send/Recvs','Loads','Other'])
+    plt.xlabel('Workers')
+    plt.ylabel('Time [s]')
+    plt.savefig('lin_combine_time_n1.eps')
     """
-    PLT.show()
-    
-    
+    plt.show()
+
+
 if __name__ == '__main__':
     #ips_n1p_rainier()
     #ips_np1_della()

@@ -1,6 +1,6 @@
-====================================
+=============================
 Installation and requirements
-====================================
+=============================
 
 Mandatory:
 
@@ -19,12 +19,12 @@ To install::
 
   [sudo] python setup.py install
 
-To be sure it's working, run the unit tests. 
+To be sure it's working, run the unit tests.
 The parallel tests require mpi4py to be installed::
 
   python -c 'import modred.tests; modred.tests.run()'
   mpiexec -n 3 python -c 'import modred.tests; modred.tests.run()'
-  
+
 Please report problems to  belson17 [-at-] gmail [-dot-] com with the following:
 
 1. Copy of the entire output of the installation and tests
@@ -34,8 +34,7 @@ Please report problems to  belson17 [-at-] gmail [-dot-] com with the following:
 
 The documentation is available at: http://packages.python.org/modred.
 
-While unnecessary, you can build the documentation with Sphinx 
-(http://sphinx.pocoo.org). 
-From the modred directory, run ``sphinx-build doc doc/_build`` and then open 
+While unnecessary, you can build the documentation with Sphinx
+(http://sphinx.pocoo.org).
+From the modred directory, run ``sphinx-build doc doc/_build`` and then open
 ``doc/_build/index.html`` in a web browser.
-
