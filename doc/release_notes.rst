@@ -4,6 +4,19 @@ Release notes
 
 
 ------------
+modred 2.0.2
+------------
+
+Minor bug fix.
+
+**Bug fixes**
+
+* Order of returned values for :py:func:`dmd.compute_DMD_matrices_snaps_method` 
+and :py:func:`dmd.compute_DMD_matrices_direct_method` is now consistent for both
+values of `return_all`.
+
+
+------------
 modred 2.0.1
 ------------
 
@@ -53,9 +66,9 @@ Augier (pa371 [-at-] damtp [-dot-] cam [-dot-] ac [-dot-] uk). Thanks, Pierre!
 * The ``compute_decomp`` step in DMD has been refactored, resulting in the new
   method :py:func:`dmd.DMDHandles.compute_eigendecomp`. This method can be used
   to restart DMD computations from saved correlation and cross-correlation
-  matrices, or to compute a DMD using a truncated basis.  
+  matrices, or to compute a DMD using a truncated basis.
 
-* Absolute and relative tolerances can now be passed in using the keyword 
+* Absolute and relative tolerances can now be passed in using the keyword
   arguments ``atol`` and ``rtol``, respectively, when calling
   ``compute_decomp`` in either POD, BPOD, or DMD.  These are then passed on into
   internal computations of singular value decompositions or eigendecompositions
@@ -92,38 +105,38 @@ Augier (pa371 [-at-] damtp [-dot-] cam [-dot-] ac [-dot-] uk). Thanks, Pierre!
 **Interface changes**
 
 * Changed the returned values in
-  :py:func:`dmd.compute_DMD_matrices_snaps_method`, 
-  :py:func:`dmd.compute_DMD_matrices_direct_method`, 
+  :py:func:`dmd.compute_DMD_matrices_snaps_method`,
+  :py:func:`dmd.compute_DMD_matrices_direct_method`,
   :py:func:`dmd.DMDHandles.compute_decomp`.
 
 * Changed the order of the returned values in
   :py:func:`pod.PODHandles.compute_decomp`.
   :py:func:`bpod.BPODHandles.compute_decomp`.
 
-* Changed the order of the arguments in 
-  :py:func:`pod.PODHandles.get_decomp`, 
+* Changed the order of the arguments in
+  :py:func:`pod.PODHandles.get_decomp`,
   :py:func:`pod.PODHandles.put_decomp`,
-  :py:func:`bpod.BPODHandles.get_decomp`, 
+  :py:func:`bpod.BPODHandles.get_decomp`,
   :py:func:`bpod.BPODHandles.put_decomp`, and
   :py:func:`era.ERA.put_decomp`.
 
-* Changed the arguments to 
+* Changed the arguments to
   :py:func:`dmd.DMDHandles.get_decomp` and
   :py:func:`dmd.DMDHandles.put_decomp`.
 
-* Added the following new methods that compute projections onto modes: 
+* Added the following new methods that compute projections onto modes:
   :py:func:`pod.PODHandles.compute_proj_coeffs`,
   :py:func:`bpod.BPODHandles.compute_proj_coeffs`,
   :py:func:`bpod.BPODHandles.compute_adj_proj_coeffs`, and
   :py:func:`dmd.DMDHandles.compute_proj_coeffs`.
-  
+
 * Added the following new methods that save projection coefficients:
   :py:func:`pod.PODHandles.put_proj_coeffs`,
   :py:func:`bpod.BPODHandles.put_direct_proj_coeffs`,
   :py:func:`bpod.BPODHandles.put_adjoint_proj_coeffs`, and
   :py:func:`dmd.DMDHandles.put_proj_coeffs`.
 
-* Added the following new methods in the updated ``DMDHandles`` class: 
+* Added the following new methods in the updated ``DMDHandles`` class:
   :py:func:`dmd.DMDHandles.compute_exact_modes`,
   :py:func:`dmd.DMDHandles.compute_spectrum`,
   :py:func:`dmd.DMDHandles.compute_eigendecomp`,
@@ -133,22 +146,22 @@ Augier (pa371 [-at-] damtp [-dot-] cam [-dot-] ac [-dot-] uk). Thanks, Pierre!
   :py:func:`dmd.DMDHandles.put_correlation_mat_eigvecs`,
   :py:func:`dmd.DMDHandles.put_cross_correlation_mat`, and
   :py:func:`dmd.DMDHandles.put_spectral_coeffs`.
-  
-* :py:func:`dmd.DMDHandles.compute_proj_modes` replaces 
-  :py:func:`dmd.DMDHandles.compute_modes`. 
+
+* :py:func:`dmd.DMDHandles.compute_proj_modes` replaces
+  :py:func:`dmd.DMDHandles.compute_modes`.
 
 * :py:func:`dmd.DMDHandles.put_eigvals` replaces
   :py:func:`dmd.DMDHandles.put_ritz_vals`.
 
-* :py:func:`dmd.DMDHandles.put_build_coeffs` and 
+* :py:func:`dmd.DMDHandles.put_build_coeffs` and
   :py:func:`dmd.DMDHandles.put_mode_norms` are now deprecated.
 
-* Optional ``atol`` and ``rtol`` arguments were added to 
+* Optional ``atol`` and ``rtol`` arguments were added to
   :py:func:`pod.PODHandles.compute_decomp`,
   :py:func:`bpod.BPODHandles.compute_decomp`,
   :py:func:`dmd.DMDHandles.compute_decomp`.
 
-* Optional ``max_num_eigvals`` argument added to 
+* Optional ``max_num_eigvals`` argument added to
   :py:func:`dmd.DMDHandles.compute_decomp`.
 
 * ``util.svd``, ``util.eigh``, and ``util.eig_biorthog`` now consistently return
@@ -168,7 +181,7 @@ Augier (pa371 [-at-] damtp [-dot-] cam [-dot-] ac [-dot-] uk). Thanks, Pierre!
 * Added :py:func:`util.eig_biorthog` method to compute both left and right
   eigenvectors of a matrix, scaled to yield a biorthogonal set.
 
-* Added optional ``atol`` and ``rtol`` arguments to :py:func:`util.svd` and 
+* Added optional ``atol`` and ``rtol`` arguments to :py:func:`util.svd` and
   :py:func:`util.eigh`.
 
 * Updated tests for ``util.svd`` and ``util.eigh``.  Properties of the
@@ -182,7 +195,7 @@ Augier (pa371 [-at-] damtp [-dot-] cam [-dot-] ac [-dot-] uk). Thanks, Pierre!
   these are much less frequent now.
 
 * Changed how positive definite matrices are generated for use as inner product
-  weight matrices.  Previous implementation led to failed tests. 
+  weight matrices.  Previous implementation led to failed tests.
 
 * Changed default delimiter when loading test arrays to ``None``.
 
@@ -202,14 +215,14 @@ Augier (pa371 [-at-] damtp [-dot-] cam [-dot-] ac [-dot-] uk). Thanks, Pierre!
   efficient in Python 2, but only occurs in a few places and with small enough
   loops that the impact should be negligible.
 
-* Added a few more checks for ``None`` values, as Python 3 doesn't allow 
+* Added a few more checks for ``None`` values, as Python 3 doesn't allow
   comparisons of floats to ``None``.
 
 
 ------------
 modred 1.0.2
 ------------
-We increased the speed of the BPOD implementations. 
+We increased the speed of the BPOD implementations.
 
 **New features and improvements**
 
@@ -225,10 +238,10 @@ We increased the speed of the BPOD implementations.
 
 **Internal changes**
 
-* BPOD classes now compute fewer inner products. The number of inner products 
-  is now the sum of the number of direct vectors and the number of adjoint 
+* BPOD classes now compute fewer inner products. The number of inner products
+  is now the sum of the number of direct vectors and the number of adjoint
   vectors, whereas previously it was the product. This is achieved by taking
-  advantage of a property of the adjoint. 
+  advantage of a property of the adjoint.
 
 
 ------------
@@ -242,7 +255,7 @@ Small changes mostly related to examples.
 
 **Bug fixes**
 
-* Changed a tutorial example. 
+* Changed a tutorial example.
 
 **Interface changes**
 
@@ -261,16 +274,16 @@ sized data.
 
 **New features and improvements**
 
-* New functions and classes for data that fits entirely on one node's memory. 
+* New functions and classes for data that fits entirely on one node's memory.
   These are
-  :py:func:`pod.compute_POD_matrices_snaps_method`, 
+  :py:func:`pod.compute_POD_matrices_snaps_method`,
   :py:func:`pod.compute_POD_matrices_direct_method`,
-  :py:func:`bpod.compute_BPOD_matrices`, 
-  :py:func:`dmd.compute_DMD_matrices_snaps_method`, 
+  :py:func:`bpod.compute_BPOD_matrices`,
+  :py:func:`dmd.compute_DMD_matrices_snaps_method`,
   :py:func:`dmd.compute_DMD_matrices_direct_method`,
   :py:class:`ltigalerkinproj.LTIGalerkinProjectionMatrices`, and
   :py:class:`vectorspace.VectorSpaceMatrices`.
-  These replace the ``in_memory`` member functions and improve 
+  These replace the ``in_memory`` member functions and improve
   computational efficiency for small data.
 
 * Added balanced truncation :py:meth:`util.balanced_truncation`.
@@ -281,32 +294,32 @@ sized data.
 
 **Interface changes**
 
-* The old classes ``POD``, ``BPOD``, ``DMD``,  
+* The old classes ``POD``, ``BPOD``, ``DMD``,
   are now only for large data and have their names appended with "``Handles``".
 
 * Old classes ``LTIGalerkinProjection``, and ``VectorSpace``
-  have been split into two, and names appended with "``Matrices``" and 
+  have been split into two, and names appended with "``Matrices``" and
   "``Handles``".
-  
-* All ``in_memory`` member functions have been removed, replaced by 
+
+* All ``in_memory`` member functions have been removed, replaced by
   the functions and classes above.
 
-* Removed the ``index_from`` optional argument in ``compute_modes`` functions. 
+* Removed the ``index_from`` optional argument in ``compute_modes`` functions.
   Mode numbers are now always indexed from zero and are renamed mode indices.
 
 * The ``VectorSpace`` member function ``compute_modes`` has
   been removed and its functionality moved to ``lin_combine``.
 
 * ``LTIGalerkinProjection`` member function ``compute_model`` uses the
-  result of an operator on a vector, 
-  rather than the operator itself. See 
+  result of an operator on a vector,
+  rather than the operator itself. See
   :py:meth:`ltigalerkinproj.LTIGalerkinProjectionHandles.compute_model`.
   The operator classes have been removed.
 
 **Internal changes**
 
 * OKID now uses least squares instead of a pseudo-inverse for improved numerical
-  stability. 
+  stability.
 
 * Added :py:class:`util.InnerProductBlock` for testing.
 
@@ -322,7 +335,7 @@ None
 
 **Bug fixes**
 
-* Function :py:meth:`util.lsim`, which is only provided for the user's 
+* Function :py:meth:`util.lsim`, which is only provided for the user's
   convenience, is simplified and corrected.
 
 **Interface changes**
@@ -337,7 +350,7 @@ None
 ------------
 modred 0.3.1
 ------------
-The main change is a bug fix in the ``numpy.eigh`` wrapper, 
+The main change is a bug fix in the ``numpy.eigh`` wrapper,
 :py:meth:`util.eigh`.
 
 **New features and improvements**
@@ -346,9 +359,9 @@ None
 
 **Bug fixes**
 
-* The POD and DMD classes now use :py:meth:`util.eigh` with the 
-  ``is_positive_definite`` flag set to ``True``.  This eliminates the 
-  possibility of small negative eigenvalues that sometimes appear due to 
+* The POD and DMD classes now use :py:meth:`util.eigh` with the
+  ``is_positive_definite`` flag set to ``True``.  This eliminates the
+  possibility of small negative eigenvalues that sometimes appear due to
   numerical precision which led to errors.
 
 **Interface changes**
@@ -357,7 +370,7 @@ None
 
 **Internal changes**
 
-* Function :py:meth:`util.eigh` now has a flag for positive definite matrices.  
+* Function :py:meth:`util.eigh` now has a flag for positive definite matrices.
   When
   ``True``, the function will automatically adjust the tolerance such that only
   positive eigenvalues are returned.
@@ -370,7 +383,7 @@ modred 0.3.0
 **New features and improvements**
 
 * New class :py:class:`ltigalerkinproj.LTIGalerkinProjection`
-  for LTI Galerkin projections. Replaces and generalizes old class 
+  for LTI Galerkin projections. Replaces and generalizes old class
   ``BPODLTIROM``.
 
 * Improved print messages to print every 10 seconds and be more informative.
@@ -378,30 +391,30 @@ modred 0.3.0
 **Bug fixes**
 
 * Corrected small error in symmetric inner product matrix calculation (used
-  by POD and DMD) where some very small matrix entries were double the true 
-  value. 
+  by POD and DMD) where some very small matrix entries were double the true
+  value.
 
-* Fixed race condition in :py:meth:`vectorspace.VectorSpace.lin_combine` by 
+* Fixed race condition in :py:meth:`vectorspace.VectorSpace.lin_combine` by
   adding a barrier.
-  
+
 **Interface changes**
 
 * Removed class ``BPODLTIROM``.
 
-* Changed order of indices in Markov parameters returned by 
+* Changed order of indices in Markov parameters returned by
   :py:meth:`okid.OKID`.
 
-* Changed all uses of ``hankel`` to ``Hankel`` to be consistent with naming 
+* Changed all uses of ``hankel`` to ``Hankel`` to be consistent with naming
   convention.
-  
+
 **Internal changes**
 
-* Added :py:meth:`parallel.Parallel.call_and_bcast` method to ``Parallel`` 
+* Added :py:meth:`parallel.Parallel.call_and_bcast` method to ``Parallel``
   class.
 
 * Changed interface of :py:meth:`helper.add_to_path`.
 
-* :py:class:`dmd.DMD` no longer uses an instance of :py:class:`pod.POD`. 
+* :py:class:`dmd.DMD` no longer uses an instance of :py:class:`pod.POD`.
 
 * The equals operator of vector handles now better deals with vectors which
   are numpy array objects.

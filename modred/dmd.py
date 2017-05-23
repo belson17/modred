@@ -51,12 +51,12 @@ def compute_DMD_matrices_snaps_method(
 
         ``proj_modes``: Matrix whose columns are projected DMD modes.
 
-        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on 
-        projection of first data vector.
-
         ``eigvals``: 1D array of eigenvalues of approximating low-order linear
         map (DMD eigenvalues).
-                
+    
+        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on 
+        projection of first data vector.
+                        
         If ``return_all`` is true, also returns:
         
         ``R_low_order_eigvecs``: Matrix of right eigenvectors of approximating
@@ -158,7 +158,7 @@ def compute_DMD_matrices_snaps_method(
 
     if return_all:
         return (
-            exact_modes, proj_modes, spectral_coeffs, eigvals,
+            exact_modes, proj_modes, eigvals, spectral_coeffs, 
             R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
             correlation_mat_eigvecs, correlation_mat, cross_correlation_mat)
     else:
@@ -206,12 +206,12 @@ def compute_DMD_matrices_direct_method(
 
         ``proj_modes``: Matrix whose columns are projected DMD modes.
 
+        ``eigvals``: 1D array of eigenvalues of approximating low-order linear
+        map (DMD eigenvalues).
+        
         ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on 
         projection of first data vector.
 
-        ``eigvals``: 1D array of eigenvalues of approximating low-order linear
-        map (DMD eigenvalues).
-                
         If ``return_all`` is true, also returns:
         
         ``R_low_order_eigvecs``: Matrix of right eigenvectors of approximating
@@ -334,7 +334,7 @@ def compute_DMD_matrices_direct_method(
     
     if return_all:
         return (
-            exact_modes, proj_modes, spectral_coeffs, eigvals,
+            exact_modes, proj_modes, eigvals, spectral_coeffs, 
             R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
             correlation_mat_eigvecs)
     else:

@@ -93,7 +93,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
  
         # Compute DMD using modred method of choice
         if method_type == 'snaps':
-            (modes_exact, modes_proj, spectral_coeffs, eigvals, 
+            (modes_exact, modes_proj, eigvals, spectral_coeffs, 
                 R_low_order_eigvecs, L_low_order_eigvecs,
                 correlation_mat_eigvals, correlation_mat_eigvecs, 
                 correlation_mat, cross_correlation_mat) = (
@@ -102,7 +102,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
                 inner_product_weights=inner_product_weights,
                 max_num_eigvals=max_num_eigvals, return_all=True))
         elif method_type == 'direct':
-            (modes_exact, modes_proj, spectral_coeffs, eigvals, 
+            (modes_exact, modes_proj, eigvals, spectral_coeffs, 
                 R_low_order_eigvecs, L_low_order_eigvecs,
                 correlation_mat_eigvals, correlation_mat_eigvecs) = (
                 compute_DMD_matrices_direct_method(
