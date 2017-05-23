@@ -9,11 +9,11 @@ modred 2.0.2
 
 Minor bug fix.
 
-**Bug fixes**
+**Interface changes**
 
 * Order of returned values for :py:func:`dmd.compute_DMD_matrices_snaps_method` 
-and :py:func:`dmd.compute_DMD_matrices_direct_method` is now consistent for both
-values of `return_all`.
+  and :py:func:`dmd.compute_DMD_matrices_direct_method` is now consistent for 
+  both values of ``return_all``.
 
 
 ------------
