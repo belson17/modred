@@ -918,22 +918,23 @@ class DMDHandles(object):
 
 
 def compute_TLSqrDMD_matrices_snaps_method(
-    vecs, mode_indices, adv_vecs=None, inner_product_weights=None, atol=1e-13,
-    rtol=None, max_num_eigvals=None, return_all=False):
+    vecs, adv_vecs=None, mode_indices=None, inner_product_weights=None,
+    atol=1e-13, rtol=None, max_num_eigvals=None, return_all=False):
     """Computes Total Least Squares DMD modes using data stored in matrices,
     using method of snapshots.
 
     Args:
         ``vecs``: Matrix whose columns are data vectors.
 
-        ``mode_indices``: List of indices describing which modes to compute.
-        Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
-
     Kwargs:
         ``adv_vecs``: Matrix whose columns are data vectors advanced in time.
         If not provided, then it is assumed that the vectors describe a
         sequential time-series. Thus ``vecs`` becomes ``vecs[:, :-1]`` and
         ``adv_vecs`` becomes ``vecs[:, 1:]``.
+
+        ``mode_indices``: List of indices describing which modes to compute.
+        Examples are ``range(10)`` or ``[3, 0, 6, 8]``.  If no mode indices are
+        specified, then all modes will be computed.
 
         ``inner_product_weights``: 1D array or matrix of inner product weights.
         Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
@@ -1132,22 +1133,23 @@ def compute_TLSqrDMD_matrices_snaps_method(
 
 
 def compute_TLSqrDMD_matrices_direct_method(
-    vecs, mode_indices, adv_vecs=None, inner_product_weights=None, atol=1e-13,
-    rtol=None, max_num_eigvals=None, return_all=False):
+    vecs, adv_vecs=None, mode_indices=None, inner_product_weights=None,
+    atol=1e-13, rtol=None, max_num_eigvals=None, return_all=False):
     """Computes Total Least Squares DMD modes using data stored in matrices,
     using direct method.
 
     Args:
         ``vecs``: Matrix whose columns are data vectors.
 
-        ``mode_indices``: List of indices describing which modes to compute.
-        Examples are ``range(10)`` or ``[3, 0, 6, 8]``.
-
     Kwargs:
         ``adv_vecs``: Matrix whose columns are data vectors advanced in time.
         If not provided, then it is assumed that the vectors describe a
         sequential time-series. Thus ``vecs`` becomes ``vecs[:, :-1]`` and
         ``adv_vecs`` becomes ``vecs[:, 1:]``.
+
+        ``mode_indices``: List of indices describing which modes to compute.
+        Examples are ``range(10)`` or ``[3, 0, 6, 8]``.  If no mode indices are
+        specified, then all modes will be computed.
 
         ``inner_product_weights``: 1D array or matrix of inner product weights.
         Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
@@ -1292,7 +1294,7 @@ def compute_TLSqrDMD_matrices_direct_method(
     (exact_modes, proj_modes, spectral_coeffs, eigvals,
     R_low_order_eigvecs, L_low_order_eigvecs, proj_correlation_mat_eigvals,
     proj_correlation_mat_eigvecs) = compute_DMD_matrices_direct_method(
-        vecs_proj, mode_indices, adv_vecs=adv_vecs_proj,
+        vecs_proj, adv_vecs=adv_vecs_proj, mode_indices=mode_indices,
         inner_product_weights=inner_product_weights, atol=atol, rtol=rtol,
         max_num_eigvals=max_num_eigvals, return_all=True)
 
