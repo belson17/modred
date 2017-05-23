@@ -958,11 +958,12 @@ def compute_TLSqrDMD_matrices_snaps_method(
 
         ``proj_modes``: Matrix whose columns are projected DMD modes.
 
-        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on
-        projection of first data vector.
 
         ``eigvals``: 1D array of eigenvalues of approximating low-order linear
         map (DMD eigenvalues).
+
+        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on
+        projection of first data vector.
 
         If ``return_all`` is true, also returns:
 
@@ -1121,7 +1122,7 @@ def compute_TLSqrDMD_matrices_snaps_method(
 
     if return_all:
         return (
-            exact_modes, proj_modes, spectral_coeffs, eigvals,
+            exact_modes, proj_modes, eigvals, spectral_coeffs,
             R_low_order_eigvecs, L_low_order_eigvecs,
             summed_correlation_mats_eigvals, summed_correlation_mats_eigvecs,
             proj_correlation_mat_eigvals, proj_correlation_mat_eigvecs,
@@ -1172,11 +1173,11 @@ def compute_TLSqrDMD_matrices_direct_method(
 
         ``proj_modes``: Matrix whose columns are projected DMD modes.
 
-        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on
-        projection of first data vector.
-
         ``eigvals``: 1D array of eigenvalues of approximating low-order linear
         map (DMD eigenvalues).
+
+        ``spectral_coeffs``: 1D array of DMD spectral coefficients, based on
+        projection of first data vector.
 
         If ``return_all`` is true, also returns:
 
@@ -1297,7 +1298,7 @@ def compute_TLSqrDMD_matrices_direct_method(
 
     if return_all:
         return (
-            exact_modes, proj_modes, spectral_coeffs, eigvals,
+            exact_modes, proj_modes, eigvals, spectral_coeffs,
             R_low_order_eigvecs, L_low_order_eigvecs,
             summed_correlation_mats_eigvals,
             summed_correlation_mats_eigvecs,
