@@ -49,6 +49,6 @@ built from source by navigating to the install directory and calling::
 
   sphinx-build doc doc/_build
 
-Then simply open index.html in a web browser.
-
+Then simply open index.html in a web browser.  (Note that Sphinx 1.4 or higher
+is required.)
 
