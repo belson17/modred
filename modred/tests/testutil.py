@@ -411,8 +411,8 @@ class TestUtil(unittest.TestCase):
                 # Fill in Hankel matrix.  Recall that along skew diagonals, i +
                 # j is constant.
                 Hankel_true = np.zeros((num_rows, num_cols))
-                for i in xrange(num_rows):
-                    for j in xrange(num_cols):
+                for i in range(num_rows):
+                    for j in range(num_cols):
 
                         # Upper left triangle of values.  Fill skew diagonals
                         # until we hit the lower left corner of the matrix, where
@@ -444,18 +444,18 @@ class TestUtil(unittest.TestCase):
                 # structure
                 first_col_chunks = [
                     np.ones(chunk_shape) * (i + 1)
-                    for i in xrange(num_row_chunks)]
+                    for i in range(num_row_chunks)]
                 last_row_chunks = [
                     np.ones(chunk_shape) * (j + 1) * 10
-                    for j in xrange(num_col_chunks)]
+                    for j in range(num_col_chunks)]
                 last_row_chunks[0] = first_col_chunks[-1]
 
                 # Fill in Hankel matrix chunk by chunk
                 Hankel_true = np.zeros((
                     num_row_chunks * chunk_shape[0],
                     num_col_chunks * chunk_shape[1]))
-                for i in xrange(num_row_chunks):
-                    for j in xrange(num_col_chunks):
+                for i in range(num_row_chunks):
+                    for j in range(num_col_chunks):
 
                         # Upper left triangle of values
                         if i + j < num_row_chunks:

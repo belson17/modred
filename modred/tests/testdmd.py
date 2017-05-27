@@ -460,7 +460,7 @@ class TestDMDHandles(unittest.TestCase):
                 POD_mode_path = join(self.test_dir, 'pod_mode_%03d.txt')
                 POD_mode_handles = [
                     VecHandlePickle(POD_mode_path % i)
-                    for i in xrange(eigvals.size)]
+                    for i in range(eigvals.size)]
                 POD.compute_modes(range(eigvals.size), POD_mode_handles)
                 low_order_linear_op = (
                     DMD.vec_space.compute_inner_product_mat(
@@ -543,7 +543,7 @@ class TestDMDHandles(unittest.TestCase):
                 POD_mode_path = join(self.test_dir, 'pod_mode_%03d.pkl')
                 POD_mode_handles = [
                     VecHandlePickle(POD_mode_path % i)
-                    for i in xrange(POD.eigvals.size)]
+                    for i in range(POD.eigvals.size)]
                 POD.compute_modes(range(POD.eigvals.size), POD_mode_handles)
 
                 # Select a subset of modes to compute.  Compute at least half

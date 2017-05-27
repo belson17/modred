@@ -1,17 +1,12 @@
 #!/usr/bin/env python
 """Test the bpod module"""
 from __future__ import division
-from future.builtins import zip
-from future.builtins import range
+from future.builtins import zip, range
 import unittest
-import copy
 import os
 from os.path import join
 from shutil import rmtree
 
-import numpy as np
-
-import modred.parallel as parallel
 from modred.bpod import *
 from modred.vectorspace import *
 from modred import util
@@ -32,7 +27,7 @@ def get_direct_impulse_response_mats(A, B, num_steps):
     num_states, num_inputs = B.shape
     direct_vecs_mat = np.mat(np.zeros((num_states, num_steps * num_inputs)))
     A_powers = np.mat(np.identity(num_states))
-    for idx in xrange(num_steps):
+    for idx in range(num_steps):
         direct_vecs_mat[:, idx * num_inputs:(idx + 1) * num_inputs] =\
             A_powers * B
         A_powers = A_powers * A
@@ -45,7 +40,7 @@ def get_adjoint_impulse_response_mats(A, C, num_steps, weights_mat):
     C_adjoint = np.linalg.inv(weights_mat) * C.H
     adjoint_vecs_mat = np.mat(np.zeros((num_states, num_steps * num_outputs)))
     A_adjoint_powers = np.mat(np.identity(num_states))
-    for idx in xrange(num_steps):
+    for idx in range(num_steps):
         adjoint_vecs_mat[:, (idx * num_outputs):(idx + 1) * num_outputs] =\
             A_adjoint_powers * C_adjoint
         A_adjoint_powers = A_adjoint_powers * A_adjoint
@@ -351,10 +346,10 @@ class TestBPODHandles(unittest.TestCase):
         # Save data to disk
         direct_vec_handles = [
             V.VecHandleArrayText(self.direct_vec_path % i)
-            for i in xrange(direct_vec_mat.shape[1])]
+            for i in range(direct_vec_mat.shape[1])]
         adjoint_vec_handles = [
             V.VecHandleArrayText(self.adjoint_vec_path % i)
-            for i in xrange(adjoint_vec_mat.shape[1])]
+            for i in range(adjoint_vec_mat.shape[1])]
         if parallel.is_rank_zero():
             for idx, handle in enumerate(direct_vec_handles):
                 handle.put(direct_vec_mat[:, idx])
