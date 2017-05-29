@@ -11,8 +11,7 @@ import scipy.linalg as spla
 import modred as mr
 import hermite as hr
 
-
-plots = False
+plots = True
 
 if plots:
     try:
@@ -29,17 +28,17 @@ c_u = 0.2
 c_d = -1.0
 mu_0 = 0.38
 mu_2 = -0.01
-x_1 = -(-2*(mu_0 - c_u**2)/mu_2)**0.5 # branch I
-x_2 = -x_1 # branch II
+x_1 = -(-2 * (mu_0 - c_u ** 2) / mu_2) ** 0.5  # branch I
+x_2 = -x_1  # branch II
 x_s = x_2
 nu = U + 2J * c_u
 gamma = 1. + 1J * c_d
 # chi: decay rate of global modes
-chi = (-mu_2 / (2.*gamma))**0.25
+chi = (-mu_2 / (2. * gamma)) ** 0.25
 
 print('----- Parameters ------')
-for var in ['nx','dt','U','c_u','c_d','mu_0','mu_2','s','x_s',
-    'nu','gamma','chi']:
+for var in ['nx', 'dt', 'U', 'c_u', 'c_d', 'mu_0', 'mu_2', 's', 'x_s',
+            'nu', 'gamma', 'chi']:
     print(var, '=', eval(var))
 print('-----------------------')
 
@@ -48,137 +47,139 @@ x, Ds = hr.herdif(nx, 2, np.real(chi))
 
 # Inner product weights, trapezoidal rule
 weights = np.zeros(nx)
-weights[0] = 0.5*(x[1] - x[0])
-weights[-1] = 0.5*(x[-1] - x[-2])
-weights[1:-1] = 0.5*(x[2:] - x[0:-2])
+weights[0] = 0.5 * (x[1] - x[0])
+weights[-1] = 0.5 * (x[-1] - x[-2])
+weights[1:-1] = 0.5 * (x[2:] - x[0:-2])
 M = np.mat(np.diag(weights))
 inv_M = np.linalg.inv(M)
-M_sqrt = np.mat(np.diag(weights**0.5))
-inv_M_sqrt = np.mat(np.diag(weights**-0.5))
+M_sqrt = np.mat(np.diag(weights ** 0.5))
+inv_M_sqrt = np.mat(np.diag(weights ** -0.5))
 
 # LTI system matrices for direct and adjoint ("_adj") systems
-mu = (mu_0 - c_u**2) + mu_2 * x**2/2.
+mu = (mu_0 - c_u ** 2) + mu_2 * x ** 2 / 2.
 A = np.mat(-nu * Ds[0] + gamma * Ds[1] + np.diag(mu))
 
 # Compute optimal disturbance and use it as B matrix
-A_discrete = np.mat(spla.expm(np.array(A*dt)))
+A_discrete = np.mat(spla.expm(np.array(A * dt)))
 exp_mat = np.mat(np.identity(nx, dtype=complex))
 max_sing_val = 0
 for i in range(1, 100):
     exp_mat *= A_discrete
-    U,E,VH = np.linalg.svd(M_sqrt*exp_mat*inv_M_sqrt)
+    U, E, VH = np.linalg.svd(M_sqrt * exp_mat * inv_M_sqrt)
     if max_sing_val < E[0]:
         max_sing_val = E[0]
-        optimal_dist = np.mat(VH).H[:,0]
-        #print i, E[0], max_sing_val
+        optimal_dist = np.mat(VH).H[:, 0]
+        # print i, E[0], max_sing_val
 
 B = -inv_M_sqrt * optimal_dist
-C = np.mat(np.exp(-((x - x_s)/s)**2)) * M
+C = np.mat(np.exp(-((x - x_s) / s) ** 2)) * M
 A_adj = inv_M * A.H * M
 C_adj = inv_M * C.H
 
 # Plot spatial distributions of B and C
 if plots:
     plt.figure()
-    plt.hold(True)
-    plt.plot(x, B.real,'b')
-    plt.plot(x, B.imag,'r')
+    plt.plot(x, B.real, 'b')
+    plt.plot(x, B.imag, 'r')
     plt.xlabel('x')
     plt.ylabel('B')
-    plt.legend(['Real','Imag'])
+    plt.legend(['Real', 'Imag'])
     plt.xlim([-20, 20])
+    plt.title("Spatial distribution of B")
     plt.grid(True)
 
     plt.figure()
-    plt.hold(True)
-    plt.plot(x, C.T.real,'b')
-    plt.plot(x, C.T.imag,'r')
+    plt.plot(x, C.T.real, 'b')
+    plt.plot(x, C.T.imag, 'r')
     plt.xlabel('x')
     plt.ylabel('C')
-    plt.legend(['Real','Imag'])
+    plt.legend(['Real', 'Imag'])
     plt.xlim([-20, 20])
+    plt.title("Spatial distribution of C")
     plt.grid(True)
 
 # Simulate impulse responses to the direct and adjoint systems w/Crank-np.colson
 # (q(i+1) - q(i)) / dt = 1/2 (A q(i+1) + A q(i)) + B u(i)
 # => (I - dt/2 A) q(i+1) = q(i) + dt/2 A q(i) + dt B u(i)
 #    LHS q(i+1) = RHS q(i) + dt B u(i)
-LHS = np.identity(nx) - dt/2.*A
-RHS = np.identity(nx) + dt/2.*A
-LHS_adj = np.identity(nx) - dt/2.*A_adj
-RHS_adj = np.identity(nx) + dt/2.*A_adj
+LHS = np.identity(nx) - dt / 2. * A
+RHS = np.identity(nx) + dt / 2. * A
+LHS_adj = np.identity(nx) - dt / 2. * A_adj
+RHS_adj = np.identity(nx) + dt / 2. * A_adj
 
 nt = 300
 q = np.mat(np.zeros((nx, nt), dtype=complex))
 q_adj = np.mat(np.zeros((nx, nt), dtype=complex))
 
-q[:,0] = B
-q_adj[:,0] = C_adj
+q[:, 0] = B
+q_adj[:, 0] = C_adj
 
-for ti in range(nt-1):
-    q[:,ti+1] = np.linalg.solve(LHS, RHS*q[:,ti])
-    q_adj[:,ti+1] = np.linalg.solve(LHS_adj, RHS_adj*q_adj[:,ti])
+for ti in range(nt - 1):
+    q[:, ti + 1] = np.linalg.solve(LHS, RHS * q[:, ti])
+    q_adj[:, ti + 1] = np.linalg.solve(LHS_adj, RHS_adj * q_adj[:, ti])
 
 # Plot all snapshots as a contour plot
 if plots:
-    t = np.arange(0, nt*dt, dt)
+    t = np.arange(0, nt * dt, dt)
     X, T = np.meshgrid(x, t)
     plt.figure()
     plt.contourf(T, X, np.array(q.real).T, 20, cmap=plt.cm.binary)
     plt.xlabel('t')
     plt.ylabel('x')
+    plt.title('Direct snapshots (real part)')
     plt.colorbar()
+
     plt.figure()
     plt.contourf(T, X, np.array(q_adj.real).T, 20, cmap=plt.cm.binary)
     plt.xlabel('t')
     plt.ylabel('x')
-    plt.title('adjoint')
+    plt.title('Adjoint snapshots (real part)')
     plt.colorbar()
 
 # Compute the BPOD modes
 r = 10
 direct_modes, adjoint_modes, sing_vals = mr.compute_BPOD_matrices(
-    q, q_adj, list(range(r)), list(range(r)), inner_product_weights=weights)
+    q, q_adj,
+    adjoint_mode_indices=list(range(r)),
+    direct_mode_indices=list(range(r)),
+    inner_product_weights=weights)
 
 # Plot the first 3 modes
 if plots:
     for i in range(3):
         plt.figure()
-        plt.hold(True)
-        plt.plot(x, direct_modes[:,i].real, '-o')
-        plt.plot(x, adjoint_modes[:,i].real,'-x')
+        plt.plot(x, direct_modes[:, i].real, '-o')
+        plt.plot(x, adjoint_modes[:, i].real, '-x')
         plt.xlabel('Space')
         plt.ylabel('Real(q)')
         plt.legend(['direct', 'adjoint'])
-        plt.title('Direct and adjoint mode %d'%(i+1))
+        plt.title('Direct and adjoint mode %d' % (i + 1))
 
 # Project the linear dynamics onto the modes
 projection = mr.LTIGalerkinProjectionMatrices(
     direct_modes, adjoint_basis_vecs=adjoint_modes,
-    inner_product_weights=weights,is_basis_orthonormal=True)
+    inner_product_weights=weights, is_basis_orthonormal=True)
 A_direct_modes = A * direct_modes
 Ar, Br, Cr = projection.compute_model(A_direct_modes, B, C.dot(direct_modes))
-
 # Verify that the model accurately reproduces the impulse response
 qr = np.mat(np.zeros((r, nt), dtype=complex))
-qr[:,0] = Br
-LHSr = np.identity(r) - dt/2.*Ar
-RHSr = np.identity(r) + dt/2.*Ar
-for ti in range(nt-1):
-    qr[:,ti+1] = np.linalg.solve(LHSr, RHSr*qr[:,ti])
-y = C*q
-yr = Cr*qr
+qr[:, 0] = Br
+LHSr = np.identity(r) - dt / 2. * Ar
+RHSr = np.identity(r) + dt / 2. * Ar
+for ti in range(nt - 1):
+    qr[:, ti + 1] = np.linalg.solve(LHSr, RHSr * qr[:, ti])
+y = C * q
+yr = Cr * qr
 
 print(
     'Max error in reduced system impulse response output y is',
-    np.amax(np.abs(y-yr)))
+    np.amax(np.abs(y - yr)))
 
 if plots:
     plt.figure()
-    plt.plot(t, y.T.real)
-    plt.hold(True)
-    plt.plot(t, yr.T.real)
-    plt.legend(['Full','Reduced, r=%d'%r])
+    plt.plot(t, y.T.real, '-')
+    plt.plot(t, yr.T.real, '--')
+    plt.legend(['Full', 'Reduced, r=%d' % r])
     plt.xlabel('t')
     plt.ylabel('real(y)')
 

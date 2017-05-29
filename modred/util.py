@@ -751,4 +751,4 @@ def Hankel_chunks(first_col_chunks, last_row_chunks=None):
     # Hankel matrix.
     return np.vstack([np.hstack(
         unique_chunks[idx:idx + len(last_row_chunks)])
-        for idx in xrange(len(first_col_chunks))])
+        for idx in range(len(first_col_chunks))])
