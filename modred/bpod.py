@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from future.builtins import object
+from future.builtins import object, range
 
 import numpy as np
 
@@ -374,10 +374,10 @@ class BPODHandles(object):
         all_adjoint_first_direct_list = [
             all_adjoint_first_direct[
                 i * num_outputs:(i + 1) * num_outputs, :num_inputs]
-            for i in xrange(all_adjoint_first_direct.shape[0] // num_outputs)]
+            for i in range(all_adjoint_first_direct.shape[0] // num_outputs)]
         last_adjoint_all_direct_list = [
             last_adjoint_all_direct[:, j * num_inputs:(j + 1) * num_inputs]
-            for j in xrange(last_adjoint_all_direct.shape[1] // num_inputs)]
+            for j in range(last_adjoint_all_direct.shape[1] // num_inputs)]
 
         # Compute Hankel matrix
         self.Hankel_mat = np.mat(parallel.call_and_bcast(
