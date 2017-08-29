@@ -24,10 +24,10 @@ elif any(w in ['*b', '*beta'] for w in parsed_version):
 else:
     devstatus = 'Development Status :: 5 - Production/Stable'
 
-OKID_test_data_files = list()
-for c in ['SISO', 'SIMO', 'MISO', 'MIMO']:
-    OKID_test_data_files.append((os.path.join('modred', 'tests', 'OKID_files' , c), 
-        glob.glob(os.path.join('modred', 'tests', 'OKID_files', c, '*'))))
+# OKID_test_data_files = list()
+# for c in ['SISO', 'SIMO', 'MISO', 'MIMO']:
+#     OKID_test_data_files.append((os.path.join('modred', 'tests', 'OKID_files' , c), 
+#         glob.glob(os.path.join('modred', 'tests', 'OKID_files', c, '*'))))
 setup(
     name='modred',
     version=__version__,
@@ -63,6 +63,6 @@ setup(
         'Programming Language :: Python :: 3.4'
         ],
     packages=find_packages(exclude=['doc', 'matlab']),
-    data_files=OKID_test_data_files,
+    # data_files=OKID_test_data_files,
     install_requires=['numpy', 'future']
     )
