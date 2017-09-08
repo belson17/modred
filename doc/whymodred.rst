@@ -76,7 +76,7 @@ By design, modred's parallelization scheme doesn't break up individual pieces
 of data for you, i.e.  it doesn't do domain decomposition for you. 
 However, modred could be extended so that you can provide parallelized
 functions, allowing arbitrarily large data.  
-If you're curious about this, contact Brandt Belson at belson17 [-at-] gmail
+If you're curious about this, contact Brandt Belson at brandt.belson@gmail.com [-at-] gmail
 [-dot-] com or Jonathan Tu at jhtu [-at-] berkeley [-dot-] edu.  
 For now, a work-around is to use "fat" nodes with large amounts of memory
 (RAM). 
