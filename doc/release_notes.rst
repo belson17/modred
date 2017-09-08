@@ -4,6 +4,18 @@ Release notes
 
 
 ------------
+modred 2.0.3
+------------
+
+Minor bug fix to OKID tests.
+
+**Bug fixes**
+
+* OKID files needed for tests are included in the source distribution. All 
+doc files are also included.
+
+
+------------
 modred 2.0.2
 ------------
 

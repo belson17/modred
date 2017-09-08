@@ -6,7 +6,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 import sys
 if sys.version_info[:2] < (2, 6) or (3, 0) <= sys.version_info[0:2] < (3, 2):
-    raise RuntimeError("Python version 2.6, 2.7 or >= 3.2 required.")
+    raise RuntimeError("Python version 2.6, 2.7, or 3.2+ required.")
 
 # Get the long description from the relevant file
 with open(os.path.join(here, 'README.rst')) as f:
@@ -35,11 +35,11 @@ setup(
     author=('Brandt Belson, Jonathan Tu, and Clancy Rowley;'
             'repacked and ported for Python 3 by Pierre Augier'),
     author_email=(
-        'bbelson@princeton.edu, jhtu@princeton.edu, cwrowley@princeton.edu'),
+        'brandt.belson@gmail.com, Jonathan.Tu@navy.mil, cwrowley@princeton.edu'),
     url='https://pythonhosted.org/modred',
     maintainer=('Brandt Belson, Jonathan Tu, and Clancy Rowley;'
             'repacked and ported for Python 3 by Pierre Augier'),
-    maintainer_email='bbelson@princeton.edu',
+    maintainer_email='brandt.belson@gmail.com',
     license='Free BSD',
     classifiers=[
         # How mature is this project? Common values are
@@ -56,13 +56,15 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: 3.4'
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
         ],
     packages=find_packages(exclude=['doc', 'matlab']),
-    package_data={'modred':[
-            'modred/tests/files_okid/SISO/*', 
-            'modred/tests/files_okid/SIMO/*', 
-            'modred/tests/files_okid/MISO/*', 
-            'modred/tests/files_okid/MIMO/*']},
-      install_requires=['numpy', 'future']
+    package_dir={'modred': 'modred'},
+    # package_data={'modred': [
+    #         'tests/files_okid/SISO/*', 
+    #         'tests/files_okid/SIMO/*', 
+    #         'tests/files_okid/MISO/*', 
+    #         'tests/files_okid/MIMO/*']},
+    install_requires=['numpy', 'future']
     )
