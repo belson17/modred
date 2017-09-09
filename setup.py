@@ -37,9 +37,9 @@ setup(
     author_email=(
         'brandt.belson@gmail.com, Jonathan.Tu@navy.mil, cwrowley@princeton.edu'),
     url='https://pythonhosted.org/modred',
-    maintainer=('Brandt Belson, Jonathan Tu, and Clancy Rowley;'
-            'repacked and ported for Python 3 by Pierre Augier'),
-    maintainer_email='brandt.belson@gmail.com',
+    maintainer=('Brandt Belson, Jonathan Tu, and Clancy Rowley; '
+            'repacked & ported for Python3 by Pierre Augier'),
+    maintainer_email='modred@googlegroups.com',
     license='Free BSD',
     classifiers=[
         # How mature is this project? Common values are

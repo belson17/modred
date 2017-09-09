@@ -12,7 +12,7 @@ Minor bug fix to OKID tests.
 **Bug fixes**
 
 * OKID files needed for tests are included in the source distribution. All 
-doc files are also included.
+  doc files are also included.
 
 
 ------------

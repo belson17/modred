@@ -40,7 +40,8 @@ extensions = [
           #'sphinx.ext.doctest',
           #'ipython_console_highlighting',
           #'inheritance_diagram',
-          'sphinx.ext.pngmath']
+          'sphinx.ext.imgmath']
+          # 'sphinx.ext.pngmath']
           #'sphinx.ext.jsmath',
           #'numpydoc']
 
@@ -58,7 +59,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'modred'
-copyright = u'2012, Brandt Belson, Jonathan Tu, and Clarence W. Rowley'
+copyright = u'2017, Brandt Belson, Jonathan Tu, and Clarence W. Rowley'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

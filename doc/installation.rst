@@ -25,14 +25,14 @@ The parallel tests require mpi4py to be installed::
   python -c 'import modred.tests; modred.tests.run()'
   mpiexec -n 3 python -c 'import modred.tests; modred.tests.run()'
   
-Please report problems to  brandt.belson@gmail.com [-at-] gmail [-dot-] com with the following:
+Please report problems to modred@googlegroups.com with the following:
 
 1. Copy of the entire output of the installation and tests
 2. Python version (``python -V``)
 3. Numpy version (``python -c 'import numpy; print numpy.__version__'``)
 4. Your operating system
 
-The documentation is available at: http://packages.python.org/modred.
+The documentation is available at http://pythonhosted.org/modred/.
 
 While unnecessary, you can build the documentation with Sphinx 
 (http://sphinx.pocoo.org). 
