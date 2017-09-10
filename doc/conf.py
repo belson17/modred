@@ -12,7 +12,6 @@
 # serve to show the default.
 
 import sys, os
-from modred import __version__
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -20,6 +19,9 @@ from modred import __version__
 #sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.join(os.path.join(os.path.abspath('.'), '..'), 'src'))
 sys.path.insert(0, os.path.join(os.path.join(os.path.abspath('.'), '..'), 'examples'))
+sys.path.insert(0, os.path.join(os.path.join(os.path.abspath('.'), '..'), 'modred'))
+
+from modred import __version__
 
 # -- General configuration -----------------------------------------------------
 

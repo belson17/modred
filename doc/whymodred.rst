@@ -77,7 +77,7 @@ of data for you, i.e.  it doesn't do domain decomposition for you.
 However, modred could be extended so that you can provide parallelized
 functions, allowing arbitrarily large data.  
 If you're curious about this, contact Brandt Belson and Jonathan Tu at 
-modred@googlegroups.com.  
+modred-discuss@googlegroups.com.  
 For now, a work-around is to use "fat" nodes with large amounts of memory. 
 
 

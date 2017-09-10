@@ -39,7 +39,7 @@ setup(
     url='https://pythonhosted.org/modred',
     maintainer=('Brandt Belson, Jonathan Tu, and Clancy Rowley; '
             'repacked & ported for Python3 by Pierre Augier'),
-    maintainer_email='modred@googlegroups.com',
+    maintainer_email='modred-discuss@googlegroups.com',
     license='Free BSD',
     classifiers=[
         # How mature is this project? Common values are
@@ -58,6 +58,7 @@ setup(
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6'
         ],
     packages=find_packages(exclude=['doc', 'matlab']),
     package_dir={'modred': 'modred'},
