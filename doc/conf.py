@@ -20,9 +20,9 @@
 import os
 import sys
 # sys.path.insert(0, os.path.abspath('.'))
-sys.path.insert(0, os.path.join(os.path.join(os.path.abspath('.'), '..'), 'src'))
-sys.path.insert(0, os.path.join(os.path.join(os.path.abspath('.'), '..'), 'examples'))
-sys.path.insert(0, os.path.join(os.path.join(os.path.abspath('.'), '..'), 'modred'))
+# sys.path.insert(0, os.path.join(os.path.join(os.path.abspath('.'), '..'), 'src'))
+sys.path.insert(0, os.path.join(os.path.join(os.path.abspath(__file__), '..'), 'examples'))
+sys.path.insert(0, os.path.join(os.path.join(os.path.abspath(__file__), '..'), 'modred'))
 
 
 # -- General configuration ------------------------------------------------
@@ -89,7 +89,9 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+# html_theme = 'alabaster'
+html_theme = 'default'
+
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
