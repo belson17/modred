@@ -1,6 +1,6 @@
 BPOD 
 ********** 
 
-.. automodule:: modred.bpod
+.. automodule:: bpod
    	:members:
 
