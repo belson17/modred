@@ -386,7 +386,7 @@ class TestDMDHandles(unittest.TestCase):
         np.testing.assert_equal(DMD_load.adv_proj_coeffs, adv_proj_coeffs)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_decomp(self):
         """Test DMD decomposition"""
         rtol = 1e-10
@@ -485,7 +485,7 @@ class TestDMDHandles(unittest.TestCase):
             self.adv_vec_handles[:-1])
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_modes(self):
         """Test building of modes."""
         rtol = 1e-10
@@ -509,29 +509,25 @@ class TestDMDHandles(unittest.TestCase):
                 # Compute DMD using modred.  (The properties defining a DMD mode
                 # require manipulations involving the correct decomposition, so
                 # we cannot isolate the mode computation from the decomposition
-                # step.
+                # step._
                 DMD = DMDHandles(np.vdot, verbosity=0)
                 DMD.compute_decomp(
                     vecs_arg, adv_vec_handles=adv_vecs_arg,
                     max_num_eigvals=max_num_eigvals)
 
-                # Compute the approximating linear operator relating the vecs to
-                # the adv_vecs.  Do this using the POD of the vecs rather than
-                # using the outputs of the DMD object above, as this helps
-                # maintain the independence of the reference data for the tests.
-                # This also makes sure that the inner product weights are
-                # correctly accounted for in computing the pseudo-inverse of the
-                # vecs.  (Make sure to truncate the POD basis as necessary.)
-                POD = pod.PODHandles(DMD.vec_space.inner_product, verbosity=0)
-                POD.compute_decomp(vecs_vals)
-                if max_num_eigvals is not None:
-                    POD.eigvals = POD.eigvals[:max_num_eigvals]
-                    POD.eigvecs = POD.eigvecs[:, :max_num_eigvals]
-                POD_mode_path = join(self.test_dir, 'pod_mode_%03d.pkl')
+                # Compute the projection of the approximating linear operator
+                # relating the projected vecs to the projected adv_vecs.  To do
+                # this, compute the POD modes of the projected vecs using the
+                # eigendecomposition of the projected correlation mat.
+                POD_build_coeffs = (
+                    DMD.correlation_mat_eigvecs *
+                    np.mat(np.diag(DMD.correlation_mat_eigvals ** -0.5)))
+                POD_mode_path = join(self.test_dir, 'pod_mode_%03d.txt')
                 POD_mode_handles = [
                     VecHandlePickle(POD_mode_path % i)
-                    for i in xrange(POD.eigvals.size)]
-                POD.compute_modes(range(POD.eigvals.size), POD_mode_handles)
+                    for i in xrange(DMD.correlation_mat_eigvals.size)]
+                DMD.vec_space.lin_combine(
+                    POD_mode_handles, vecs_vals, POD_build_coeffs)
 
                 # Select a subset of modes to compute.  Compute at least half
                 # the modes, and up to all of them.  Make sure to use unique
@@ -571,8 +567,8 @@ class TestDMDHandles(unittest.TestCase):
                 DMD.vec_space.lin_combine(
                     LHS_handles,
                     adv_vecs_vals,
-                    POD.eigvecs *
-                    np.mat(np.diag(POD.eigvals ** -0.5)) *
+                    DMD.correlation_mat_eigvecs *
+                    np.mat(np.diag(DMD.correlation_mat_eigvals ** -0.5)) *
                     DMD.vec_space.compute_inner_product_mat(
                         POD_mode_handles, DMD_exact_mode_handles))
                 DMD.vec_space.lin_combine(
@@ -599,8 +595,8 @@ class TestDMDHandles(unittest.TestCase):
                     POD_mode_handles,
                     DMD.vec_space.compute_inner_product_mat(
                         POD_mode_handles, adv_vecs_vals) *
-                    POD.eigvecs *
-                    np.mat(np.diag(POD.eigvals ** -0.5)) *
+                    DMD.correlation_mat_eigvecs *
+                    np.mat(np.diag(DMD.correlation_mat_eigvals ** -0.5)) *
                     DMD.vec_space.compute_inner_product_mat(
                         POD_mode_handles, DMD_proj_mode_handles))
                 DMD.vec_space.lin_combine(
@@ -968,9 +964,6 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         self.num_states = 30
         self.num_vecs = 10
 
-        # Specify truncation level
-        self.max_num_eigvals = int(np.round(self.num_states / 2))
-
         # Generate random data and write to disk using handles
         self.vecs_array = parallel.call_and_bcast(
             np.random.random, (self.num_states, self.num_vecs))
@@ -995,7 +988,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         parallel.barrier()
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
@@ -1055,7 +1048,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             self.assertEqual(v, data_members_modified[k])
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_puts_gets(self):
         """Test get and put functions"""
         # Generate some random data
@@ -1202,9 +1195,9 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             TLSqrDMD_load.adv_proj_coeffs, adv_proj_coeffs)
 
 
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_decomp(self):
-        """Test DMD decomposition"""
+        """Test TLSqrDMD decomposition"""
         rtol = 1e-10
         atol = 1e-12
 
@@ -1218,7 +1211,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             [self.vec_handles[:-1], self.vec_handles],
             [self.vec_handles[1:], self.adv_vec_handles]):
 
-            # Test that results hold for truncated or untruncated DMD
+            # Test that results hold for truncated or untruncated TLSqrDMD
             # (i.e., whether or not the underlying POD basis is
             # truncated).
             for max_num_eigvals in [None, self.num_vecs // 2]:
@@ -1353,132 +1346,133 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             self.adv_vec_handles[:-1])
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_modes(self):
         """Test building of modes."""
-        # Generate path names for saving modes to disk
-        mode_path = join(self.test_dir, 'dmd_mode_%03d.pkl')
+        rtol = 1e-10
+        atol = 1e-12
 
-        ### SEQUENTIAL DATASET ###
-        # Generate data
-        seq_vec_array = parallel.call_and_bcast(np.random.random,
-            ((self.num_states, self.num_vecs)))
-        if parallel.is_rank_zero():
-            for vec_index, handle in enumerate(self.vec_handles):
-                handle.put(np.array(seq_vec_array[:, vec_index]).squeeze())
+        # Consider sequential time series as well as non-sequential.  In the
+        # below for loop, the first elements of each zipped list correspond to a
+        # sequential time series.  The second elements correspond to a
+        # non-sequential time series.
+        for vecs_arg, adv_vecs_arg, vecs_vals, adv_vecs_vals in zip(
+            [self.vec_handles, self.vec_handles],
+            [None, self.adv_vec_handles],
+            [self.vec_handles[:-1], self.vec_handles],
+            [self.vec_handles[1:], self.adv_vec_handles]):
 
-        # Compute DMD directly from data (must truncate for TLSDMD)
-        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
-        L_low_order_eigvecs, sum_correlation_mat_eigvals,
-        sum_correlation_mat_eigvecs, proj_correlation_mat_eigvals,
-        proj_correlation_mat_eigvecs) = self._helper_compute_DMD_from_data(
-            seq_vec_array, util.InnerProductBlock(np.vdot),
-            max_num_eigvals=self.max_num_eigvals)[:-2]
+            # Test that results hold for truncated or untruncated TLSqrDMD
+            # (i.e., whether or not the underlying POD basis is
+            # truncated).
+            for max_num_eigvals in [None, self.num_vecs // 2]:
 
-        # Set the build_coeffs attribute of an empty DMD object each time, so
-        # that the modred computation uses the same coefficients as the direct
-        # computation.
-        parallel.barrier()
-        self.my_DMD.eigvals = eigvals
-        self.my_DMD.R_low_order_eigvecs = R_low_order_eigvecs
-        self.my_DMD.sum_correlation_mat_eigvals =\
-            sum_correlation_mat_eigvals
-        self.my_DMD.sum_correlation_mat_eigvecs =\
-            sum_correlation_mat_eigvecs
-        self.my_DMD.proj_correlation_mat_eigvals = proj_correlation_mat_eigvals
-        self.my_DMD.proj_correlation_mat_eigvecs = proj_correlation_mat_eigvecs
+                # Compute TLSqrDMD using modred.  (The properties defining a
+                # TLSqrDMD mode require manipulations involving the correct
+                # decomposition, so we cannot isolate the mode computation from
+                # the decomposition step.)
+                TLSqrDMD = TLSqrDMDHandles(np.vdot, verbosity=0)
+                TLSqrDMD.compute_decomp(
+                    vecs_arg, adv_vec_handles=adv_vecs_arg,
+                    max_num_eigvals=max_num_eigvals)
 
-        # Generate mode paths for saving modes to disk
-        seq_mode_path_list = [
-            mode_path % i for i in range(eigvals.size)]
-        seq_mode_indices = range(len(seq_mode_path_list))
+                # Compute the projection of the approximating linear operator
+                # relating the projected vecs to the projected adv_vecs.  To do
+                # this, compute the POD modes of the projected vecs using the
+                # eigendecomposition of the projected correlation mat.
+                proj_POD_build_coeffs = (
+                    TLSqrDMD.proj_correlation_mat_eigvecs *
+                    np.mat(np.diag(
+                        TLSqrDMD.proj_correlation_mat_eigvals ** -0.5)))
+                proj_POD_mode_path = join(
+                    self.test_dir, 'proj_pod_mode_%03d.txt')
+                proj_POD_mode_handles = [
+                    VecHandlePickle(proj_POD_mode_path % i)
+                    for i in xrange(TLSqrDMD.proj_correlation_mat_eigvals.size)]
+                TLSqrDMD.vec_space.lin_combine(
+                    proj_POD_mode_handles, vecs_vals, proj_POD_build_coeffs)
 
-        # Compute modes by passing in handles
-        self.my_DMD.compute_exact_modes(seq_mode_indices,
-            [VecHandlePickle(path) for path in seq_mode_path_list],
-            adv_vec_handles=self.vec_handles[1:])
-        self._helper_check_modes(modes_exact, seq_mode_path_list)
-        self.my_DMD.compute_proj_modes(seq_mode_indices,
-            [VecHandlePickle(path) for path in seq_mode_path_list],
-            vec_handles=self.vec_handles)
-        self._helper_check_modes(modes_proj, seq_mode_path_list)
+                # Select a subset of modes to compute.  Compute at least half
+                # the modes, and up to all of them.  Make sure to use unique
+                # values.  (This may reduce the number of modes computed.)
+                num_modes = parallel.call_and_bcast(
+                    np.random.randint,
+                    TLSqrDMD.eigvals.size // 2, TLSqrDMD.eigvals.size + 1)
+                mode_idxs = np.unique(parallel.call_and_bcast(
+                    np.random.randint,
+                    0, TLSqrDMD.eigvals.size, num_modes))
 
-        # Compute modes without passing in handles, so first set full
-        # sequential dataset as vec_handles.
-        self.my_DMD.vec_handles = self.vec_handles
-        self.my_DMD.compute_exact_modes(seq_mode_indices,
-            [VecHandlePickle(path) for path in seq_mode_path_list])
-        self._helper_check_modes(modes_exact, seq_mode_path_list)
-        self.my_DMD.compute_proj_modes(seq_mode_indices,
-            [VecHandlePickle(path) for path in seq_mode_path_list])
-        self._helper_check_modes(modes_proj, seq_mode_path_list)
+                # Create handles for the modes
+                TLSqrDMD_exact_mode_handles = [
+                    VecHandlePickle(self.exact_mode_path % i)
+                    for i in mode_idxs]
+                TLSqrDMD_proj_mode_handles = [
+                    VecHandlePickle(self.proj_mode_path % i)
+                    for i in mode_idxs]
 
-        # For exact modes, also compute by setting adv_vec_handles
-        self.my_DMD.vec_handles = None
-        self.my_DMD.adv_vec_handles = self.vec_handles[1:]
-        self.my_DMD.compute_exact_modes(seq_mode_indices,
-            [VecHandlePickle(path) for path in seq_mode_path_list])
-        self._helper_check_modes(modes_exact, seq_mode_path_list)
+                # Compute modes
+                TLSqrDMD.compute_exact_modes(
+                    mode_idxs, TLSqrDMD_exact_mode_handles)
+                TLSqrDMD.compute_proj_modes(
+                    mode_idxs, TLSqrDMD_proj_mode_handles)
 
-        ### NONSEQUENTIAL DATA ###
-        # Generate data
-        vec_array = parallel.call_and_bcast(np.random.random,
-            ((self.num_states, self.num_vecs)))
-        adv_vec_array = parallel.call_and_bcast(np.random.random,
-            ((self.num_states, self.num_vecs)))
-        if parallel.is_rank_zero():
-            for vec_index, (handle, adv_handle) in enumerate(
-                zip(self.vec_handles, self.adv_vec_handles)):
-                handle.put(np.array(vec_array[:, vec_index]).squeeze())
-                adv_handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
+                # Test that exact modes are eigenvectors of the approximating
+                # linear operator by checking A \Phi = \Phi \Lambda.  Do this
+                # using handles, i.e. check mode by mode.  Note that since
+                # np.vdot takes the conjugate of its second argument, whereas
+                # modred assumes a conjugate is taken on the first inner product
+                # argument, the inner product matrix in the LHS computation must
+                # be conjugated.
+                LHS_path = join(self.test_dir, 'LHS_%03d.pkl')
+                LHS_handles = [
+                    VecHandlePickle(LHS_path % i) for i in mode_idxs]
+                RHS_path = join(self.test_dir, 'RHS_%03d.pkl')
+                RHS_handles = [
+                    VecHandlePickle(RHS_path % i) for i in mode_idxs]
+                TLSqrDMD.vec_space.lin_combine(
+                    LHS_handles,
+                    adv_vecs_vals,
+                    TLSqrDMD.proj_correlation_mat_eigvecs *
+                    np.mat(np.diag(
+                        TLSqrDMD.proj_correlation_mat_eigvals ** -0.5)) *
+                    TLSqrDMD.vec_space.compute_inner_product_mat(
+                        proj_POD_mode_handles, TLSqrDMD_exact_mode_handles))
+                TLSqrDMD.vec_space.lin_combine(
+                    RHS_handles,
+                    TLSqrDMD_exact_mode_handles,
+                    np.mat(np.diag(TLSqrDMD.eigvals[mode_idxs])))
+                for LHS, RHS in zip(LHS_handles, RHS_handles):
+                    np.testing.assert_allclose(
+                        LHS.get(), RHS.get(), rtol=rtol, atol=atol)
 
-        # Compute DMD directly from data (must truncate for TLSDMD)
-        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
-        L_low_order_eigvecs, sum_correlation_mat_eigvals,
-        sum_correlation_mat_eigvecs, proj_correlation_mat_eigvals,
-        proj_correlation_mat_eigvecs ) = self._helper_compute_DMD_from_data(
-            vec_array, util.InnerProductBlock(np.vdot),
-            adv_vec_array=adv_vec_array,
-            max_num_eigvals=self.max_num_eigvals)[:-2]
-
-        # Set the build_coeffs attribute of an empty DMD object each time, so
-        # that the modred computation uses the same coefficients as the direct
-        # computation.
-        parallel.barrier()
-        self.my_DMD.eigvals = eigvals
-        self.my_DMD.R_low_order_eigvecs = R_low_order_eigvecs
-        self.my_DMD.sum_correlation_mat_eigvals =\
-            sum_correlation_mat_eigvals
-        self.my_DMD.sum_correlation_mat_eigvecs =\
-            sum_correlation_mat_eigvecs
-        self.my_DMD.proj_correlation_mat_eigvals = proj_correlation_mat_eigvals
-        self.my_DMD.proj_correlation_mat_eigvecs = proj_correlation_mat_eigvecs
-
-        # Generate mode paths for saving modes to disk
-        mode_path_list = [
-            mode_path % i for i in range(eigvals.size)]
-        mode_indices = range(len(mode_path_list))
-
-        # Compute modes by passing in handles
-        self.my_DMD.compute_exact_modes(mode_indices,
-            [VecHandlePickle(path) for path in mode_path_list],
-            adv_vec_handles=self.adv_vec_handles)
-        self._helper_check_modes(modes_exact, mode_path_list)
-        self.my_DMD.compute_proj_modes(mode_indices,
-            [VecHandlePickle(path) for path in mode_path_list],
-            vec_handles=self.vec_handles)
-        self._helper_check_modes(modes_proj, mode_path_list)
-
-        # Compute modes without passing in handles, so first set full
-        # sequential dataset as vec_handles.
-        self.my_DMD.vec_handles = self.vec_handles
-        self.my_DMD.adv_vec_handles = self.adv_vec_handles
-        self.my_DMD.compute_exact_modes(mode_indices,
-            [VecHandlePickle(path) for path in mode_path_list])
-        self._helper_check_modes(modes_exact, mode_path_list)
-        self.my_DMD.compute_proj_modes(mode_indices,
-            [VecHandlePickle(path) for path in mode_path_list])
-        self._helper_check_modes(modes_proj, mode_path_list)
+                # Test that projected modes are eigenvectors of the projection
+                # of the approximating linear operator by checking
+                # U U^* A \Phi = \Phi \Lambda.  As above, check this using
+                # handles, and be careful about the order of arguments when
+                # taking inner products.
+                LHS_path = join(self.test_dir, 'LHS_%03d.pkl')
+                LHS_handles = [
+                    VecHandlePickle(LHS_path % i) for i in mode_idxs]
+                RHS_path = join(self.test_dir, 'RHS_%03d.pkl')
+                RHS_handles = [
+                    VecHandlePickle(RHS_path % i) for i in mode_idxs]
+                TLSqrDMD.vec_space.lin_combine(
+                    LHS_handles,
+                    proj_POD_mode_handles,
+                    TLSqrDMD.vec_space.compute_inner_product_mat(
+                        proj_POD_mode_handles, adv_vecs_vals) *
+                    TLSqrDMD.proj_correlation_mat_eigvecs *
+                    np.mat(np.diag(
+                        TLSqrDMD.proj_correlation_mat_eigvals ** -0.5)) *
+                    TLSqrDMD.vec_space.compute_inner_product_mat(
+                        proj_POD_mode_handles, TLSqrDMD_proj_mode_handles))
+                TLSqrDMD.vec_space.lin_combine(
+                    RHS_handles,
+                    TLSqrDMD_proj_mode_handles,
+                    np.mat(np.diag(TLSqrDMD.eigvals[mode_idxs])))
+                for LHS, RHS in zip(LHS_handles, RHS_handles):
+                    np.testing.assert_allclose(
+                        LHS.get(), RHS.get(), rtol=rtol, atol=atol)
 
 
     @unittest.skip('Testing something else.')
