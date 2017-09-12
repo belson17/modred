@@ -1080,7 +1080,7 @@ def compute_TLSqrDMD_matrices_snaps_method(
         proj_correlation_mat_eigvals ** -0.5))
     low_order_linear_map = (
         proj_correlation_mat_eigvals_sqrt_inv *
-        proj_correlation_mat_eigvecs.conj().H *
+        proj_correlation_mat_eigvecs.H *
         summed_correlation_mats_eigvecs *
         summed_correlation_mats_eigvecs.H *
         cross_correlation_mat *
@@ -1120,6 +1120,7 @@ def compute_TLSqrDMD_matrices_snaps_method(
     else:
         raise ValueError(('Number of cols in vecs does not match '
             'number of rows in build_coeffs matrix.'))
+
 
     if return_all:
         return (
