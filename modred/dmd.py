@@ -1598,13 +1598,13 @@ class TLSqrDMDHandles(DMDHandles):
         # unadvanced snapshots only.  Compute the cross correlation matrix
         # involving the unadvanced and advanced snapshots separately.
         else:
-            self.correlation_mat = \
+            self.correlation_mat =\
                 self.vec_space.compute_symmetric_inner_product_mat(
                 self.vec_handles)
-            self.cross_correlation_mat = \
+            self.cross_correlation_mat =\
                 self.vec_space.compute_inner_product_mat(
                 self.vec_handles, self.adv_vec_handles)
-            self.adv_correlation_mat = \
+            self.adv_correlation_mat =\
                 self.vec_space.compute_symmetric_inner_product_mat(
                 self.adv_vec_handles)
 
@@ -1731,6 +1731,15 @@ class TLSqrDMDHandles(DMDHandles):
             proj_correlation_mat_eigvals_dest)
         self.put_proj_correlation_mat_eigvecs(
             proj_correlation_mat_eigvecs_dest)
+
+
+    def get_adv_correlation_mat(self, src):
+        """Gets the advanced correlation matrix from source (memory or file).
+
+        Args:
+            ``src``: Source from which to retrieve correlation matrix.
+        """
+        self.adv_correlation_mat = parallel.call_and_bcast(self.get_mat, src)
 
 
     def put_correlation_mat_eigvals(self, dest):
