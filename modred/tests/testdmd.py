@@ -25,6 +25,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
         self.num_states = 30
         self.num_vecs = 10
 
+
     def test_all(self):
         rtol = 1e-10
         atol = 1e-12
@@ -89,11 +90,6 @@ class TestDMDArraysFunctions(unittest.TestCase):
                                 inner_product_weights=weights,
                                 max_num_eigvals=max_num_eigvals,
                                 return_all=True)
-                            (vecs_POD_modes, vecs_POD_eigvals,
-                            vecs_POD_eigvecs) =\
-                            pod.compute_POD_matrices_snaps_method(
-                                vecs_vals, inner_product_weights=weights,
-                                return_all=True)[:3]
                             exact_modes_sliced, proj_modes_sliced =\
                             compute_DMD_matrices_snaps_method(
                                 vecs_arg, adv_vecs=adv_vecs_arg,
@@ -145,23 +141,19 @@ class TestDMDArraysFunctions(unittest.TestCase):
                             rtol=rtol, atol=atol)
 
                         # Compute the approximating linear operator relating the
-                        # vecs to the adv_vecs.  Do this using the POD of the
-                        # vecs rather than using the outputs of the DMD object
-                        # above, as this helps maintain the independence of the
-                        # reference data for the tests.  This also makes sure
-                        # that the inner product weights are correctly accounted
-                        # for in computing the pseudo-inverse of the vecs.
-                        # (Make sure to truncate the POD basis as necessary.)
-                        vecs_POD_modes = vecs_POD_modes[:, :eigvals.size]
-                        vecs_POD_eigvals = vecs_POD_eigvals[:eigvals.size]
-                        vecs_POD_eigvecs = vecs_POD_eigvecs[:, :eigvals.size]
+                        # vecs to the adv_vecs.  To do this, use the
+                        # eigendecomposition of the correlation mat.
+                        vecs_POD_build_coeffs = (
+                            correlation_mat_eigvecs *
+                            np.mat(np.diag(correlation_mat_eigvals ** -0.5)))
+                        vecs_POD_modes = vecs_vals * vecs_POD_build_coeffs
                         approx_linear_op = (
-                            adv_vecs_vals * vecs_POD_eigvecs *
-                            np.mat(np.diag(vecs_POD_eigvals ** -0.5)) *
+                            adv_vecs_vals * correlation_mat_eigvecs *
+                            np.mat(np.diag(correlation_mat_eigvals ** -0.5)) *
                             vecs_POD_modes.H)
                         low_order_linear_op = IP(
                             vecs_POD_modes,
-                            IP(approx_linear_op.T, vecs_POD_modes))
+                            IP(approx_linear_op.H, vecs_POD_modes))
 
                         # Test the left and right eigenvectors of the low-order
                         # (projected) approximating linear operator.
@@ -177,7 +169,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
                         # Test the exact modes, which are eigenvectors of the
                         # approximating linear operator.
                         np.testing.assert_allclose(
-                            IP(approx_linear_op.T, exact_modes),
+                            IP(approx_linear_op.H, exact_modes),
                             exact_modes * np.mat(np.diag(eigvals)),
                             rtol=rtol, atol=atol)
 
@@ -187,7 +179,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
                         np.testing.assert_allclose(
                             vecs_POD_modes * IP(
                                 vecs_POD_modes,
-                                IP(approx_linear_op.T, proj_modes)),
+                                IP(approx_linear_op.H, proj_modes)),
                             proj_modes * np.mat(np.diag(eigvals)),
                             rtol=rtol, atol=atol)
 
@@ -210,7 +202,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
                             rtol=rtol, atol=atol)
 
 
-#@unittest.skip('Testing something else.')
+@unittest.skip('Testing something else.')
 class TestDMDHandles(unittest.TestCase):
     def setUp(self):
         # Specify output locations
@@ -733,7 +725,7 @@ class TestDMDHandles(unittest.TestCase):
                     proj_coeffs, proj_coeffs_true, rtol=rtol, atol=atol)
 
 
-@unittest.skip('Testing something else.')
+#@unittest.skip('Testing something else.')
 @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestTLSqrDMDArraysFunctions(unittest.TestCase):
     def setUp(self):
@@ -744,217 +736,224 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
         self.max_num_eigvals = int(np.round(self.num_states / 2))
 
 
-    def _helper_compute_DMD_from_data(
-        self, vecs, inner_product, adv_vecs=None, max_num_eigvals=None):
-        if adv_vecs is None:
-            adv_vecs = vecs[:, 1:]
-            vecs = vecs[:, :-1]
-
-        # Inner products
-        correlation_mat = inner_product(vecs, vecs)
-        cross_correlation_mat = inner_product(vecs, adv_vecs)
-        adv_correlation_mat = inner_product(adv_vecs, adv_vecs)
-        summed_correlation_mats = correlation_mat + adv_correlation_mat
-
-        # SVD of stacked data vectors
-        stacked_V, stacked_Sigma, dummy = util.svd(summed_correlation_mats)
-        stacked_U = vecs.dot(stacked_V).dot(np.diag(stacked_Sigma ** -0.5))
-
-        # Truncate if necessary
-        if max_num_eigvals is not None and (
-            max_num_eigvals < stacked_Sigma.size):
-            stacked_V = stacked_V[:, :max_num_eigvals]
-            stacked_Sigma = stacked_Sigma[:max_num_eigvals]
-            stacked_U = stacked_U[:, :max_num_eigvals]
-
-        # Project data
-        vecs_proj = np.mat(vecs) * stacked_V * stacked_V.T
-        adv_vecs_proj = np.mat(adv_vecs) * stacked_V * stacked_V.T
-
-        # SVD of projected data
-        proj_correlation_mat = inner_product(vecs_proj, vecs_proj)
-        proj_V, proj_Sigma, dummy = util.svd(proj_correlation_mat)
-        proj_U = vecs_proj.dot(proj_V).dot(np.diag(proj_Sigma ** -0.5))
-
-        # Truncate if necessary
-        if max_num_eigvals is not None and (
-            max_num_eigvals < proj_Sigma.size):
-            proj_V = proj_V[:, :max_num_eigvals]
-            proj_Sigma = proj_Sigma[:max_num_eigvals]
-            proj_U = proj_U[:, :max_num_eigvals]
-
-        A_tilde = inner_product(
-            proj_U, adv_vecs_proj).dot(proj_V).dot(np.diag(proj_Sigma ** -0.5))
-        eigvals, W, Z = util.eig_biorthog(A_tilde, scale_choice='left')
-        build_coeffs_proj = proj_V.dot(np.diag(proj_Sigma ** -0.5)).dot(W)
-        build_coeffs_exact = (
-            proj_V.dot(np.diag(proj_Sigma ** -0.5)).dot(W).dot(
-            np.diag(eigvals ** -1.)))
-        modes_proj = vecs_proj.dot(build_coeffs_proj)
-        modes_exact = adv_vecs_proj.dot(build_coeffs_exact)
-        adj_modes = proj_U.dot(Z)
-        spectral_coeffs = np.abs(np.array(
-            inner_product(adj_modes, np.mat(vecs_proj[:, 0]))).squeeze())
-
-        return (
-            modes_exact, modes_proj, spectral_coeffs, eigvals,
-            W, Z, stacked_Sigma, stacked_V, proj_Sigma, proj_V,
-            correlation_mat, adv_correlation_mat, cross_correlation_mat)
-
-
-    def _helper_test_mat_to_sign(
-        self, true_vals, test_vals, rtol=1e-12, atol=1e-16):
-        # Check that shapes are the same
-        self.assertEqual(len(true_vals.shape), len(test_vals.shape))
-        for shape_idx in range(len(true_vals.shape)):
-            self.assertEqual(
-                true_vals.shape[shape_idx], test_vals.shape[shape_idx])
-
-        # Check values column by columns.  To allow for matrices or arrays,
-        # turn columns into arrays and squeeze them (forcing 1D arrays).  This
-        # avoids failures due to trivial shape mismatches.
-        for col_idx in range(true_vals.shape[1]):
-            true_col = np.array(true_vals[:, col_idx]).squeeze()
-            test_col = np.array(test_vals[:, col_idx]).squeeze()
-            self.assertTrue(
-                np.allclose(true_col, test_col, rtol=rtol, atol=atol)
-                or
-                np.allclose(-true_col, test_col, rtol=rtol, atol=atol))
-
-
-    def _helper_check_decomp(
-        self, method_type, vecs, mode_indices, inner_product,
-        inner_product_weights, rtol, atol, adv_vecs=None,
-        max_num_eigvals=None):
-
-        # Compute reference values for testing DMD computation
-        (modes_exact_true, modes_proj_true, spectral_coeffs_true,
-            eigvals_true, R_low_order_eigvecs_true, L_low_order_eigvecs_true,
-            summed_correlation_mats_eigvals_true,
-            summed_correlation_mats_eigvecs_true,
-            proj_correlation_mat_eigvals_true,
-            proj_correlation_mat_eigvecs_true,
-            correlation_mat_true, adv_correlation_mat_true,
-            cross_correlation_mat_true) = (
-            self._helper_compute_DMD_from_data(
-            vecs, inner_product, adv_vecs=adv_vecs,
-            max_num_eigvals=max_num_eigvals))
-
-        # Compute DMD using modred method of choice
-        if method_type == 'snaps':
-            (modes_exact, modes_proj, spectral_coeffs, eigvals,
-                R_low_order_eigvecs, L_low_order_eigvecs,
-                summed_correlation_mats_eigvals,
-                summed_correlation_mats_eigvecs,
-                proj_correlation_mat_eigvals, proj_correlation_mat_eigvecs,
-                correlation_mat, adv_correlation_mat, cross_correlation_mat) =\
-                compute_TLSqrDMD_matrices_snaps_method(
-                vecs, mode_indices, adv_vecs=adv_vecs,
-                inner_product_weights=inner_product_weights,
-                max_num_eigvals=max_num_eigvals, return_all=True)
-        elif method_type == 'direct':
-            (modes_exact, modes_proj, spectral_coeffs, eigvals,
-                R_low_order_eigvecs, L_low_order_eigvecs,
-                summed_correlation_mats_eigvals,
-                summed_correlation_mats_eigvecs,
-                proj_correlation_mat_eigvals, proj_correlation_mat_eigvecs) =\
-                compute_TLSqrDMD_matrices_direct_method(
-                vecs, mode_indices, adv_vecs=adv_vecs,
-                inner_product_weights=inner_product_weights,
-                max_num_eigvals=max_num_eigvals, return_all=True)
-        else:
-            raise ValueError('Invalid DMD matrix method.')
-
-        # Compare values to reference values, allowing for sign differences in
-        # some cases.  For the low-order eigenvectors, check that the elements
-        # differ at most by a sign, as the eigenvectors may vary by sign even
-        # element-wise.  This is due to the fact that the low-order linear maps
-        # may have sign differences, as they depend on the correlation matrix
-        # eigenvectors, which themselves may have column-wise sign differences.
-        self._helper_test_mat_to_sign(
-            modes_exact, modes_exact_true[:, mode_indices], rtol=rtol,
-            atol=atol)
-        self._helper_test_mat_to_sign(
-            modes_proj, modes_proj_true[:, mode_indices], rtol=rtol,
-            atol=atol)
-        self._helper_test_mat_to_sign(
-            np.mat(spectral_coeffs), np.mat(spectral_coeffs_true),
-            rtol=rtol, atol=atol)
-        np.testing.assert_allclose(
-            eigvals, eigvals_true, rtol=rtol, atol=atol)
-        np.testing.assert_allclose(
-            np.abs(R_low_order_eigvecs / R_low_order_eigvecs_true),
-            np.ones(R_low_order_eigvecs.shape),
-            rtol=rtol, atol=atol)
-        np.testing.assert_allclose(
-            np.abs(L_low_order_eigvecs / L_low_order_eigvecs_true),
-            np.ones(L_low_order_eigvecs.shape),
-            rtol=rtol, atol=atol)
-        np.testing.assert_allclose(
-            summed_correlation_mats_eigvals,
-            summed_correlation_mats_eigvals_true, rtol=rtol, atol=atol)
-        self._helper_test_mat_to_sign(
-            summed_correlation_mats_eigvecs,
-            summed_correlation_mats_eigvecs_true, rtol=rtol, atol=atol)
-        np.testing.assert_allclose(
-            proj_correlation_mat_eigvals, proj_correlation_mat_eigvals_true,
-            rtol=rtol, atol=atol)
-        self._helper_test_mat_to_sign(
-            proj_correlation_mat_eigvecs, proj_correlation_mat_eigvecs_true,
-            rtol=rtol, atol=atol)
-        if method_type == 'snaps':
-            np.testing.assert_allclose(
-                correlation_mat, correlation_mat_true, rtol=rtol, atol=atol)
-            np.testing.assert_allclose(
-                adv_correlation_mat, adv_correlation_mat_true, rtol=rtol,
-                atol=atol)
-            np.testing.assert_allclose(
-                cross_correlation_mat, cross_correlation_mat_true,
-                rtol=rtol, atol=atol)
-
-
     def test_all(self):
-        rtol = 1e-7
-        atol = 1e-15
-        mode_indices = [2, 0, 3]
+        rtol = 1e-10
+        atol = 1e-12
 
-        # Generate weight matrices for inner products, which should all be
-        # positive semidefinite.
-        weights_full = np.mat(
-            np.random.random((self.num_states, self.num_states)))
-        weights_full = 0.5 * (weights_full + weights_full.T)
-        weights_full = weights_full + self.num_states * np.eye(self.num_states)
-        weights_diag = np.random.random(self.num_states)
-        weights_list = [None, weights_diag, weights_full]
-        for weights in weights_list:
-            IP = VectorSpaceMatrices(weights=weights).compute_inner_product_mat
-            vecs = np.random.random((self.num_states, self.num_vecs))
+        # Generate weights to test different inner products.
+        ws = np.identity(self.num_states)
+        ws[0, 0] = 2.
+        ws[2, 1] = 0.3
+        ws[1, 2] = 0.3
+        weights_list = [None, np.random.random(self.num_states), ws]
 
-            # Test DMD for a sequential dataset, method of snapshots
-            self._helper_check_decomp(
-                'snaps', vecs, mode_indices, IP, weights, rtol, atol,
-                adv_vecs=None, max_num_eigvals=self.max_num_eigvals)
+        # Generate random snapshot data
+        vecs_mat = np.mat(np.random.random((self.num_states, self.num_vecs)))
+        adv_vecs_mat = np.mat(np.random.random(
+            (self.num_states, self.num_vecs)))
 
-            # Test DMD for a sequential dataset, direct method
-            self._helper_check_decomp(
-                'direct', vecs, mode_indices, IP, weights, rtol, atol,
-                adv_vecs=None, max_num_eigvals=self.max_num_eigvals)
+        # Consider sequential time series as well as non-sequential.  In the
+        # below for loop, the first elements of each zipped list correspond to
+        # a sequential time series.  The second elements correspond to a
+        # non-sequential time series.
+        for vecs_arg, adv_vecs_arg, vecs_vals, adv_vecs_vals in zip(
+            [vecs_mat, vecs_mat],
+            [None, adv_vecs_mat],
+            [vecs_mat[:, :-1], vecs_mat],
+            [vecs_mat[:, 1:], adv_vecs_mat]):
 
-            # Generate data for a non-sequential dataset
-            adv_vecs = np.random.random((self.num_states, self.num_vecs))
+            # Stack the data matrices, for doing total-least squares
+            stacked_vecs_mat = np.mat(np.vstack((vecs_vals, adv_vecs_vals)))
 
-            # Test DMD for a non-sequential dataset, method of snapshots
-            self._helper_check_decomp(
-                'snaps', vecs, mode_indices, IP, weights, rtol, atol,
-                adv_vecs=adv_vecs, max_num_eigvals=self.max_num_eigvals)
+            # Test both method of snapshots and direct method
+            for method in ['snaps', 'direct']:
 
-            # Test DMD for a non-sequential dataset, direct method
-            self._helper_check_decomp(
-                'direct', vecs, mode_indices, IP, weights, rtol, atol,
-                adv_vecs=adv_vecs, max_num_eigvals=self.max_num_eigvals)
+                # Consider different inner product weights
+                for weights in weights_list:
+                    IP = VectorSpaceMatrices(
+                        weights=weights).compute_inner_product_mat
+                    symmetric_IP = VectorSpaceMatrices(
+                        weights=weights).compute_symmetric_inner_product_mat
+
+                    # Define inner product for stacked vectors
+                    if weights is None:
+                        stacked_weights = None
+                    elif len(weights.shape) == 1:
+                        stacked_weights = np.hstack((weights, weights))
+                    elif len(weights.shape) == 2:
+                        stacked_weights = np.vstack((
+                            np.hstack((weights, 0. * weights)),
+                            np.hstack((0. * weights, weights))))
+                    else:
+                        raise ValueError('Invalid inner product weights.')
+                    stacked_IP = VectorSpaceMatrices(
+                        weights=stacked_weights).compute_inner_product_mat
+
+                    # Test that results hold for truncated or untruncated DMD
+                    # (i.e., whether or not the underlying POD basis is
+                    # truncated).
+                    for max_num_eigvals in [None, self.num_states // 2]:
+
+                        # Choose subset of modes to compute, for testing mode
+                        # indices argument
+                        if max_num_eigvals is None:
+                            mode_indices = np.unique(np.random.randint(
+                                0, high=np.linalg.matrix_rank(vecs_vals),
+                                size=np.linalg.matrix_rank(vecs_vals) // 2))
+                        else:
+                            mode_indices = np.unique(np.random.randint(
+                                0, high=max_num_eigvals,
+                                size=max_num_eigvals // 2))
+
+                        # Compute TLSqrDMD using appropriate method.  Then
+                        # compute transformation of raw data for TLSqrDMD using
+                        # POD of the stacked vecs, and transform the data.  Also
+                        # compute a random subset of the TLSqrDMD modes, in
+                        # preparation for later tests.
+                        if method == 'snaps':
+                            (exact_modes, proj_modes, eigvals, spectral_coeffs,
+                            R_low_order_eigvecs, L_low_order_eigvecs,
+                            summed_correlation_mats_eigvals,
+                            summed_correlation_mats_eigvecs,
+                            proj_correlation_mat_eigvals,
+                            proj_correlation_mat_eigvecs,
+                            correlation_mat, adv_correlation_mat,
+                            cross_correlation_mat) =\
+                                compute_TLSqrDMD_matrices_snaps_method(
+                                    vecs_arg, adv_vecs=adv_vecs_arg,
+                                    inner_product_weights=weights,
+                                    max_num_eigvals=max_num_eigvals,
+                                    return_all=True)
+                            exact_modes_sliced, proj_modes_sliced =\
+                                compute_TLSqrDMD_matrices_snaps_method(
+                                    vecs_arg, adv_vecs=adv_vecs_arg,
+                                    inner_product_weights=weights,
+                                    max_num_eigvals=max_num_eigvals,
+                                    return_all=True)[:2]
+
+                            # For method of snapshots, test correlation mats
+                            # values by simply recomputing them.
+                            np.testing.assert_allclose(
+                                IP(vecs_vals, vecs_vals), correlation_mat,
+                                rtol=rtol, atol=atol)
+                            np.testing.assert_allclose(
+                                IP(vecs_vals, adv_vecs_vals),
+                                cross_correlation_mat,
+                                rtol=rtol, atol=atol)
+                            np.testing.assert_allclose(
+                                IP(adv_vecs_vals, adv_vecs_vals),
+                                adv_correlation_mat,
+                                rtol=rtol, atol=atol)
+
+                        elif method == 'direct':
+                            (exact_modes, proj_modes, eigvals, spectral_coeffs,
+                            R_low_order_eigvecs, L_low_order_eigvecs,
+                            summed_correlation_mats_eigvals,
+                            summed_correlation_mats_eigvecs,
+                            proj_correlation_mat_eigvals,
+                            proj_correlation_mat_eigvecs) =\
+                                compute_TLSqrDMD_matrices_direct_method(
+                                    vecs_arg, adv_vecs=adv_vecs_arg,
+                                    inner_product_weights=weights,
+                                    max_num_eigvals=max_num_eigvals,
+                                    return_all=True)
+                            exact_modes_sliced, proj_modes_sliced =\
+                                compute_TLSqrDMD_matrices_direct_method(
+                                    vecs_arg, adv_vecs=adv_vecs_arg,
+                                    inner_product_weights=weights,
+                                    max_num_eigvals=max_num_eigvals,
+                                    return_all=True)[:2]
+
+                        else:
+                            raise ValueError('Invalid DMD method.')
+
+                        # Test summed correlation mat eigenvalues and
+                        # eigenvectors
+                        np.testing.assert_allclose((
+                            IP(vecs_vals, vecs_vals) +
+                            IP(adv_vecs_vals, adv_vecs_vals)) *
+                            summed_correlation_mats_eigvecs,
+                            summed_correlation_mats_eigvecs * np.mat(np.diag(
+                                summed_correlation_mats_eigvals)),
+                            rtol=rtol, atol=atol)
+
+                        # Test projected correlation mat eigenvalues and
+                        # eigenvectors
+                        proj_vecs_vals = (
+                            vecs_vals *
+                            summed_correlation_mats_eigvecs *
+                            summed_correlation_mats_eigvecs.H)
+                        proj_adv_vecs_vals = (
+                            adv_vecs_vals *
+                            summed_correlation_mats_eigvecs *
+                            summed_correlation_mats_eigvecs.H)
+                        np.testing.assert_allclose(
+                            IP(proj_vecs_vals, proj_vecs_vals) *
+                            proj_correlation_mat_eigvecs,
+                            proj_correlation_mat_eigvecs * np.mat(np.diag(
+                                proj_correlation_mat_eigvals)),
+                            rtol=rtol, atol=atol)
+
+                        # Compute the approximating linear operator relating the
+                        # projected vecs to the projected adv_vecs.  To do this,
+                        # compute the POD of the projected vecs using the
+                        # eigendecomposition of the projected correlation mat.
+                        proj_vecs_POD_build_coeffs = (
+                            proj_correlation_mat_eigvecs *
+                            np.mat(np.diag(
+                                proj_correlation_mat_eigvals ** -0.5)))
+                        proj_vecs_POD_modes = (
+                            proj_vecs_vals * proj_vecs_POD_build_coeffs)
+                        approx_linear_op = (
+                            proj_adv_vecs_vals * proj_correlation_mat_eigvecs *
+                            np.mat(np.diag(
+                                proj_correlation_mat_eigvals ** -0.5)) *
+                            proj_vecs_POD_modes.H)
+                        low_order_linear_op = IP(
+                            proj_vecs_POD_modes,
+                            IP(approx_linear_op.H, proj_vecs_POD_modes))
+
+                        # Test the left and right eigenvectors of the low-order
+                        # (projected) approximating linear operator.
+                        np.testing.assert_allclose(
+                            low_order_linear_op * R_low_order_eigvecs,
+                            R_low_order_eigvecs * np.mat(np.diag(eigvals)),
+                            rtol=rtol, atol=atol)
+                        np.testing.assert_allclose(
+                            L_low_order_eigvecs.H * low_order_linear_op,
+                            np.mat(np.diag(eigvals)) * L_low_order_eigvecs.H,
+                            rtol=rtol, atol=atol)
+
+                        # Test the exact modes, which are eigenvectors of the
+                        # approximating linear operator.
+                        np.testing.assert_allclose(
+                            IP(approx_linear_op.H, exact_modes),
+                            exact_modes * np.mat(np.diag(eigvals)),
+                            rtol=rtol, atol=atol)
+
+                        # Test the projected modes, which are eigenvectors of
+                        # the approximating linear operator projected onto the
+                        # POD modes of the vecs.
+                        np.testing.assert_allclose(
+                            proj_vecs_POD_modes * IP(
+                                proj_vecs_POD_modes,
+                                IP(approx_linear_op.H, proj_modes)),
+                            proj_modes * np.mat(np.diag(eigvals)),
+                            rtol=rtol, atol=atol)
+
+                        # Test spectral coefficients against an explicit
+                        # projection using the adjoint DMD modes.
+                        adjoint_modes = (
+                            proj_vecs_POD_modes * L_low_order_eigvecs)
+                        np.testing.assert_allclose(
+                            np.array(np.abs(IP(
+                                adjoint_modes,
+                                proj_vecs_vals[:, 0]))).squeeze(),
+                            spectral_coeffs,
+                            rtol=rtol, atol=atol)
 
 
-@unittest.skip('others')
+@unittest.skip('Testing something else.')
 class TestTLSqrDMDHandles(unittest.TestCase):
     def setUp(self):
         if not os.access('.', os.W_OK):
