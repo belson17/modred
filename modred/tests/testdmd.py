@@ -18,7 +18,7 @@ from modred import util
 from modred import pod
 
 
-@unittest.skip('Testing something else.')
+#@unittest.skip('Testing something else.')
 @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestDMDArraysFunctions(unittest.TestCase):
     def setUp(self):
@@ -244,7 +244,7 @@ class TestDMDHandles(unittest.TestCase):
         parallel.barrier()
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
@@ -300,7 +300,7 @@ class TestDMDHandles(unittest.TestCase):
             self.assertEqual(v, data_members_modified[k])
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_puts_gets(self):
         """Test get and put functions"""
         # Generate some random data
@@ -386,7 +386,7 @@ class TestDMDHandles(unittest.TestCase):
         np.testing.assert_equal(DMD_load.adv_proj_coeffs, adv_proj_coeffs)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_decomp(self):
         """Test DMD decomposition"""
         rtol = 1e-10
@@ -485,7 +485,7 @@ class TestDMDHandles(unittest.TestCase):
             self.adv_vec_handles[:-1])
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_modes(self):
         """Test building of modes."""
         rtol = 1e-10
@@ -608,7 +608,7 @@ class TestDMDHandles(unittest.TestCase):
                         LHS.get(), RHS.get(), rtol=rtol, atol=atol)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_spectrum(self):
         """Test DMD spectrum"""
         rtol = 1e-10
@@ -660,7 +660,7 @@ class TestDMDHandles(unittest.TestCase):
                     spectral_coeffs, spectral_coeffs_true, rtol=rtol, atol=atol)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):
         """Test projection coefficients"""
         rtol = 1e-10
@@ -718,7 +718,8 @@ class TestDMDHandles(unittest.TestCase):
                 np.testing.assert_allclose(
                     adv_proj_coeffs, adv_proj_coeffs_true, rtol=rtol, atol=atol)
 
-@unittest.skip('Testing something else.')
+
+#@unittest.skip('Testing something else.')
 @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestTLSqrDMDArraysFunctions(unittest.TestCase):
     def setUp(self):
@@ -995,7 +996,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         parallel.barrier()
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly"""
         # Get default data member values
@@ -1055,7 +1056,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             self.assertEqual(v, data_members_modified[k])
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_puts_gets(self):
         """Test get and put functions"""
         # Generate some random data
@@ -1202,7 +1203,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             TLSqrDMD_load.adv_proj_coeffs, adv_proj_coeffs)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_decomp(self):
         """Test TLSqrDMD decomposition"""
         rtol = 1e-10
@@ -1353,7 +1354,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             self.adv_vec_handles[:-1])
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_modes(self):
         """Test building of modes."""
         rtol = 1e-10
@@ -1482,7 +1483,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                         LHS.get(), RHS.get(), rtol=rtol, atol=atol)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_spectrum(self):
         """Test TLSqrDMD spectrum"""
         rtol = 1e-10
