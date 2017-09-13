@@ -682,9 +682,9 @@ class TestDMDHandles(unittest.TestCase):
             for max_num_eigvals in [None, self.num_vecs // 2]:
 
                 # Compute DMD using modred.  (Testing the DMD projection
-                # coefficients the correct DMD decomposition and modes, so we
-                # cannot isolate the projection coefficient computation from
-                # those computations.)
+                # coefficients requires the correct DMD decomposition and modes,
+                # so we cannot isolate the projection coefficient computation
+                # from those computations.)
                 DMD = DMDHandles(np.vdot, verbosity=0)
                 DMD.compute_decomp(
                     vecs_arg, adv_vec_handles=adv_vecs_arg,
@@ -700,13 +700,13 @@ class TestDMDHandles(unittest.TestCase):
                     V.VecHandlePickle(self.proj_mode_path % i)
                     for i in mode_idxs]
                 DMD.compute_proj_modes(mode_idxs, proj_mode_handles)
-                proj_coeffs_true = np.array(
+                proj_coeffs_true = (
                     np.linalg.inv(
                         DMD.vec_space.compute_symmetric_inner_product_mat(
                             proj_mode_handles)) *
                     DMD.vec_space.compute_inner_product_mat(
                         proj_mode_handles, vecs_vals))
-                adv_proj_coeffs_true = np.array(
+                adv_proj_coeffs_true = (
                     np.linalg.inv(
                         DMD.vec_space.compute_symmetric_inner_product_mat(
                             proj_mode_handles)) *
@@ -715,7 +715,8 @@ class TestDMDHandles(unittest.TestCase):
                 proj_coeffs, adv_proj_coeffs = DMD.compute_proj_coeffs()
                 np.testing.assert_allclose(
                     proj_coeffs, proj_coeffs_true, rtol=rtol, atol=atol)
-
+                np.testing.assert_allclose(
+                    adv_proj_coeffs, adv_proj_coeffs_true, rtol=rtol, atol=atol)
 
 @unittest.skip('Testing something else.')
 @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
@@ -959,7 +960,6 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             self.test_dir, 'tlsqrdmd_exactmode_%03d.pkl')
         self.proj_mode_path = join(self.test_dir, 'tlsqrdmd_projmode_%03d.pkl')
 
-
         # Specify data dimensions
         self.num_states = 30
         self.num_vecs = 10
@@ -978,6 +978,13 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             zip(self.vec_handles, self.adv_vec_handles)):
             hdl.put(self.vecs_array[:, idx])
             adv_hdl.put(self.adv_vecs_array[:, idx])
+
+        # Path for saving projected (de-noised) vecs and advanced vecs to disk
+        # later.
+        self.proj_vec_path = join(
+            self.test_dir, 'tlsqrdmd_proj_vec_%03d.pkl')
+        self.proj_adv_vec_path = join(
+            self.test_dir, 'tlsqrdmd_proj_adv_vec_%03d.pkl')
 
         parallel.barrier()
 
@@ -1475,10 +1482,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                         LHS.get(), RHS.get(), rtol=rtol, atol=atol)
 
 
-
-
-
-    #@unittest.skip('Testing something else.')
+    @unittest.skip('Testing something else.')
     def test_compute_spectrum(self):
         """Test TLSqrDMD spectrum"""
         rtol = 1e-10
@@ -1513,10 +1517,8 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 proj_mat = (
                     TLSqrDMD.sum_correlation_mat_eigvecs *
                     TLSqrDMD.sum_correlation_mat_eigvecs.H)
-                proj_vec_path = join(
-                    self.test_dir, 'tlsqrdmd_proj_vec_%03d.pkl')
                 proj_vecs_handles = [
-                    VecHandlePickle(proj_vec_path % i)
+                    VecHandlePickle(self.proj_vec_path % i)
                     for i in range(len(vecs_vals))]
                 TLSqrDMD.vec_space.lin_combine(
                     proj_vecs_handles, vecs_vals, proj_mat)
@@ -1543,95 +1545,77 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                     spectral_coeffs, spectral_coeffs_true, rtol=rtol, atol=atol)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):
         """Test projection coefficients"""
         rtol = 1e-10
         atol = 1e-12
 
-        # Define an array of vectors, with corresponding handles
-        vec_array = parallel.call_and_bcast(np.random.random,
-            ((self.num_states, self.num_vecs)))
-        if parallel.is_rank_zero():
-            for vec_index, handle in enumerate(self.vec_handles):
-                handle.put(np.array(vec_array[:, vec_index]).squeeze())
+        # Consider sequential time series as well as non-sequential.  In the
+        # below for loop, the first elements of each zipped list correspond to a
+        # sequential time series.  The second elements correspond to a
+        # non-sequential time series.
+        for vecs_arg, adv_vecs_arg, vecs_vals, adv_vecs_vals in zip(
+            [self.vec_handles, self.vec_handles],
+            [None, self.adv_vec_handles],
+            [self.vec_handles[:-1], self.vec_handles],
+            [self.vec_handles[1:], self.adv_vec_handles]):
 
-        # Compute DMD manually and then set the data in a TLSqrDMDHandles
-        # object.  This way, we test only the task of computing the projection
-        # coefficients, and not also the task of computing the decomposition.
-        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
-        L_low_order_eigvecs, sum_correlation_mat_eigvals,
-        sum_correlation_mat_eigvecs, proj_correlation_mat_eigvals,
-        proj_correlation_mat_eigvecs, cross_correlation_mat, adj_modes) =\
-            self._helper_compute_DMD_from_data(
-            vec_array, util.InnerProductBlock(np.vdot),
-            max_num_eigvals=self.max_num_eigvals)
-        self.my_DMD.L_low_order_eigvecs = L_low_order_eigvecs
-        self.my_DMD.proj_correlation_mat_eigvals = proj_correlation_mat_eigvals
-        self.my_DMD.proj_correlation_mat_eigvecs = proj_correlation_mat_eigvecs
-        self.my_DMD.sum_correlation_mat_eigvecs =\
-            sum_correlation_mat_eigvecs
-        self.my_DMD.cross_correlation_mat = cross_correlation_mat
+            # Test that results hold for truncated or untruncated DMD
+            # (i.e., whether or not the underlying POD basis is
+            # truncated).
+            for max_num_eigvals in [None, self.num_vecs // 2]:
 
-        # Check the spectral coefficient values.  Compare the formula
-        # implemented in modred to a direct projection onto the adjoint modes.
-        parallel.barrier()
-        proj_coeffs, adv_proj_coeffs = self.my_DMD.compute_proj_coeffs()
-        vec_array_proj = np.array(
-            vec_array[:, :-1] *
-            sum_correlation_mat_eigvecs * sum_correlation_mat_eigvecs.H)
-        adv_vec_array_proj = np.array(
-            vec_array[:, 1:] *
-            sum_correlation_mat_eigvecs * sum_correlation_mat_eigvecs.H)
-        proj_coeffs_true = np.dot(
-            adj_modes.conj().T, vec_array_proj)
-        adv_proj_coeffs_true = np.dot(
-            adj_modes.conj().T, adv_vec_array_proj)
-        np.testing.assert_allclose(
-            proj_coeffs, proj_coeffs_true, rtol=rtol, atol=atol)
-        np.testing.assert_allclose(
-            adv_proj_coeffs, adv_proj_coeffs_true, rtol=rtol, atol=atol)
+                # Compute TLSqrDMD using modred.  (Testing the TLSqrDMD
+                # projection coefficients requires the correct TLSqrDMD
+                # decomposition and modes, so we cannot isolate the projection
+                # coefficient computation from those computations.)
+                TLSqrDMD = TLSqrDMDHandles(np.vdot, verbosity=0)
+                TLSqrDMD.compute_decomp(
+                    vecs_arg, adv_vec_handles=adv_vecs_arg,
+                    max_num_eigvals=max_num_eigvals)
 
-        # Create more data, to check a non-sequential dataset
-        adv_vec_array = parallel.call_and_bcast(np.random.random,
-            ((self.num_states, self.num_vecs)))
-        if parallel.is_rank_zero():
-            for vec_index, handle in enumerate(self.adv_vec_handles):
-                handle.put(np.array(adv_vec_array[:, vec_index]).squeeze())
+                # Compute the projection of the vecs and advanced vecs.
+                proj_mat = (
+                    TLSqrDMD.sum_correlation_mat_eigvecs *
+                    TLSqrDMD.sum_correlation_mat_eigvecs.H)
+                proj_vecs_handles = [
+                    VecHandlePickle(self.proj_vec_path % i)
+                    for i in range(len(vecs_vals))]
+                proj_adv_vecs_handles = [
+                    VecHandlePickle(self.proj_adv_vec_path % i)
+                    for i in range(len(vecs_vals))]
+                TLSqrDMD.vec_space.lin_combine(
+                    proj_vecs_handles, vecs_vals, proj_mat)
+                TLSqrDMD.vec_space.lin_combine(
+                    proj_adv_vecs_handles, adv_vecs_vals, proj_mat)
 
-        # Compute DMD manually and then set the data in a TLSqrDMDHandles
-        # object.  This way, we test only the task of computing the projection
-        # coefficients, and not also the task of computing the decomposition.
-        (modes_exact, modes_proj, eigvals, R_low_order_eigvecs,
-        L_low_order_eigvecs, sum_correlation_mat_eigvals,
-        sum_correlation_mat_eigvecs, proj_correlation_mat_eigvals,
-        proj_correlation_mat_eigvecs, cross_correlation_mat, adj_modes) =\
-            self._helper_compute_DMD_from_data(
-            vec_array, util.InnerProductBlock(np.vdot),
-            adv_vec_array=adv_vec_array, max_num_eigvals=self.max_num_eigvals)
-        self.my_DMD.L_low_order_eigvecs = L_low_order_eigvecs
-        self.my_DMD.proj_correlation_mat_eigvals = proj_correlation_mat_eigvals
-        self.my_DMD.proj_correlation_mat_eigvecs = proj_correlation_mat_eigvecs
-        self.my_DMD.sum_correlation_mat_eigvecs =\
-            sum_correlation_mat_eigvecs
-        self.my_DMD.cross_correlation_mat = cross_correlation_mat
-
-        # Check the spectral coefficient values.  Compare the formula
-        # implemented in modred to a direct projection onto the adjoint modes.
-        parallel.barrier()
-        proj_coeffs, adv_proj_coeffs= self.my_DMD.compute_proj_coeffs()
-        vec_array_proj = np.array(
-            vec_array *
-            sum_correlation_mat_eigvecs * sum_correlation_mat_eigvecs.H)
-        adv_vec_array_proj = np.array(
-            adv_vec_array *
-            sum_correlation_mat_eigvecs * sum_correlation_mat_eigvecs.H)
-        proj_coeffs_true = np.dot(adj_modes.conj().T, vec_array_proj)
-        adv_proj_coeffs_true = np.dot(adj_modes.conj().T, adv_vec_array_proj)
-        np.testing.assert_allclose(
-            proj_coeffs, proj_coeffs_true, rtol=rtol, atol=atol)
-        np.testing.assert_allclose(
-            adv_proj_coeffs, adv_proj_coeffs_true,rtol=rtol, atol=atol)
+                # Test by checking a least-squares projection (of the projected
+                # vecs) onto the projected modes, which is analytically
+                # equivalent to a biorthogonal projection onto the exact modes.
+                # The latter is implemented (using various identities) in
+                # modred.  Here, test using the former approach, as it doesn't
+                # require adjoint modes.
+                mode_idxs = range(TLSqrDMD.eigvals.size)
+                proj_mode_handles = [
+                    V.VecHandlePickle(self.proj_mode_path % i)
+                    for i in mode_idxs]
+                TLSqrDMD.compute_proj_modes(mode_idxs, proj_mode_handles)
+                proj_coeffs_true = (
+                    np.linalg.inv(
+                        TLSqrDMD.vec_space.compute_symmetric_inner_product_mat(
+                            proj_mode_handles)) *
+                    TLSqrDMD.vec_space.compute_inner_product_mat(
+                        proj_mode_handles, proj_vecs_handles))
+                adv_proj_coeffs_true = (
+                    np.linalg.inv(
+                        TLSqrDMD.vec_space.compute_symmetric_inner_product_mat(
+                            proj_mode_handles)) *
+                    TLSqrDMD.vec_space.compute_inner_product_mat(
+                        proj_mode_handles, proj_adv_vecs_handles))
+                proj_coeffs, adv_proj_coeffs = TLSqrDMD.compute_proj_coeffs()
+                np.testing.assert_allclose(
+                    proj_coeffs, proj_coeffs_true, rtol=rtol, atol=atol)
 
 
 if __name__ == '__main__':
