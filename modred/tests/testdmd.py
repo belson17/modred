@@ -446,7 +446,6 @@ class TestDMDHandles(unittest.TestCase):
                 POD_mode_path = join(self.test_dir, 'pod_mode_%03d.txt')
                 POD_mode_handles = [
                     VecHandlePickle(POD_mode_path % i)
-                    for i in xrange(correlation_mat_eigvals.size)]
                 DMD.vec_space.lin_combine(
                     POD_mode_handles, vecs_vals, POD_build_coeffs)
                 low_order_linear_op = (
