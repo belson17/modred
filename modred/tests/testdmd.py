@@ -81,7 +81,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
                         # subset of the DMD modes, in preparation for later
                         # tests.
                         if method == 'snaps':
-                            (exact_modes, proj_modes, eigvals, spectral_coeffs,
+                            (exact_modes, proj_modes, spectral_coeffs, eigvals,
                             R_low_order_eigvecs, L_low_order_eigvecs,
                             correlation_mat_eigvals, correlation_mat_eigvecs,
                             correlation_mat, cross_correlation_mat) =\
@@ -109,7 +109,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
                                 rtol=rtol, atol=atol)
 
                         elif method == 'direct':
-                            (exact_modes, proj_modes, eigvals, spectral_coeffs,
+                            (exact_modes, proj_modes, spectral_coeffs, eigvals,
                             R_low_order_eigvecs, L_low_order_eigvecs,
                             correlation_mat_eigvals, correlation_mat_eigvecs) =\
                             compute_DMD_matrices_direct_method(
@@ -161,7 +161,6 @@ class TestDMDArraysFunctions(unittest.TestCase):
                             low_order_linear_op * R_low_order_eigvecs,
                             R_low_order_eigvecs * np.mat(np.diag(eigvals)),
                             rtol=rtol, atol=atol)
-
                         np.testing.assert_allclose(
                             L_low_order_eigvecs.H * low_order_linear_op,
                             np.mat(np.diag(eigvals)) * L_low_order_eigvecs.H,
