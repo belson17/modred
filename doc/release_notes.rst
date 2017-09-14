@@ -4,6 +4,75 @@ Release notes
 
 
 ------------
+modred 2.1.0
+------------
+
+[IN PROGRESS]
+
+Implemented the total least-squares variant of DMD, which deals with noise
+better than standard DMD does.  Also did a major rewrite of the unit tests,
+which now check mathematical properties, rather than comparing the results of
+``modred`` routines to alternate (e.g., brute force) implementations.  The new
+unit tests are more robust and fail much less often.
+
+**New features and improvements**
+
+**Bug fixes**
+
+* ``hostname`` is now determined using a Windows-friendly method.
+
+* OKID test files now included when installing using ``pip``.
+
+* Fixed some minor bugs in example files, which now run.
+
+* Correctly handle ``mode_indices=None`` option in
+:py:meth:`VecSpaceHandles.lin_combine`.
+
+* Complex-valued vectors are now correctly handled in
+:py:meth:`VecSpaceHandles.compute_inner_product_mat` and
+:py:meth:`VecSpaceHandles.compute_symmetric_inner_product_mat`. [NOTE: is this
+fixed in the matrix versions???]
+
+**Interface changes**
+
+* Fixed order of return arguments in DMD matrix routines [which ones were
+changed??] to be consistent. (Also in TLSqrDMD matrix routines)
+
+* :py:class:`parallel` is now a module, not a class.  [Also put in interface
+changes???]  This way users don't have to worry about using the default instance
+or accidentally creating new instances.
+
+* The attribute ``summed_correlation_mats`` has been renamed
+``sum_correlation_mat`` to make it clear that the attribute contains a single
+matrix.  All corresponding methods have been renamed accordingly.
+
+* Added get method for POD projection coefficients.
+
+* Added get method for BPOD projection coefficients.
+
+* Added get methods for DMD handles.
+
+* Added get methods for TLSqrDMD handles.
+
+* Added ``broadcast`` method to ``parallel`` module.
+
+* ``mode_indices`` is now optional in the various compute modes methods
+
+**Internal changes**
+
+* Removed trailing whitespace from files, as is often done automatically when
+using Emacs.
+
+# Rewrote total-least squares DMD tests.
+
+* Rewrote DMD tests.
+
+* Rewrote BPOD tests.
+
+* Rewrote POD tests.
+
+
+------------
 modred 2.0.2
 ------------
 
