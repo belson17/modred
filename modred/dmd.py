@@ -973,11 +973,11 @@ def compute_TLSqrDMD_matrices_snaps_method(
         ``L_low_order_eigvecs``: Matrix of left eigenvectors of approximating
         low-order linear map.
 
-        ``summed_correlation_mats_eigvals``: 1D array of eigenvalues of
-        summed correlation matrices.
+        ``sum_correlation_mat_eigvals``: 1D array of eigenvalues of
+        sum correlation matrix.
 
-        ``summed_correlation_mats_eigvecs``: Matrix whose columns are
-        eigenvectors of summed correlation matrices.
+        ``sum_correlation_mat_eigvecs``: Matrix whose columns are
+        eigenvectors of sum correlation matrix.
 
         ``proj_correlation_mat_eigvals``: 1D array of eigenvalues of
         projected correlation matrix.
@@ -1043,26 +1043,26 @@ def compute_TLSqrDMD_matrices_snaps_method(
             vec_space.compute_symmetric_inner_product_mat(
             adv_vecs))
 
-    summed_correlation_mats_eigvals, summed_correlation_mats_eigvecs =\
+    sum_correlation_mat_eigvals, sum_correlation_mat_eigvecs =\
         util.eigh(
         correlation_mat + adv_correlation_mat, is_positive_definite=True,
         atol=atol, rtol=rtol)
 
     # Truncate if necessary
     if max_num_eigvals is not None and (
-        max_num_eigvals < summed_correlation_mats_eigvals.size):
-        summed_correlation_mats_eigvals = summed_correlation_mats_eigvals[
+        max_num_eigvals < sum_correlation_mat_eigvals.size):
+        sum_correlation_mat_eigvals = sum_correlation_mat_eigvals[
             :max_num_eigvals]
-        summed_correlation_mats_eigvecs = summed_correlation_mats_eigvecs[
+        sum_correlation_mat_eigvecs = sum_correlation_mat_eigvecs[
             :, :max_num_eigvals]
 
     # Compute eigendecomposition of projected correlation matrix
     proj_correlation_mat = (
-        summed_correlation_mats_eigvecs *
-        summed_correlation_mats_eigvecs.H *
+        sum_correlation_mat_eigvecs *
+        sum_correlation_mat_eigvecs.H *
         correlation_mat *
-        summed_correlation_mats_eigvecs *
-        summed_correlation_mats_eigvecs.H)
+        sum_correlation_mat_eigvecs *
+        sum_correlation_mat_eigvecs.H)
     proj_correlation_mat_eigvals, proj_correlation_mat_eigvecs = util.eigh(
         proj_correlation_mat, atol=atol, rtol=None, is_positive_definite=True)
 
@@ -1079,20 +1079,20 @@ def compute_TLSqrDMD_matrices_snaps_method(
         proj_correlation_mat_eigvals ** -0.5))
     low_order_linear_map = (
         proj_correlation_mat_eigvals_sqrt_inv *
-        proj_correlation_mat_eigvecs.conj().H *
-        summed_correlation_mats_eigvecs *
-        summed_correlation_mats_eigvecs.H *
+        proj_correlation_mat_eigvecs.H *
+        sum_correlation_mat_eigvecs *
+        sum_correlation_mat_eigvecs.H *
         cross_correlation_mat *
-        summed_correlation_mats_eigvecs *
-        summed_correlation_mats_eigvecs.H *
+        sum_correlation_mat_eigvecs *
+        sum_correlation_mat_eigvecs.H *
         proj_correlation_mat_eigvecs *
         proj_correlation_mat_eigvals_sqrt_inv)
 
     # Compute eigendecomposition of low-order linear map.
     eigvals, R_low_order_eigvecs, L_low_order_eigvecs =\
         util.eig_biorthog(low_order_linear_map, scale_choice='left')
-    build_coeffs_proj = (summed_correlation_mats_eigvecs *
-        summed_correlation_mats_eigvecs.H *
+    build_coeffs_proj = (sum_correlation_mat_eigvecs *
+        sum_correlation_mat_eigvecs.H *
         proj_correlation_mat_eigvecs *
         np.mat(np.diag(proj_correlation_mat_eigvals ** -0.5)) *
         R_low_order_eigvecs)
@@ -1120,11 +1120,12 @@ def compute_TLSqrDMD_matrices_snaps_method(
         raise ValueError(('Number of cols in vecs does not match '
             'number of rows in build_coeffs matrix.'))
 
+
     if return_all:
         return (
             exact_modes, proj_modes, eigvals, spectral_coeffs,
             R_low_order_eigvecs, L_low_order_eigvecs,
-            summed_correlation_mats_eigvals, summed_correlation_mats_eigvecs,
+            sum_correlation_mat_eigvals, sum_correlation_mat_eigvecs,
             proj_correlation_mat_eigvals, proj_correlation_mat_eigvecs,
             correlation_mat, adv_correlation_mat, cross_correlation_mat)
     else:
@@ -1188,11 +1189,11 @@ def compute_TLSqrDMD_matrices_direct_method(
         ``L_low_order_eigvecs``: Matrix of left eigenvectors of approximating
         low-order linear map.
 
-        ``summed_correlation_mats_eigvals``: 1D array of eigenvalues of
-        summed correlation matrices.
+        ``sum_correlation_mat_eigvals``: 1D array of eigenvalues of
+        sum correlation matrix.
 
-        ``summed_correlation_mats_eigvecs``: Matrix whose columns are
-        eigenvectors of summed correlation matrices.
+        ``sum_correlation_mat_eigvecs``: Matrix whose columns are
+        eigenvectors of sum correlation matrix.
 
         ``proj_correlation_mat_eigvals``: 1D array of eigenvalues of
         projected correlation matrix.
@@ -1245,7 +1246,7 @@ def compute_TLSqrDMD_matrices_direct_method(
     # Compute projections of original data (to de-noise).  First consider the
     # sequential data case.
     if adv_vecs is None:
-        stacked_U, stacked_sing_vals, summed_correlation_mats_eigvecs =\
+        stacked_U, stacked_sing_vals, sum_correlation_mat_eigvecs =\
             util.svd(np.vstack((vecs_weighted[:, :-1], vecs_weighted[:, 1:])),
             atol=atol, rtol=rtol)
 
@@ -1254,21 +1255,21 @@ def compute_TLSqrDMD_matrices_direct_method(
             max_num_eigvals < stacked_sing_vals.size):
             stacked_U = stacked_U[:, :max_num_eigvals]
             stacked_sing_vals = stacked_sing_vals[:max_num_eigvals]
-            summed_correlation_mats_eigvecs = summed_correlation_mats_eigvecs[
+            sum_correlation_mat_eigvecs = sum_correlation_mat_eigvecs[
                 :, :max_num_eigvals]
 
         # Project original data to de-noise
         vecs_proj = (vecs[:, :-1] *
-            summed_correlation_mats_eigvecs *
-            summed_correlation_mats_eigvecs.H)
+            sum_correlation_mat_eigvecs *
+            sum_correlation_mat_eigvecs.H)
         adv_vecs_proj = (vecs[:, 1:] *
-            summed_correlation_mats_eigvecs *
-            summed_correlation_mats_eigvecs.H)
+            sum_correlation_mat_eigvecs *
+            sum_correlation_mat_eigvecs.H)
     # Non-sequential data case
     else:
         if vecs.shape != adv_vecs.shape:
             raise ValueError(('vecs and adv_vecs are not the same shape.'))
-        stacked_U, stacked_sing_vals, summed_correlation_mats_eigvecs =\
+        stacked_U, stacked_sing_vals, sum_correlation_mat_eigvecs =\
             util.svd(np.vstack((vecs_weighted, adv_vecs_weighted)), atol=atol,
             rtol=rtol)
 
@@ -1277,20 +1278,20 @@ def compute_TLSqrDMD_matrices_direct_method(
             max_num_eigvals < stacked_sing_vals.size):
             stacked_U = stacked_U[:, :max_num_eigvals]
             stacked_sing_vals = stacked_sing_vals[:max_num_eigvals]
-            summed_correlation_mats_eigvecs = summed_correlation_mats_eigvecs[
+            sum_correlation_mat_eigvecs = sum_correlation_mat_eigvecs[
                 :, :max_num_eigvals]
 
         # Project original data to de-noise
         vecs_proj = (vecs *
-            summed_correlation_mats_eigvecs *
-            summed_correlation_mats_eigvecs.H)
+            sum_correlation_mat_eigvecs *
+            sum_correlation_mat_eigvecs.H)
         adv_vecs_proj = (adv_vecs *
-            summed_correlation_mats_eigvecs *
-            summed_correlation_mats_eigvecs.H)
+            sum_correlation_mat_eigvecs *
+            sum_correlation_mat_eigvecs.H)
 
     # Now proceed with DMD of projected data
-    summed_correlation_mats_eigvals = stacked_sing_vals ** 2
-    (exact_modes, proj_modes, eigvals, spectral_coeffs,
+    sum_correlation_mat_eigvals = stacked_sing_vals ** 2
+    (exact_modes, proj_modes, spectral_coeffs, eigvals,
     R_low_order_eigvecs, L_low_order_eigvecs, proj_correlation_mat_eigvals,
     proj_correlation_mat_eigvecs) = compute_DMD_matrices_direct_method(
         vecs_proj, adv_vecs=adv_vecs_proj, mode_indices=mode_indices,
@@ -1301,8 +1302,8 @@ def compute_TLSqrDMD_matrices_direct_method(
         return (
             exact_modes, proj_modes, eigvals, spectral_coeffs,
             R_low_order_eigvecs, L_low_order_eigvecs,
-            summed_correlation_mats_eigvals,
-            summed_correlation_mats_eigvecs,
+            sum_correlation_mat_eigvals,
+            sum_correlation_mat_eigvecs,
             proj_correlation_mat_eigvals,
             proj_correlation_mat_eigvecs)
     else:
@@ -1375,8 +1376,10 @@ class TLSqrDMDHandles(DMDHandles):
         self.correlation_mat = None
         self.cross_correlation_mat = None
         self.adv_correlation_mat = None
-        self.summed_correlation_mats_eigvals = None
-        self.summed_correlation_mats_eigvecs = None
+        self.sum_correlation_mat = None
+        self.sum_correlation_mat_eigvals = None
+        self.sum_correlation_mat_eigvecs = None
+        self.proj_correlation_mat = None
         self.proj_correlation_mat_eigvals = None
         self.proj_correlation_mat_eigvecs = None
         self.low_order_linear_map = None
@@ -1458,28 +1461,28 @@ class TLSqrDMDHandles(DMDHandles):
         under-constrined datasets.
         """
         # Compute eigendecomposition of stacked correlation matrix
-        self.summed_correlation_mats = (
+        self.sum_correlation_mat = (
             self.correlation_mat + self.adv_correlation_mat)
-        (self.summed_correlation_mats_eigvals,
-        self.summed_correlation_mats_eigvecs) = parallel.call_and_bcast(
-            util.eigh, self.summed_correlation_mats,
+        (self.sum_correlation_mat_eigvals,
+        self.sum_correlation_mat_eigvecs) = parallel.call_and_bcast(
+            util.eigh, self.sum_correlation_mat,
             atol=atol, rtol=None, is_positive_definite=True)
 
         # Truncate if necessary
         if max_num_eigvals is not None and (
-            max_num_eigvals < self.summed_correlation_mats_eigvals.size):
-            self.summed_correlation_mats_eigvals =\
-                self.summed_correlation_mats_eigvals[:max_num_eigvals]
-            self.summed_correlation_mats_eigvecs =\
-                self.summed_correlation_mats_eigvecs[:, :max_num_eigvals]
+            max_num_eigvals < self.sum_correlation_mat_eigvals.size):
+            self.sum_correlation_mat_eigvals =\
+                self.sum_correlation_mat_eigvals[:max_num_eigvals]
+            self.sum_correlation_mat_eigvecs =\
+                self.sum_correlation_mat_eigvecs[:, :max_num_eigvals]
 
         # Compute eigendecomposition of projected correlation matrix
         self.proj_correlation_mat = (
-            self.summed_correlation_mats_eigvecs *
-            self.summed_correlation_mats_eigvecs.H *
+            self.sum_correlation_mat_eigvecs *
+            self.sum_correlation_mat_eigvecs.H *
             self.correlation_mat *
-            self.summed_correlation_mats_eigvecs *
-            self.summed_correlation_mats_eigvecs.H)
+            self.sum_correlation_mat_eigvecs *
+            self.sum_correlation_mat_eigvecs.H)
         (self.proj_correlation_mat_eigvals,
         self.proj_correlation_mat_eigvecs) = parallel.call_and_bcast(
             util.eigh, self.proj_correlation_mat ,
@@ -1499,11 +1502,11 @@ class TLSqrDMDHandles(DMDHandles):
         self.low_order_linear_map = (
             proj_correlation_mat_eigvals_sqrt_inv *
             self.proj_correlation_mat_eigvecs.conj().H *
-            self.summed_correlation_mats_eigvecs *
-            self.summed_correlation_mats_eigvecs.H *
+            self.sum_correlation_mat_eigvecs *
+            self.sum_correlation_mat_eigvecs.H *
             self.cross_correlation_mat *
-            self.summed_correlation_mats_eigvecs *
-            self.summed_correlation_mats_eigvecs.H *
+            self.sum_correlation_mat_eigvecs *
+            self.sum_correlation_mat_eigvecs.H *
             self.proj_correlation_mat_eigvecs *
             proj_correlation_mat_eigvals_sqrt_inv)
 
@@ -1553,11 +1556,11 @@ class TLSqrDMDHandles(DMDHandles):
             ``L_low_order_eigvecs``: Matrix whose columns are left eigenvectors
             of approximating low-order linear map.
 
-            ``summed_correlation_mats_eigvals``: 1D array of eigenvalues of
-            summed correlation matrices.
+            ``sum_correlation_mat_eigvals``: 1D array of eigenvalues of
+            sum correlation matrix.
 
-            ``summed_correlation_mats_eigvecs``: Matrix whose columns are
-            eigenvectors of summed correlation matrices.
+            ``sum_correlation_mat_eigvecs``: Matrix whose columns are
+            eigenvectors of sum correlation matrix.
 
             ``proj_correlation_mat_eigvals``: 1D array of eigenvalues of
             projected correlation matrix.
@@ -1596,13 +1599,13 @@ class TLSqrDMDHandles(DMDHandles):
         # unadvanced snapshots only.  Compute the cross correlation matrix
         # involving the unadvanced and advanced snapshots separately.
         else:
-            self.correlation_mat = \
+            self.correlation_mat =\
                 self.vec_space.compute_symmetric_inner_product_mat(
                 self.vec_handles)
-            self.cross_correlation_mat = \
+            self.cross_correlation_mat =\
                 self.vec_space.compute_inner_product_mat(
                 self.vec_handles, self.adv_vec_handles)
-            self.adv_correlation_mat = \
+            self.adv_correlation_mat =\
                 self.vec_space.compute_symmetric_inner_product_mat(
                 self.adv_vec_handles)
 
@@ -1614,8 +1617,8 @@ class TLSqrDMDHandles(DMDHandles):
             self.eigvals,
             self.R_low_order_eigvecs,
             self.L_low_order_eigvecs,
-            self.summed_correlation_mats_eigvals,
-            self.summed_correlation_mats_eigvecs,
+            self.sum_correlation_mat_eigvals,
+            self.sum_correlation_mat_eigvecs,
             self.proj_correlation_mat_eigvals,
             self.proj_correlation_mat_eigvecs)
 
@@ -1623,8 +1626,8 @@ class TLSqrDMDHandles(DMDHandles):
     def _compute_build_coeffs_exact(self):
         """Compute build coefficients for exact DMD modes."""
         return (
-            self.summed_correlation_mats_eigvecs *
-            self.summed_correlation_mats_eigvecs.H *
+            self.sum_correlation_mat_eigvecs *
+            self.sum_correlation_mat_eigvecs.H *
             self.proj_correlation_mat_eigvecs *
             np.mat(np.diag(self.proj_correlation_mat_eigvals ** -0.5)) *
             self.R_low_order_eigvecs
@@ -1634,8 +1637,8 @@ class TLSqrDMDHandles(DMDHandles):
     def _compute_build_coeffs_proj(self):
         """Compute build coefficients for projected DMD modes."""
         return (
-            self.summed_correlation_mats_eigvecs *
-            self.summed_correlation_mats_eigvecs.H *
+            self.sum_correlation_mat_eigvecs *
+            self.sum_correlation_mat_eigvecs.H *
             self.proj_correlation_mat_eigvecs *
             np.mat(np.diag(self.proj_correlation_mat_eigvals ** -0.5)) *
             self.R_low_order_eigvecs)
@@ -1643,8 +1646,8 @@ class TLSqrDMDHandles(DMDHandles):
 
     def get_decomp(
         self, eigvals_src, R_low_order_eigvecs_src, L_low_order_eigvecs_src,
-        summed_correlation_mats_eigvals_src,
-        summed_correlation_mats_eigvecs_src, proj_correlation_mat_eigvals_src,
+        sum_correlation_mat_eigvals_src,
+        sum_correlation_mat_eigvecs_src, proj_correlation_mat_eigvals_src,
         proj_correlation_mat_eigvecs_src):
         """Gets the decomposition matrices from sources (memory or file).
 
@@ -1658,11 +1661,11 @@ class TLSqrDMDHandles(DMDHandles):
             ``L_low_order_eigvecs_src``: Source from which to retrieve left
             eigenvectors of approximating low-order linear DMD map.
 
-            ``summed_correlation_mats_eigvals_src``: Source from which to
-            retrieve eigenvalues of summed correlation matrices.
+            ``sum_correlation_mat_eigvals_src``: Source from which to
+            retrieve eigenvalues of sum correlation matrix.
 
-            ``summed_correlation_mats_eigvecs_src``: Source from which to
-            retrieve eigenvectors of summed correlation matrices.
+            ``sum_correlation_mat_eigvecs_src``: Source from which to
+            retrieve eigenvectors of sum correlation matrix.
 
             ``proj_correlation_mat_eigvals_src``: Source from which to
             retrieve eigenvalues of projected correlation matrix.
@@ -1676,11 +1679,11 @@ class TLSqrDMDHandles(DMDHandles):
             self.get_mat, R_low_order_eigvecs_src)
         self.L_low_order_eigvecs = parallel.call_and_bcast(
             self.get_mat, L_low_order_eigvecs_src)
-        self.summed_correlation_mats_eigvals = np.squeeze(np.array(
+        self.sum_correlation_mat_eigvals = np.squeeze(np.array(
             parallel.call_and_bcast(
-            self.get_mat, summed_correlation_mats_eigvals_src)))
-        self.summed_correlation_mats_eigvecs = parallel.call_and_bcast(
-            self.get_mat, summed_correlation_mats_eigvecs_src)
+            self.get_mat, sum_correlation_mat_eigvals_src)))
+        self.sum_correlation_mat_eigvecs = parallel.call_and_bcast(
+            self.get_mat, sum_correlation_mat_eigvecs_src)
         self.proj_correlation_mat_eigvals = np.squeeze(np.array(
             parallel.call_and_bcast(
             self.get_mat, proj_correlation_mat_eigvals_src)))
@@ -1688,10 +1691,39 @@ class TLSqrDMDHandles(DMDHandles):
             self.get_mat, proj_correlation_mat_eigvecs_src)
 
 
+    def get_adv_correlation_mat(self, src):
+        """Gets the advanced correlation matrix from source (memory or file).
+
+        Args:
+            ``src``: Source from which to retrieve advanced correlation matrix.
+        """
+        self.adv_correlation_mat = parallel.call_and_bcast(self.get_mat, src)
+
+
+    def get_sum_correlation_mat(self, src):
+        """Gets the sum correlation matrix from source (memory or file).
+
+        Args:
+            ``src``: Source from which to retrieve sum correlation matrix.
+        """
+        self.sum_correlation_mat = parallel.call_and_bcast(
+            self.get_mat, src)
+
+
+    def get_proj_correlation_mat(self, src):
+        """Gets the projected correlation matrix from source (memory or file).
+
+        Args:
+            ``src``: Source from which to retrieve projected correlation
+            matrix.
+        """
+        self.proj_correlation_mat = parallel.call_and_bcast(self.get_mat, src)
+
+
     def put_decomp(
         self, eigvals_dest, R_low_order_eigvecs_dest, L_low_order_eigvecs_dest,
-        summed_correlation_mats_eigvals_dest,
-        summed_correlation_mats_eigvecs_dest,
+        sum_correlation_mat_eigvals_dest,
+        sum_correlation_mat_eigvecs_dest,
         proj_correlation_mat_eigvals_dest, proj_correlation_mat_eigvecs_dest):
         """Puts the decomposition matrices in destinations (file or memory).
 
@@ -1705,11 +1737,11 @@ class TLSqrDMDHandles(DMDHandles):
             ``L_low_order_eigvecs_dest``: Destination in which to put left
             eigenvectors of approximating low-order linear map.
 
-            ``summed_correlation_mats_eigvals_dest``: Destination in which to
-            put eigenvalues of summed correlation matrices.
+            ``sum_correlation_mat_eigvals_dest``: Destination in which to
+            put eigenvalues of sum correlation matrix.
 
-            ``summed_correlation_mats_eigvecs_dest``: Destination in which to
-            put eigenvectors of summed correlation matrices.
+            ``sum_correlation_mat_eigvecs_dest``: Destination in which to
+            put eigenvectors of sum correlation matrix.
 
             ``proj_correlation_mat_eigvals_dest``: Destination in which to put
             eigenvalues of projected correlation matrix.
@@ -1721,10 +1753,10 @@ class TLSqrDMDHandles(DMDHandles):
         self.put_eigvals(eigvals_dest)
         self.put_R_low_order_eigvecs(R_low_order_eigvecs_dest)
         self.put_L_low_order_eigvecs(L_low_order_eigvecs_dest)
-        self.put_summed_correlation_mats_eigvals(
-            summed_correlation_mats_eigvals_dest)
-        self.put_summed_correlation_mats_eigvecs(
-            summed_correlation_mats_eigvecs_dest)
+        self.put_sum_correlation_mat_eigvals(
+            sum_correlation_mat_eigvals_dest)
+        self.put_sum_correlation_mat_eigvecs(
+            sum_correlation_mat_eigvecs_dest)
         self.put_proj_correlation_mat_eigvals(
             proj_correlation_mat_eigvals_dest)
         self.put_proj_correlation_mat_eigvecs(
@@ -1735,27 +1767,27 @@ class TLSqrDMDHandles(DMDHandles):
         """This method is not available for total least squares DMD"""
         raise NotImplementedError(
             'This method is not available.  Use '
-            'put_summed_correlation_mats_eigvals instead.')
+            'put_sum_correlation_mat_eigvals instead.')
 
 
     def put_correlation_mat_eigvecs(self, dest):
         """This method is not available for total least squares DMD"""
         raise NotImplementedError(
             'This method is not available.  Use '
-            'put_summed_correlation_mats_eigvecs instead.')
+            'put_sum_correlation_mat_eigvecs instead.')
 
 
-    def put_summed_correlation_mats_eigvals(self, dest):
-        """Puts eigenvalues of summed correlation matrices to ``dest``."""
+    def put_sum_correlation_mat_eigvals(self, dest):
+        """Puts eigenvalues of sum correlation matrix to ``dest``."""
         if parallel.is_rank_zero():
-            self.put_mat(self.summed_correlation_mats_eigvals, dest)
+            self.put_mat(self.sum_correlation_mat_eigvals, dest)
         parallel.barrier()
 
 
-    def put_summed_correlation_mats_eigvecs(self, dest):
-        """Puts eigenvectors of summed correlation matrices to ``dest``."""
+    def put_sum_correlation_mat_eigvecs(self, dest):
+        """Puts eigenvectors of sum correlation matrix to ``dest``."""
         if parallel.is_rank_zero():
-            self.put_mat(self.summed_correlation_mats_eigvecs, dest)
+            self.put_mat(self.sum_correlation_mat_eigvecs, dest)
         parallel.barrier()
 
 
@@ -1777,6 +1809,20 @@ class TLSqrDMDHandles(DMDHandles):
         """Puts advanced correlation mat to ``dest``."""
         if parallel.is_rank_zero():
             self.put_mat(self.adv_correlation_mat, dest)
+        parallel.barrier()
+
+
+    def put_sum_correlation_mat(self, dest):
+        """Puts sum correlation mat to ``dest``."""
+        if parallel.is_rank_zero():
+            self.put_mat(self.sum_correlation_mat, dest)
+        parallel.barrier()
+
+
+    def put_proj_correlation_mat(self, dest):
+        """Puts projected correlation mat to ``dest``."""
+        if parallel.is_rank_zero():
+            self.put_mat(self.proj_correlation_mat, dest)
         parallel.barrier()
 
 
@@ -1826,10 +1872,10 @@ class TLSqrDMDHandles(DMDHandles):
             self.L_low_order_eigvecs.H *
             np.mat(np.diag(self.proj_correlation_mat_eigvals ** -0.5)) *
             self.proj_correlation_mat_eigvecs.T *
-            self.summed_correlation_mats_eigvecs *
-            self.summed_correlation_mats_eigvecs.H *
+            self.sum_correlation_mat_eigvecs *
+            self.sum_correlation_mat_eigvecs.H *
             self.cross_correlation_mat *
-            self.summed_correlation_mats_eigvecs *
-            self.summed_correlation_mats_eigvecs.H)
+            self.sum_correlation_mat_eigvecs *
+            self.sum_correlation_mat_eigvecs.H)
 
         return self.proj_coeffs, self.adv_proj_coeffs
