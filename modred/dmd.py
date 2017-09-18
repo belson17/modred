@@ -770,8 +770,8 @@ class DMDHandles(object):
         return (
             self.correlation_mat_eigvecs *
             np.mat(np.diag(self.correlation_mat_eigvals ** -0.5)) *
-            self.R_low_order_eigvecs)# *
-            #np.mat(np.diag(self.eigvals ** -1.)))
+            self.R_low_order_eigvecs *
+            np.mat(np.diag(self.eigvals ** -1.)))
 
 
     def _compute_build_coeffs_proj(self):
