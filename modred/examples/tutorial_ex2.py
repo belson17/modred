@@ -17,5 +17,5 @@ weights = 0.5 * np.append(np.append(
 # Arbitrary data
 vecs = np.random.random((nx, num_vecs))
 num_modes = 10
-modes, sing_vals = mr.compute_POD_matrices_direct_method(
+modes, eigvals = mr.compute_POD_matrices_direct_method(
     vecs, list(range(num_modes)), inner_product_weights=weights)
