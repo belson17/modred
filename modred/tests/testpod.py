@@ -56,7 +56,7 @@ class TestPODArraysFunctions(unittest.TestCase):
                 # Compute POD using appropriate method.  Also compute a subset
                 # of modes, for later testing mode indices argument.
                 if method == 'snaps':
-                    modes, eigvals, eigvecs, correlation_mat =\
+                    modes, eigvals, aux_vals_dict =\
                     compute_POD_matrices_snaps_method(
                         vec_mat, inner_product_weights=weights, return_all=True)
                     modes_sliced = compute_POD_matrices_snaps_method(
@@ -64,12 +64,13 @@ class TestPODArraysFunctions(unittest.TestCase):
                         inner_product_weights=weights, return_all=True)[0]
 
                     # For method of snapshots, test correlation mat values
+                    correlation_mat = aux_vals_dict['correlation_mat']
                     np.testing.assert_allclose(
                         IP(vec_mat, vec_mat), correlation_mat,
                         rtol=rtol, atol=atol)
 
                 elif method == 'direct':
-                    modes, eigvals, eigvecs =\
+                    modes, eigvals, aux_vals_dict =\
                     compute_POD_matrices_direct_method(
                         vec_mat, inner_product_weights=weights, return_all=True)
                     modes_sliced = compute_POD_matrices_direct_method(
@@ -78,6 +79,9 @@ class TestPODArraysFunctions(unittest.TestCase):
 
                 else:
                     raise ValueError('Invalid POD method.')
+
+                # Extract auxiliary data
+                eigvecs = aux_vals_dict['eigvecs']
 
                 # Check POD eigenvalues and eigenvectors
                 np.testing.assert_allclose(

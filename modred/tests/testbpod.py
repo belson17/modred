@@ -119,12 +119,17 @@ class TestBPODMatrices(unittest.TestCase):
                     # singular values anyway, as that is the point of doing a
                     # balancing transformation.
                     (direct_modes_mat, adjoint_modes_mat, sing_vals,
-                    L_sing_vecs, R_sing_vecs, Hankel_mat) =\
-                    compute_BPOD_matrices(
-                        direct_vecs_mat, adjoint_vecs_mat,
-                        num_inputs=num_inputs, num_outputs=num_outputs,
-                        inner_product_weights=weights, rtol=1e-6, atol=1e-12,
-                        return_all=True)
+                    aux_vals_dict) =\
+                        compute_BPOD_matrices(
+                            direct_vecs_mat, adjoint_vecs_mat,
+                            num_inputs=num_inputs, num_outputs=num_outputs,
+                            inner_product_weights=weights,
+                            rtol=1e-6, atol=1e-12, return_all=True)
+
+                    # Extract auxiliary data
+                    L_sing_vecs = aux_vals_dict['L_sing_vecs']
+                    R_sing_vecs = aux_vals_dict['R_sing_vecs']
+                    Hankel_mat = aux_vals_dict['Hankel_mat']
 
                     # Check Hankel mat values.  These are computed fast
                     # internally by only computing the first column and last row
@@ -360,7 +365,7 @@ class TestBPODHandles(unittest.TestCase):
         return direct_vec_handles, adjoint_vec_handles
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_decomp(self):
         """Test that can take vecs, compute the Hankel and SVD matrices. """
         # Set test tolerances.  Separate, more relaxed tolerances may be
@@ -418,7 +423,7 @@ class TestBPODHandles(unittest.TestCase):
                 np.testing.assert_equal(R_sing_vecs, BPOD.R_sing_vecs)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_modes(self):
         """Test computing modes in serial and parallel."""
         # Set test tolerances.  More relaxed tolerances are required for testing
@@ -499,7 +504,7 @@ class TestBPODHandles(unittest.TestCase):
                     rtol=rtol_sqr, atol=atol_sqr)
 
 
-    @unittest.skip('Testing something else.')
+    #@unittest.skip('Testing something else.')
     def test_compute_proj_coeffs(self):
         # Set test tolerances.  Use a slightly more relaxed absolute tolerance
         # here because the projection test uses modes that may correspond to

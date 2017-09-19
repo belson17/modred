@@ -81,26 +81,26 @@ class TestDMDArraysFunctions(unittest.TestCase):
                         # subset of the DMD modes, in preparation for later
                         # tests.
                         if method == 'snaps':
-                            (exact_modes, spectral_coeffs, eigvals,
-                            R_low_order_eigvecs, L_low_order_eigvecs,
-                            correlation_mat_eigvals, correlation_mat_eigvecs,
-                            correlation_mat, cross_correlation_mat,
-                            proj_modes, adjoint_modes) =\
-                            compute_DMD_matrices_snaps_method(
-                                vecs_arg, adv_vecs=adv_vecs_arg,
-                                inner_product_weights=weights,
-                                max_num_eigvals=max_num_eigvals,
-                                return_all=True)
+                            (exact_modes, eigvals, spectral_coeffs,
+                            aux_vals_dict) =\
+                                compute_DMD_matrices_snaps_method(
+                                    vecs_arg, adv_vecs=adv_vecs_arg,
+                                    inner_product_weights=weights,
+                                    max_num_eigvals=max_num_eigvals,
+                                    return_all=True)
                             sliced_dmd_return_vals =\
-                            compute_DMD_matrices_snaps_method(
-                                vecs_arg, adv_vecs=adv_vecs_arg,
-                                mode_indices=mode_indices,
-                                inner_product_weights=weights,
-                                max_num_eigvals=max_num_eigvals,
-                                return_all=True)
+                                compute_DMD_matrices_snaps_method(
+                                    vecs_arg, adv_vecs=adv_vecs_arg,
+                                    mode_indices=mode_indices,
+                                    inner_product_weights=weights,
+                                    max_num_eigvals=max_num_eigvals,
+                                    return_all=True)
 
                             # For method of snapshots, test correlation mats
                             # values by simply recomputing them.
+                            correlation_mat = aux_vals_dict['correlation_mat']
+                            cross_correlation_mat = aux_vals_dict[
+                                'cross_correlation_mat']
                             np.testing.assert_allclose(
                                 IP(vecs_vals, vecs_vals), correlation_mat,
                                 rtol=rtol, atol=atol)
@@ -110,10 +110,8 @@ class TestDMDArraysFunctions(unittest.TestCase):
                                 rtol=rtol, atol=atol)
 
                         elif method == 'direct':
-                            (exact_modes, spectral_coeffs, eigvals,
-                            R_low_order_eigvecs, L_low_order_eigvecs,
-                            correlation_mat_eigvals, correlation_mat_eigvecs,
-                            proj_modes, adjoint_modes) =\
+                            (exact_modes, eigvals, spectral_coeffs,
+                            aux_vals_dict) =\
                             compute_DMD_matrices_direct_method(
                                 vecs_arg, adv_vecs=adv_vecs_arg,
                                 inner_product_weights=weights,
@@ -130,11 +128,25 @@ class TestDMDArraysFunctions(unittest.TestCase):
                         else:
                             raise ValueError('Invalid DMD method.')
 
+                        # Extract auxiliary data from DMD computation
+                        proj_modes = aux_vals_dict['proj_modes']
+                        adjoint_modes = aux_vals_dict['adjoint_modes']
+                        R_low_order_eigvecs = aux_vals_dict[
+                            'R_low_order_eigvecs']
+                        L_low_order_eigvecs = aux_vals_dict[
+                            'L_low_order_eigvecs']
+                        correlation_mat_eigvecs = aux_vals_dict[
+                            'correlation_mat_eigvecs']
+                        correlation_mat_eigvals = aux_vals_dict[
+                            'correlation_mat_eigvals']
+
                         # Select sliced DMD modes from values returned by DMD
                         # matrix method.
                         exact_modes_sliced = sliced_dmd_return_vals[0]
-                        proj_modes_sliced = sliced_dmd_return_vals[-2]
-                        adjoint_modes_sliced = sliced_dmd_return_vals[-1]
+                        proj_modes_sliced = sliced_dmd_return_vals[-1][
+                            'proj_modes']
+                        adjoint_modes_sliced = sliced_dmd_return_vals[-1][
+                            'adjoint_modes']
 
                         # Test correlation mat eigenvalues and eigenvectors.
                         np.testing.assert_allclose(
@@ -848,14 +860,7 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                         # preparation for later tests.
                         if method == 'snaps':
                             (exact_modes, eigvals, spectral_coeffs,
-                            R_low_order_eigvecs, L_low_order_eigvecs,
-                            sum_correlation_mat_eigvals,
-                            sum_correlation_mat_eigvecs,
-                            proj_correlation_mat_eigvals,
-                            proj_correlation_mat_eigvecs,
-                            correlation_mat, adv_correlation_mat,
-                            cross_correlation_mat,
-                            proj_modes, adjoint_modes) =\
+                            aux_vals_dict) =\
                                 compute_TLSqrDMD_matrices_snaps_method(
                                     vecs_arg, adv_vecs=adv_vecs_arg,
                                     inner_product_weights=weights,
@@ -870,6 +875,11 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
 
                             # For method of snapshots, test correlation mats
                             # values by simply recomputing them.
+                            correlation_mat = aux_vals_dict['correlation_mat']
+                            cross_correlation_mat = aux_vals_dict[
+                                'cross_correlation_mat']
+                            adv_correlation_mat = aux_vals_dict[
+                                'adv_correlation_mat']
                             np.testing.assert_allclose(
                                 IP(vecs_vals, vecs_vals), correlation_mat,
                                 rtol=rtol, atol=atol)
@@ -884,12 +894,7 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
 
                         elif method == 'direct':
                             (exact_modes, eigvals, spectral_coeffs,
-                            R_low_order_eigvecs, L_low_order_eigvecs,
-                            sum_correlation_mat_eigvals,
-                            sum_correlation_mat_eigvecs,
-                            proj_correlation_mat_eigvals,
-                            proj_correlation_mat_eigvecs,
-                            proj_modes, adjoint_modes) =\
+                            aux_vals_dict) =\
                                 compute_TLSqrDMD_matrices_direct_method(
                                     vecs_arg, adv_vecs=adv_vecs_arg,
                                     inner_product_weights=weights,
@@ -905,11 +910,31 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                         else:
                             raise ValueError('Invalid DMD method.')
 
+                        # Extract auxiliary data from DMD computation
+                        proj_modes = aux_vals_dict['proj_modes']
+                        adjoint_modes = aux_vals_dict['adjoint_modes']
+                        R_low_order_eigvecs = aux_vals_dict[
+                            'R_low_order_eigvecs']
+                        L_low_order_eigvecs = aux_vals_dict[
+                            'L_low_order_eigvecs']
+                        sum_correlation_mat_eigvecs = aux_vals_dict[
+                            'sum_correlation_mat_eigvecs']
+                        sum_correlation_mat_eigvals = aux_vals_dict[
+                            'sum_correlation_mat_eigvals']
+                        proj_correlation_mat_eigvecs = aux_vals_dict[
+                            'proj_correlation_mat_eigvecs']
+                        proj_correlation_mat_eigvals = aux_vals_dict[
+                            'proj_correlation_mat_eigvals']
+
+                        # Select sliced DMD modes from values returned by DMD
+                        # matrix method.
                         # Select sliced DMD modes from values returned by DMD
                         # matrix method.
                         exact_modes_sliced = sliced_dmd_return_vals[0]
-                        proj_modes_sliced = sliced_dmd_return_vals[-2]
-                        adjoint_modes_sliced = sliced_dmd_return_vals[-1]
+                        proj_modes_sliced = sliced_dmd_return_vals[-1][
+                            'proj_modes']
+                        adjoint_modes_sliced = sliced_dmd_return_vals[-1][
+                            'adjoint_modes']
 
                         # Test summed correlation mat eigenvalues and
                         # eigenvectors
