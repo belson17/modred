@@ -28,28 +28,28 @@ unit tests are more robust and fail much less often.
 * Fixed some minor bugs in example files, which now run.
 
 * Correctly handle ``mode_indices=None`` option in
-:py:meth:`VecSpaceHandles.lin_combine`.
+  :py:meth:`VecSpaceHandles.lin_combine`.
 
 * Complex-valued vectors are now correctly handled in
-:py:meth:`VecSpaceHandles.compute_inner_product_mat` and
-:py:meth:`VecSpaceHandles.compute_symmetric_inner_product_mat`. [NOTE: is this
-fixed in the matrix versions???]
+  :py:meth:`VecSpaceHandles.compute_inner_product_mat` and
+  :py:meth:`VecSpaceHandles.compute_symmetric_inner_product_mat`. [NOTE: is this
+  fixed in the matrix versions???]
 
 **Interface changes**
 
 * Fixed order of return arguments in DMD matrix routines [which ones were
-changed??] to be consistent. (Also in TLSqrDMD matrix routines)
+  changed??] to be consistent. (Also in TLSqrDMD matrix routines)
 
 * Changed return arguments in array methods for all decomps.  Now have a dict
-containing extra return arguments.
+  containing extra return arguments.
 
 * :py:class:`parallel` is now a module, not a class.  [Also put in interface
-changes???]  This way users don't have to worry about using the default instance
-or accidentally creating new instances.
+  changes???]  This way users don't have to worry about using the default instance
+  or accidentally creating new instances.
 
 * The attribute ``summed_correlation_mats`` has been renamed
-``sum_correlation_mat`` to make it clear that the attribute contains a single
-matrix.  All corresponding methods have been renamed accordingly.
+  ``sum_correlation_mat`` to make it clear that the attribute contains a single
+  matrix.  All corresponding methods have been renamed accordingly.
 
 * Added compute_adjoint_modes for DMD, TLSqrDMD.
 
@@ -68,9 +68,9 @@ matrix.  All corresponding methods have been renamed accordingly.
 **Internal changes**
 
 * Removed trailing whitespace from files, as is often done automatically when
-using Emacs.
+  using Emacs.
 
-# Rewrote total-least squares DMD tests.
+* Rewrote total-least squares DMD tests.
 
 * Rewrote DMD tests.
 
