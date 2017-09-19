@@ -49,8 +49,6 @@ def compute_DMD_matrices_snaps_method(
     Returns:
         ``exact_modes``: Matrix whose columns are exact DMD modes.
 
-        ``proj_modes``: Matrix whose columns are projected DMD modes.
-
         ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
         as the magnitudes of the projection coefficients of first data vector.
         The projection is onto the span of the DMD modes using the
@@ -81,6 +79,10 @@ def compute_DMD_matrices_snaps_method(
         products of data vectors with data vectors advanced in time. Going down
         rows, the data vector changes; going across columns the advanced data
         vector changes.
+
+        ``proj_modes``: Matrix whose columns are projected DMD modes.
+
+        ``adjoint_modes``: Matrix whose columns are adjoint DMD modes.
 
     This uses the method of snapshots, which is faster than the direct method
     (see :py:func:`compute_DMD_matrices_direct_method`) when ``vecs`` has more
@@ -136,6 +138,9 @@ def compute_DMD_matrices_snaps_method(
         correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv *
         R_low_order_eigvecs)
     build_coeffs_exact = build_coeffs_proj * np.mat(np.diag(eigvals ** -1.))
+    build_coeffs_adjoint = (
+        correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv *
+        L_low_order_eigvecs)
     spectral_coeffs = np.abs(np.array(
         L_low_order_eigvecs.H *
         np.mat(np.diag(np.sqrt(correlation_mat_eigvals))) *
@@ -144,10 +149,13 @@ def compute_DMD_matrices_snaps_method(
     # For sequential data, user must provide one more vec than columns of
     # build_coeffs.
     if vecs.shape[1] - build_coeffs_exact.shape[0] == 1:
-        exact_modes = vec_space.lin_combine(vecs[:, 1:],
-            build_coeffs_exact, coeff_mat_col_indices=mode_indices)
-        proj_modes = vec_space.lin_combine(vecs[:, :-1],
-            build_coeffs_proj, coeff_mat_col_indices=mode_indices)
+        exact_modes = vec_space.lin_combine(
+            vecs[:, 1:], build_coeffs_exact, coeff_mat_col_indices=mode_indices)
+        proj_modes = vec_space.lin_combine(
+            vecs[:, :-1], build_coeffs_proj, coeff_mat_col_indices=mode_indices)
+        adjoint_modes = vec_space.lin_combine(
+            vecs[:, :-1], build_coeffs_adjoint,
+            coeff_mat_col_indices=mode_indices)
     # For non-sequential data, user must provide as many vecs as columns of
     # build_coeffs.
     elif vecs.shape[1] == build_coeffs_exact.shape[0]:
@@ -155,17 +163,21 @@ def compute_DMD_matrices_snaps_method(
             adv_vecs, build_coeffs_exact, coeff_mat_col_indices=mode_indices)
         proj_modes = vec_space.lin_combine(
             vecs, build_coeffs_proj, coeff_mat_col_indices=mode_indices)
+        adjoint_modes = vec_space.lin_combine(
+            vecs, build_coeffs_adjoint, coeff_mat_col_indices=mode_indices)
     else:
         raise ValueError(('Number of cols in vecs does not match '
             'number of rows in build_coeffs matrix.'))
 
     if return_all:
         return (
-            exact_modes, proj_modes, spectral_coeffs, eigvals,
-            R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
-            correlation_mat_eigvecs, correlation_mat, cross_correlation_mat)
+            exact_modes, spectral_coeffs, eigvals,
+            R_low_order_eigvecs, L_low_order_eigvecs,
+            correlation_mat_eigvals, correlation_mat_eigvecs,
+            correlation_mat, cross_correlation_mat,
+            proj_modes, adjoint_modes)
     else:
-        return exact_modes, proj_modes, spectral_coeffs, eigvals
+        return exact_modes, spectral_coeffs, eigvals
 
 
 def compute_DMD_matrices_direct_method(
@@ -208,8 +220,6 @@ def compute_DMD_matrices_direct_method(
 
         ``exact_modes``: Matrix whose columns are exact DMD modes.
 
-        ``proj_modes``: Matrix whose columns are projected DMD modes.
-
         ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
         as the magnitudes of the projection coefficients of first data vector.
         The projection is onto the span of the DMD modes using the
@@ -233,6 +243,10 @@ def compute_DMD_matrices_direct_method(
 
         ``correlation_mat_eigvecs``: Matrix of eigenvectors of correlation
         matrix, which are also the right singular vectors of the data matrix.
+
+        ``proj_modes``: Matrix whose columns are projected DMD modes.
+
+        ``adjoint_modes``: Matrix whose columns are projected DMD modes.
 
     This method does not square the matrix of vectors as in the method of
     snapshots (:py:func:`compute_DMD_matrices_snaps_method`). It's slightly
@@ -317,6 +331,9 @@ def compute_DMD_matrices_direct_method(
         correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv *
         R_low_order_eigvecs)
     build_coeffs_exact = build_coeffs_proj * np.mat(np.diag(eigvals ** -1.))
+    build_coeffs_adjoint = (
+        correlation_mat_eigvecs * correlation_mat_eigvals_sqrt_inv *
+        L_low_order_eigvecs)
     spectral_coeffs = np.abs(np.array(
         L_low_order_eigvecs.H *
         np.mat(np.diag(np.sqrt(correlation_mat_eigvals))) *
@@ -325,10 +342,13 @@ def compute_DMD_matrices_direct_method(
     # For sequential data, user must provide one more vec than columns of
     # build_coeffs.
     if vecs.shape[1] - build_coeffs_exact.shape[0] == 1:
-        exact_modes = vec_space.lin_combine(vecs[:, 1:],
-            build_coeffs_exact, coeff_mat_col_indices=mode_indices)
-        proj_modes = vec_space.lin_combine(vecs[:, :-1],
-            build_coeffs_proj, coeff_mat_col_indices=mode_indices)
+        exact_modes = vec_space.lin_combine(
+            vecs[:, 1:], build_coeffs_exact, coeff_mat_col_indices=mode_indices)
+        proj_modes = vec_space.lin_combine(
+            vecs[:, :-1], build_coeffs_proj, coeff_mat_col_indices=mode_indices)
+        adjoint_modes = vec_space.lin_combine(
+            vecs[:, :-1], build_coeffs_adjoint,
+            coeff_mat_col_indices=mode_indices)
     # For sequential data, user must provide as many vecs as columns of
     # build_coeffs.
     elif vecs.shape[1] == build_coeffs_exact.shape[0]:
@@ -336,17 +356,20 @@ def compute_DMD_matrices_direct_method(
             adv_vecs, build_coeffs_exact, coeff_mat_col_indices=mode_indices)
         proj_modes = vec_space.lin_combine(
             vecs, build_coeffs_proj, coeff_mat_col_indices=mode_indices)
+        adjoint_modes = vec_space.lin_combine(
+            vecs, build_coeffs_adjoint, coeff_mat_col_indices=mode_indices)
     else:
         raise ValueError(('Number of cols in vecs does not match '
             'number of rows in build_coeffs matrix.'))
 
     if return_all:
         return (
-            exact_modes, proj_modes, spectral_coeffs, eigvals,
-            R_low_order_eigvecs, L_low_order_eigvecs, correlation_mat_eigvals,
-            correlation_mat_eigvecs)
+            exact_modes, spectral_coeffs, eigvals,
+            R_low_order_eigvecs, L_low_order_eigvecs,
+            correlation_mat_eigvals, correlation_mat_eigvecs,
+            proj_modes, adjoint_modes)
     else:
-        return exact_modes, proj_modes, spectral_coeffs, eigvals
+        return exact_modes, spectral_coeffs, eigvals
 
 
 class DMDHandles(object):
@@ -782,6 +805,14 @@ class DMDHandles(object):
             self.R_low_order_eigvecs)
 
 
+    def _compute_build_coeffs_adjoint(self):
+        """Compute build coefficients for adjoint DMD modes."""
+        return (
+            self.correlation_mat_eigvecs *
+            np.mat(np.diag(self.correlation_mat_eigvals ** -0.5)) *
+            self.L_low_order_eigvecs)
+
+
     def compute_exact_modes(
         self, mode_indices, mode_handles, adv_vec_handles=None):
         """Computes exact DMD modes and calls ``put`` on them using mode
@@ -806,22 +837,26 @@ class DMDHandles(object):
 
         # If the internal attribute is set, then compute the modes
         if self.adv_vec_handles is not None:
-            self.vec_space.lin_combine(mode_handles, self.adv_vec_handles,
-                build_coeffs_exact, coeff_mat_col_indices=mode_indices)
+            self.vec_space.lin_combine(
+                mode_handles, self.adv_vec_handles, build_coeffs_exact,
+                coeff_mat_col_indices=mode_indices)
         # If the internal attribute is not set, then check to see if
         # vec_handles is set.  If so, assume a sequential dataset, in which
         # case adv_vec_handles can be taken from a slice of vec_handles.
         elif self.vec_handles is not None:
             if len(self.vec_handles) - build_coeffs_exact.shape[0] == 1:
-                self.vec_space.lin_combine(mode_handles, self.vec_handles[1:],
-                    build_coeffs_exact, coeff_mat_col_indices=mode_indices)
+                self.vec_space.lin_combine(
+                    mode_handles, self.vec_handles[1:], build_coeffs_exact,
+                    coeff_mat_col_indices=mode_indices)
             else:
                 raise(
-                    ValueError, ('Number of vec_handles is not correct for a '
-                    'sequential dataset.'))
+                    ValueError, (
+                    'Number of vec_handles is not correct for a sequential '
+                    'dataset.'))
         else:
-            raise(ValueError, 'Neither vec_handles nor adv_vec_handles is '
-                'defined.')
+            raise(
+                ValueError,
+                'Neither vec_handles nor adv_vec_handles is defined.')
 
 
     def compute_proj_modes(self, mode_indices, mode_handles, vec_handles=None):
@@ -850,19 +885,67 @@ class DMDHandles(object):
         # essentially partitioned into two sets of handles, each of length one
         # less than vec_handles.
         if len(self.vec_handles) - build_coeffs_proj.shape[0] == 1:
-            self.vec_space.lin_combine(mode_handles, self.vec_handles[:-1],
-                build_coeffs_proj, coeff_mat_col_indices=mode_indices)
+            self.vec_space.lin_combine(
+                mode_handles, self.vec_handles[:-1], build_coeffs_proj,
+                coeff_mat_col_indices=mode_indices)
         # For a non-sequential dataset, the user will provide a list
         # vec_handles whose length is equal to the number of rows in the
         # build_coeffs matrix.
         elif len(self.vec_handles) == build_coeffs_proj.shape[0]:
-            self.vec_space.lin_combine(mode_handles, self.vec_handles,
-                build_coeffs_proj, coeff_mat_col_indices=mode_indices)
+            self.vec_space.lin_combine(
+                mode_handles, self.vec_handles, build_coeffs_proj,
+                coeff_mat_col_indices=mode_indices)
         # Otherwise, raise an error, as the number of handles should fit one of
         # the two cases described above.
         else:
-            raise ValueError(('Number of vec_handles does not match number of '
-                'columns in build_coeffs_proj matrix.'))
+            raise ValueError((
+                'Number of vec_handles does not match number of columns in '
+                'build_coeffs_proj matrix.'))
+
+
+    def compute_adjoint_modes(
+        self, mode_indices, mode_handles, vec_handles=None):
+        """Computes adjoint DMD modes and calls ``put`` on them using mode
+        handles.
+
+        Args:
+            ``mode_indices``: List of indices describing which projected modes
+            to compute, e.g. ``range(10)`` or ``[3, 0, 5]``.
+
+            ``mode_handles``: List of handles for projected modes to compute.
+
+        Kwargs:
+            ``vec_handles``: List of handles for vector objects. Optional if
+            when calling :py:meth:`compute_decomp`.
+        """
+        if vec_handles is not None:
+            self.vec_handles = vec_handles
+
+        # Compute build coefficient matrix
+        build_coeffs_adjoint = self._compute_build_coeffs_adjoint()
+
+        # For sequential data, the user will provide a list vec_handles that
+        # whose length is one larger than the number of rows of the
+        # build_coeffs matrix.  This is to be expected, as vec_handles is
+        # essentially partitioned into two sets of handles, each of length one
+        # less than vec_handles.
+        if len(self.vec_handles) - build_coeffs_adjoint.shape[0] == 1:
+            self.vec_space.lin_combine(
+                mode_handles, self.vec_handles[:-1], build_coeffs_adjoint,
+                coeff_mat_col_indices=mode_indices)
+        # For a non-sequential dataset, the user will provide a list
+        # vec_handles whose length is equal to the number of rows in the
+        # build_coeffs matrix.
+        elif len(self.vec_handles) == build_coeffs_adjoint.shape[0]:
+            self.vec_space.lin_combine(
+                mode_handles, self.vec_handles, build_coeffs_adjoint,
+                coeff_mat_col_indices=mode_indices)
+        # Otherwise, raise an error, as the number of handles should fit one of
+        # the two cases described above.
+        else:
+            raise ValueError((
+                'Number of vec_handles does not match number of columns in '
+                'build_coeffs_proj matrix.'))
 
 
     def compute_spectrum(self):
@@ -957,9 +1040,6 @@ def compute_TLSqrDMD_matrices_snaps_method(
     Returns:
         ``exact_modes``: Matrix whose columns are exact DMD modes.
 
-        ``proj_modes``: Matrix whose columns are projected DMD modes.
-
-
         ``eigvals``: 1D array of eigenvalues of approximating low-order linear
         map (DMD eigenvalues).
 
@@ -996,6 +1076,10 @@ def compute_TLSqrDMD_matrices_snaps_method(
         products of data vectors with data vectors advanced in time. Going down
         rows, the data vector changes; going across columns the advanced data
         vector changes.
+
+        ``proj_modes``: Matrix whose columns are projected DMD modes.
+
+        ``adjoint_modes``: Matrix whose columns are adjoint DMD modes.
 
     This uses the method of snapshots, which is faster than the direct method
     (see :py:func:`compute_TLSqrDMD_matrices_direct_method`) when ``vecs`` has
@@ -1092,12 +1176,19 @@ def compute_TLSqrDMD_matrices_snaps_method(
     # Compute eigendecomposition of low-order linear map.
     eigvals, R_low_order_eigvecs, L_low_order_eigvecs =\
         util.eig_biorthog(low_order_linear_map, scale_choice='left')
-    build_coeffs_proj = (sum_correlation_mat_eigvecs *
+    build_coeffs_proj = (
+        sum_correlation_mat_eigvecs *
         sum_correlation_mat_eigvecs.H *
         proj_correlation_mat_eigvecs *
         np.mat(np.diag(proj_correlation_mat_eigvals ** -0.5)) *
         R_low_order_eigvecs)
     build_coeffs_exact = build_coeffs_proj * np.mat(np.diag(eigvals ** -1.))
+    build_coeffs_adjoint = (
+        sum_correlation_mat_eigvecs *
+        sum_correlation_mat_eigvecs.H *
+        proj_correlation_mat_eigvecs *
+        np.mat(np.diag(proj_correlation_mat_eigvals ** -0.5)) *
+        L_low_order_eigvecs)
     spectral_coeffs = np.abs(np.array(
         L_low_order_eigvecs.H *
         np.mat(np.diag(np.sqrt(proj_correlation_mat_eigvals))) *
@@ -1106,10 +1197,13 @@ def compute_TLSqrDMD_matrices_snaps_method(
     # For sequential data, user must provide one more vec than columns of
     # build_coeffs.
     if vecs.shape[1] - build_coeffs_exact.shape[0] == 1:
-        exact_modes = vec_space.lin_combine(vecs[:, 1:],
-            build_coeffs_exact, coeff_mat_col_indices=mode_indices)
-        proj_modes = vec_space.lin_combine(vecs[:, :-1],
-            build_coeffs_proj, coeff_mat_col_indices=mode_indices)
+        exact_modes = vec_space.lin_combine(
+            vecs[:, 1:], build_coeffs_exact, coeff_mat_col_indices=mode_indices)
+        proj_modes = vec_space.lin_combine(
+            vecs[:, :-1], build_coeffs_proj, coeff_mat_col_indices=mode_indices)
+        adjoint_modes = vec_space.lin_combine(
+            vecs[:, :-1], build_coeffs_adjoint,
+            coeff_mat_col_indices=mode_indices)
     # For non-sequential data, user must provide as many vecs as columns of
     # build_coeffs.
     elif vecs.shape[1] == build_coeffs_exact.shape[0]:
@@ -1117,20 +1211,22 @@ def compute_TLSqrDMD_matrices_snaps_method(
             adv_vecs, build_coeffs_exact, coeff_mat_col_indices=mode_indices)
         proj_modes = vec_space.lin_combine(
             vecs, build_coeffs_proj, coeff_mat_col_indices=mode_indices)
+        adjoint_modes = vec_space.lin_combine(
+            vecs, build_coeffs_adjoint, coeff_mat_col_indices=mode_indices)
     else:
         raise ValueError(('Number of cols in vecs does not match '
             'number of rows in build_coeffs matrix.'))
 
-
     if return_all:
         return (
-            exact_modes, proj_modes, eigvals, spectral_coeffs,
+            exact_modes, eigvals, spectral_coeffs,
             R_low_order_eigvecs, L_low_order_eigvecs,
             sum_correlation_mat_eigvals, sum_correlation_mat_eigvecs,
             proj_correlation_mat_eigvals, proj_correlation_mat_eigvecs,
-            correlation_mat, adv_correlation_mat, cross_correlation_mat)
+            correlation_mat, adv_correlation_mat, cross_correlation_mat,
+            proj_modes, adjoint_modes)
     else:
-        return exact_modes, proj_modes, eigvals, spectral_coeffs
+        return exact_modes, eigvals, spectral_coeffs
 
 
 def compute_TLSqrDMD_matrices_direct_method(
@@ -1174,8 +1270,6 @@ def compute_TLSqrDMD_matrices_direct_method(
 
         ``exact_modes``: Matrix whose columns are exact DMD modes.
 
-        ``proj_modes``: Matrix whose columns are projected DMD modes.
-
         ``eigvals``: 1D array of eigenvalues of approximating low-order linear
         map (DMD eigenvalues).
 
@@ -1201,6 +1295,10 @@ def compute_TLSqrDMD_matrices_direct_method(
 
         ``proj_correlation_mat_eigvecs``: Matrix whose columns are
         eigenvectors of projected correlation matrix.
+
+        ``proj_modes``: Matrix whose columns are projected DMD modes.
+
+        ``adjoint_modes``: Matrix whose columns are adjoint DMD modes.
 
     This method does not square the matrix of vectors as in the method of
     snapshots (:py:func:`compute_DMD_matrices_snaps_method`). It's slightly
@@ -1292,23 +1390,25 @@ def compute_TLSqrDMD_matrices_direct_method(
 
     # Now proceed with DMD of projected data
     sum_correlation_mat_eigvals = stacked_sing_vals ** 2
-    (exact_modes, proj_modes, spectral_coeffs, eigvals,
-    R_low_order_eigvecs, L_low_order_eigvecs, proj_correlation_mat_eigvals,
-    proj_correlation_mat_eigvecs) = compute_DMD_matrices_direct_method(
+    (exact_modes,spectral_coeffs, eigvals,
+    R_low_order_eigvecs, L_low_order_eigvecs,
+    proj_correlation_mat_eigvals, proj_correlation_mat_eigvecs,
+    proj_modes, adjoint_modes) = compute_DMD_matrices_direct_method(
         vecs_proj, adv_vecs=adv_vecs_proj, mode_indices=mode_indices,
         inner_product_weights=inner_product_weights, atol=atol, rtol=rtol,
         max_num_eigvals=max_num_eigvals, return_all=True)
 
     if return_all:
         return (
-            exact_modes, proj_modes, eigvals, spectral_coeffs,
+            exact_modes, eigvals, spectral_coeffs,
             R_low_order_eigvecs, L_low_order_eigvecs,
             sum_correlation_mat_eigvals,
             sum_correlation_mat_eigvecs,
             proj_correlation_mat_eigvals,
-            proj_correlation_mat_eigvecs)
+            proj_correlation_mat_eigvecs,
+            proj_modes, adjoint_modes)
     else:
-        return exact_modes, proj_modes, eigvals, spectral_coeffs
+        return exact_modes, eigvals, spectral_coeffs
 
 
 class TLSqrDMDHandles(DMDHandles):
@@ -1643,6 +1743,16 @@ class TLSqrDMDHandles(DMDHandles):
             self.proj_correlation_mat_eigvecs *
             np.mat(np.diag(self.proj_correlation_mat_eigvals ** -0.5)) *
             self.R_low_order_eigvecs)
+
+
+    def _compute_build_coeffs_adjoint(self):
+        """Compute build coefficients for adjoint DMD modes."""
+        return (
+            self.sum_correlation_mat_eigvecs *
+            self.sum_correlation_mat_eigvecs.H *
+            self.proj_correlation_mat_eigvecs *
+            np.mat(np.diag(self.proj_correlation_mat_eigvals ** -0.5)) *
+            self.L_low_order_eigvecs)
 
 
     def get_decomp(

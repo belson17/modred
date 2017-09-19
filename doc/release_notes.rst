@@ -17,6 +17,8 @@ unit tests are more robust and fail much less often.
 
 **New features and improvements**
 
+* Can now compute adjoint DMD modes.
+
 **Bug fixes**
 
 * ``hostname`` is now determined using a Windows-friendly method.
@@ -38,6 +40,9 @@ fixed in the matrix versions???]
 * Fixed order of return arguments in DMD matrix routines [which ones were
 changed??] to be consistent. (Also in TLSqrDMD matrix routines)
 
+* Changed return arguments in DMD matrix routines. Projected DMD modes are no
+longer returned by default.  Adjoint modes are now returned, if desired.
+
 * :py:class:`parallel` is now a module, not a class.  [Also put in interface
 changes???]  This way users don't have to worry about using the default instance
 or accidentally creating new instances.
@@ -45,6 +50,8 @@ or accidentally creating new instances.
 * The attribute ``summed_correlation_mats`` has been renamed
 ``sum_correlation_mat`` to make it clear that the attribute contains a single
 matrix.  All corresponding methods have been renamed accordingly.
+
+* Added compute_adjoint_modes for DMD, TLSqrDMD.
 
 * Added get method for POD projection coefficients.
 
@@ -80,8 +87,8 @@ Minor bug fix.
 
 **Interface changes**
 
-* Order of returned values for :py:func:`dmd.compute_DMD_matrices_snaps_method` 
-  and :py:func:`dmd.compute_DMD_matrices_direct_method` is now consistent for 
+* Order of returned values for :py:func:`dmd.compute_DMD_matrices_snaps_method`
+  and :py:func:`dmd.compute_DMD_matrices_direct_method` is now consistent for
   both values of ``return_all``.
 
 
