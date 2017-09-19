@@ -60,13 +60,16 @@ def compute_BPOD_matrices(
 
         If ``return_all`` is true, then also returns:
 
-        ``L_sing_vecs``: Matrix whose columns are left singular vectors of
-        Hankel matrix (:math:`U`).
+        ``aux_vals_dict``: Dictionary containing auxiliary data from DMD
+        computation.
 
-        ``R_sing_vecs``: Matrix whose columns are right singular vectors of
-        Hankel matrix (:math:`V`).
+        * ``L_sing_vecs``: Matrix whose columns are left singular vectors of
+          Hankel matrix (:math:`U`).
 
-        ``Hankel_mat``: Hankel matrix (:math:`Y^* W X`).
+        * ``R_sing_vecs``: Matrix whose columns are right singular vectors of
+          Hankel matrix (:math:`V`).
+
+        * ``Hankel_mat``: Hankel matrix (:math:`Y^* W X`).
 
     See also :py:class:`BPODHandles`.
     """
@@ -112,10 +115,13 @@ def compute_BPOD_matrices(
         adjoint_vecs, adjoint_build_coeff_mat,
         coeff_mat_col_indices=adjoint_mode_indices)
 
+    # Return values
     if return_all:
-        return (
-            direct_mode_array, adjoint_mode_array, sing_vals, L_sing_vecs,
-            R_sing_vecs, Hankel_mat)
+        aux_vals_dict = {
+            'L_sing_vecs': L_sing_vecs,
+            'R_sing_vecs': R_sing_vecs,
+            'Hankel_mat': Hankel_mat}
+        return direct_mode_array, adjoint_mode_array, sing_vals, aux_vals_dict
     else:
         return direct_mode_array, adjoint_mode_array, sing_vals
 
@@ -388,6 +394,8 @@ class BPODHandles(object):
 
         # Compute BPOD decomposition
         self.compute_SVD(atol=atol, rtol=rtol)
+
+        # Return values
         return self.sing_vals, self.L_sing_vecs, self.R_sing_vecs
 
 

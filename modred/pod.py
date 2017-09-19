@@ -41,10 +41,13 @@ def compute_POD_matrices_snaps_method(
 
         If ``return_all`` is true, also returns:
 
-        ``eigvecs``: Matrix wholse columns are eigenvectors of correlation
-        matrix (:math:`U`).
+        ``aux_vals_dict``: Dictionary containing auxiliary data from POD
+        computation.
 
-        ``correlation_mat``: Correlation matrix (:math:`X^* W X`).
+        * ``eigvecs``: Matrix wholse columns are eigenvectors of correlation
+          matrix (:math:`U`).
+
+        * ``correlation_mat``: Correlation matrix (:math:`X^* W X`).
 
     The algorithm is
 
@@ -79,8 +82,10 @@ def compute_POD_matrices_snaps_method(
     modes = vec_space.lin_combine(
         vecs, build_coeff_mat, coeff_mat_col_indices=mode_indices)
 
+    # Return values
     if return_all:
-        return modes, eigvals, eigvecs, correlation_mat
+        aux_vals_dict = {'eigvecs': eigvecs, 'correlation_mat': correlation_mat}
+        return modes, eigvals, aux_vals_dict
     else:
         return modes, eigvals
 
@@ -118,9 +123,12 @@ def compute_POD_matrices_direct_method(
 
         If ``return_all`` is true, also returns:
 
-        ``eigvecs``: Matrix wholse columns are eigenvectors of correlation
-        matrix (:math:`U`), which are also the right singular vectors of the
-        data matrix (:math:`X`).
+        ``aux_vals_dict``: Dictionary containing auxiliary data from DMD
+        computation.
+
+        * ``eigvecs``: Matrix wholse columns are eigenvectors of correlation
+          matrix (:math:`U`), which are also the right singular vectors of the
+          data matrix (:math:`X`).
 
     The algorithm is
 
@@ -174,8 +182,10 @@ def compute_POD_matrices_direct_method(
 
     eigvals = sing_vals ** 2.
 
+    # Return values
     if return_all:
-        return modes, eigvals, eigvecs
+        aux_vals_dict = {'eigvecs': eigvecs}
+        return modes, eigvals, aux_vals_dict
     else:
         return modes, eigvals
 
@@ -250,6 +260,7 @@ class PODHandles(object):
         """
         self.correlation_mat = parallel.call_and_bcast(self.get_mat, src)
 
+
     def get_proj_coeffs(self, src):
         """Gets projection coefficients from source (memory or file).
 
@@ -257,6 +268,7 @@ class PODHandles(object):
             ``src``: Source from which to retrieve projection coefficients.
         """
         self.proj_coeffs = parallel.call_and_bcast(self.get_mat, src)
+
 
     def put_decomp(self, eigvals_dest, eigvecs_dest):
         """Puts the decomposition matrices in destinations (memory or file).

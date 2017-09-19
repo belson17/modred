@@ -40,8 +40,8 @@ fixed in the matrix versions???]
 * Fixed order of return arguments in DMD matrix routines [which ones were
 changed??] to be consistent. (Also in TLSqrDMD matrix routines)
 
-* Changed return arguments in DMD matrix routines. Projected DMD modes are no
-longer returned by default.  Adjoint modes are now returned, if desired.
+* Changed return arguments in array methods for all decomps.  Now have a dict
+containing extra return arguments.
 
 * :py:class:`parallel` is now a module, not a class.  [Also put in interface
 changes???]  This way users don't have to worry about using the default instance
