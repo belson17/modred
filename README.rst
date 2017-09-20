@@ -36,7 +36,7 @@ mpi4py)::
 
   mpiexec -n 3 python -c 'import modred.tests; modred.tests.run()'
 
-Please report failures and installation problems to belson17 [-at-] gmail.com
+Please report failures and installation problems to modred-discuss@googlegroups.com
 with the following information:
 
 1. Copy of the entire output of the tests or installation
@@ -51,4 +51,3 @@ built from source by navigating to the install directory and calling::
 
 Then simply open index.html in a web browser.  (Note that Sphinx 1.4 or higher
 is required.)
-

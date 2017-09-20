@@ -44,8 +44,8 @@ unit tests are more robust and fail much less often.
   containing extra return arguments.
 
 * :py:class:`parallel` is now a module, not a class.  [Also put in interface
-  changes???]  This way users don't have to worry about using the default instance
-  or accidentally creating new instances.
+  changes???]  This way users don't have to worry about using the default
+  instance or accidentally creating new instances.
 
 * The attribute ``summed_correlation_mats`` has been renamed
   ``sum_correlation_mat`` to make it clear that the attribute contains a single
@@ -77,6 +77,18 @@ unit tests are more robust and fail much less often.
 * Rewrote BPOD tests.
 
 * Rewrote POD tests.
+
+
+------------
+modred 2.0.3
+------------
+
+Minor bug fix to OKID tests.
+
+**Bug fixes**
+
+* OKID files needed for tests are included in the source distribution. All
+  doc files are also included.
 
 
 ------------

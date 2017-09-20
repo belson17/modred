@@ -6,7 +6,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 import sys
 if sys.version_info[:2] < (2, 6) or (3, 0) <= sys.version_info[0:2] < (3, 2):
-    raise RuntimeError("Python version 2.6, 2.7 or >= 3.2 required.")
+    raise RuntimeError("Python version 2.6, 2.7, or 3.2+ required.")
 
 # Get the long description from the relevant file
 with open(os.path.join(here, 'README.rst')) as f:
@@ -26,7 +26,7 @@ else:
 
 # OKID_test_data_files = list()
 # for c in ['SISO', 'SIMO', 'MISO', 'MIMO']:
-#     OKID_test_data_files.append((os.path.join('modred', 'tests', 'OKID_files' , c), 
+#     OKID_test_data_files.append((os.path.join('modred', 'tests', 'OKID_files' , c),
 #         glob.glob(os.path.join('modred', 'tests', 'OKID_files', c, '*'))))
 setup(
     name='modred',
@@ -38,12 +38,11 @@ setup(
     # keywords='',
     author=('Brandt Belson, Jonathan Tu, and Clancy Rowley;'
             'ported for Python 3 by Pierre Augier'),
-    author_email=(
-        'brandt.belson@gmail.com, jonathantu@gmail.com, cwrowley@princeton.edu'),
-    url='https://pythonhosted.org/modred',
-    maintainer=('Brandt Belson, Jonathan Tu, and Clancy Rowley;'
-            'ported for Python 3 by Pierre Augier'),
-    maintainer_email='brandt.belson@gmail.com',
+    #author_email=(),
+    url='http://modred.readthedocs.io',
+    maintainer=('Brandt Belson, Jonathan Tu, and Clancy Rowley; '
+            'repacked & ported for Python3 by Pierre Augier'),
+    maintainer_email='modred-discuss@googlegroups.com',
     license='Free BSD',
     classifiers=[
         # How mature is this project? Common values are
@@ -60,9 +59,16 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: 3.4'
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6'
         ],
     packages=find_packages(exclude=['doc', 'matlab']),
-    # data_files=OKID_test_data_files,
+    package_dir={'modred': 'modred'},
+    # package_data={'modred': [
+    #         'tests/files_okid/SISO/*',
+    #         'tests/files_okid/SIMO/*',
+    #         'tests/files_okid/MISO/*',
+    #         'tests/files_okid/MIMO/*']},
     install_requires=['numpy', 'future']
     )
