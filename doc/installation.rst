@@ -32,7 +32,7 @@ Please report problems to modred-discuss@googlegroups.com with the following:
 3. Numpy version (``python -c 'import numpy; print numpy.__version__'``)
 4. Your operating system
 
-The documentation is available at http://pythonhosted.org/modred/.
+The documentation is available at http://modred.readthedocs.io.
 
 While unnecessary, you can build the documentation with Sphinx
 (http://sphinx.pocoo.org).

@@ -80,6 +80,18 @@ unit tests are more robust and fail much less often.
 
 
 ------------
+modred 2.0.4
+------------
+
+Fixed bug for Windows environments.  Updated documentation to use Read the Docs.
+
+**Bug fixes**
+
+* ``parallel`` modules now uses ``socket`` module instead of ``os`` module to
+  find hostname, which is portable to Windows environments.
+
+
+------------
 modred 2.0.3
 ------------
 

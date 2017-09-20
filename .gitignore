@@ -4,6 +4,7 @@
 *~
 *temp
 
+dist/
 doc/build
 modred/examples/*out
 
