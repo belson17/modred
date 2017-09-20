@@ -24,6 +24,8 @@ import sys
 sys.path.insert(0, os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'), 'examples'))
 # sys.path.insert(0, os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'), 'modred'))
 sys.path.insert(0, os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'), 'modred'))
+sys.path.insert(0, os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'), '..'))
+# sys.path.insert(0, os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'), 'modred'))
 print("Path", sys.path)
 from modred import bpod
 
@@ -159,7 +161,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'modred', 'modred Documentation',
-     author, 'modred', 'One line description of project.',
+     author, 'modred', 'Modal decompositions.',
      'Miscellaneous'),
 ]
 
