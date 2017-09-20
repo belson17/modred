@@ -44,4 +44,4 @@ with the following information:
 3. Numpy version (``python -c 'import numpy; print numpy.__version__'``)
 4. Your operating system
 
-The documentation is available at: http://packages.python.org/modred
+The documentation is available at: http://modred.readthedocs.io.
