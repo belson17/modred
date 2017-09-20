@@ -38,7 +38,7 @@ setup(
     # keywords='',
     author=('Brandt Belson, Jonathan Tu, and Clancy Rowley;'
             'repacked and ported for Python 3 by Pierre Augier'),
-    #author_email=,
+    #author_email='',
     url='http://modred.readthedocs.io',
     maintainer=('Brandt Belson, Jonathan Tu, and Clancy Rowley; '
             'repacked & ported for Python3 by Pierre Augier'),
