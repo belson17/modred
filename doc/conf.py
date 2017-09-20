@@ -143,7 +143,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'modred.tex', 'modred Documentation',
-     'Brandt Belson, Jonathan Tu, Clarence W. Rowley', 'manual'),
+     'Brandt Belson, Jonathan Tu, Clancy Rowley', 'manual'),
 ]
 
 
