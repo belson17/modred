@@ -36,15 +36,15 @@ mpi4py)::
 
   mpiexec -n 3 python -c 'import modred.tests; modred.tests.run()'
 
-Please report failures and installation problems to modred-discuss@googlegroups.com
-with the following information:
+Please report failures and installation problems to
+modred-discuss@googlegroups.com with the following information:
 
 1. Copy of the entire output of the tests or installation
 2. Python version (``python -V``)
 3. Numpy version (``python -c 'import numpy; print numpy.__version__'``)
 4. Your operating system
 
-The documentation is available at: http://packages.python.org/modred or can be
+The documentation is available at http://modred.readthedocs.io or can be
 built from source by navigating to the install directory and calling::
 
   sphinx-build doc doc/build
