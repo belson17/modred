@@ -4,6 +4,18 @@ Release notes
 
 
 ------------
+modred 2.0.4
+------------
+
+Fixed bug for Windows environments.  Updated documentation to use Read the Docs.
+
+**Bug fixes**
+
+* ``parallel`` modules now uses ``socket`` module instead of ``os`` module to
+  find hostname, which is portable to Windows environments.
+
+
+------------
 modred 2.0.3
 ------------
 
@@ -11,7 +23,7 @@ Minor bug fix to OKID tests.
 
 **Bug fixes**
 
-* OKID files needed for tests are included in the source distribution. All 
+* OKID files needed for tests are included in the source distribution. All
   doc files are also included.
 
 
@@ -23,8 +35,8 @@ Minor bug fix.
 
 **Interface changes**
 
-* Order of returned values for :py:func:`dmd.compute_DMD_matrices_snaps_method` 
-  and :py:func:`dmd.compute_DMD_matrices_direct_method` is now consistent for 
+* Order of returned values for :py:func:`dmd.compute_DMD_matrices_snaps_method`
+  and :py:func:`dmd.compute_DMD_matrices_direct_method` is now consistent for
   both values of ``return_all``.
 
 
