@@ -5,5 +5,6 @@
 *temp
 
 doc/build
+modred/examples/*out
 
 modred.egg-info/
