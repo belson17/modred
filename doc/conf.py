@@ -154,4 +154,5 @@ man_pages = [
 texinfo_documents = [
     (master_doc, 'modred', 'modred Documentation',
      author, 'modred', 'Modal decompositions.',
-     'Miscellaneous'),
+     'Miscellaneous')
+]
