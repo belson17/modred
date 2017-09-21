@@ -65,12 +65,10 @@ setup(
         ],
     packages=find_packages(exclude=['doc', 'matlab']),
     package_dir={'modred': 'modred'},
-    # The following lines are not needed because the file locations are stored
-    # in MANIFEST.in
-    #package_data={'modred': [
-    #        'tests/OKID_files/SISO/*',
-    #        'tests/OKID_files/SIMO/*',
-    #        'tests/OKID_files/MISO/*',
-    #        'tests/OKID_files/MIMO/*']},
+    package_data={'modred': [
+            'tests/files_OKID/SISO/*',
+            'tests/files_OKID/SIMO/*',
+            'tests/files_OKID/MISO/*',
+            'tests/files_OKID/MIMO/*']},
     install_requires=['numpy', 'future']
     )
