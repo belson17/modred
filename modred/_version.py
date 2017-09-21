@@ -15,4 +15,4 @@ Append with .postN for post-release updates.  This may be necessary for changes
 in packaging or documentation, as PyPI does not allow uploads of files with the
 same filename (which corresponds to the version number).
 """
-__version__ = '2.0.4.post5'
+__version__ = '2.0.4.post6'
