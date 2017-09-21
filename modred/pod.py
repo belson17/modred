@@ -1,6 +1,7 @@
 from __future__ import print_function
 from __future__ import absolute_import
 from future.builtins import object
+from collections import namedtuple
 
 import numpy as np
 
@@ -10,8 +11,7 @@ from . import parallel
 
 
 def compute_POD_matrices_snaps_method(
-    vecs, mode_indices=None, inner_product_weights=None, atol=1e-13, rtol=None,
-    return_all=False):
+    vecs, mode_indices=None, inner_product_weights=None, atol=1e-13, rtol=None):
     """Computes POD modes using data stored in a matrix, using the method of
     snapshots.
 
@@ -32,22 +32,22 @@ def compute_POD_matrices_snaps_method(
         ``rtol``: Maximum relative difference between largest and smallest
         eigenvalues of correlation matrix.  Smaller ones are truncated.
 
-        ``return_all``: Return more objects; see below. Default is false.
-
     Returns:
-        ``modes``: Matrix whose columns are POD modes.
+        ``res``: Results of POD computation, stored in a namedtuple with
+        the following attributes:
 
-        ``eigvals``: 1D array of eigenvalues of correlation matrix (:math:`E`).
+        * ``modes``: Matrix whose columns are POD modes.
 
-        If ``return_all`` is true, also returns:
-
-        ``aux_vals_dict``: Dictionary containing auxiliary data from POD
-        computation.
+        * ``eigvals``: 1D array of eigenvalues of correlation matrix
+          (:math:`E`).
 
         * ``eigvecs``: Matrix wholse columns are eigenvectors of correlation
           matrix (:math:`U`).
 
         * ``correlation_mat``: Correlation matrix (:math:`X^* W X`).
+
+        Attributes can be accessed using calls like ``res.modes``.  To see all
+        available attributes, use ``print(res)``.
 
     The algorithm is
 
@@ -64,6 +64,7 @@ def compute_POD_matrices_snaps_method(
     as in :py:func:`compute_POD_matrices_direct_method`.
     However, this method is faster when :math:`X` has more rows than columns,
     i.e. there are more elements in each vector than there are vectors.
+
     """
     if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
@@ -82,17 +83,16 @@ def compute_POD_matrices_snaps_method(
     modes = vec_space.lin_combine(
         vecs, build_coeff_mat, coeff_mat_col_indices=mode_indices)
 
-    # Return values
-    if return_all:
-        aux_vals_dict = {'eigvecs': eigvecs, 'correlation_mat': correlation_mat}
-        return modes, eigvals, aux_vals_dict
-    else:
-        return modes, eigvals
+    # Return a namedtuple
+    POD_results = namedtuple(
+        'POD_results', ['modes', 'eigvals', 'eigvecs', 'correlation_mat'])
+    return POD_results(
+        modes=modes, eigvals=eigvals, eigvecs=eigvecs,
+        correlation_mat=correlation_mat)
 
 
 def compute_POD_matrices_direct_method(
-    vecs, mode_indices=None, inner_product_weights=None, atol=1e-13, rtol=None,
-    return_all=False):
+    vecs, mode_indices=None, inner_product_weights=None, atol=1e-13, rtol=None):
     """Computes POD modes using data stored in a matrix, using direct method.
 
     Args:
@@ -115,20 +115,19 @@ def compute_POD_matrices_direct_method(
         ``return_all``: Return more objects; see below. Default is false.
 
     Returns:
-        ``modes``: Matrix whose columns are POD modes.
+        ``res``: Results of POD computation, stored in a namedtuple with the
+        following attributes:
 
-        ``eigvals``: 1D array of eigenvalues of correlation matrix (:math:`E`),
-        which are the squares of the singular values of the data matrix
-        (:math:`X`).
+        * ``modes``: Matrix whose columns are POD modes.
 
-        If ``return_all`` is true, also returns:
-
-        ``aux_vals_dict``: Dictionary containing auxiliary data from DMD
-        computation.
+        * ``eigvals``: 1D array of eigenvalues of correlation matrix
+          (:math:`E`).
 
         * ``eigvecs``: Matrix wholse columns are eigenvectors of correlation
-          matrix (:math:`U`), which are also the right singular vectors of the
-          data matrix (:math:`X`).
+          matrix (:math:`U`).
+
+        Attributes can be accessed using calls like ``res.modes``.
+        To see all available attributes, use ``print(res)``.
 
     The algorithm is
 
@@ -145,6 +144,7 @@ def compute_POD_matrices_direct_method(
     (:py:func:`compute_POD_matrices_snaps_method`).  However, this method is
     slower when :math:`X` has more rows than columns, i.e. there are fewer
     vectors than elements in each vector.
+
     """
     if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
@@ -182,12 +182,9 @@ def compute_POD_matrices_direct_method(
 
     eigvals = sing_vals ** 2.
 
-    # Return values
-    if return_all:
-        aux_vals_dict = {'eigvecs': eigvecs}
-        return modes, eigvals, aux_vals_dict
-    else:
-        return modes, eigvals
+    # Return a namedtuple
+    POD_results = namedtuple('POD_results', ['modes', 'eigvals', 'eigvecs'])
+    return POD_results(modes=modes, eigvals=eigvals, eigvecs=eigvecs)
 
 
 class PODHandles(object):

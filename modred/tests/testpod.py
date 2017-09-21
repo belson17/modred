@@ -56,49 +56,43 @@ class TestPODArraysFunctions(unittest.TestCase):
                 # Compute POD using appropriate method.  Also compute a subset
                 # of modes, for later testing mode indices argument.
                 if method == 'snaps':
-                    modes, eigvals, aux_vals_dict =\
-                    compute_POD_matrices_snaps_method(
-                        vec_mat, inner_product_weights=weights, return_all=True)
-                    modes_sliced = compute_POD_matrices_snaps_method(
+                    POD_res = compute_POD_matrices_snaps_method(
+                        vec_mat, inner_product_weights=weights)
+                    POD_res_sliced = compute_POD_matrices_snaps_method(
                         vec_mat, mode_indices=mode_indices,
-                        inner_product_weights=weights, return_all=True)[0]
+                        inner_product_weights=weights)
 
                     # For method of snapshots, test correlation mat values
-                    correlation_mat = aux_vals_dict['correlation_mat']
                     np.testing.assert_allclose(
-                        IP(vec_mat, vec_mat), correlation_mat,
+                        IP(vec_mat, vec_mat), POD_res.correlation_mat,
                         rtol=rtol, atol=atol)
 
                 elif method == 'direct':
-                    modes, eigvals, aux_vals_dict =\
-                    compute_POD_matrices_direct_method(
-                        vec_mat, inner_product_weights=weights, return_all=True)
-                    modes_sliced = compute_POD_matrices_direct_method(
+                    POD_res = compute_POD_matrices_direct_method(
+                        vec_mat, inner_product_weights=weights)
+                    POD_res_sliced = compute_POD_matrices_direct_method(
                         vec_mat, mode_indices=mode_indices,
-                        inner_product_weights=weights, return_all=True)[0]
+                        inner_product_weights=weights)
 
                 else:
                     raise ValueError('Invalid POD method.')
 
-                # Extract auxiliary data
-                eigvecs = aux_vals_dict['eigvecs']
-
                 # Check POD eigenvalues and eigenvectors
                 np.testing.assert_allclose(
-                    IP(vec_mat, vec_mat) * eigvecs,
-                    eigvecs * np.mat(np.diag(eigvals)),
+                    IP(vec_mat, vec_mat) * POD_res.eigvecs,
+                    POD_res.eigvecs * np.mat(np.diag(POD_res.eigvals)),
                     rtol=rtol, atol=atol)
 
                 # Check POD modes
                 np.testing.assert_allclose(
-                    vec_mat * IP(vec_mat, modes),
-                    modes * np.mat(np.diag(eigvals)),
+                    vec_mat * IP(vec_mat, POD_res.modes),
+                    POD_res.modes * np.mat(np.diag(POD_res.eigvals)),
                     rtol=rtol, atol=atol)
 
                 # Check that if mode indices are passed in, the correct
                 # modes are returned.
                 np.testing.assert_allclose(
-                    modes_sliced, modes[:, mode_indices],
+                    POD_res_sliced.modes, POD_res.modes[:, mode_indices],
                     rtol=rtol, atol=atol)
 
 

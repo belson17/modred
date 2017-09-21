@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 from future.builtins import object, range
+from collections import namedtuple
 
 import numpy as np
 
@@ -11,7 +12,7 @@ from . import parallel
 def compute_BPOD_matrices(
     direct_vecs, adjoint_vecs, num_inputs=1, num_outputs=1,
     direct_mode_indices=None, adjoint_mode_indices=None,
-    inner_product_weights=None, atol=1e-13, rtol=None, return_all=False):
+    inner_product_weights=None, atol=1e-13, rtol=None):
     """Computes BPOD modes using data stored in matrices, using method of
     snapshots.
 
@@ -49,19 +50,15 @@ def compute_BPOD_matrices(
         ``rtol``: Maximum relative difference between largest and smallest
         Hankel singular values.  Smaller ones are truncated.
 
-        ``return_all``: Return more objects; see below. Default is false.
-
     Returns:
-        ``direct_modes``: Matrix whose columns are direct modes.
+        ``res``: Results of BPOD computation, stored in a namedtuple with
+        the following attributes:
 
-        ``adjoint_modes``: Matrix whose columns are adjoint modes.
+        * ``direct_modes``: Matrix whose columns are direct modes.
 
-        ``sing_vals``: 1D array of Hankel singular values (:math:`E`).
+        * ``adjoint_modes``: Matrix whose columns are adjoint modes.
 
-        If ``return_all`` is true, then also returns:
-
-        ``aux_vals_dict``: Dictionary containing auxiliary data from DMD
-        computation.
+        * ``sing_vals``: 1D array of Hankel singular values (:math:`E`).
 
         * ``L_sing_vecs``: Matrix whose columns are left singular vectors of
           Hankel matrix (:math:`U`).
@@ -71,7 +68,11 @@ def compute_BPOD_matrices(
 
         * ``Hankel_mat``: Hankel matrix (:math:`Y^* W X`).
 
+        Attributes can be accessed using calls like ``res.direct_modes``.  To
+        see all available attributes, use ``print(res)``.
+
     See also :py:class:`BPODHandles`.
+
     """
     if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
@@ -115,15 +116,15 @@ def compute_BPOD_matrices(
         adjoint_vecs, adjoint_build_coeff_mat,
         coeff_mat_col_indices=adjoint_mode_indices)
 
-    # Return values
-    if return_all:
-        aux_vals_dict = {
-            'L_sing_vecs': L_sing_vecs,
-            'R_sing_vecs': R_sing_vecs,
-            'Hankel_mat': Hankel_mat}
-        return direct_mode_array, adjoint_mode_array, sing_vals, aux_vals_dict
-    else:
-        return direct_mode_array, adjoint_mode_array, sing_vals
+    # Return a namedtuple
+    BPOD_results = namedtuple(
+        'BPOD_results', [
+            'direct_modes', 'adjoint_modes', 'sing_vals', 'L_sing_vecs',
+            'R_sing_vecs', 'Hankel_mat'])
+    return BPOD_results(
+        direct_modes=direct_mode_array, adjoint_modes=adjoint_mode_array,
+        sing_vals=sing_vals, L_sing_vecs=L_sing_vecs, R_sing_vecs=R_sing_vecs,
+        Hankel_mat=Hankel_mat)
 
 
 class BPODHandles(object):

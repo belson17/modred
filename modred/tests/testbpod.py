@@ -118,25 +118,18 @@ class TestBPODMatrices(unittest.TestCase):
                     # users would want to ignore relatively small Hankel
                     # singular values anyway, as that is the point of doing a
                     # balancing transformation.
-                    (direct_modes_mat, adjoint_modes_mat, sing_vals,
-                    aux_vals_dict) =\
-                        compute_BPOD_matrices(
-                            direct_vecs_mat, adjoint_vecs_mat,
-                            num_inputs=num_inputs, num_outputs=num_outputs,
-                            inner_product_weights=weights,
-                            rtol=1e-6, atol=1e-12, return_all=True)
-
-                    # Extract auxiliary data
-                    L_sing_vecs = aux_vals_dict['L_sing_vecs']
-                    R_sing_vecs = aux_vals_dict['R_sing_vecs']
-                    Hankel_mat = aux_vals_dict['Hankel_mat']
+                    BPOD_res = compute_BPOD_matrices(
+                        direct_vecs_mat, adjoint_vecs_mat,
+                        num_inputs=num_inputs, num_outputs=num_outputs,
+                        inner_product_weights=weights, rtol=1e-6, atol=1e-12)
 
                     # Check Hankel mat values.  These are computed fast
                     # internally by only computing the first column and last row
                     # of chunks.  Here, simply take all the inner products.
                     Hankel_mat_slow = IP(adjoint_vecs_mat, direct_vecs_mat)
                     np.testing.assert_allclose(
-                        Hankel_mat, Hankel_mat_slow, rtol=rtol, atol=atol)
+                        BPOD_res.Hankel_mat, Hankel_mat_slow,
+                        rtol=rtol, atol=atol)
 
                     # Check properties of SVD of Hankel matrix.  Since the SVD
                     # may be truncated, instead of checking orthogonality and
@@ -146,12 +139,16 @@ class TestBPODMatrices(unittest.TestCase):
                     # involves "squaring" the Hankel matrix, it requires more
                     # relaxed test tolerances.
                     np.testing.assert_allclose(
-                        Hankel_mat * Hankel_mat.T * L_sing_vecs,
-                        L_sing_vecs * np.mat(np.diag(sing_vals ** 2.)),
+                        BPOD_res.Hankel_mat * (
+                            BPOD_res.Hankel_mat.T * BPOD_res.L_sing_vecs),
+                        BPOD_res.L_sing_vecs * np.mat(np.diag(
+                            BPOD_res.sing_vals ** 2.)),
                         rtol=rtol_sqr, atol=atol_sqr)
                     np.testing.assert_allclose(
-                        Hankel_mat.T * Hankel_mat * R_sing_vecs,
-                        R_sing_vecs * np.mat(np.diag(sing_vals ** 2.)),
+                        BPOD_res.Hankel_mat.T * (
+                            BPOD_res.Hankel_mat * BPOD_res.R_sing_vecs),
+                        BPOD_res.R_sing_vecs * np.mat(np.diag(
+                            BPOD_res.sing_vals ** 2.)),
                         rtol=rtol_sqr, atol=atol_sqr)
 
                     # Check that the modes diagonalize the gramians.  This test
@@ -159,35 +156,35 @@ class TestBPODMatrices(unittest.TestCase):
                     # due to the "squaring" of the matrices in computing the
                     # gramians.
                     np.testing.assert_allclose((
-                        IP(adjoint_modes_mat, direct_vecs_mat) *
-                        IP(direct_vecs_mat, adjoint_modes_mat)),
-                        np.diag(sing_vals),
+                        IP(BPOD_res.adjoint_modes, direct_vecs_mat) *
+                        IP(direct_vecs_mat, BPOD_res.adjoint_modes)),
+                        np.diag(BPOD_res.sing_vals),
                         rtol=rtol_sqr, atol=atol_sqr)
                     np.testing.assert_allclose((
-                        IP(direct_modes_mat, adjoint_vecs_mat) *
-                        IP(adjoint_vecs_mat, direct_modes_mat)),
-                        np.diag(sing_vals),
+                        IP(BPOD_res.direct_modes, adjoint_vecs_mat) *
+                        IP(adjoint_vecs_mat, BPOD_res.direct_modes)),
+                        np.diag(BPOD_res.sing_vals),
                         rtol=rtol_sqr, atol=atol_sqr)
 
                     # Check that if mode indices are passed in, the correct
                     # modes are returned.
                     mode_indices = np.unique(np.random.randint(
-                        0, high=sing_vals.size, size=(sing_vals.size // 2)))
-                    direct_modes_mat_sliced, adjoint_modes_mat_sliced =\
-                    compute_BPOD_matrices(
+                        0, high=BPOD_res.sing_vals.size,
+                        size=(BPOD_res.sing_vals.size // 2)))
+                    BPOD_res_sliced = compute_BPOD_matrices(
                         direct_vecs_mat, adjoint_vecs_mat,
                         direct_mode_indices=mode_indices,
                         adjoint_mode_indices=mode_indices,
                         num_inputs=num_inputs, num_outputs=num_outputs,
                         inner_product_weights=weights,
-                        rtol=1e-12, atol=1e-12, return_all=True)[:2]
+                        rtol=1e-12, atol=1e-12)
                     np.testing.assert_allclose(
-                        direct_modes_mat_sliced,
-                        direct_modes_mat[:, mode_indices],
+                        BPOD_res_sliced.direct_modes,
+                        BPOD_res.direct_modes[:, mode_indices],
                         rtol=rtol, atol=atol)
                     np.testing.assert_allclose(
-                        adjoint_modes_mat_sliced,
-                        adjoint_modes_mat[:, mode_indices],
+                        BPOD_res_sliced.adjoint_modes,
+                        BPOD_res.adjoint_modes[:, mode_indices],
                         rtol=rtol, atol=atol)
 
 

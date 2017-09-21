@@ -81,90 +81,61 @@ class TestDMDArraysFunctions(unittest.TestCase):
                         # subset of the DMD modes, in preparation for later
                         # tests.
                         if method == 'snaps':
-                            (exact_modes, eigvals, spectral_coeffs,
-                            aux_vals_dict) =\
-                                compute_DMD_matrices_snaps_method(
-                                    vecs_arg, adv_vecs=adv_vecs_arg,
-                                    inner_product_weights=weights,
-                                    max_num_eigvals=max_num_eigvals,
-                                    return_all=True)
-                            sliced_dmd_return_vals =\
-                                compute_DMD_matrices_snaps_method(
-                                    vecs_arg, adv_vecs=adv_vecs_arg,
-                                    mode_indices=mode_indices,
-                                    inner_product_weights=weights,
-                                    max_num_eigvals=max_num_eigvals,
-                                    return_all=True)
-
-                            # For method of snapshots, test correlation mats
-                            # values by simply recomputing them.
-                            correlation_mat = aux_vals_dict['correlation_mat']
-                            cross_correlation_mat = aux_vals_dict[
-                                'cross_correlation_mat']
-                            np.testing.assert_allclose(
-                                IP(vecs_vals, vecs_vals), correlation_mat,
-                                rtol=rtol, atol=atol)
-                            np.testing.assert_allclose(
-                                IP(vecs_vals, adv_vecs_vals),
-                                cross_correlation_mat,
-                                rtol=rtol, atol=atol)
-
-                        elif method == 'direct':
-                            (exact_modes, eigvals, spectral_coeffs,
-                            aux_vals_dict) =\
-                            compute_DMD_matrices_direct_method(
+                            DMD_res = compute_DMD_matrices_snaps_method(
                                 vecs_arg, adv_vecs=adv_vecs_arg,
                                 inner_product_weights=weights,
-                                max_num_eigvals=max_num_eigvals,
-                                return_all=True)
-                            sliced_dmd_return_vals =\
-                            compute_DMD_matrices_direct_method(
+                                max_num_eigvals=max_num_eigvals)
+                            DMD_res_sliced = compute_DMD_matrices_snaps_method(
                                 vecs_arg, adv_vecs=adv_vecs_arg,
                                 mode_indices=mode_indices,
                                 inner_product_weights=weights,
-                                max_num_eigvals=max_num_eigvals,
-                                return_all=True)
+                                max_num_eigvals=max_num_eigvals)
+
+                            # For method of snapshots, test correlation mats
+                            # values by simply recomputing them.
+                            np.testing.assert_allclose(
+                                IP(vecs_vals, vecs_vals),
+                                DMD_res.correlation_mat,
+                                rtol=rtol, atol=atol)
+                            np.testing.assert_allclose(
+                                IP(vecs_vals, adv_vecs_vals),
+                                DMD_res.cross_correlation_mat,
+                                rtol=rtol, atol=atol)
+
+                        elif method == 'direct':
+                            DMD_res = compute_DMD_matrices_direct_method(
+                                vecs_arg, adv_vecs=adv_vecs_arg,
+                                inner_product_weights=weights,
+                                max_num_eigvals=max_num_eigvals)
+                            DMD_res_sliced = compute_DMD_matrices_direct_method(
+                                vecs_arg, adv_vecs=adv_vecs_arg,
+                                mode_indices=mode_indices,
+                                inner_product_weights=weights,
+                                max_num_eigvals=max_num_eigvals)
 
                         else:
                             raise ValueError('Invalid DMD method.')
 
-                        # Extract auxiliary data from DMD computation
-                        proj_modes = aux_vals_dict['proj_modes']
-                        adjoint_modes = aux_vals_dict['adjoint_modes']
-                        R_low_order_eigvecs = aux_vals_dict[
-                            'R_low_order_eigvecs']
-                        L_low_order_eigvecs = aux_vals_dict[
-                            'L_low_order_eigvecs']
-                        correlation_mat_eigvecs = aux_vals_dict[
-                            'correlation_mat_eigvecs']
-                        correlation_mat_eigvals = aux_vals_dict[
-                            'correlation_mat_eigvals']
-
-                        # Select sliced DMD modes from values returned by DMD
-                        # matrix method.
-                        exact_modes_sliced = sliced_dmd_return_vals[0]
-                        proj_modes_sliced = sliced_dmd_return_vals[-1][
-                            'proj_modes']
-                        adjoint_modes_sliced = sliced_dmd_return_vals[-1][
-                            'adjoint_modes']
-
                         # Test correlation mat eigenvalues and eigenvectors.
                         np.testing.assert_allclose(
-                            IP(vecs_vals, vecs_vals) * correlation_mat_eigvecs,
-                            correlation_mat_eigvecs * np.mat(np.diag(
-                                correlation_mat_eigvals)),
+                            IP(vecs_vals, vecs_vals) *\
+                            DMD_res.correlation_mat_eigvecs,
+                            DMD_res.correlation_mat_eigvecs * np.mat(np.diag(
+                                DMD_res.correlation_mat_eigvals)),
                             rtol=rtol, atol=atol)
 
                         # Compute the approximating linear operator relating the
                         # vecs to the adv_vecs.  To do this, use the
                         # eigendecomposition of the correlation mat.
                         vecs_POD_build_coeffs = (
-                            correlation_mat_eigvecs *
-                            np.mat(np.diag(correlation_mat_eigvals ** -0.5)))
+                            DMD_res.correlation_mat_eigvecs *
+                            np.mat(np.diag(
+                                DMD_res.correlation_mat_eigvals ** -0.5)))
                         vecs_POD_modes = vecs_vals * vecs_POD_build_coeffs
                         approx_linear_op = (
-                            adv_vecs_vals * correlation_mat_eigvecs *
-                            np.mat(np.diag(correlation_mat_eigvals ** -0.5)) *
+                            adv_vecs_vals * DMD_res.correlation_mat_eigvecs *
+                            np.mat(np.diag(
+                                DMD_res.correlation_mat_eigvals ** -0.5)) *
                             vecs_POD_modes.H)
                         low_order_linear_op = IP(
                             vecs_POD_modes,
@@ -173,19 +144,22 @@ class TestDMDArraysFunctions(unittest.TestCase):
                         # Test the left and right eigenvectors of the low-order
                         # (projected) approximating linear operator.
                         np.testing.assert_allclose(
-                            low_order_linear_op * R_low_order_eigvecs,
-                            R_low_order_eigvecs * np.mat(np.diag(eigvals)),
+                            low_order_linear_op * DMD_res.R_low_order_eigvecs,
+                            DMD_res.R_low_order_eigvecs * np.mat(np.diag(
+                                DMD_res.eigvals)),
                             rtol=rtol, atol=atol)
                         np.testing.assert_allclose(
-                            L_low_order_eigvecs.H * low_order_linear_op,
-                            np.mat(np.diag(eigvals)) * L_low_order_eigvecs.H,
+                            DMD_res.L_low_order_eigvecs.H * low_order_linear_op,
+                            np.mat(np.diag(DMD_res.eigvals)) *\
+                            DMD_res.L_low_order_eigvecs.H,
                             rtol=rtol, atol=atol)
 
                         # Test the exact modes, which are eigenvectors of the
                         # approximating linear operator.
                         np.testing.assert_allclose(
-                            IP(approx_linear_op.H, exact_modes),
-                            exact_modes * np.mat(np.diag(eigvals)),
+                            IP(approx_linear_op.H, DMD_res.exact_modes),
+                            DMD_res.exact_modes * np.mat(np.diag(
+                                DMD_res.eigvals)),
                             rtol=rtol, atol=atol)
 
                         # Test the projected modes, which are eigenvectors of
@@ -194,32 +168,41 @@ class TestDMDArraysFunctions(unittest.TestCase):
                         np.testing.assert_allclose(
                             vecs_POD_modes * IP(
                                 vecs_POD_modes,
-                                IP(approx_linear_op.H, proj_modes)),
-                            proj_modes * np.mat(np.diag(eigvals)),
+                                IP(approx_linear_op.H, DMD_res.proj_modes)),
+                            DMD_res.proj_modes * np.mat(np.diag(
+                                DMD_res.eigvals)),
                             rtol=rtol, atol=atol)
 
                         # Test the adjoint modes, which are left eigenvectors of
                         # the approximating linear operator.
                         np.testing.assert_allclose(
-                            IP(approx_linear_op, adjoint_modes),
-                            adjoint_modes * np.mat(np.diag(eigvals.conj().T)),
+                            IP(approx_linear_op, DMD_res.adjoint_modes),
+                            DMD_res.adjoint_modes * np.mat(np.diag(
+                                DMD_res.eigvals.conj().T)),
                             rtol=rtol, atol=atol)
 
                         # Test spectral coefficients against an explicit
                         # projection using the adjoint DMD modes.
                         np.testing.assert_allclose(
-                            np.array(np.abs(
-                                IP(adjoint_modes, vecs_vals[:, 0]))).squeeze(),
-                            spectral_coeffs,
+                            np.array(np.abs(IP(
+                                DMD_res.adjoint_modes,
+                                vecs_vals[:, 0]))).squeeze(),
+                            DMD_res.spectral_coeffs,
                             rtol=rtol, atol=atol)
 
                         # Test that use of mode indices argument returns correct
                         # subset of modes
                         np.testing.assert_allclose(
-                            exact_modes_sliced, exact_modes[:, mode_indices],
+                            DMD_res_sliced.exact_modes,
+                            DMD_res.exact_modes[:, mode_indices],
                             rtol=rtol, atol=atol)
                         np.testing.assert_allclose(
-                            proj_modes_sliced, proj_modes[:, mode_indices],
+                            DMD_res_sliced.proj_modes,
+                            DMD_res.proj_modes[:, mode_indices],
+                            rtol=rtol, atol=atol)
+                        np.testing.assert_allclose(
+                            DMD_res_sliced.adjoint_modes,
+                            DMD_res.adjoint_modes[:, mode_indices],
                             rtol=rtol, atol=atol)
 
 
@@ -859,108 +842,74 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                         # compute a random subset of the TLSqrDMD modes, in
                         # preparation for later tests.
                         if method == 'snaps':
-                            (exact_modes, eigvals, spectral_coeffs,
-                            aux_vals_dict) =\
+                            DMD_res = compute_TLSqrDMD_matrices_snaps_method(
+                                vecs_arg, adv_vecs=adv_vecs_arg,
+                                inner_product_weights=weights,
+                                max_num_eigvals=max_num_eigvals)
+                            DMD_res_sliced =\
                                 compute_TLSqrDMD_matrices_snaps_method(
                                     vecs_arg, adv_vecs=adv_vecs_arg,
+                                    mode_indices=mode_indices,
                                     inner_product_weights=weights,
-                                    max_num_eigvals=max_num_eigvals,
-                                    return_all=True)
-                            sliced_dmd_return_vals =\
-                                compute_TLSqrDMD_matrices_snaps_method(
-                                    vecs_arg, adv_vecs=adv_vecs_arg,
-                                    inner_product_weights=weights,
-                                    max_num_eigvals=max_num_eigvals,
-                                    return_all=True)
+                                    max_num_eigvals=max_num_eigvals)
 
                             # For method of snapshots, test correlation mats
                             # values by simply recomputing them.
-                            correlation_mat = aux_vals_dict['correlation_mat']
-                            cross_correlation_mat = aux_vals_dict[
-                                'cross_correlation_mat']
-                            adv_correlation_mat = aux_vals_dict[
-                                'adv_correlation_mat']
                             np.testing.assert_allclose(
-                                IP(vecs_vals, vecs_vals), correlation_mat,
+                                IP(vecs_vals, vecs_vals),
+                                DMD_res.correlation_mat,
                                 rtol=rtol, atol=atol)
                             np.testing.assert_allclose(
                                 IP(vecs_vals, adv_vecs_vals),
-                                cross_correlation_mat,
+                                DMD_res.cross_correlation_mat,
                                 rtol=rtol, atol=atol)
                             np.testing.assert_allclose(
                                 IP(adv_vecs_vals, adv_vecs_vals),
-                                adv_correlation_mat,
+                                DMD_res.adv_correlation_mat,
                                 rtol=rtol, atol=atol)
 
                         elif method == 'direct':
-                            (exact_modes, eigvals, spectral_coeffs,
-                            aux_vals_dict) =\
+                            DMD_res = compute_TLSqrDMD_matrices_direct_method(
+                                vecs_arg, adv_vecs=adv_vecs_arg,
+                                inner_product_weights=weights,
+                                max_num_eigvals=max_num_eigvals)
+                            DMD_res_sliced =\
                                 compute_TLSqrDMD_matrices_direct_method(
                                     vecs_arg, adv_vecs=adv_vecs_arg,
+                                    mode_indices=mode_indices,
                                     inner_product_weights=weights,
-                                    max_num_eigvals=max_num_eigvals,
-                                    return_all=True)
-                            sliced_dmd_return_vals =\
-                                compute_TLSqrDMD_matrices_direct_method(
-                                    vecs_arg, adv_vecs=adv_vecs_arg,
-                                    inner_product_weights=weights,
-                                    max_num_eigvals=max_num_eigvals,
-                                    return_all=True)
+                                    max_num_eigvals=max_num_eigvals)
 
                         else:
                             raise ValueError('Invalid DMD method.')
-
-                        # Extract auxiliary data from DMD computation
-                        proj_modes = aux_vals_dict['proj_modes']
-                        adjoint_modes = aux_vals_dict['adjoint_modes']
-                        R_low_order_eigvecs = aux_vals_dict[
-                            'R_low_order_eigvecs']
-                        L_low_order_eigvecs = aux_vals_dict[
-                            'L_low_order_eigvecs']
-                        sum_correlation_mat_eigvecs = aux_vals_dict[
-                            'sum_correlation_mat_eigvecs']
-                        sum_correlation_mat_eigvals = aux_vals_dict[
-                            'sum_correlation_mat_eigvals']
-                        proj_correlation_mat_eigvecs = aux_vals_dict[
-                            'proj_correlation_mat_eigvecs']
-                        proj_correlation_mat_eigvals = aux_vals_dict[
-                            'proj_correlation_mat_eigvals']
-
-                        # Select sliced DMD modes from values returned by DMD
-                        # matrix method.
-                        # Select sliced DMD modes from values returned by DMD
-                        # matrix method.
-                        exact_modes_sliced = sliced_dmd_return_vals[0]
-                        proj_modes_sliced = sliced_dmd_return_vals[-1][
-                            'proj_modes']
-                        adjoint_modes_sliced = sliced_dmd_return_vals[-1][
-                            'adjoint_modes']
 
                         # Test summed correlation mat eigenvalues and
                         # eigenvectors
                         np.testing.assert_allclose((
                             IP(vecs_vals, vecs_vals) +
-                            IP(adv_vecs_vals, adv_vecs_vals)) *
-                            sum_correlation_mat_eigvecs,
-                            sum_correlation_mat_eigvecs * np.mat(np.diag(
-                                sum_correlation_mat_eigvals)),
+                            IP(adv_vecs_vals, adv_vecs_vals)) *\
+                            DMD_res.sum_correlation_mat_eigvecs,
+                            DMD_res.sum_correlation_mat_eigvecs *\
+                            np.mat(np.diag(
+                                DMD_res.sum_correlation_mat_eigvals)),
                             rtol=rtol, atol=atol)
 
                         # Test projected correlation mat eigenvalues and
                         # eigenvectors
                         proj_vecs_vals = (
                             vecs_vals *
-                            sum_correlation_mat_eigvecs *
-                            sum_correlation_mat_eigvecs.H)
+                            DMD_res.sum_correlation_mat_eigvecs *
+                            DMD_res.sum_correlation_mat_eigvecs.H)
                         proj_adv_vecs_vals = (
                             adv_vecs_vals *
-                            sum_correlation_mat_eigvecs *
-                            sum_correlation_mat_eigvecs.H)
+                            DMD_res.sum_correlation_mat_eigvecs *
+                            DMD_res.sum_correlation_mat_eigvecs.H)
                         np.testing.assert_allclose(
-                            IP(proj_vecs_vals, proj_vecs_vals) *
-                            proj_correlation_mat_eigvecs,
-                            proj_correlation_mat_eigvecs * np.mat(np.diag(
-                                proj_correlation_mat_eigvals)),
+                            IP(proj_vecs_vals, proj_vecs_vals) *\
+                            DMD_res.proj_correlation_mat_eigvecs,
+                            DMD_res.proj_correlation_mat_eigvecs *\
+                            np.mat(np.diag(
+                                DMD_res.proj_correlation_mat_eigvals)),
                             rtol=rtol, atol=atol)
 
                         # Compute the approximating linear operator relating the
@@ -968,15 +917,16 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                         # compute the POD of the projected vecs using the
                         # eigendecomposition of the projected correlation mat.
                         proj_vecs_POD_build_coeffs = (
-                            proj_correlation_mat_eigvecs *
+                            DMD_res.proj_correlation_mat_eigvecs *
                             np.mat(np.diag(
-                                proj_correlation_mat_eigvals ** -0.5)))
+                                DMD_res.proj_correlation_mat_eigvals ** -0.5)))
                         proj_vecs_POD_modes = (
                             proj_vecs_vals * proj_vecs_POD_build_coeffs)
                         approx_linear_op = (
-                            proj_adv_vecs_vals * proj_correlation_mat_eigvecs *
+                            proj_adv_vecs_vals *
+                            DMD_res.proj_correlation_mat_eigvecs *
                             np.mat(np.diag(
-                                proj_correlation_mat_eigvals ** -0.5)) *
+                                DMD_res.proj_correlation_mat_eigvals ** -0.5)) *
                             proj_vecs_POD_modes.H)
                         low_order_linear_op = IP(
                             proj_vecs_POD_modes,
@@ -985,19 +935,22 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                         # Test the left and right eigenvectors of the low-order
                         # (projected) approximating linear operator.
                         np.testing.assert_allclose(
-                            low_order_linear_op * R_low_order_eigvecs,
-                            R_low_order_eigvecs * np.mat(np.diag(eigvals)),
+                            low_order_linear_op * DMD_res.R_low_order_eigvecs,
+                            DMD_res.R_low_order_eigvecs * np.mat(np.diag(
+                                DMD_res.eigvals)),
                             rtol=rtol, atol=atol)
                         np.testing.assert_allclose(
-                            L_low_order_eigvecs.H * low_order_linear_op,
-                            np.mat(np.diag(eigvals)) * L_low_order_eigvecs.H,
+                            DMD_res.L_low_order_eigvecs.H * low_order_linear_op,
+                            np.mat(np.diag(DMD_res.eigvals)) *\
+                            DMD_res.L_low_order_eigvecs.H,
                             rtol=rtol, atol=atol)
 
                         # Test the exact modes, which are eigenvectors of the
                         # approximating linear operator.
                         np.testing.assert_allclose(
-                            IP(approx_linear_op.H, exact_modes),
-                            exact_modes * np.mat(np.diag(eigvals)),
+                            IP(approx_linear_op.H, DMD_res.exact_modes),
+                            DMD_res.exact_modes * np.mat(np.diag(
+                                DMD_res.eigvals)),
                             rtol=rtol, atol=atol)
 
                         # Test the projected modes, which are eigenvectors of
@@ -1006,24 +959,41 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                         np.testing.assert_allclose(
                             proj_vecs_POD_modes * IP(
                                 proj_vecs_POD_modes,
-                                IP(approx_linear_op.H, proj_modes)),
-                            proj_modes * np.mat(np.diag(eigvals)),
+                                IP(approx_linear_op.H, DMD_res.proj_modes)),
+                            DMD_res.proj_modes * np.mat(np.diag(
+                                DMD_res.eigvals)),
                             rtol=rtol, atol=atol)
 
                         # Test the adjoint modes, which are left eigenvectors of
                         # the approximating linear operator.
                         np.testing.assert_allclose(
-                            IP(approx_linear_op, adjoint_modes),
-                            adjoint_modes * np.mat(np.diag(eigvals.conj().T)),
+                            IP(approx_linear_op, DMD_res.adjoint_modes),
+                            DMD_res.adjoint_modes * np.mat(np.diag(
+                                DMD_res.eigvals.conj().T)),
                             rtol=rtol, atol=atol)
 
                         # Test spectral coefficients against an explicit
                         # projection using the adjoint DMD modes.
                         np.testing.assert_allclose(
                             np.array(np.abs(IP(
-                                adjoint_modes,
+                                DMD_res.adjoint_modes,
                                 proj_vecs_vals[:, 0]))).squeeze(),
-                            spectral_coeffs,
+                            DMD_res.spectral_coeffs,
+                            rtol=rtol, atol=atol)
+
+                        # Test that use of mode indices argument returns correct
+                        # subset of modes
+                        np.testing.assert_allclose(
+                            DMD_res_sliced.exact_modes,
+                            DMD_res.exact_modes[:, mode_indices],
+                            rtol=rtol, atol=atol)
+                        np.testing.assert_allclose(
+                            DMD_res_sliced.proj_modes,
+                            DMD_res.proj_modes[:, mode_indices],
+                            rtol=rtol, atol=atol)
+                        np.testing.assert_allclose(
+                            DMD_res_sliced.adjoint_modes,
+                            DMD_res.adjoint_modes[:, mode_indices],
                             rtol=rtol, atol=atol)
 
 

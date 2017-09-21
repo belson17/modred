@@ -1,6 +1,7 @@
 from __future__ import print_function
 from __future__ import absolute_import
 from future.builtins import object
+from collections import namedtuple
 
 import numpy as np
 
@@ -11,7 +12,7 @@ from . import parallel
 
 def compute_DMD_matrices_snaps_method(
     vecs, adv_vecs=None, mode_indices=None, inner_product_weights=None,
-    atol=1e-13, rtol=None, max_num_eigvals=None, return_all=False):
+    atol=1e-13, rtol=None, max_num_eigvals=None):
     """Computes DMD modes using data stored in matrices, using method of
     snapshots.
 
@@ -44,28 +45,24 @@ def compute_DMD_matrices_snaps_method(
         matrix. If set to None, no truncation will be performed, and the
         maximum possible number of DMD eigenvalues will be computed.
 
-        ``return_all``: Return more values; see below. Default is false.
-
     Returns:
-        ``exact_modes``: Matrix whose columns are exact DMD modes.
+        ``res``: Results of DMD computation, stored in a namedtuple with
+        the following attributes:
 
-        ``eigvals``: 1D array of eigenvalues of approximating low-order linear
-        map (DMD eigenvalues).
-
-        ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
-        as the magnitudes of the projection coefficients of first data vector.
-        The projection is onto the span of the DMD modes using the
-        (biorthogonal) adjoint DMD modes.  Note that this is the same as a
-        least-squares projection onto the span of the DMD modes.
-
-        If ``return_all`` is true, also returns:
-
-        ``aux_vals_dict``: Dictionary containing auxiliary data from DMD
-        computation.
+        * ``exact_modes``: Matrix whose columns are exact DMD modes.
 
         * ``proj_modes``: Matrix whose columns are projected DMD modes.
 
         * ``adjoint_modes``: Matrix whose columns are adjoint DMD modes.
+
+        * ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
+          as the magnitudes of the projection coefficients of first data vector.
+          The projection is onto the span of the DMD modes using the
+          (biorthogonal) adjoint DMD modes.  Note that this is the same as a
+          least-squares projection onto the span of the DMD modes.
+
+        * ``eigvals``: 1D array of eigenvalues of approximating low-order linear
+          map (DMD eigenvalues).
 
         * ``R_low_order_eigvecs``: Matrix of right eigenvectors of approximating
           low-order linear map.
@@ -86,6 +83,9 @@ def compute_DMD_matrices_snaps_method(
           inner products of data vectors with data vectors advanced in time.
           Going down rows, the data vector changes; going across columns the
           advanced data vector changes.
+
+        Attributes can be accessed using calls like ``res.exact_modes``.  To
+        see all available attributes, use ``print(res)``.
 
     This uses the method of snapshots, which is faster than the direct method
     (see :py:func:`compute_DMD_matrices_direct_method`) when ``vecs`` has more
@@ -173,25 +173,27 @@ def compute_DMD_matrices_snaps_method(
         raise ValueError(('Number of cols in vecs does not match '
             'number of rows in build_coeffs matrix.'))
 
-    # Return values
-    if return_all:
-        aux_vals_dict = {
-            'proj_modes': proj_modes,
-            'adjoint_modes': adjoint_modes,
-            'R_low_order_eigvecs': R_low_order_eigvecs,
-            'L_low_order_eigvecs': L_low_order_eigvecs,
-            'correlation_mat_eigvals': correlation_mat_eigvals,
-            'correlation_mat_eigvecs': correlation_mat_eigvecs,
-            'correlation_mat': correlation_mat,
-            'cross_correlation_mat': cross_correlation_mat}
-        return exact_modes, eigvals, spectral_coeffs, aux_vals_dict
-    else:
-        return exact_modes, eigvals, spectral_coeffs
+    # Return a namedtuple
+    DMD_results = namedtuple(
+        'DMD_results', [
+            'exact_modes', 'proj_modes', 'adjoint_modes', 'spectral_coeffs',
+            'eigvals', 'R_low_order_eigvecs', 'L_low_order_eigvecs',
+            'correlation_mat_eigvals', 'correlation_mat_eigvecs',
+            'correlation_mat', 'cross_correlation_mat'])
+    return DMD_results(
+        exact_modes=exact_modes, proj_modes=proj_modes,
+        adjoint_modes=adjoint_modes, spectral_coeffs=spectral_coeffs,
+        eigvals=eigvals, R_low_order_eigvecs=R_low_order_eigvecs,
+        L_low_order_eigvecs=L_low_order_eigvecs,
+        correlation_mat_eigvals=correlation_mat_eigvals,
+        correlation_mat_eigvecs=correlation_mat_eigvecs,
+        correlation_mat=correlation_mat,
+        cross_correlation_mat=cross_correlation_mat)
 
 
 def compute_DMD_matrices_direct_method(
     vecs, adv_vecs=None, mode_indices=None, inner_product_weights=None,
-    atol=1e-13, rtol=None, max_num_eigvals=None, return_all=False):
+    atol=1e-13, rtol=None, max_num_eigvals=None):
     """Computes DMD modes using data stored in matrices, using direct method.
 
     Args:
@@ -223,29 +225,24 @@ def compute_DMD_matrices_direct_method(
         matrix. If set to None, no truncation will be performed, and the
         maximum possible number of DMD eigenvalues will be computed.
 
-        ``return_all``: Return more values; see below. Default is false.
-
     Returns:
+        ``res``: Results of DMD computation, stored in a namedtuple with
+        the following attributes:
 
-        ``exact_modes``: Matrix whose columns are exact DMD modes.
-
-        ``eigvals``: 1D array of eigenvalues of approximating low-order linear
-        map (DMD eigenvalues).
-
-        ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
-        as the magnitudes of the projection coefficients of first data vector.
-        The projection is onto the span of the DMD modes using the
-        (biorthogonal) adjoint DMD modes.  Note that this is the same as a
-        least-squares projection onto the span of the DMD modes.
-
-        If ``return_all`` is true, also returns:
-
-        ``aux_vals_dict``: Dictionary containing auxiliary data from DMD
-        computation.
+        * ``exact_modes``: Matrix whose columns are exact DMD modes.
 
         * ``proj_modes``: Matrix whose columns are projected DMD modes.
 
-        * ``adjoint_modes``: Matrix whose columns are projected DMD modes.
+        * ``adjoint_modes``: Matrix whose columns are adjoint DMD modes.
+
+        * ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
+          as the magnitudes of the projection coefficients of first data vector.
+          The projection is onto the span of the DMD modes using the
+          (biorthogonal) adjoint DMD modes.  Note that this is the same as a
+          least-squares projection onto the span of the DMD modes.
+
+        * ``eigvals``: 1D array of eigenvalues of approximating low-order linear
+          map (DMD eigenvalues).
 
         * ``R_low_order_eigvecs``: Matrix of right eigenvectors of approximating
           low-order linear map.
@@ -253,12 +250,14 @@ def compute_DMD_matrices_direct_method(
         * ``L_low_order_eigvecs``: Matrix of left eigenvectors of approximating
           low-order linear map.
 
-        * ``correlation_mat_eigvals``: 1D array of eigenvalues of correlation
-          matrix, which are the squares of the singular values of the data
-          matrix.
+        * ``correlation_mat_eigvals``: 1D array of eigenvalues of
+          correlation matrix.
 
-        * ``correlation_mat_eigvecs``: Matrix of eigenvectors of correlation
-          matrix, which are also the right singular vectors of the data matrix.
+        * ``correlation_mat_eigvecs``: Matrix of eigenvectors of
+          correlation matrix.
+
+        Attributes can be accessed using calls like ``res.exact_modes``.  To
+        see all available attributes, use ``print(res)``.
 
     This method does not square the matrix of vectors as in the method of
     snapshots (:py:func:`compute_DMD_matrices_snaps_method`). It's slightly
@@ -374,18 +373,19 @@ def compute_DMD_matrices_direct_method(
         raise ValueError(('Number of cols in vecs does not match '
             'number of rows in build_coeffs matrix.'))
 
-    # Return values
-    if return_all:
-        aux_vals_dict = {
-            'proj_modes': proj_modes,
-            'adjoint_modes': adjoint_modes,
-            'R_low_order_eigvecs': R_low_order_eigvecs,
-            'L_low_order_eigvecs': L_low_order_eigvecs,
-            'correlation_mat_eigvals': correlation_mat_eigvals,
-            'correlation_mat_eigvecs': correlation_mat_eigvecs}
-        return exact_modes, eigvals, spectral_coeffs, aux_vals_dict
-    else:
-        return exact_modes, eigvals, spectral_coeffs
+    # Return a namedtuple
+    DMD_results = namedtuple(
+        'DMD_results', [
+            'exact_modes', 'proj_modes', 'adjoint_modes', 'spectral_coeffs',
+            'eigvals', 'R_low_order_eigvecs', 'L_low_order_eigvecs',
+            'correlation_mat_eigvals', 'correlation_mat_eigvecs'])
+    return DMD_results(
+        exact_modes=exact_modes, proj_modes=proj_modes,
+        adjoint_modes=adjoint_modes, spectral_coeffs=spectral_coeffs,
+        eigvals=eigvals, R_low_order_eigvecs=R_low_order_eigvecs,
+        L_low_order_eigvecs=L_low_order_eigvecs,
+        correlation_mat_eigvals=correlation_mat_eigvals,
+        correlation_mat_eigvecs=correlation_mat_eigvecs)
 
 
 class DMDHandles(object):
@@ -1019,7 +1019,7 @@ class DMDHandles(object):
 
 def compute_TLSqrDMD_matrices_snaps_method(
     vecs, adv_vecs=None, mode_indices=None, inner_product_weights=None,
-    atol=1e-13, rtol=None, max_num_eigvals=None, return_all=False):
+    atol=1e-13, rtol=None, max_num_eigvals=None):
     """Computes Total Least Squares DMD modes using data stored in matrices,
     using method of snapshots.
 
@@ -1052,28 +1052,24 @@ def compute_TLSqrDMD_matrices_snaps_method(
         matrix. If set to None, no truncation will be performed, and the
         maximum possible number of DMD eigenvalues will be computed.
 
-        ``return_all``: Return more values; see below. Default is false.
-
     Returns:
-        ``exact_modes``: Matrix whose columns are exact DMD modes.
+        ``res``: Results of DMD computation, stored in a namedtuple with
+        the following attributes:
 
-        ``eigvals``: 1D array of eigenvalues of approximating low-order linear
-        map (DMD eigenvalues).
-
-        ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
-        as the magnitudes of the projection coefficients of first (de-noised)
-        data vector.  The projection is onto the span of the DMD modes using the
-        (biorthogonal) adjoint DMD modes.  Note that this is the same as a
-        least-squares projection onto the span of the DMD modes.
-
-        If ``return_all`` is true, also returns:
-
-        ``aux_vals_dict``: Dictionary containing auxiliary data from DMD
-        computation.
+        * ``exact_modes``: Matrix whose columns are exact DMD modes.
 
         * ``proj_modes``: Matrix whose columns are projected DMD modes.
 
         * ``adjoint_modes``: Matrix whose columns are adjoint DMD modes.
+
+        * ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
+          as the magnitudes of the projection coefficients of first (de-noised)
+          data vector.  The projection is onto the span of the DMD modes using
+          the (biorthogonal) adjoint DMD modes.  Note that this is the same as a
+          least-squares projection onto the span of the DMD modes.
+
+        * ``eigvals``: 1D array of eigenvalues of approximating low-order linear
+          map (DMD eigenvalues).
 
         * ``R_low_order_eigvecs``: Matrix of right eigenvectors of approximating
           low-order linear map.
@@ -1104,6 +1100,9 @@ def compute_TLSqrDMD_matrices_snaps_method(
           time. Going down rows, the data vector changes; going across columns
           the advanced data vector changes.
 
+        Attributes can be accessed using calls like ``res.exact_modes``.  To
+        see all available attributes, use ``print(res)``.
+
     This uses the method of snapshots, which is faster than the direct method
     (see :py:func:`compute_TLSqrDMD_matrices_direct_method`) when ``vecs`` has
     more rows than columns, i.e., when there are more elements in a vector than
@@ -1121,6 +1120,7 @@ def compute_TLSqrDMD_matrices_snaps_method(
     approach is to look at the roll-off of the correlation matrix eigenvalues,
     which contains information about the "energy" content of each projection
     basis vectors.
+
     """
     if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
@@ -1240,28 +1240,31 @@ def compute_TLSqrDMD_matrices_snaps_method(
         raise ValueError(('Number of cols in vecs does not match '
             'number of rows in build_coeffs matrix.'))
 
-    # Return values
-    if return_all:
-        aux_vals_dict = {
-            'proj_modes': proj_modes,
-            'adjoint_modes': adjoint_modes,
-            'R_low_order_eigvecs': R_low_order_eigvecs,
-            'L_low_order_eigvecs': L_low_order_eigvecs,
-            'sum_correlation_mat_eigvals': sum_correlation_mat_eigvals,
-            'sum_correlation_mat_eigvecs': sum_correlation_mat_eigvecs,
-            'proj_correlation_mat_eigvals': proj_correlation_mat_eigvals,
-            'proj_correlation_mat_eigvecs': proj_correlation_mat_eigvecs,
-            'correlation_mat': correlation_mat,
-            'cross_correlation_mat': cross_correlation_mat,
-            'adv_correlation_mat': adv_correlation_mat}
-        return exact_modes, eigvals, spectral_coeffs, aux_vals_dict
-    else:
-        return exact_modes, eigvals, spectral_coeffs
+    # Return a namedtuple
+    TLSqrDMD_results = namedtuple(
+        'TLSqrDMD_results', [
+            'exact_modes', 'proj_modes', 'adjoint_modes', 'spectral_coeffs',
+            'eigvals', 'R_low_order_eigvecs', 'L_low_order_eigvecs',
+            'sum_correlation_mat_eigvals', 'sum_correlation_mat_eigvecs',
+            'proj_correlation_mat_eigvals', 'proj_correlation_mat_eigvecs',
+            'correlation_mat', 'adv_correlation_mat', 'cross_correlation_mat'])
+    return TLSqrDMD_results(
+        exact_modes=exact_modes, proj_modes=proj_modes,
+        adjoint_modes=adjoint_modes, spectral_coeffs=spectral_coeffs,
+        eigvals=eigvals, R_low_order_eigvecs=R_low_order_eigvecs,
+        L_low_order_eigvecs=L_low_order_eigvecs,
+        sum_correlation_mat_eigvals=sum_correlation_mat_eigvals,
+        sum_correlation_mat_eigvecs=sum_correlation_mat_eigvecs,
+        proj_correlation_mat_eigvals=proj_correlation_mat_eigvals,
+        proj_correlation_mat_eigvecs=proj_correlation_mat_eigvecs,
+        correlation_mat=correlation_mat,
+        adv_correlation_mat=adv_correlation_mat,
+        cross_correlation_mat=cross_correlation_mat)
 
 
 def compute_TLSqrDMD_matrices_direct_method(
     vecs, adv_vecs=None, mode_indices=None, inner_product_weights=None,
-    atol=1e-13, rtol=None, max_num_eigvals=None, return_all=False):
+    atol=1e-13, rtol=None, max_num_eigvals=None):
     """Computes Total Least Squares DMD modes using data stored in matrices,
     using direct method.
 
@@ -1294,29 +1297,24 @@ def compute_TLSqrDMD_matrices_direct_method(
         matrix. If set to None, no truncation will be performed, and the
         maximum possible number of DMD eigenvalues will be computed.
 
-        ``return_all``: Return more values; see below. Default is false.
-
     Returns:
+        ``res``: Results of DMD computation, stored in a namedtuple with
+        the following attributes:
 
-        ``exact_modes``: Matrix whose columns are exact DMD modes.
-
-        ``eigvals``: 1D array of eigenvalues of approximating low-order linear
-        map (DMD eigenvalues).
-
-        ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
-        as the magnitudes of the projection coefficients of first (de-noised)
-        data vector.  The projection is onto the span of the DMD modes using the
-        (biorthogonal) adjoint DMD modes.  Note that this is the same as a
-        least-squares projection onto the span of the DMD modes.
-
-        If ``return_all`` is true, also returns:
-
-        ``aux_vals_dict``: Dictionary containing auxiliary data from DMD
-        computation.
+        * ``exact_modes``: Matrix whose columns are exact DMD modes.
 
         * ``proj_modes``: Matrix whose columns are projected DMD modes.
 
         * ``adjoint_modes``: Matrix whose columns are adjoint DMD modes.
+
+        * ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
+          as the magnitudes of the projection coefficients of first (de-noised)
+          data vector.  The projection is onto the span of the DMD modes using
+          the (biorthogonal) adjoint DMD modes.  Note that this is the same as a
+          least-squares projection onto the span of the DMD modes.
+
+        * ``eigvals``: 1D array of eigenvalues of approximating low-order linear
+          map (DMD eigenvalues).
 
         * ``R_low_order_eigvecs``: Matrix of right eigenvectors of approximating
           low-order linear map.
@@ -1324,17 +1322,20 @@ def compute_TLSqrDMD_matrices_direct_method(
         * ``L_low_order_eigvecs``: Matrix of left eigenvectors of approximating
           low-order linear map.
 
-        * ``sum_correlation_mat_eigvals``: 1D array of eigenvalues of sum
-          correlation matrix.
+        * ``sum_correlation_mat_eigvals``: 1D array of eigenvalues of
+          sum correlation matrix.
 
-        * ``sum_correlation_mat_eigvecs``: Matrix whose columns are eigenvectors
-          of sum correlation matrix.
+        * ``sum_correlation_mat_eigvecs``: Matrix whose columns are
+          eigenvectors of sum correlation matrix.
 
-        * ``proj_correlation_mat_eigvals``: 1D array of eigenvalues of projected
-          correlation matrix.
+        * ``proj_correlation_mat_eigvals``: 1D array of eigenvalues of
+          projected correlation matrix.
 
         * ``proj_correlation_mat_eigvecs``: Matrix whose columns are
           eigenvectors of projected correlation matrix.
+
+        Attributes can be accessed using calls like ``res.exact_modes``.  To
+        see all available attributes, use ``print(res)``.
 
     This method does not square the matrix of vectors as in the method of
     snapshots (:py:func:`compute_DMD_matrices_snaps_method`). It's slightly
@@ -1427,29 +1428,29 @@ def compute_TLSqrDMD_matrices_direct_method(
 
     # Now proceed with DMD of projected data
     sum_correlation_mat_eigvals = stacked_sing_vals ** 2
-    (exact_modes, eigvals, spectral_coeffs,
-    dmd_aux_vals_dict) = compute_DMD_matrices_direct_method(
+    DMD_res = compute_DMD_matrices_direct_method(
         vecs_proj, adv_vecs=adv_vecs_proj, mode_indices=mode_indices,
         inner_product_weights=inner_product_weights, atol=atol, rtol=rtol,
-        max_num_eigvals=max_num_eigvals, return_all=True)
+        max_num_eigvals=max_num_eigvals)
 
-
-    # Return values
-    if return_all:
-        aux_vals_dict = {
-            'proj_modes': dmd_aux_vals_dict['proj_modes'],
-            'adjoint_modes': dmd_aux_vals_dict['adjoint_modes'],
-            'R_low_order_eigvecs': dmd_aux_vals_dict['R_low_order_eigvecs'],
-            'L_low_order_eigvecs':dmd_aux_vals_dict['L_low_order_eigvecs'],
-            'sum_correlation_mat_eigvals': sum_correlation_mat_eigvals,
-            'sum_correlation_mat_eigvecs': sum_correlation_mat_eigvecs,
-            'proj_correlation_mat_eigvals': dmd_aux_vals_dict[
-                'correlation_mat_eigvals'],
-            'proj_correlation_mat_eigvecs': dmd_aux_vals_dict[
-                'correlation_mat_eigvecs']}
-        return exact_modes, eigvals, spectral_coeffs, aux_vals_dict
-    else:
-        return exact_modes, eigvals, spectral_coeffs
+    # Return a namedtuple
+    TLSqrDMD_results = namedtuple(
+        'TLSqrDMD_results', [
+            'exact_modes', 'proj_modes', 'adjoint_modes', 'spectral_coeffs',
+            'eigvals', 'R_low_order_eigvecs', 'L_low_order_eigvecs',
+            'sum_correlation_mat_eigvals', 'sum_correlation_mat_eigvecs',
+            'proj_correlation_mat_eigvals', 'proj_correlation_mat_eigvecs'])
+    return TLSqrDMD_results(
+        exact_modes=DMD_res.exact_modes, proj_modes=DMD_res.proj_modes,
+        adjoint_modes=DMD_res.adjoint_modes,
+        spectral_coeffs=DMD_res.spectral_coeffs,
+        eigvals=DMD_res.eigvals,
+        R_low_order_eigvecs=DMD_res.R_low_order_eigvecs,
+        L_low_order_eigvecs=DMD_res.L_low_order_eigvecs,
+        sum_correlation_mat_eigvals=sum_correlation_mat_eigvals,
+        sum_correlation_mat_eigvecs=sum_correlation_mat_eigvecs,
+        proj_correlation_mat_eigvals=DMD_res.correlation_mat_eigvals,
+        proj_correlation_mat_eigvecs=DMD_res.correlation_mat_eigvecs)
 
 
 class TLSqrDMDHandles(DMDHandles):
