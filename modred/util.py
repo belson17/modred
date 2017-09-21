@@ -11,12 +11,22 @@ import numpy as np
 class UndefinedError(Exception): pass
 
 
+'''
 def make_mat(array):
     """Makes 1D or 2D arrays into matrices. 1D arrays become matrices with one
     column."""
     if array.ndim == 1:
         array = array.reshape((array.shape[0], 1))
     return np.mat(array)
+
+
+def make_list(arg):
+    #Returns the argument as a list. If already a list, ``arg`` is returned.
+    #
+    if not isinstance(arg, list):
+        arg = [arg]
+    return arg
+'''
 
 
 def make_iterable(arg):
@@ -29,26 +39,16 @@ def make_iterable(arg):
         return [arg]
 
 
-"""
-def make_list(arg):
-    #Returns the argument as a list. If already a list, ``arg`` is returned.
-    #
-    if not isinstance(arg, list):
-        arg = [arg]
-    return arg
-"""
-
-
 def flatten_list(my_list):
     """Flatten a list of lists into a single list."""
     return [num for elem in my_list for num in elem]
 
 
 def save_array_text(array, file_name, delimiter=None):
-    """Saves a 1D or 2D array or matrix to a text file.
+    """Saves a 1D or 2D array to a text file.
 
     Args:
-        ``array``: 1D or 2D matrix or array to save to file.
+        ``array``: 1D or 2D or array to save to file.
 
         ``file_name``: Filepath to location where data is to be saved.
 
@@ -184,20 +184,20 @@ class InnerProductBlock(object):
     def __call__(self, vecs1, vecs2):
         n1 = len(vecs1)
         n2 = len(vecs2)
-        mat = np.zeros((n1,n2),
-            dtype=type(self.inner_product(vecs1[0],vecs2[0])))
+        IP_array = np.zeros((n1,n2),
+            dtype=type(self.inner_product(vecs1[0], vecs2[0])))
         for i in range(n1):
             for j in range(n2):
-                mat[i,j] = self.inner_product(vecs1[i], vecs2[j])
-        return mat
+                IP_array[i, j] = self.inner_product(vecs1[i], vecs2[j])
+        return IP_array
 
 
-def svd(mat, atol=1e-13, rtol=None):
+def svd(array, atol=1e-13, rtol=None):
     """Wrapper for ``numpy.linalg.svd``, computes the singular value
-    decomposition of a matrix.
+    decomposition of an array.
 
     Args:
-        ``mat``: Matrix to take singular value decomposition of.
+        ``array``: Array to take singular value decomposition of.
 
     Kwargs:
         ``atol``: Level below which singular values are truncated.
@@ -206,45 +206,44 @@ def svd(mat, atol=1e-13, rtol=None):
         singular values.  Smaller ones are truncated.
 
     Returns:
-        ``U``: Matrix whose columns are left singular vectors.
+        ``U``: Array whose columns are left singular vectors.
 
-        ``E``: 1D array of singular values.
+        ``S``: 1D array of singular values.
 
-        ``V``: Matrix whose columns are right singular vectors.
+        ``V``: Array whose columns are right singular vectors.
 
-    Truncates ``U``, ``E``, and ``V`` such that the singular values
+    Truncates ``U``, ``S``, and ``V`` such that the singular values
     obey both ``atol`` and ``rtol``.
     """
-    U, E, V_comp_conj = np.linalg.svd(np.mat(mat), full_matrices=0)
-    V = np.mat(V_comp_conj).H
-    U = np.mat(U)
+    U, S, V_comp_conj = np.linalg.svd(array, full_matrices=0)
+    V = V_comp_conj.conj().T
 
     # Figure out how many singular values satisfy the tolerances
     if atol is not None:
-        num_nonzeros_atol = (abs(E) > atol).sum()
+        num_nonzeros_atol = (abs(S) > atol).sum()
     else:
-        num_nonzeros_atol = E.size
+        num_nonzeros_atol = S.size
     if rtol is not None:
         num_nonzeros_rtol = (
-            abs(E[:num_nonzeros_atol]) / abs(E[0]) > rtol).sum()
+            abs(S[:num_nonzeros_atol]) / abs(S[0]) > rtol).sum()
         num_nonzeros = min(num_nonzeros_atol, num_nonzeros_rtol)
     else:
         num_nonzeros = num_nonzeros_atol
 
-    # Truncate matrices according to tolerances
+    # Truncate arrays according to tolerances
     U = U[:, :num_nonzeros]
     V = V[:, :num_nonzeros]
-    E = E[:num_nonzeros]
+    S = S[:num_nonzeros]
 
-    return U, E, V
+    return U, S, V
 
 
-def eigh(mat, atol=1e-13, rtol=None, is_positive_definite=False):
+def eigh(array, atol=1e-13, rtol=None, is_positive_definite=False):
     """Wrapper for ``numpy.linalg.eigh``. Computes eigendecomposition of a
-    Hermitian matrix/array.
+    Hermitian array.
 
     Args:
-        ``mat``: Matrix to take eigendecomposition of.
+        ``array``: Array to take eigendecomposition of.
 
         ``atol``: Value below which eigenvalues (and corresponding
         eigenvectors) are truncated.
@@ -252,7 +251,7 @@ def eigh(mat, atol=1e-13, rtol=None, is_positive_definite=False):
         ``rtol``: Maximum relative difference between largest and smallest
         eigenvalues.  Smaller ones are truncated.
 
-        ``is_positive_definite``: If true, matrix being decomposed will be
+        ``is_positive_definite``: If true, array being decomposed will be
         assumed to be positive definite.  Tolerance will be automatically
         adjusted (if necessary) so that only positive eigenvalues are returned.
 
@@ -260,10 +259,10 @@ def eigh(mat, atol=1e-13, rtol=None, is_positive_definite=False):
         ``eigvals``: 1D array of eigenvalues, sorted in descending order (of
         magnitude).
 
-        ``eigvecs``: Matrix whose columns are eigenvectors.
+        ``eigvecs``: Array whose columns are eigenvectors.
     """
-    eigvals, eigvecs = np.linalg.eigh(np.mat(mat))
-    eigvecs = np.mat(eigvecs)
+    # Compute eigendecomposition
+    eigvals, eigvecs = np.linalg.eigh(array)
 
     # Sort the vecs and eigvals by eigval magnitude.  The first element will
     # have the largest magnitude and the last element will have the smallest
@@ -296,13 +295,13 @@ def eigh(mat, atol=1e-13, rtol=None, is_positive_definite=False):
     return eigvals, eigvecs
 
 
-def eig_biorthog(mat, scale_choice='left'):
+def eig_biorthog(array, scale_choice='left'):
     """Wrapper for ``numpy.linalg.eig`` that returns both left and right
     eigenvectors. Eigenvalues and eigenvectors are sorted and scaled so that
-    the left and right eigenvector matrices are orthonormal.
+    the left and right eigenvector arrays are orthonormal.
 
     Args:
-        ``mat``: Matrix to take eigendecomposition of.
+        ``array``: Array to take eigendecomposition of.
 
     Kwargs:
         ``scale_choice``: Determines whether 'left' (default) or 'right'
@@ -312,16 +311,14 @@ def eig_biorthog(mat, scale_choice='left'):
     Returns:
         ``evals``: 1D array of eigenvalues.
 
-        ``R_evecs``: Matrix whose columns are right eigenvectors.
+        ``R_evecs``: Array whose columns are right eigenvectors.
 
-        ``L_evecs``: Matrix whose columns are left eigenvectors.
+        ``L_evecs``: Array whose columns are left eigenvectors.
     """
     # Compute eigendecompositions
-    R_evals, R_evecs= np.linalg.eig(np.mat(mat))
-    L_evals_conj, L_evecs= np.linalg.eig(np.mat(mat).conj().T)
+    R_evals, R_evecs= np.linalg.eig(array)
+    L_evals_conj, L_evecs= np.linalg.eig(array.conj().T)
     L_evals = L_evals_conj.conj()
-    R_evecs = np.mat(R_evecs)
-    L_evecs = np.mat(L_evecs)
 
     # Sort the evals
     R_sort_indices = np.argsort(R_evals)
@@ -360,10 +357,8 @@ def solve_Lyapunov_direct(A, Q):
     See also :py:func:`solve_Lyapunov_iterative` and
     http://en.wikipedia.org/wiki/Lyapunov_equation
     """
-    A = np.array(A)
-    Q = np.array(Q)
     if A.shape != Q.shape:
-        raise ValueError('A and Q dont have same shape')
+        raise ValueError("A and Q don't have same shape")
     #A_flat = A.flatten()
     Q_flat = Q.flatten()
     kron_AA = np.kron(A, A)
@@ -415,10 +410,10 @@ def solve_Lyapunov_iterative(A, Q, max_iters=10000, tol=1e-8):
 def balanced_truncation(
     A, B, C, order=None, return_sing_vals=False, iterative_solver=True):
     """Balance and truncate discrete-time linear time-invariant (LTI) system
-    defined by A, B, C matrices.
+    defined by A, B, C arrays.
 
     Args:
-        ``A``, ``B``, ``C``: LTI discrete-time matrices.
+        ``A``, ``B``, ``C``: LTI discrete-time arrays.
 
     Kwargs:
         ``order``: Order (number of states) of truncated system. Default is to
@@ -426,7 +421,7 @@ def balanced_truncation(
 
     Returns:
         ``A_balanced``, ``B_balanced``, ``C_balanced``: LTI discrete-time
-        matrices of balanced system.
+        arrays of balanced system.
 
         If ``return_sing_vals`` is True, also returns:
 
@@ -475,16 +470,16 @@ def drss(num_states, num_inputs, num_outputs):
         ``num_outputs``: Number of outputs.
 
     Returns:
-        ``A``, ``B``, ``C``: State-space matrices of discrete-time system.
+        ``A``, ``B``, ``C``: State-space arrays of discrete-time system.
 
     By construction, all eigenvalues are real and stable.
     """
     eig_vals = np.linspace(.9, .95, num_states)
     eig_vecs = np.random.normal(0, 2., (num_states, num_states))
-    A = np.mat(np.real(np.dot(np.dot(np.linalg.inv(eig_vecs),
-        np.diag(eig_vals)), eig_vecs)))
-    B = np.mat(np.random.normal(0, 1., (num_states, num_inputs)))
-    C = np.mat(np.random.normal(0, 1., (num_outputs, num_states)))
+    A = np.real(
+        np.linalg.inv(eig_vecs).dot(np.diag(eig_vals).dot(eig_vecs)))
+    B = np.random.normal(0, 1., (num_states, num_inputs))
+    C = np.random.normal(0, 1., (num_outputs, num_states))
     return A, B, C
 
 
@@ -499,14 +494,13 @@ def rss(num_states, num_inputs, num_outputs):
         ``num_outputs``: Number of outputs.
 
     Returns:
-        ``A``, ``B``, ``C``: State-space matrices of continuous-time system.
+        ``A``, ``B``, ``C``: State-space arrays of continuous-time system.
 
     By construction, all eigenvalues are real and stable.
     """
     e_vals = -np.random.random(num_states)
     transformation = np.random.random((num_states, num_states))
-    A = np.dot(np.dot(np.linalg.inv(transformation), np.diag(e_vals)),
-        transformation)
+    A = np.linalg.inv(transformation).dot(np.diag(e_vals)).dot(transformation)
     B = np.random.random((num_states, num_inputs))
     C = np.random.random((num_outputs, num_states))
     return A, B, C
@@ -520,7 +514,7 @@ def lsim(A, B, C, inputs, initial_condition=None):
     :math:`y(n) = Cx(n)`
 
     Args:
-        ``A``, ``B``, and ``C``: State-space system matrices.
+        ``A``, ``B``, and ``C``: State-space system arrays.
 
         ``inputs``: Array of inputs :math:`u`, with dimensions
         ``[num_time_steps, num_inputs]``.
@@ -532,22 +526,19 @@ def lsim(A, B, C, inputs, initial_condition=None):
         ``outputs``: Array of outputs :math:`y`, with dimensions
         ``[num_time_steps, num_outputs]``.
 
-    ``D`` matrix is assumed to be zero.
+    ``D`` array is assumed to be zero.
     """
     #D = 0
-    A_arr = np.array(A)
-    B_arr = np.array(B)
-    C_arr = np.array(C)
     if inputs.ndim == 1:
         inputs = inputs.reshape((len(inputs), 1))
     num_steps, num_inputs = inputs.shape
     num_outputs = C.shape[0]
     num_states = A.shape[0]
-    if A_arr.shape != (num_states, num_states):
+    if A.shape != (num_states, num_states):
         raise ValueError('A has the wrong shape ', A.shape)
-    if B_arr.shape != (num_states, num_inputs):
+    if B.shape != (num_states, num_inputs):
         raise ValueError('B has the wrong shape ', B.shape)
-    if C_arr.shape != (num_outputs, num_states):
+    if C.shape != (num_outputs, num_states):
         raise ValueError('C has the wrong shape ', C.shape)
     #if D == 0:
     #    D = np.zeros((num_outputs, num_inputs))
@@ -562,15 +553,16 @@ def lsim(A, B, C, inputs, initial_condition=None):
     state = initial_condition
     outputs = np.zeros((num_steps, num_outputs))
     for ti in range(num_steps):
-        outputs[ti] = np.dot(C_arr, state)
-        state = np.dot(A_arr, state) + np.dot(B_arr, inputs[ti])
+        outputs[ti] = np.dot(C, state)
+        state = np.dot(A, state) + np.dot(B, inputs[ti])
     return outputs
+
 
 def impulse(A, B, C, num_time_steps=None):
     """Generates impulse response outputs for a discrete-time system.
 
     Args:
-        ``A``, ``B``, ``C``: State-space system arrays/matrices.
+        ``A``, ``B``, ``C``: State-space system arrays.
 
     Kwargs:
         ``num_time_steps``: Number of time steps to simulate.
@@ -582,15 +574,12 @@ def impulse(A, B, C, num_time_steps=None):
         ``outputs``: Impulse response outputs, with indices corresponding to
         [time step, output, input].
 
-    No D matrix is included, but one can simply be prepended to the output if
+    No D array is included, but one can simply be prepended to the output if
     it is non-zero.
     """
-    A_arr = np.array(A)
-    B_arr = np.array(B)
-    C_arr = np.array(C)
     num_inputs = B.shape[1]
     num_outputs = C.shape[0]
-    A_powers = np.identity(A_arr.shape[0])
+    A_powers = np.identity(A.shape[0])
     outputs = []
 
     if num_time_steps is None:
@@ -600,8 +589,8 @@ def impulse(A, B, C, num_time_steps=None):
         ti = 0
         continue_sim = True
         while continue_sim and ti < max_time_steps:
-            outputs.append(np.dot(np.dot(C_arr, A_powers), B_arr))
-            A_powers = np.dot(A_powers, A_arr)
+            outputs.append(C.dot(A_powers.dot(B)))
+            A_powers = np.dot(A_powers, A)
             ti += 1
             if ti > min_time_steps:
                 # PA: I changed that since it is strange and it gives
@@ -610,12 +599,11 @@ def impulse(A, B, C, num_time_steps=None):
                 # if (np.abs(outputs[-min_time_steps:] < tol)).all():
                 if (np.abs(outputs[-1] < tol)).all():
                     continue_sim = False
-        outputs = np.array(outputs)
     else:
         outputs = np.zeros((num_time_steps, num_outputs, num_inputs))
         for ti in range(num_time_steps):
-            outputs[ti] = np.dot(np.dot(C_arr, A_powers), B_arr)
-            A_powers = np.dot(A_powers, A_arr)
+            outputs[ti] = C.dot(A_powers.dot(B))
+            A_powers = A_powers.dot(A)
     return outputs
 
 
@@ -664,6 +652,7 @@ def load_multiple_signals(signal_paths, delimiter=None):
     See :py:func:`load_signals`.
     """
     num_signal_paths = len(signal_paths)
+
     # Read the first file to get parameters
     time_values, signals = load_signals(signal_paths[0], delimiter=delimiter)
     num_time_values = len(time_values)
@@ -690,24 +679,24 @@ def load_multiple_signals(signal_paths, delimiter=None):
 
 def Hankel(first_col, last_row=None):
     """
-    Construct a Hankel matrix, whose skew diagonals are constant.
+    Construct a Hankel array, whose skew diagonals are constant.
 
     Args:
-        ``first_col``: 1D array corresponding to first column of Hankel matrix.
+        ``first_col``: 1D array corresponding to first column of Hankel array.
 
     Kwargs:
-        ``last_row``: 1D array corresponding to the last row of Hankel matrix.
+        ``last_row``: 1D array corresponding to the last row of Hankel array.
         First element will be ignored.  Default is an array of zeros of the same
         size as ``first_col``.
 
     Returns:
         Hankel: 2D array with dimensions ``[len(first_col), len(last_row)]``.
     """
-    first_col = np.asarray(first_col).flatten()
+    first_col = first_col.flatten()
     if last_row is None:
         last_row = np.zeros(first_col.shape)
     else:
-        last_row = np.asarray(last_row).flatten()
+        last_row = last_row.flatten()
 
     unique_vals = np.concatenate((first_col, last_row[1:]))
     a, b = np.ogrid[0:len(first_col), 0:len(last_row)]
@@ -717,17 +706,17 @@ def Hankel(first_col, last_row=None):
 
 def Hankel_chunks(first_col_chunks, last_row_chunks=None):
     """
-    Construct a Hankel matrix using chunks, whose elements have Hankel structure
-    at the chunk level (constant along skew diagonals),rather than at the
+    Construct a Hankel array using chunks, whose elements have Hankel structure
+    at the chunk level (constant along skew diagonals), rather than at the
     element level.
 
     Args:
         ``first_col_chunks``: List of 2D arrays corresponding to the first
-        column of Hankel matrix chunks.
+        column of Hankel array chunks.
 
     Kwargs:
         ``last_row_chunks``: List of 2D arrays corresponding to the last row of
-        Hankel matrix chunks.  Default is a list of arrays of zeros.
+        Hankel array chunks.  Default is a list of arrays of zeros.
 
     Returns:
         Hankel:  2D array with dimension
@@ -748,7 +737,7 @@ def Hankel_chunks(first_col_chunks, last_row_chunks=None):
     # is an array corresponding a all the chunks in a row.  To get that array,
     # slice the list of unique chunks using the right index and call hstack on
     # it.  Finally, call vstack on the list comprehension to get the whole
-    # Hankel matrix.
+    # Hankel array.
     return np.vstack([np.hstack(
         unique_chunks[idx:idx + len(last_row_chunks)])
         for idx in range(len(first_col_chunks))])

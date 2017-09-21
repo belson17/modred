@@ -18,7 +18,7 @@ class TestUtil(unittest.TestCase):
     To test all parallel features, use "mpiexec -n 2 python testutil.py"
     """
     def setUp(self):
-        self.test_dir = 'util_files'
+        self.test_dir = 'files_util_DELETE_ME'
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
         if parallel.is_rank_zero():
@@ -32,250 +32,279 @@ class TestUtil(unittest.TestCase):
             rmtree(self.test_dir, ignore_errors=True)
         parallel.barrier()
 
-
+    #@unittest.skip('Testing something else.')
     @unittest.skipIf(
-        parallel.is_distributed(), 'Only save/load matrices in serial')
+        parallel.is_distributed(), 'Only save/load arrays in serial')
     def test_load_save_array_text(self):
-        """Test that can read/write text matrices"""
-        #tol = 1e-8
+        """Test that can read/write text arrays"""
         rows = [1, 5, 20]
         cols = [1, 4, 5, 23]
-        mat_path = join(self.test_dir, 'test_matrix.txt')
+        array_path = join(self.test_dir, 'test_array.txt')
         delimiters = [',', ' ', ';']
         for delimiter in delimiters:
             for is_complex in [False, True]:
                 for squeeze in [False, True]:
                     for num_rows in rows:
                         for num_cols in cols:
-                            mat_real = np.random.random((num_rows, num_cols))
+
+                            # Generate real and complex arrays
+                            array_real = np.random.random((num_rows, num_cols))
                             if is_complex:
-                                mat_imag = np.random.random(
+                                array_imag = np.random.random(
                                     (num_rows, num_cols))
-                                mat = mat_real + 1J*mat_imag
+                                array = array_real + 1j * array_imag
                             else:
-                                mat = mat_real
-                            # Check row and column vectors, no squeeze (1,1)
+                                array = array_real
+
+                            # Check row and column vectors, no squeeze (1, 1)
                             if squeeze and (num_rows > 1 or num_cols > 1):
-                                mat = np.squeeze(mat)
+                                array = np.squeeze(array)
                             util.save_array_text(
-                                mat, mat_path, delimiter=delimiter)
-                            mat_read = util.load_array_text(
-                                mat_path, delimiter=delimiter,
+                                array, array_path, delimiter=delimiter)
+                            array_read = util.load_array_text(
+                                array_path, delimiter=delimiter,
                                 is_complex=is_complex)
                             if squeeze:
-                                mat_read = np.squeeze(mat_read)
-                            np.testing.assert_allclose(mat_read, mat)#,rtol=tol)
+                                array_read = np.squeeze(array_read)
+                            np.testing.assert_equal(array_read, array)
 
 
-    @unittest.skipIf(parallel.is_distributed(), 'Only load matrices in serial')
+    #@unittest.skip('Testing something else.')
+    @unittest.skipIf(parallel.is_distributed(), 'Only load arrays in serial')
     def test_svd(self):
         # Set tolerance for testing eigval/eigvec property
-        test_tol = 1e-10
+        test_atol = 1e-10
 
-        # Check tall, fat, and square matrices
+        # Check tall, fat, and square arrays
         num_rows_list = [100]
         num_cols_list = [50, 100, 150]
 
-        # Loop through different matrix sizes
+        # Loop through different array sizes
         for num_rows in num_rows_list:
             for num_cols in num_cols_list:
 
-                # Generate a random matrix with elements in [0, 1]
-                mat = np.random.random((num_rows, num_cols))
+                # Check real and complex data
+                for is_complex in [True]:
 
-                # Compute full set of singular values to help choose tolerance
+                    # Generate a random array with elements in [0, 1]
+                    array = np.random.random((num_rows, num_cols))
+                    if is_complex:
+                        array = array + 1j * array
+
+                    # Compute full set of singular values to help choose
+                    # tolerance levels that guarantee truncation (otherwise
+                    # tests won't actually check those features).
+                    sing_vals_full = np.linalg.svd(array, full_matrices=0)[1]
+                    atol_list = [np.median(sing_vals_full), None]
+                    rtol_list = [
+                        np.median(sing_vals_full) / np.max(sing_vals_full),
+                        None]
+
+                    # Loop through different tolerance cases
+                    for atol in atol_list:
+                        for rtol in rtol_list:
+
+                            # For all arrays, check that the output of util.svd
+                            # satisfies the definition of an SVD.  Do this by
+                            # checking eigval/eigvec properties, which must be
+                            # satisfied by the sing vecs and sing vals, even if
+                            # there is truncation.  The fact that the singular
+                            # vectors are eigenvectors of a normal array ensures
+                            # that they are unitary, so we don't have to check
+                            # that separately.
+                            L_sing_vecs, sing_vals, R_sing_vecs = util.svd(
+                                array, atol=atol, rtol=rtol)
+                            np.testing.assert_allclose(
+                                array.dot(array.conj().T.dot(L_sing_vecs)) -
+                                L_sing_vecs.dot(np.diag(sing_vals ** 2)),
+                                np.zeros(L_sing_vecs.shape),
+                                atol=test_atol)
+                            np.testing.assert_allclose(
+                                array.conj().T.dot(array.dot(R_sing_vecs)) -
+                                R_sing_vecs.dot(np.diag(sing_vals ** 2)),
+                                np.zeros(R_sing_vecs.shape),
+                                atol=test_atol)
+
+                            # If either tolerance is nonzero, make sure that
+                            # something is actually truncated, otherwise force
+                            # test to quit.  To do this, make sure the eigvec
+                            # array is not square.
+                            if rtol and sing_vals.size == sing_vals_full.size:
+                                raise ValueError(
+                                    'Failed to choose relative tolerance that '
+                                    'forces truncation.')
+                            if atol and sing_vals.size == sing_vals_full.size:
+                                raise ValueError(
+                                    'Failed to choose absolute tolerance that '
+                                    'forces truncation.')
+
+                            # If necessary, test that tolerances are satisfied
+                            if atol:
+                                self.assertTrue(abs(sing_vals[-1]) > atol)
+                            if rtol:
+                                self.assertTrue((
+                                    abs(sing_vals[0]) / abs(sing_vals[-1])
+                                    > rtol))
+
+
+    #@unittest.skip('Testing something else.')
+    @unittest.skipIf(parallel.is_distributed(), 'Only load arrays in serial')
+    def test_eigh(self):
+        # Set tolerance for test of eigval/eigvec properties.  Value necessary
+        # for test to pass depends on array size, as well as atol and rtol
+        # values
+        test_atol = 1e-12
+
+        # Generate random array
+        num_rows = 100
+
+        # Test arrays that are and are not positive definite
+        for is_pos_def in [True, False]:
+
+            # Test both real and complex data
+            for is_complex in [True, False]:
+
+                # Generate random array with values between 0 and 1
+                array = np.random.random((num_rows, num_rows))
+                if is_complex:
+                    array = array + 1j * array
+
+                # Make array conjugate-symmetric.  Note that if the array is
+                # large, for some reason an in-place operation causes the
+                # operation to fail (not sure why...).  Values are still between
+                # 0 and 1.
+                array = 0.5 * (array + array.conj().T)
+
+                # If necessary, make the array positive definite by first making
+                # it symmetric (adding the transpose), and then making it
+                # diagonally dominant (each element is less than 1, so add N * I
+                # to make the diagonal dominant).  Here an in-place change seems
+                # to be ok.
+                if is_pos_def:
+                    array = array + num_rows * np.eye(num_rows)
+
+                    # Make sure array is positive definite, otherwise
+                    # force test to quit.
+                    if np.linalg.eig(array)[0].min() < 0.:
+                        raise ValueError(
+                            'Failed to generate positive definite array '
+                            'for test.')
+
+                # Compute full set of eigenvalues to help choose tolerance
                 # levels that guarantee truncation (otherwise tests won't
                 # actually check those features).
-                sing_vals_full = np.linalg.svd(mat, full_matrices=0)[1]
-                atol_list = [np.median(sing_vals_full), None]
+                eigvals_full = np.linalg.eig(array)[0]
+                atol_list = [np.median(abs(eigvals_full)), None]
                 rtol_list = [
-                    np.median(sing_vals_full) / np.max(sing_vals_full), None]
+                    np.median(abs(eigvals_full)) / abs(np.max(eigvals_full)),
+                    None]
 
-                # Loop through different tolerance cases
+                # Loop through different tolerance values
                 for atol in atol_list:
                     for rtol in rtol_list:
 
-                        # For all matrices, check that the output of util.svd
-                        # satisfies the definition of an SVD.  Do this by
-                        # checking eigval/eigvec properties, which must be
-                        # satisfied by the sing vecs and sing vals, even if
-                        # there is truncation.  The fact that the singular
-                        # vectors are eigenvectors of a normal matrix ensures
-                        # that they are unitary, so we don't have to check that
-                        # separately.
-                        L_sing_vecs, sing_vals, R_sing_vecs = util.svd(
-                            mat, atol=atol, rtol=rtol)
+                        # For each case, test that returned values are in fact
+                        # eigenvalues and eigenvectors of the given array.
+                        # Since each pair that is returned (not truncated due to
+                        # tolerances) should have this property, we can test
+                        # this even if tolerances are passed in.  Compare to the
+                        # zero array because then we only have to check the
+                        # absolute magnitue of each term, rather than consider
+                        # relative errors with respect to nonzero terms.
+                        eigvals, eigvecs = util.eigh(
+                            array, rtol=rtol, atol=atol,
+                            is_positive_definite=is_pos_def)
                         np.testing.assert_allclose(
-                            np.dot(np.dot(mat, mat.T), L_sing_vecs) -
-                            np.dot(L_sing_vecs, np.diag(sing_vals ** 2)),
-                            np.zeros(L_sing_vecs.shape),
-                            atol=test_tol)
-                        np.testing.assert_allclose(
-                            np.dot(np.dot(mat.T, mat), R_sing_vecs) -
-                            np.dot(R_sing_vecs, np.diag(sing_vals ** 2)),
-                            np.zeros(R_sing_vecs.shape),
-                            atol=test_tol)
+                            array.dot(eigvecs) -
+                            eigvecs.dot(np.diag(eigvals)),
+                            np.zeros(eigvecs.shape),
+                            atol=test_atol)
 
                         # If either tolerance is nonzero, make sure that
                         # something is actually truncated, otherwise force test
-                        # to quit.  To do this, make sure the eigvec matrix is
+                        # to quit.  To do this, make sure the eigvec array is
                         # not square.
-                        if rtol and sing_vals.size == sing_vals_full.size:
+                        if rtol and eigvals.size == eigvals_full.size:
                             raise ValueError(
                                 'Failed to choose relative tolerance that '
                                 'forces truncation.')
-                        if atol and sing_vals.size == sing_vals_full.size:
+                        if atol and eigvals.size == eigvals_full.size:
                             raise ValueError(
                                 'Failed to choose absolute tolerance that '
                                 'forces truncation.')
 
-                        # If necessary, test that tolerances are satisfied
-                        if atol:
-                            self.assertTrue(abs(sing_vals[-1]) > atol)
-                        if rtol:
+                        # If the positive definite flag is passed in, make sure
+                        # the returned eigenvalues are all positive
+                        if is_pos_def:
+                            self.assertTrue(eigvals.min() > 0)
+
+                        # If a relative tolerance is passed in, make sure the
+                        # relative tolerance is satisfied.
+                        if rtol is not None:
                             self.assertTrue(
-                                abs(sing_vals[0]) / abs(sing_vals[-1]) > rtol)
+                                abs(eigvals).min() / abs(eigvals).max() > rtol)
+
+                        # If an absolute tolerance is passed in, make sure the
+                        # absolute tolerance is satisfied.
+                        if atol is not None:
+                            self.assertTrue(abs(eigvals).min() > atol)
 
 
-    @unittest.skipIf(parallel.is_distributed(), 'Only load matrices in serial')
-    def test_eigh(self):
-        # Set tolerance for test of eigval/eigvec properties.  Value necessary
-        # for test to pass depends on matrix size, as well as atol and rtol
-        # values
-        test_tol = 1e-12
-
-        # Generate random matrix
-        num_rows = 100
-
-        # Test matrices that are and are not positive definite
-        for is_pos_def in [True, False]:
-
-            # Generate random matrix with values between 0 and 1
-            mat = np.random.random((num_rows, num_rows))
-
-            # Make matrix symmetric.  Note that if the matrix is large, for
-            # some reason an in-place operation causes the operation to fail
-            # (not sure why...).  Values are still between 0 and 1.
-            mat = 0.5 * (mat + mat.T)
-
-            # If necessary, make the matrix positive definite by first making
-            # it symmetric (adding the transpose), and then making it
-            # diagonally dominant (each element is less than 1, so add N * I to
-            # make the diagonal dominant).  Here an in-place change seems to be
-            # ok.
-            if is_pos_def:
-                mat = mat + num_rows * np.eye(num_rows)
-
-                # Make sure matrix is positive definite, otherwise
-                # force test to quit.
-                if np.linalg.eig(mat)[0].min() < 0.:
-                    raise ValueError(
-                        'Failed to generate positive definite matrix '
-                        'for test.')
-
-            # Compute full set of eigenvalues to help choose tolerance levels
-            # that guarantee truncation (otherwise tests won't actually check
-            # those features).
-            eigvals_full = np.linalg.eig(mat)[0]
-            atol_list = [np.median(abs(eigvals_full)), None]
-            rtol_list = [
-                np.median(abs(eigvals_full)) / abs(np.max(eigvals_full)), None]
-
-            # Loop through different tolerance values
-            for atol in atol_list:
-                for rtol in rtol_list:
-
-                    # For each case, test that returned values are in fact
-                    # eigenvalues and eigenvectors of the given matrix.  Since
-                    # each pair that is returned (not truncated due to
-                    # tolerances) should have this property, we can test this
-                    # even if tolerances are passed in.  Compare to the zero
-                    # matrix because then we only have to check the absolute
-                    # magnitue of each term, rather than consider relative
-                    # errors with respect to nonzero terms.
-                    eigvals, eigvecs = util.eigh(
-                        mat, rtol=rtol, atol=atol,
-                        is_positive_definite=is_pos_def)
-                    np.testing.assert_allclose(
-                        np.dot(mat, eigvecs) -
-                        np.dot(eigvecs, np.diag(eigvals)),
-                        np.zeros(eigvecs.shape),
-                        atol=test_tol)
-
-                    # If either tolerance is nonzero, make sure that something
-                    # is actually truncated, otherwise force test to quit.  To
-                    # do this, make sure the eigvec matrix is not square.
-                    if rtol and eigvals.size == eigvals_full.size:
-                        raise ValueError(
-                            'Failed to choose relative tolerance that forces '
-                            'truncation.')
-                    if atol and eigvals.size == eigvals_full.size:
-                        raise ValueError(
-                            'Failed to choose absolute tolerance that forces '
-                            'truncation.')
-
-                    # If the positive definite flag is passed in, make sure the
-                    # returned eigenvalues are all positive
-                    if is_pos_def:
-                        self.assertTrue(eigvals.min() > 0)
-
-                    # If a relative tolerance is passed in, make sure the
-                    # relative tolerance is satisfied.
-                    if rtol is not None:
-                        self.assertTrue(
-                            abs(eigvals).min() / abs(eigvals).max() > rtol)
-
-                    # If an absolute tolerance is passed in, make sure the
-                    # absolute tolerance is satisfied.
-                    if atol is not None:
-                        self.assertTrue(abs(eigvals).min() > atol)
-
-
-    @unittest.skipIf(parallel.is_distributed(), 'Only load matrices in serial')
+    #@unittest.skip('Testing something else.')
+    @unittest.skipIf(parallel.is_distributed(), 'Only load arrays in serial')
     def test_eig_biorthog(self):
-        test_tol = 1e-10
+        test_atol = 1e-10
         num_rows = 100
-        mat = np.random.random((num_rows, num_rows))
-        for scale_choice in ['left', 'right']:
-            R_eigvals, R_eigvecs, L_eigvecs = util.eig_biorthog(
-                mat, scale_choice=scale_choice)
 
-            # Check eigenvector/eigenvalue relationship (use right eigenvalues
-            # only).  Test difference so that all values are compared to zeros,
-            # avoiding need to check relative tolerances.
-            np.testing.assert_allclose(
-                np.dot(mat, R_eigvecs) - np.dot(R_eigvecs, np.diag(R_eigvals)),
-                np.zeros(mat.shape),
-                atol=test_tol)
-            np.testing.assert_allclose(
-                np.dot(L_eigvecs.conj().T, mat) -
-                np.dot(np.diag(R_eigvals), L_eigvecs.conj().T),
-                np.zeros(mat.shape),
-                atol=test_tol)
+        # Test real and complex data
+        for is_complex in [True, False]:
+            array = np.random.random((num_rows, num_rows))
+            if is_complex:
+                array = array + 1j * array
 
-            # Check biorthogonality (take magnitudes since inner products are
-            # complex in general).  Again, take difference so that all test
-            # values should be zero, avoiding need for rtol
-            ip_mat = np.dot(L_eigvecs.conj().T, R_eigvecs)
-            np.testing.assert_allclose(
-                np.abs(ip_mat) - np.eye(num_rows), np.zeros(ip_mat.shape),
-                atol=test_tol)
+            # Test different scale choices
+            for scale_choice in ['left', 'right']:
+                R_eigvals, R_eigvecs, L_eigvecs = util.eig_biorthog(
+                    array, scale_choice=scale_choice)
 
-            # Check for unit norms
-            if scale_choice == 'left':
-                unit_eigvecs = R_eigvecs
-            elif scale_choice == 'right':
-                unit_eigvecs = L_eigvecs
-            np.testing.assert_allclose(
-                np.sqrt(np.sum(np.multiply(
-                unit_eigvecs, unit_eigvecs.conj()), axis=0)).squeeze(),
-                np.ones((1, R_eigvals.size)))
+                # Check eigenvector/eigenvalue relationship (use right
+                # eigenvalues only).  Test difference so that all values are
+                # compared to zeros, avoiding need to check relative tolerances.
+                np.testing.assert_allclose(
+                    array.dot(R_eigvecs) - R_eigvecs.dot(np.diag(R_eigvals)),
+                    np.zeros(array.shape),
+                    atol=test_atol)
+                np.testing.assert_allclose(
+                    L_eigvecs.conj().T.dot(array) - np.diag(R_eigvals).dot(
+                        L_eigvecs.conj().T),
+                    np.zeros(array.shape),
+                    atol=test_atol)
+
+                # Check biorthogonality (take magnitudes since inner products
+                # are complex in general).  Again, take difference so that all
+                # test values should be zero, avoiding need for rtol
+                ip_array = L_eigvecs.conj().T.dot(R_eigvecs)
+                np.testing.assert_allclose(
+                    np.abs(ip_array) - np.eye(num_rows),
+                    np.zeros(ip_array.shape),
+                    atol=test_atol)
+
+                # Check for unit norms
+                if scale_choice == 'left':
+                    unit_eigvecs = R_eigvecs
+                elif scale_choice == 'right':
+                    unit_eigvecs = L_eigvecs
+                np.testing.assert_allclose(
+                    np.sqrt(np.sum(np.multiply(
+                        unit_eigvecs, unit_eigvecs.conj()), axis=0)).squeeze(),
+                    np.ones(R_eigvals.size))
 
         # Check that error is raised for invalid scale choice
         self.assertRaises(
-            ValueError, util.eig_biorthog, mat, **{'scale_choice':'invalid'})
+            ValueError, util.eig_biorthog, array, **{'scale_choice':'invalid'})
 
 
+    #@unittest.skip('Testing something else.')
     @unittest.skipIf(parallel.is_distributed(), 'Only load data in serial')
     def test_load_impulse_outputs(self):
         """
@@ -308,26 +337,31 @@ class TestUtil(unittest.TestCase):
                     np.testing.assert_allclose(time_values, time_values_true)
 
 
+    #@unittest.skip('Testing something else.')
     @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
     def test_solve_Lyapunov(self):
         """Test solution of Lyapunov w/known solution from Matlab's dlyap"""
-        A = np.array([[0.725404224946106, 0.714742903826096],
-                    [-0.063054873189656, -0.204966058299775]])
-        Q = np.array([[0.318765239858981, -0.433592022305684],
-                    [-1.307688296305273, 0.342624466538650]])
-        X_true = np.array([[-0.601761400231752, -0.351368789021923],
-                          [-1.143398707577891, 0.334986522655114]])
+        # Generate data
+        A = np.array([
+            [0.725404224946106, 0.714742903826096],
+            [-0.063054873189656, -0.204966058299775]])
+        Q = np.array([
+            [0.318765239858981, -0.433592022305684],
+            [-1.307688296305273, 0.342624466538650]])
+        X_true = np.array([
+            [-0.601761400231752, -0.351368789021923],
+            [-1.143398707577891, 0.334986522655114]])
+
+        # Test direct method
         X_computed = util.solve_Lyapunov_direct(A, Q)
         np.testing.assert_allclose(X_computed, X_true)
-        X_computed_mats = util.solve_Lyapunov_direct(np.mat(A), np.mat(Q))
-        np.testing.assert_allclose(X_computed_mats, X_true)
 
+        # Test iterative method
         X_computed = util.solve_Lyapunov_iterative(A, Q)
         np.testing.assert_allclose(X_computed, X_true)
-        X_computed_mats = util.solve_Lyapunov_iterative(np.mat(A), np.mat(Q))
-        np.testing.assert_allclose(X_computed_mats, X_true)
 
 
+    #@unittest.skip('Testing something else.')
     @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
     def test_balanced_truncation(self):
         """Test balanced system is close to original."""
@@ -342,9 +376,10 @@ class TestUtil(unittest.TestCase):
                     np.testing.assert_allclose(yr, y, rtol=1e-5)
 
 
+    #@unittest.skip('Testing something else.')
     @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
     def test_drss(self):
-        """Test drss gives correct mat dimensions and stable dynamics."""
+        """Test drss gives correct array dimensions and stable dynamics."""
         for num_states in [1, 5, 14]:
             for num_inputs in [1, 3, 6]:
                 for num_outputs in [1, 2, 3, 7]:
@@ -355,92 +390,96 @@ class TestUtil(unittest.TestCase):
                     self.assertTrue(np.amax(np.abs(np.linalg.eig(A)[0])) < 1)
 
 
+    #@unittest.skip('Testing something else.')
     @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
     def test_lsim(self):
         """Test that lsim has right shapes, does not test result"""
         for num_states in [1, 4, 9]:
             for num_inputs in [1, 2, 4]:
                 for num_outputs in [1, 2, 3, 5]:
-                    #print (
-                    #    'num_states %d, num_inputs %d,
-                    #    num_outputs %d'%(num_states, num_inputs, num_outputs)
                     A, B, C = util.drss(num_states, num_inputs, num_outputs)
-                    #print 'Shape of C is',C.shape
                     nt = 5
                     inputs = np.random.random((nt, num_inputs))
                     outputs = util.lsim(A, B, C, inputs)
                     self.assertEqual(outputs.shape, (nt, num_outputs))
 
 
+    #@unittest.skip('Testing something else.')
     @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
     def test_impulse(self):
         """Test impulse response of discrete system"""
+        rtol = 1e-10
+        atol = 1e-12
         for num_states in [1, 10]:
             for num_inputs in [1, 3]:
                 for num_outputs in [1, 2, 3, 5]:
+                    # Generate state-space system arrays
                     A, B, C = util.drss(num_states, num_inputs, num_outputs)
-                    # Check that can give time_step
+
+                    # Check that can give time_steps as argument
                     outputs = util.impulse(A, B, C)
                     num_time_steps = len(outputs)
                     outputs_true = np.zeros(
                         (num_time_steps, num_outputs, num_inputs))
                     for ti in range(num_time_steps):
-                        outputs_true[ti] = C * (A**ti) * B
+                        outputs_true[ti] = C.dot(
+                            np.linalg.matrix_power(A, ti).dot(B))
                     np.testing.assert_allclose(
-                        outputs, outputs_true, rtol=1e-7, atol=1e-7)
+                        outputs, outputs_true, rtol=rtol, atol=atol)
 
                     # Check can give num_time_steps as an argument
                     outputs = util.impulse(
                         A, B, C, num_time_steps=num_time_steps)
                     np.testing.assert_allclose(
-                        outputs, outputs_true, rtol=1e-7, atol=1e-7)
+                        outputs, outputs_true, rtol=rtol, atol=atol)
 
 
+    #@unittest.skip('Testing something else.')
     def test_Hankel(self):
-        """Test forming Hankel matrix from first column and last row."""
+        """Test forming Hankel array from first column and last row."""
         for num_rows in [1, 4, 6]:
             for num_cols in [1, 3, 6]:
 
-                # Generate simple integer values so structure of matrix is easy
+                # Generate simple integer values so structure of array is easy
                 # to see.  This doesn't affect the robustness of the test, as
                 # all we are concerned about is structure.
                 first_col = np.arange(1, num_rows + 1)
                 last_row = np.arange(1, num_cols + 1) * 10
                 last_row[0] = first_col[-1]
 
-                # Fill in Hankel matrix.  Recall that along skew diagonals, i +
+                # Fill in Hankel array.  Recall that along skew diagonals, i +
                 # j is constant.
                 Hankel_true = np.zeros((num_rows, num_cols))
                 for i in range(num_rows):
                     for j in range(num_cols):
 
                         # Upper left triangle of values.  Fill skew diagonals
-                        # until we hit the lower left corner of the matrix, where
+                        # until we hit the lower left corner of the array, where
                         # i + j = num_rows - 1.
                         if i + j < num_rows:
                             Hankel_true[i, j] = first_col[i + j]
 
                         # Lower right triangle of values.  Starting on skew
-                        # diagonal just to right of lower left corner of matrix,
+                        # diagonal just to right of lower left corner of array,
                         # fill in rest of values.
                         else:
                             Hankel_true[i, j] = last_row[i + j - num_rows + 1]
 
-                # Compute Hankel matrix using util
+                # Compute Hankel array using util and test
                 Hankel_test = util.Hankel(first_col, last_row)
-
                 np.testing.assert_equal(Hankel_test, Hankel_true)
 
 
+    #@unittest.skip('Testing something else.')
     def test_Hankel_chunks(self):
-        """Test forming Hankel matrix using chunks."""
+        """Test forming Hankel array using chunks."""
         chunk_num_rows = 2
         chunk_num_cols = 2
         chunk_shape = (chunk_num_rows, chunk_num_cols)
         for num_row_chunks in [1, 4, 6]:
             for num_col_chunks in [1, 3, 6]:
 
-                # Generate simple values that make it easy to see the matrix
+                # Generate simple values that make it easy to see the array
                 # structure
                 first_col_chunks = [
                     np.ones(chunk_shape) * (i + 1)
@@ -450,7 +489,7 @@ class TestUtil(unittest.TestCase):
                     for j in range(num_col_chunks)]
                 last_row_chunks[0] = first_col_chunks[-1]
 
-                # Fill in Hankel matrix chunk by chunk
+                # Fill in Hankel array chunk by chunk
                 Hankel_true = np.zeros((
                     num_row_chunks * chunk_shape[0],
                     num_col_chunks * chunk_shape[1]))
@@ -471,10 +510,9 @@ class TestUtil(unittest.TestCase):
                                 j * chunk_num_cols:(j + 1) * chunk_num_cols] =\
                                 last_row_chunks[i + j - num_row_chunks + 1]
 
-                # Compute Hankel matrix using util
+                # Compute Hankel array using util and test
                 Hankel_test = util.Hankel_chunks(
                     first_col_chunks, last_row_chunks=last_row_chunks)
-
                 np.testing.assert_equal(Hankel_test, Hankel_true)
 
 

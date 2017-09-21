@@ -50,7 +50,7 @@ from .vectors import (
 from . import parallel
 
 from .util import (
-    UndefinedError, make_mat, make_iterable, flatten_list, save_array_text,
+    UndefinedError, make_iterable, flatten_list, save_array_text,
     load_array_text, get_file_list, get_data_members, sum_arrays, sum_lists,
     smart_eq, InnerProductBlock, svd, eigh, eig_biorthog,
     solve_Lyapunov_iterative, solve_Lyapunov_direct, balanced_truncation, drss,
