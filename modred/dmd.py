@@ -5,7 +5,7 @@ from collections import namedtuple
 
 import numpy as np
 
-from .vectorspace import VectorSpaceMatrices, VectorSpaceHandles
+from .vectorspace import VectorSpaceArrays, VectorSpaceHandles
 from . import util
 from . import parallel
 

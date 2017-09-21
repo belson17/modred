@@ -39,7 +39,7 @@ from .ltigalerkinproj import (
     compute_derivs_handles, compute_derivs_matrices, standard_basis
 )
 
-from .vectorspace import VectorSpaceHandles, VectorSpaceMatrices
+from .vectorspace import VectorSpaceHandles, VectorSpaceArrays
 
 from .vectors import (
     VecHandlePickle, VecHandleInMemory,
