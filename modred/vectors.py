@@ -93,14 +93,16 @@ class VecHandleInMemory(VecHandle):
 
 class VecHandleArrayText(VecHandle):
     """Gets and puts array vector objects from/in text files."""
-    def __init__(self, vec_path, base_vec_handle=None, scale=None):
+    def __init__(
+        self, vec_path, base_vec_handle=None, scale=None, is_complex=False):
         VecHandle.__init__(self, base_vec_handle, scale)
         self.vec_path = vec_path
+        self.is_complex = is_complex
 
 
     def _get(self):
         """Loads vector from path."""
-        return util.load_array_text(self.vec_path)
+        return util.load_array_text(self.vec_path, is_complex=self.is_complex)
 
 
     def _put(self, vec):
@@ -138,7 +140,9 @@ class VecHandlePickle(VecHandle):
 
 
 def inner_product_array_uniform(vec1, vec2):
-    """Takes inner product of numpy arrays without weighting."""
+    """Takes inner product of numpy arrays without weighting. The first element
+    is conjugated, i.e., IP = np.dot(vec1.conj().T, v2)
+    """
     return np.vdot(vec1, vec2)
 
 
@@ -177,8 +181,9 @@ class InnerProductTrapz(object):
         IP = vec1 * vec2
         for grid in reversed(self.grids):
             if not isinstance(grid, np.ndarray):
-                raise TypeError('Each grid must be a numpy array, not a '
-                    '%s'%str(type(grid)))
+                raise TypeError(
+                    'Each grid must be a numpy array, not a '
+                    '%s' % str(type(grid)))
             IP = np.trapz(IP, x=grid)
         return IP
 
@@ -208,4 +213,4 @@ class Vector(object):
 
 
     def __sub__(self, other):
-        return self + other*-1
+        return self + (-1 * other)
