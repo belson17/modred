@@ -50,8 +50,12 @@ class TestVectorSpaceArrays(unittest.TestCase):
         num_states = 100
         num_vecs = 30
         num_modes = 10
-        vecs_array = np.random.random((num_states, num_vecs))
-        coeffs_array = np.random.random((num_vecs, num_modes))
+        vecs_array = (
+            np.random.random((num_states, num_vecs)) +
+            1j * np.random.random((num_states, num_vecs)))
+        coeffs_array = (
+            np.random.random((num_vecs, num_modes)) +
+            1j * np.random.random((num_vecs, num_modes)))
         modes_array_true = vecs_array.dot(coeffs_array)
 
         # Do computation using a vector space object
@@ -74,8 +78,12 @@ class TestVectorSpaceArrays(unittest.TestCase):
         num_states = 10
         num_rows = 2
         num_cols = 3
-        row_array = np.random.random((num_states, num_rows)) * (1 + 1j)
-        col_array = np.random.random((num_states, num_cols)) * (1 - 1j)
+        row_array = (
+            np.random.random((num_states, num_rows)) +
+            1j * np.random.random((num_states, num_rows)))
+        col_array = (
+            np.random.random((num_states, num_cols)) +
+            1j * np.random.random((num_states, num_cols)))
 
         # Test different weights
         weights_1d = np.random.random(num_states)
@@ -245,8 +253,12 @@ class TestVectorSpaceHandles(unittest.TestCase):
         """
         mode_indices = list(range(num_modes))
         random.shuffle(mode_indices)
-        coeff_array = np.random.random((num_vecs, num_modes))
-        vec_array = np.random.random((num_states, num_vecs))
+        coeff_array = (
+            np.random.random((num_vecs, num_modes)) +
+            1j * np.random.random((num_vecs, num_modes)))
+        vec_array = (
+            np.random.random((num_states, num_vecs)) +
+            1j * np.random.random((num_states, num_vecs)))
         mode_array = vec_array.dot(coeff_array)
         if squeeze:
             build_coeff_array = coeff_array.squeeze()
@@ -359,8 +371,10 @@ class TestVectorSpaceHandles(unittest.TestCase):
             row_vec_array = np.random.random((num_states, num_row_vecs))
             col_vec_array = np.random.random((num_states, num_col_vecs))
             if is_complex:
-                row_vec_array = row_vec_array * (1 + 1j)
-                col_vec_array = col_vec_array * (1 + 1j)
+                row_vec_array = row_vec_array * (
+                    1j * np.random.random((num_states, num_row_vecs)))
+                col_vec_array = col_vec_array * (
+                    1j * np.random.random((num_states, num_col_vecs)))
 
             # Generate handles and save to file
             row_vec_paths = [row_vec_path % i for i in range(num_row_vecs)]
