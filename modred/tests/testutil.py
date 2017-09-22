@@ -34,18 +34,23 @@ class TestUtil(unittest.TestCase):
 
 
     #@unittest.skip('Testing something else.')
-    def test_atleast_2d_col(self):
+    def test_atleast_2d(self):
         # Test a 1d array.  Check that after reshaping to 2d, the values are the
-        # same, but the shape is a column vector.
+        # same, but the shape is a row/column vector as specified.
         vec1d = np.ones((3))
+        vec1d_row = util.atleast_2d_row(vec1d)
         vec1d_col = util.atleast_2d_col(vec1d)
+        np.testing.assert_array_equal(vec1d.squeeze(), vec1d_row.squeeze())
         np.testing.assert_array_equal(vec1d.squeeze(), vec1d_col.squeeze())
         self.assertEqual(vec1d.shape, (vec1d.size,))
+        self.assertEqual(vec1d_row.shape, (1, vec1d.size))
         self.assertEqual(vec1d_col.shape, (vec1d.size, 1))
 
         # Test a 2d array.  Nothing should change about the array.
         vec2d = np.ones((3, 3))
+        vec2d_row = util.atleast_2d_row(vec2d)
         vec2d_col = util.atleast_2d_col(vec2d)
+        np.testing.assert_array_equal(vec2d, vec2d_row)
         np.testing.assert_array_equal(vec2d, vec2d_col)
 
 
