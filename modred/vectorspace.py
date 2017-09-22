@@ -11,7 +11,6 @@ import numpy as np
 
 from . import util
 from . import parallel
-from . import vectors as V
 
 
 class VectorSpaceArrays(object):
@@ -27,11 +26,11 @@ class VectorSpaceArrays(object):
         if self.weights is not None:
             self.weights = np.array(self.weights).squeeze()
         if self.weights is None:
-            self.compute_inner_product_array = VectorSpaceArrays._IP_no_weights
+            self.compute_inner_product_array = self._IP_no_weights
         elif self.weights.ndim == 1:
-            self.compute_inner_product_array = VectorSpaceArrays._IP_1D_weights
+            self.compute_inner_product_array = self._IP_1D_weights
         elif self.weights.ndim == 2:
-            self.compute_inner_product_array = VectorSpaceArrays._IP_2D_weights
+            self.compute_inner_product_array = self._IP_2D_weights
         else:
             raise ValueError('Weights must be None, 1D, or 2D')
 
@@ -41,18 +40,15 @@ class VectorSpaceArrays(object):
 
 
     def _IP_1D_weights(self, vecs1, vecs2):
-        return np.dot(vecs1.conj().T, self.weights * vecs2)
+        return np.dot(vecs1.conj().T * self.weights, vecs2)
 
 
     def _IP_2D_weights(self, vecs1, vecs2):
-        return np.dot(vecs1.conj().T, self.weights.dot(vecs2))
+        return vecs1.conj().T.dot(self.weights.dot(vecs2))
 
 
-    def __eq__(self, other):
-        if type(other) == type(self):
-            return smart_eq(self.weights, other.weights)
-        else:
-            return False
+    def compute_symmetric_inner_product_array(self, vecs):
+        return self.compute_inner_product_array(vecs, vecs)
 
 
     def lin_combine(
@@ -61,15 +57,11 @@ class VectorSpaceArrays(object):
             coeff_array = coeff_array[:, coeff_array_col_indices]
         return basis_vecs.dot(coeff_array)
 
-
-    def compute_symmetric_inner_product_array(self, vecs):
-        return self.compute_inner_product_array(vecs, vecs)
-
-
     def __eq__(self, other):
-        if type(self) != type(other):
+        if type(other) == type(self):
+            return np.array_equal(self.weights, other.weights)
+        else:
             return False
-        return util.smart_eq(self.weights, other.weights)
 
 
     def __ne__(self, other):
@@ -875,8 +867,28 @@ class VectorSpaceHandles(object):
         basis_vec_handles = util.make_iterable(basis_vec_handles)
         num_bases = len(basis_vec_handles)
         num_sums = len(sum_vec_handles)
+
+        # Check for 1d coefficient arrays
+        if coeff_array.ndim < 2:
+
+            # If there is only one basis vector, then force the coefficient
+            # array to be a row vector.
+            if num_bases == 1:
+                coeff_array = util.atleast_2d_row(coeff_array)
+
+            # Otherwise, force it to be a column vector.
+            else:
+                coeff_array = util.atleast_2d_col(coeff_array)
+
+        # Slice coeff array.  If only one column of the array is chosen, slicing
+        # will produce a 1d array, which we do not want for matrix
+        # multiplication.  So use atleast_2d_col method to force it to be a
+        # column vector.
         if coeff_array_col_indices is not None:
-            coeff_array = coeff_array[:, coeff_array_col_indices]
+            coeff_array = util.atleast_2d_col(
+                coeff_array[:, coeff_array_col_indices])
+
+        # Check dimensions of coeff array
         if num_bases != coeff_array.shape[0]:
             raise ValueError((
                 'Number of coeff_array rows (%d) does not equal number of '

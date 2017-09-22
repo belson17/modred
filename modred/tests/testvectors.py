@@ -9,7 +9,7 @@ from shutil import rmtree
 import numpy as np
 
 import modred.parallel as parallel
-import modred.vectors as V
+import modred.vectors as vcs
 
 
 @unittest.skipIf(parallel.is_distributed(), 'No need to test in parallel')
@@ -51,40 +51,40 @@ class TestVectors(unittest.TestCase):
                 scale = scale - 3j * scale
 
             # Test base class functionality
-            vec_handle = V.VecHandleInMemory(
+            vec_handle = vcs.VecHandleInMemory(
                 vec=vec_true,
-                base_vec_handle=V.VecHandleInMemory(vec=base_vec1),
+                base_vec_handle=vcs.VecHandleInMemory(vec=base_vec1),
                 scale=scale)
             vec_val = vec_handle.get()
             np.testing.assert_equal(vec_val, scale * (vec_true - base_vec1))
 
-            vec_handle = V.VecHandleInMemory(
+            vec_handle = vcs.VecHandleInMemory(
                 vec=vec_true,
-                base_vec_handle=V.VecHandleInMemory(vec=base_vec2),
+                base_vec_handle=vcs.VecHandleInMemory(vec=base_vec2),
                 scale=scale)
             vec_val = vec_handle.get()
             np.testing.assert_equal(vec_val, scale * (vec_true - base_vec2))
 
-            vec_handle = V.VecHandleInMemory(
+            vec_handle = vcs.VecHandleInMemory(
                 vec=vec_true,
-                base_vec_handle=V.VecHandleInMemory(vec=base_vec1))
+                base_vec_handle=vcs.VecHandleInMemory(vec=base_vec1))
             vec_val = vec_handle.get()
             np.testing.assert_equal(vec_val, vec_true - base_vec1)
 
-            vec_handle = V.VecHandleInMemory(vec=vec_true)
+            vec_handle = vcs.VecHandleInMemory(vec=vec_true)
             vec_val = vec_handle.get()
             np.testing.assert_equal(vec_val, vec_true)
 
             # Test put
-            vec_handle = V.VecHandleInMemory()
+            vec_handle = vcs.VecHandleInMemory()
             vec_handle.put(vec_true)
             np.testing.assert_equal(vec_handle.vec, vec_true)
 
             # Test __eq__ operator
-            vec_handle1 = V.VecHandleInMemory(vec=np.ones(2))
-            vec_handle2 = V.VecHandleInMemory(vec=np.ones(2))
-            vec_handle3 = V.VecHandleInMemory(vec=np.ones(3))
-            vec_handle4 = V.VecHandleInMemory(vec=np.zeros(2))
+            vec_handle1 = vcs.VecHandleInMemory(vec=np.ones(2))
+            vec_handle2 = vcs.VecHandleInMemory(vec=np.ones(2))
+            vec_handle3 = vcs.VecHandleInMemory(vec=np.ones(3))
+            vec_handle4 = vcs.VecHandleInMemory(vec=np.zeros(2))
             self.assertEqual(vec_handle1, vec_handle1)
             self.assertEqual(vec_handle1, vec_handle2)
             self.assertNotEqual(vec_handle1, vec_handle3)
@@ -111,7 +111,7 @@ class TestVectors(unittest.TestCase):
             base_path2 = join(self.test_dir, 'base_vec2')
 
             # Test different handle types
-            for VecHandle in [V.VecHandleArrayText, V.VecHandlePickle]:
+            for VecHandle in [vcs.VecHandleArrayText, vcs.VecHandlePickle]:
 
                 # Save data to disk
                 VecHandle(base_path1).put(base_vec1)
@@ -165,7 +165,7 @@ class TestVectors(unittest.TestCase):
             Y, X = np.meshgrid(y_grid, x_grid)
             v1 = X ** 2 + 1.2 * Y ** 2
             v2 = X ** 2
-            ip_comp = V.InnerProductTrapz(x_grid, y_grid)(v1, v2)
+            ip_comp = vcs.InnerProductTrapz(x_grid, y_grid)(v1, v2)
             ip_error.append(np.abs(ip_comp - ip_true))
         convergence = (
             (np.log(ip_error[1]) - np.log(ip_error[0])) /

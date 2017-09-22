@@ -13,10 +13,99 @@ import numpy as np
 
 import modred.parallel as parallel
 from modred.vectorspace import *
-import modred.vectors as V
+import modred.vectors as vcs
 import modred.util
 
 
+#@unittest.skip('Testing other things')
+@unittest.skipIf(parallel.is_distributed(), 'Serial only')
+class TestVectorSpaceArrays(unittest.TestCase):
+    """ Tests of the VectorSpaceArrays class """
+    def setUp(self):
+        pass
+
+
+    def tearDown(self):
+        pass
+
+
+    def test_equals(self):
+        """ Test equality operator """
+        vec_space1 = VectorSpaceArrays(weights=np.array([1., 1., 1.]))
+        vec_space2 = VectorSpaceArrays(weights=[1., 1., 1.])
+        vec_space3 = VectorSpaceArrays(weights=[2., 4., 6.])
+        vec_space4 = VectorSpaceArrays(weights=np.diag(np.ones(3) * 2.))
+        self.assertEquals(vec_space1, vec_space2)
+        self.assertNotEqual(vec_space1, vec_space3)
+        self.assertNotEqual(vec_space1, vec_space4)
+
+
+    def test_lin_combine(self):
+        """ Test that linear combinations are correctly computed """
+        # Set test tolerances
+        rtol = 1e-10
+        atol = 1e-12
+
+        # Generate data
+        num_states = 100
+        num_vecs = 30
+        num_modes = 10
+        vecs_array = np.random.random((num_states, num_vecs))
+        coeffs_array = np.random.random((num_vecs, num_modes))
+        modes_array_true = vecs_array.dot(coeffs_array)
+
+        # Do computation using a vector space object
+        mode_indices = np.random.randint(0, high=num_modes, size=num_modes // 2)
+        vec_space = VectorSpaceArrays()
+        modes_array = vec_space.lin_combine(
+            vecs_array, coeffs_array, coeff_array_col_indices=mode_indices)
+        np.testing.assert_allclose(
+            modes_array, modes_array_true[:, mode_indices],
+            rtol=rtol, atol=atol)
+
+
+    def test_inner_product_arrays(self):
+        """ Test that inner product arrays are correctly computed """
+        # Set test tolerances
+        rtol = 1e-10
+        atol = 1e-12
+
+        # Generate data
+        num_states = 10
+        num_rows = 2
+        num_cols = 3
+        row_array = np.random.random((num_states, num_rows)) * (1 + 1j)
+        col_array = np.random.random((num_states, num_cols)) * (1 - 1j)
+
+        # Test different weights
+        weights_1d = np.random.random(num_states)
+        weights_2d = np.random.random((num_states, num_states))
+        weights_2d = 0.5 * (weights_2d + weights_2d.T)
+        for weights in [None, weights_1d, weights_2d]:
+            # Reshape weights
+            if weights is None:
+                weights_array = np.eye(num_states)
+            elif weights.ndim == 1:
+                weights_array = np.diag(weights)
+            else:
+                weights_array = weights
+
+            # Correct inner product values
+            ip_array_true = row_array.conj().T.dot(weights_array.dot(col_array))
+            ip_array_symm_true = row_array.conj().T.dot(
+                weights_array.dot(row_array))
+
+            # Compute inner products using vec space object
+            vec_space = VectorSpaceArrays(weights=weights)
+            ip_array = vec_space.compute_inner_product_array(
+                row_array, col_array)
+            ip_array_symm = vec_space.compute_symmetric_inner_product_array(
+                row_array)
+            np.testing.assert_allclose(
+                ip_array, ip_array_true, rtol=rtol, atol=atol)
+
+
+#@unittest.skip('Testing other things')
 class TestVectorSpaceHandles(unittest.TestCase):
     """ Tests of the VectorSpaceHandles class """
     def setUp(self):
@@ -71,17 +160,17 @@ class TestVectorSpaceHandles(unittest.TestCase):
     #@unittest.skip('Testing other things')
     def test_sanity_check(self):
         """Tests correctly checks user-supplied objects and functions."""
+        # Setup
         nx = 40
         ny = 15
         test_array = np.random.random((nx, ny))
-
         vec_space = VectorSpaceHandles(inner_product=np.vdot, verbosity=0)
-        in_mem_handle = V.VecHandleInMemory(test_array)
+        in_mem_handle = vcs.VecHandleInMemory(test_array)
         vec_space.sanity_check(in_mem_handle)
 
         # Define some weird vectors that alter their internal data when adding
         # or multiplying (which they shouldn't do).
-        class SanityMultVec(V.Vector):
+        class SanityMultVec(vcs.Vector):
             def __init__(self, arr):
                 self.arr = arr
 
@@ -94,7 +183,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
                 self.arr *= a
                 return self
 
-        class SanityAddVec(V.Vector):
+        class SanityAddVec(vcs.Vector):
             def __init__(self, arr):
                 self.arr = arr
 
@@ -108,169 +197,192 @@ class TestVectorSpaceHandles(unittest.TestCase):
                 return f_return
 
         # Define an inner product function for Sanity vec handles
-        def good_custom_IP(vec1, vec2):
+        def good_custom_ip(vec1, vec2):
             return np.vdot(vec1.arr, vec2.arr)
 
         # Define a bad inner product for regular arrays
-        def bad_array_IP(vec1, vec2):
+        def bad_array_ip(vec1, vec2):
             return np.vdot(vec1, vec2 ** 2.)
 
         # Make sure that sanity check passes for vectors with properly defined
         # vector operations.  Do so by simply calling the function.  If it
         # passes, then no error will be raised.
         vec_space.inner_product = np.vdot
-        vec_space.sanity_check(V.VecHandleInMemory(test_array))
+        vec_space.sanity_check(vcs.VecHandleInMemory(test_array))
 
         # Make sure that sanity check fails if inner product values are not
         # correct.
-        vec_space.inner_product = bad_array_IP
+        vec_space.inner_product = bad_array_ip
         self.assertRaises(
             ValueError,
-            vec_space.sanity_check, V.VecHandleInMemory(test_array))
+            vec_space.sanity_check, vcs.VecHandleInMemory(test_array))
 
         # Make sure that sanity check fails if vectors alter their
         # internal data when doing vector space operations.
-        vec_space.inner_product = good_custom_IP
+        vec_space.inner_product = good_custom_ip
         sanity_mult_vec = SanityMultVec(test_array)
         self.assertRaises(
             ValueError,
-            vec_space.sanity_check, V.VecHandleInMemory(sanity_mult_vec))
+            vec_space.sanity_check, vcs.VecHandleInMemory(sanity_mult_vec))
         sanity_add_vec = SanityAddVec(test_array)
         self.assertRaises(
             ValueError,
-            vec_space.sanity_check, V.VecHandleInMemory(sanity_add_vec))
+            vec_space.sanity_check, vcs.VecHandleInMemory(sanity_add_vec))
 
 
-    def generate_vecs_modes(self, num_states, num_vecs, num_modes):
+    def generate_vecs_modes(
+        self, num_states, num_vecs, num_modes, squeeze=False):
         """Generates random vecs and finds the modes.
 
         Returns:
             vec_array: array in which each column is a vec (in order)
             mode_indices: unordered list of integers representing mode indices,
                 each entry is unique. Mode indices are picked randomly.
-            build_coeff_array: array of shape num_vecs x num_modes, random
+            coeff_array: array of shape num_vecs x num_modes, random
                 entries
             mode_array: array of modes, each column is a mode.
                 The index of the array column equals the mode index.
         """
         mode_indices = list(range(num_modes))
         random.shuffle(mode_indices)
-        build_coeff_array = np.mat(np.random.random((num_vecs, num_modes)))
+        coeff_array = np.random.random((num_vecs, num_modes))
         vec_array = np.random.random((num_states, num_vecs))
-        mode_array = vec_array.dot(build_coeff_array)
-        return vec_array, mode_indices, build_coeff_array, mode_array
+        mode_array = vec_array.dot(coeff_array)
+        if squeeze:
+            build_coeff_array = coeff_array.squeeze()
+        return vec_array, mode_indices, coeff_array, mode_array
 
 
     #@unittest.skip('Testing other things')
     def test_lin_combine(self):
+        # Set test tolerances
         rtol = 1e-10
         atol = 1e-12
 
-        num_vecs_list = [1, 15, 40]
-        num_states = 20
+        # Setup
+        mode_path = join(self.test_dir, 'mode_%03d.pkl')
+        vec_path = join(self.test_dir, 'vec_%03d.pkl')
+
         # Test cases where number of modes:
         #   less, equal, more than num_states
         #   less, equal, more than num_vecs
         #   less, equal, more than total_num_vecs_in_mem
+        num_states = 20
+        num_vecs_list = [1, 15, 40]
         num_modes_list = [
             1, 8, 10, 20, 25, 45,
             int(np.ceil(self.total_num_vecs_in_mem / 2.)),
             self.total_num_vecs_in_mem, self.total_num_vecs_in_mem * 2]
-        mode_path = join(self.test_dir, 'mode_%03d.txt')
-        vec_path = join(self.test_dir, 'vec_%03d.txt')
 
+        # Check for correct computations
         for num_vecs in num_vecs_list:
             for num_modes in num_modes_list:
-                # Generate data and then broadcast to all procs
-                vec_handles = [
-                    V.VecHandleArrayText(vec_path % i) for i in range(num_vecs)]
-                vec_array, mode_indices, build_coeff_mat, true_modes =\
-                    parallel.call_and_bcast(
-                        self.generate_vecs_modes, num_states, num_vecs,
-                        num_modes)
-                if parallel.is_rank_zero():
-                    for vec_index, vec_handle in enumerate(vec_handles):
-                        vec_handle.put(vec_array[:, vec_index])
+                for squeeze in [True, False]:
+
+                    # Generate data and then broadcast to all procs
+                    vec_handles = [
+                        vcs.VecHandlePickle(vec_path % i)
+                        for i in range(num_vecs)]
+                    vec_array, mode_indices, coeff_array, true_modes =\
+                        parallel.call_and_bcast(
+                            self.generate_vecs_modes, num_states, num_vecs,
+                            num_modes, squeeze=squeeze)
+                    if parallel.is_rank_zero():
+                        for vec_index, vec_handle in enumerate(vec_handles):
+                            vec_handle.put(vec_array[:, vec_index])
+                    parallel.barrier()
+                    mode_handles = [
+                        vcs.VecHandlePickle(mode_path % mode_num)
+                        for mode_num in mode_indices]
+
+                    # Test the case that only one mode is desired,
+                    # in which case user might pass in an int
+                    if len(mode_indices) == 1:
+                        mode_indices = mode_indices[0]
+                        mode_handles = mode_handles[0]
+
+                    # Saves modes to files
+                    self.vec_space.lin_combine(
+                        mode_handles, vec_handles, coeff_array,
+                        mode_indices)
+
+                    # Change mode indices back to list to make iterable for
+                    # testing modes one by one.
+                    if not isinstance(mode_indices, list):
+                        mode_indices = [mode_indices]
+                    parallel.barrier()
+
+                    for mode_index in mode_indices:
+                        computed_mode = vcs.VecHandlePickle(
+                            mode_path % mode_index).get()
+                        np.testing.assert_allclose(
+                            computed_mode, true_modes[:, mode_index],
+                            rtol=rtol, atol=atol)
+                    parallel.barrier()
+
                 parallel.barrier()
-                mode_handles = [
-                    V.VecHandleArrayText(mode_path % mode_num)
-                    for mode_num in mode_indices]
 
-                # If there are more vecs than mat has rows
-                build_coeff_array_too_small = np.zeros(
-                    (build_coeff_mat.shape[0] - 1, build_coeff_mat.shape[1]))
-                self.assertRaises(
-                    ValueError,
-                    self.vec_space.lin_combine, mode_handles, vec_handles,
-                    build_coeff_array_too_small, mode_indices)
+            parallel.barrier()
 
-                # Test the case that only one mode is desired,
-                # in which case user might pass in an int
-                if len(mode_indices) == 1:
-                    mode_indices = mode_indices[0]
-                    mode_handles = mode_handles[0]
-
-                # Saves modes to files
-                self.vec_space.lin_combine(
-                    mode_handles, vec_handles, build_coeff_mat, mode_indices)
-
-                # Change back to list so is iterable
-                if not isinstance(mode_indices, list):
-                    mode_indices = [mode_indices]
-                parallel.barrier()
-                for mode_index in mode_indices:
-                    computed_mode = V.VecHandleArrayText(
-                        mode_path % mode_index).get()
-                    np.testing.assert_allclose(
-                        computed_mode, true_modes[:,mode_index],
-                        rtol=rtol, atol=atol)
-                parallel.barrier()
-        parallel.barrier()
+        # Test that errors are caught for mismatched dimensions
+        mode_handles = [
+            vcs.VecHandlePickle(mode_path % i) for i in range(10)]
+        vec_handles = [
+            vcs.VecHandlePickle(vec_path % i) for i in range(15)]
+        coeffs_array_too_short = np.zeros(
+            (len(vec_handles) - 1, len(mode_handles)))
+        coeffs_array_too_fat = np.zeros(
+            (len(vec_handles), len(mode_handles) + 1))
+        index_list_too_long = range(len(mode_handles) + 1)
+        self.assertRaises(
+            ValueError, self.vec_space.lin_combine, mode_handles, vec_handles,
+            coeffs_array_too_short)
+        self.assertRaises(
+            ValueError, self.vec_space.lin_combine, mode_handles, vec_handles,
+            coeffs_array_too_fat)
 
 
     #@unittest.skip('Testing other things')
     @unittest.skipIf(parallel.is_distributed(), 'Serial only')
-    def test_compute_inner_product_mat_types(self):
-        class ArrayTextComplexHandle(V.VecHandleArrayText):
-            def get(self):
-                return (1 + 1j) * V.VecHandleArrayText.get(self)
-
+    def test_compute_inner_product_array_types(self):
         num_row_vecs = 4
         num_col_vecs = 6
         num_states = 7
 
-        row_vec_path = join(self.test_dir, 'row_vec_%03d.txt')
-        col_vec_path = join(self.test_dir, 'col_vec_%03d.txt')
+        row_vec_path = join(self.test_dir, 'row_vec_%03d.pkl')
+        col_vec_path = join(self.test_dir, 'col_vec_%03d.pkl')
 
-        # Generate vecs and save to file
-        row_vec_array = np.mat(np.random.random(
-            (num_states, num_row_vecs)))
-        col_vec_array = np.mat(np.random.random(
-            (num_states, num_col_vecs)))
-        row_vec_paths = []
-        col_vec_paths = []
-        for vec_index in range(num_row_vecs):
-            path = row_vec_path % vec_index
-            util.save_array_text(row_vec_array[:, vec_index], path)
-            row_vec_paths.append(path)
-        for vec_index in range(num_col_vecs):
-            path = col_vec_path % vec_index
-            util.save_array_text(col_vec_array[:, vec_index], path)
-            col_vec_paths.append(path)
+        # Check complex and real data
+        for is_complex in [True, False]:
 
-        # Compute inner product matrix and check type
-        for handle, dtype in [
-            (V.VecHandleArrayText, float),
-            (ArrayTextComplexHandle, complex)]:
-            row_vec_handles = [handle(path) for path in row_vec_paths]
-            col_vec_handles = [handle(path) for path in col_vec_paths]
-            inner_product_mat = self.vec_space.compute_inner_product_array(
+            # Generate data
+            row_vec_array = np.random.random((num_states, num_row_vecs))
+            col_vec_array = np.random.random((num_states, num_col_vecs))
+            if is_complex:
+                row_vec_array = row_vec_array * (1 + 1j)
+                col_vec_array = col_vec_array * (1 + 1j)
+
+            # Generate handles and save to file
+            row_vec_paths = [row_vec_path % i for i in range(num_row_vecs)]
+            col_vec_paths = [col_vec_path % i for i in range(num_col_vecs)]
+            row_vec_handles = [
+                vcs.VecHandlePickle(path) for path in row_vec_paths]
+            col_vec_handles = [
+                vcs.VecHandlePickle(path) for path in col_vec_paths]
+            for idx, handle in enumerate(row_vec_handles):
+                handle.put(row_vec_array[:, idx])
+            for idx, handle in enumerate(col_vec_handles):
+                handle.put(col_vec_array[:, idx])
+
+            # Compute inner product array and check type
+            inner_product_array = self.vec_space.compute_inner_product_array(
                 row_vec_handles, col_vec_handles)
-            symm_inner_product_mat =\
+            symm_inner_product_array =\
                 self.vec_space.compute_symmetric_inner_product_array(
                     row_vec_handles)
-            self.assertEqual(inner_product_mat.dtype, dtype)
-            self.assertEqual(symm_inner_product_mat.dtype, dtype)
+            self.assertEqual(inner_product_array.dtype, row_vec_array.dtype)
+            self.assertEqual(
+                symm_inner_product_array.dtype, row_vec_array.dtype)
 
 
     #@unittest.skip('Testing other things')
@@ -307,10 +419,10 @@ class TestVectorSpaceHandles(unittest.TestCase):
                     + 1j * parallel.call_and_bcast(
                         np.random.random, (num_states, num_col_vecs)))
                 row_vec_handles = [
-                    V.VecHandlePickle(row_vec_path % i)
+                    vcs.VecHandlePickle(row_vec_path % i)
                     for i in range(num_row_vecs)]
                 col_vec_handles = [
-                    V.VecHandlePickle(col_vec_path % i)
+                    vcs.VecHandlePickle(col_vec_path % i)
                     for i in range(num_col_vecs)]
 
                 # Save vecs
@@ -327,14 +439,14 @@ class TestVectorSpaceHandles(unittest.TestCase):
                 if len(col_vec_handles) == 1:
                     col_vec_handles = col_vec_handles[0]
 
-                # Test IP computation.
+                # Test ip computation.
                 product_true = np.dot(row_vec_array.conj().T, col_vec_array)
                 product_computed = self.vec_space.compute_inner_product_array(
                     row_vec_handles, col_vec_handles)
                 np.testing.assert_allclose(
                     product_computed, product_true, rtol=rtol, atol=atol)
 
-                # Test symm IP computation
+                # Test symm ip computation
                 product_true = np.dot(row_vec_array.conj().T, row_vec_array)
                 product_computed =\
                     self.vec_space.compute_symmetric_inner_product_array(
