@@ -32,6 +32,23 @@ class TestUtil(unittest.TestCase):
             rmtree(self.test_dir, ignore_errors=True)
         parallel.barrier()
 
+
+    #@unittest.skip('Testing something else.')
+    def test_atleast_2d_col(self):
+        # Test a 1d array.  Check that after reshaping to 2d, the values are the
+        # same, but the shape is a column vector.
+        vec1d = np.ones((3))
+        vec1d_col = util.atleast_2d_col(vec1d)
+        np.testing.assert_array_equal(vec1d.squeeze(), vec1d_col.squeeze())
+        self.assertEqual(vec1d.shape, (vec1d.size,))
+        self.assertEqual(vec1d_col.shape, (vec1d.size, 1))
+
+        # Test a 2d array.  Nothing should change about the array.
+        vec2d = np.ones((3, 3))
+        vec2d_col = util.atleast_2d_col(vec2d)
+        np.testing.assert_array_equal(vec2d, vec2d_col)
+
+
     #@unittest.skip('Testing something else.')
     @unittest.skipIf(
         parallel.is_distributed(), 'Only save/load arrays in serial')

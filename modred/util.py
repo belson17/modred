@@ -29,6 +29,14 @@ def make_list(arg):
 '''
 
 
+def atleast_2d_col(array):
+    """Converts 1d arrays to 2d arrays, but always as column vectors"""
+    if len(array.shape) == 1:
+        return np.atleast_2d(array).T
+    else:
+        return array
+
+
 def make_iterable(arg):
     """Checks if ``arg`` is iterable. If not, makes it a one-element list.
     Otherwise returns ``arg``."""
