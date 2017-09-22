@@ -80,13 +80,10 @@ class TestUtil(unittest.TestCase):
                         for num_cols in cols:
 
                             # Generate real and complex arrays
-                            array_real = np.random.random((num_rows, num_cols))
+                            array = np.random.random((num_rows, num_cols))
                             if is_complex:
-                                array_imag = np.random.random(
-                                    (num_rows, num_cols))
-                                array = array_real + 1j * array_imag
-                            else:
-                                array = array_real
+                                array = array + (
+                                    1j *np.random.random((num_rows, num_cols)))
 
                             # Check row and column vectors, no squeeze (1, 1)
                             if squeeze and (num_rows > 1 or num_cols > 1):
@@ -121,7 +118,8 @@ class TestUtil(unittest.TestCase):
                     # Generate a random array with elements in [0, 1]
                     array = np.random.random((num_rows, num_cols))
                     if is_complex:
-                        array = array + 1j * array
+                        array = array + 1j * np.random.random(
+                            (num_rows, num_cols))
 
                     # Compute full set of singular values to help choose
                     # tolerance levels that guarantee truncation (otherwise
@@ -199,7 +197,7 @@ class TestUtil(unittest.TestCase):
                 # Generate random array with values between 0 and 1
                 array = np.random.random((num_rows, num_rows))
                 if is_complex:
-                    array = array + 1j * array
+                    array = array + 1j * np.random.random((num_rows, num_rows))
 
                 # Make array conjugate-symmetric.  Note that if the array is
                 # large, for some reason an in-place operation causes the
@@ -292,7 +290,7 @@ class TestUtil(unittest.TestCase):
         for is_complex in [True, False]:
             array = np.random.random((num_rows, num_rows))
             if is_complex:
-                array = array + 1j * array
+                array = array + 1j * np.random.random((num_rows, num_rows))
 
             # Test different scale choices
             for scale_choice in ['left', 'right']:
