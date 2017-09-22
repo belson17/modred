@@ -31,7 +31,7 @@ def make_list(arg):
 
 def atleast_2d_row(array):
     """Converts 1d arrays to 2d arrays, but always as row vectors"""
-    if len(array.shape) == 1:
+    if len(array.shape) < 2:
         return np.atleast_2d(array)
     else:
         return array
@@ -39,7 +39,7 @@ def atleast_2d_row(array):
 
 def atleast_2d_col(array):
     """Converts 1d arrays to 2d arrays, but always as column vectors"""
-    if len(array.shape) == 1:
+    if len(array.shape) < 2:
         return np.atleast_2d(array).T
     else:
         return array
