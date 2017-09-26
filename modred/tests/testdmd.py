@@ -38,27 +38,30 @@ class TestDMDArraysFunctions(unittest.TestCase):
         weights_list = [None, np.random.random(self.num_states), ws]
 
         # Generate random snapshot data
-        vecs_mat = np.mat(np.random.random((self.num_states, self.num_vecs)))
-        adv_vecs_mat = np.mat(np.random.random(
-            (self.num_states, self.num_vecs)))
+        vecs_array = (
+            np.random.random((self.num_states, self.num_vecs)) +
+            1j * np.random.random((self.num_states, self.num_vecs)))
+        adv_vecs_array = (
+            np.random.random((self.num_states, self.num_vecs)) +
+            1j * np.random.random((self.num_states, self.num_vecs)))
 
         # Consider sequential time series as well as non-sequential.  In the
         # below for loop, the first elements of each zipped list correspond to a
         # sequential time series.  The second elements correspond to a
         # non-sequential time series.
         for vecs_arg, adv_vecs_arg, vecs_vals, adv_vecs_vals in zip(
-            [vecs_mat, vecs_mat],
-            [None, adv_vecs_mat],
-            [vecs_mat[:, :-1], vecs_mat],
-            [vecs_mat[:, 1:], adv_vecs_mat]):
+            [vecs_array, vecs_array],
+            [None, adv_vecs_array],
+            [vecs_array[:, :-1], vecs_array],
+            [vecs_array[:, 1:], adv_vecs_array]):
 
             # Test both method of snapshots and direct method
             for method in ['snaps', 'direct']:
 
                 # Consider different inner product weights
                 for weights in weights_list:
-                    IP = VectorSpaceMatrices(
-                        weights=weights).compute_inner_product_mat
+                    IP = VectorSpaceArrays(
+                        weights=weights).compute_inner_product_array
 
                     # Test that results hold for truncated or untruncated DMD
                     # (i.e., whether or not the underlying POD basis is
@@ -81,33 +84,33 @@ class TestDMDArraysFunctions(unittest.TestCase):
                         # subset of the DMD modes, in preparation for later
                         # tests.
                         if method == 'snaps':
-                            DMD_res = compute_DMD_matrices_snaps_method(
+                            DMD_res = compute_DMD_arrays_snaps_method(
                                 vecs_arg, adv_vecs=adv_vecs_arg,
                                 inner_product_weights=weights,
                                 max_num_eigvals=max_num_eigvals)
-                            DMD_res_sliced = compute_DMD_matrices_snaps_method(
+                            DMD_res_sliced = compute_DMD_arrays_snaps_method(
                                 vecs_arg, adv_vecs=adv_vecs_arg,
                                 mode_indices=mode_indices,
                                 inner_product_weights=weights,
                                 max_num_eigvals=max_num_eigvals)
 
-                            # For method of snapshots, test correlation mats
+                            # For method of snapshots, test correlation arrays
                             # values by simply recomputing them.
                             np.testing.assert_allclose(
                                 IP(vecs_vals, vecs_vals),
-                                DMD_res.correlation_mat,
+                                DMD_res.correlation_array,
                                 rtol=rtol, atol=atol)
                             np.testing.assert_allclose(
                                 IP(vecs_vals, adv_vecs_vals),
-                                DMD_res.cross_correlation_mat,
+                                DMD_res.cross_correlation_array,
                                 rtol=rtol, atol=atol)
 
                         elif method == 'direct':
-                            DMD_res = compute_DMD_matrices_direct_method(
+                            DMD_res = compute_DMD_arrays_direct_method(
                                 vecs_arg, adv_vecs=adv_vecs_arg,
                                 inner_product_weights=weights,
                                 max_num_eigvals=max_num_eigvals)
-                            DMD_res_sliced = compute_DMD_matrices_direct_method(
+                            DMD_res_sliced = compute_DMD_arrays_direct_method(
                                 vecs_arg, adv_vecs=adv_vecs_arg,
                                 mode_indices=mode_indices,
                                 inner_product_weights=weights,
@@ -116,77 +119,80 @@ class TestDMDArraysFunctions(unittest.TestCase):
                         else:
                             raise ValueError('Invalid DMD method.')
 
-                        # Test correlation mat eigenvalues and eigenvectors.
+                        # Test correlation array eigenvalues and eigenvectors.
                         np.testing.assert_allclose(
-                            IP(vecs_vals, vecs_vals) *\
-                            DMD_res.correlation_mat_eigvecs,
-                            DMD_res.correlation_mat_eigvecs * np.mat(np.diag(
-                                DMD_res.correlation_mat_eigvals)),
+                            IP(vecs_vals, vecs_vals).dot(
+                                DMD_res.correlation_array_eigvecs),
+                            DMD_res.correlation_array_eigvecs.dot(
+                                np.diag(DMD_res.correlation_array_eigvals)),
                             rtol=rtol, atol=atol)
 
                         # Compute the approximating linear operator relating the
                         # vecs to the adv_vecs.  To do this, use the
-                        # eigendecomposition of the correlation mat.
+                        # eigendecomposition of the correlation array.
                         vecs_POD_build_coeffs = (
-                            DMD_res.correlation_mat_eigvecs *
-                            np.mat(np.diag(
-                                DMD_res.correlation_mat_eigvals ** -0.5)))
-                        vecs_POD_modes = vecs_vals * vecs_POD_build_coeffs
-                        approx_linear_op = (
-                            adv_vecs_vals * DMD_res.correlation_mat_eigvecs *
-                            np.mat(np.diag(
-                                DMD_res.correlation_mat_eigvals ** -0.5)) *
-                            vecs_POD_modes.H)
+                            DMD_res.correlation_array_eigvecs.dot(
+                                np.diag(
+                                    DMD_res.correlation_array_eigvals ** -0.5)))
+                        vecs_POD_modes = vecs_vals.dot(vecs_POD_build_coeffs)
+                        approx_linear_op = adv_vecs_vals.dot(
+                            DMD_res.correlation_array_eigvecs.dot(
+                                np.diag(
+                                    DMD_res.correlation_array_eigvals ** -0.5)
+                                ).dot(vecs_POD_modes.conj().T))
                         low_order_linear_op = IP(
                             vecs_POD_modes,
-                            IP(approx_linear_op.H, vecs_POD_modes))
+                            IP(approx_linear_op.conj().T, vecs_POD_modes))
 
                         # Test the left and right eigenvectors of the low-order
                         # (projected) approximating linear operator.
                         np.testing.assert_allclose(
-                            low_order_linear_op * DMD_res.R_low_order_eigvecs,
-                            DMD_res.R_low_order_eigvecs * np.mat(np.diag(
+                            low_order_linear_op.dot(
+                                DMD_res.R_low_order_eigvecs),
+                            DMD_res.R_low_order_eigvecs.dot(np.diag(
                                 DMD_res.eigvals)),
                             rtol=rtol, atol=atol)
                         np.testing.assert_allclose(
-                            DMD_res.L_low_order_eigvecs.H * low_order_linear_op,
-                            np.mat(np.diag(DMD_res.eigvals)) *\
-                            DMD_res.L_low_order_eigvecs.H,
+                            DMD_res.L_low_order_eigvecs.conj().T.dot(
+                                low_order_linear_op),
+                            np.diag(DMD_res.eigvals).dot(
+                                DMD_res.L_low_order_eigvecs.conj().T),
                             rtol=rtol, atol=atol)
 
                         # Test the exact modes, which are eigenvectors of the
                         # approximating linear operator.
                         np.testing.assert_allclose(
-                            IP(approx_linear_op.H, DMD_res.exact_modes),
-                            DMD_res.exact_modes * np.mat(np.diag(
-                                DMD_res.eigvals)),
+                            IP(approx_linear_op.conj().T, DMD_res.exact_modes),
+                            DMD_res.exact_modes.dot(np.diag(DMD_res.eigvals)),
                             rtol=rtol, atol=atol)
 
                         # Test the projected modes, which are eigenvectors of
                         # the approximating linear operator projected onto the
                         # POD modes of the vecs.
                         np.testing.assert_allclose(
-                            vecs_POD_modes * IP(
+                            vecs_POD_modes.dot(IP(
                                 vecs_POD_modes,
-                                IP(approx_linear_op.H, DMD_res.proj_modes)),
-                            DMD_res.proj_modes * np.mat(np.diag(
-                                DMD_res.eigvals)),
+                                IP(
+                                    approx_linear_op.conj().T,
+                                    DMD_res.proj_modes))),
+                            DMD_res.proj_modes.dot(
+                                np.diag(DMD_res.eigvals)),
                             rtol=rtol, atol=atol)
 
                         # Test the adjoint modes, which are left eigenvectors of
                         # the approximating linear operator.
                         np.testing.assert_allclose(
                             IP(approx_linear_op, DMD_res.adjoint_modes),
-                            DMD_res.adjoint_modes * np.mat(np.diag(
-                                DMD_res.eigvals.conj().T)),
+                            DMD_res.adjoint_modes.dot(
+                                np.diag(DMD_res.eigvals.conj().T)),
                             rtol=rtol, atol=atol)
 
                         # Test spectral coefficients against an explicit
                         # projection using the adjoint DMD modes.
                         np.testing.assert_allclose(
-                            np.array(np.abs(IP(
+                            np.abs(IP(
                                 DMD_res.adjoint_modes,
-                                vecs_vals[:, 0]))).squeeze(),
+                                vecs_vals[:, 0])).squeeze(),
                             DMD_res.spectral_coeffs,
                             rtol=rtol, atol=atol)
 
@@ -212,7 +218,7 @@ class TestDMDHandles(unittest.TestCase):
         # Specify output locations
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        self.test_dir = 'DMD_files'
+        self.test_dir = 'files_DMD_DELETE_ME'
         if not os.path.isdir(self.test_dir):
             parallel.call_from_rank_zero(os.mkdir, self.test_dir)
         self.vec_path = join(self.test_dir, 'dmd_vec_%03d.pkl')
@@ -226,10 +232,16 @@ class TestDMDHandles(unittest.TestCase):
         self.num_vecs = 10
 
         # Generate random data and write to disk using handles
-        self.vecs_array = parallel.call_and_bcast(
-            np.random.random, (self.num_states, self.num_vecs))
-        self.adv_vecs_array = parallel.call_and_bcast(
-            np.random.random, (self.num_states, self.num_vecs))
+        self.vecs_array = (
+            parallel.call_and_bcast(
+                np.random.random, (self.num_states, self.num_vecs))
+            + 1j * parallel.call_and_bcast(
+                np.random.random, (self.num_states, self.num_vecs)))
+        self.adv_vecs_array = (
+            parallel.call_and_bcast(
+                np.random.random, (self.num_states, self.num_vecs))
+            + 1j * parallel.call_and_bcast(
+                np.random.random, (self.num_states, self.num_vecs)))
         self.vec_handles = [
             VecHandlePickle(self.vec_path % i) for i in range(self.num_vecs)]
         self.adv_vec_handles = [
@@ -259,10 +271,11 @@ class TestDMDHandles(unittest.TestCase):
         def my_IP(vec1, vec2): pass
 
         data_members_default = {
-            'put_mat': util.save_array_text, 'get_mat': util.load_array_text,
-            'verbosity': 0, 'eigvals': None, 'correlation_mat': None,
-            'cross_correlation_mat': None, 'correlation_mat_eigvals': None,
-            'correlation_mat_eigvecs': None, 'low_order_linear_map': None,
+            'put_array': util.save_array_text,
+            'get_array': util.load_array_text,
+            'verbosity': 0, 'eigvals': None, 'correlation_array': None,
+            'cross_correlation_array': None, 'correlation_array_eigvals': None,
+            'correlation_array_eigvecs': None, 'low_order_linear_map': None,
             'L_low_order_eigvecs': None, 'R_low_order_eigvecs': None,
             'spectral_coeffs': None, 'proj_coeffs': None, 'adv_proj_coeffs':
             None, 'vec_handles': None, 'adv_vec_handles': None, 'vec_space':
@@ -280,15 +293,15 @@ class TestDMDHandles(unittest.TestCase):
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
 
-        my_DMD = DMDHandles(my_IP, get_mat=my_load, verbosity=0)
+        my_DMD = DMDHandles(my_IP, get_array=my_load, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['get_mat'] = my_load
+        data_members_modified['get_array'] = my_load
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
 
-        my_DMD = DMDHandles(my_IP, put_mat=my_save, verbosity=0)
+        my_DMD = DMDHandles(my_IP, put_array=my_save, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['put_mat'] = my_save
+        data_members_modified['put_array'] = my_save
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
 
@@ -311,15 +324,15 @@ class TestDMDHandles(unittest.TestCase):
         # Generate some random data
         eigvals = parallel.call_and_bcast(np.random.random, 5)
         R_low_order_eigvecs = parallel.call_and_bcast(
-            np.random.random, (10,10))
+            np.random.random, (10, 10))
         L_low_order_eigvecs = parallel.call_and_bcast(
-            np.random.random, (10,10))
-        correlation_mat_eigvals = parallel.call_and_bcast(np.random.random, 5)
-        correlation_mat_eigvecs = parallel.call_and_bcast(
-            np.random.random, (10,10))
-        correlation_mat = parallel.call_and_bcast(np.random.random, (10,10))
-        cross_correlation_mat = parallel.call_and_bcast(
-            np.random.random, (10,10))
+            np.random.random, (10, 10))
+        correlation_array_eigvals = parallel.call_and_bcast(np.random.random, 5)
+        correlation_array_eigvecs = parallel.call_and_bcast(
+            np.random.random, (10, 10))
+        correlation_array = parallel.call_and_bcast(np.random.random, (10, 10))
+        cross_correlation_array = parallel.call_and_bcast(
+            np.random.random, (10, 10))
         spectral_coeffs = parallel.call_and_bcast(np.random.random, 5)
         proj_coeffs = parallel.call_and_bcast(np.random.random, (5, 5))
         adv_proj_coeffs = parallel.call_and_bcast(np.random.random, (5, 5))
@@ -329,10 +342,10 @@ class TestDMDHandles(unittest.TestCase):
         DMD_save.eigvals = eigvals
         DMD_save.R_low_order_eigvecs = R_low_order_eigvecs
         DMD_save.L_low_order_eigvecs = L_low_order_eigvecs
-        DMD_save.correlation_mat_eigvals = correlation_mat_eigvals
-        DMD_save.correlation_mat_eigvecs = correlation_mat_eigvecs
-        DMD_save.correlation_mat = correlation_mat
-        DMD_save.cross_correlation_mat = cross_correlation_mat
+        DMD_save.correlation_array_eigvals = correlation_array_eigvals
+        DMD_save.correlation_array_eigvecs = correlation_array_eigvecs
+        DMD_save.correlation_array = correlation_array
+        DMD_save.cross_correlation_array = cross_correlation_array
         DMD_save.spectral_coeffs = spectral_coeffs
         DMD_save.proj_coeffs = proj_coeffs
         DMD_save.adv_proj_coeffs = adv_proj_coeffs
@@ -343,21 +356,21 @@ class TestDMDHandles(unittest.TestCase):
             self.test_dir, 'dmd_R_low_order_eigvecs.txt')
         L_low_order_eigvecs_path = join(
             self.test_dir, 'dmd_L_low_order_eigvecs.txt')
-        correlation_mat_eigvals_path = join(
-            self.test_dir, 'dmd_corr_mat_eigvals.txt')
-        correlation_mat_eigvecs_path = join(
-            self.test_dir, 'dmd_corr_mat_eigvecs.txt')
-        correlation_mat_path = join(self.test_dir, 'dmd_corr_mat.txt')
-        cross_correlation_mat_path = join(
-            self.test_dir, 'dmd_cross_corr_mat.txt')
+        correlation_array_eigvals_path = join(
+            self.test_dir, 'dmd_corr_array_eigvals.txt')
+        correlation_array_eigvecs_path = join(
+            self.test_dir, 'dmd_corr_array_eigvecs.txt')
+        correlation_array_path = join(self.test_dir, 'dmd_corr_array.txt')
+        cross_correlation_array_path = join(
+            self.test_dir, 'dmd_cross_corr_array.txt')
         spectral_coeffs_path = join(self.test_dir, 'dmd_spectral_coeffs.txt')
         proj_coeffs_path = join(self.test_dir, 'dmd_proj_coeffs.txt')
         adv_proj_coeffs_path = join(self.test_dir, 'dmd_adv_proj_coeffs.txt')
         DMD_save.put_decomp(
             eigvals_path, R_low_order_eigvecs_path, L_low_order_eigvecs_path,
-            correlation_mat_eigvals_path , correlation_mat_eigvecs_path)
-        DMD_save.put_correlation_mat(correlation_mat_path)
-        DMD_save.put_cross_correlation_mat(cross_correlation_mat_path)
+            correlation_array_eigvals_path , correlation_array_eigvecs_path)
+        DMD_save.put_correlation_array(correlation_array_path)
+        DMD_save.put_cross_correlation_array(cross_correlation_array_path)
         DMD_save.put_spectral_coeffs(spectral_coeffs_path)
         DMD_save.put_proj_coeffs(proj_coeffs_path, adv_proj_coeffs_path)
         parallel.barrier()
@@ -366,9 +379,9 @@ class TestDMDHandles(unittest.TestCase):
         DMD_load = DMDHandles(None, verbosity=0)
         DMD_load.get_decomp(
             eigvals_path, R_low_order_eigvecs_path, L_low_order_eigvecs_path,
-            correlation_mat_eigvals_path, correlation_mat_eigvecs_path)
-        DMD_load.get_correlation_mat(correlation_mat_path)
-        DMD_load.get_cross_correlation_mat(cross_correlation_mat_path)
+            correlation_array_eigvals_path, correlation_array_eigvecs_path)
+        DMD_load.get_correlation_array(correlation_array_path)
+        DMD_load.get_cross_correlation_array(cross_correlation_array_path)
         DMD_load.get_spectral_coeffs(spectral_coeffs_path)
         DMD_load.get_proj_coeffs(proj_coeffs_path, adv_proj_coeffs_path)
 
@@ -379,12 +392,12 @@ class TestDMDHandles(unittest.TestCase):
         np.testing.assert_equal(
             DMD_load.R_low_order_eigvecs, R_low_order_eigvecs)
         np.testing.assert_equal(
-            DMD_load.correlation_mat_eigvals, correlation_mat_eigvals)
+            DMD_load.correlation_array_eigvals, correlation_array_eigvals)
         np.testing.assert_equal(
-            DMD_load.correlation_mat_eigvecs, correlation_mat_eigvecs)
-        np.testing.assert_equal(DMD_load.correlation_mat, correlation_mat)
+            DMD_load.correlation_array_eigvecs, correlation_array_eigvecs)
+        np.testing.assert_equal(DMD_load.correlation_array, correlation_array)
         np.testing.assert_equal(
-            DMD_load.cross_correlation_mat, cross_correlation_mat)
+            DMD_load.cross_correlation_array, cross_correlation_array)
         np.testing.assert_equal(
             np.array(DMD_load.spectral_coeffs).squeeze(), spectral_coeffs)
         np.testing.assert_equal(DMD_load.proj_coeffs, proj_coeffs)
@@ -415,60 +428,58 @@ class TestDMDHandles(unittest.TestCase):
                 # Compute DMD using modred
                 DMD = DMDHandles(np.vdot, verbosity=0)
                 (eigvals, R_low_order_eigvecs, L_low_order_eigvecs,
-                correlation_mat_eigvals, correlation_mat_eigvecs) =\
+                correlation_array_eigvals, correlation_array_eigvecs) =\
                 DMD.compute_decomp(
                     vecs_arg, adv_vec_handles=adv_vecs_arg,
                     max_num_eigvals=max_num_eigvals)
 
-                # Test correlation mats values by simply recomputing them.  Here
-                # compute the full inner product matrix, rather than assuming it
-                # is symmetric.
+                # Test correlation array values by simply recomputing them.
+                # Here compute the full inner product array, rather than
+                # assuming it is symmetric.
                 np.testing.assert_allclose(
-                    DMD.vec_space.compute_inner_product_mat(
+                    DMD.vec_space.compute_inner_product_array(
                         vecs_vals, vecs_vals),
-                    DMD.correlation_mat,
+                    DMD.correlation_array,
                     rtol=rtol, atol=atol)
                 np.testing.assert_allclose(
-                    DMD.vec_space.compute_inner_product_mat(
+                    DMD.vec_space.compute_inner_product_array(
                         vecs_vals, adv_vecs_vals),
-                    DMD.cross_correlation_mat,
+                    DMD.cross_correlation_array,
                     rtol=rtol, atol=atol)
 
-                # Test correlation mat eigenvalues and eigenvectors.
+                # Test correlation array eigenvalues and eigenvectors.
                 np.testing.assert_allclose(
-                    DMD.correlation_mat * correlation_mat_eigvecs,
-                    correlation_mat_eigvecs * np.mat(np.diag(
-                        correlation_mat_eigvals)),
+                    DMD.correlation_array.dot(correlation_array_eigvecs),
+                    correlation_array_eigvecs.dot(
+                        np.diag(correlation_array_eigvals)),
                     rtol=rtol, atol=atol)
 
                 # Compute the projection of the approximating linear operator
                 # relating the vecs to the adv_vecs.  To do this, compute the
                 # POD modes of the vecs using the eigendecomposition of the
-                # correlation mat.
-                POD_build_coeffs = (
-                    correlation_mat_eigvecs *
-                    np.mat(np.diag(correlation_mat_eigvals ** -0.5)))
+                # correlation array.
+                POD_build_coeffs = correlation_array_eigvecs.dot(
+                    np.diag(correlation_array_eigvals ** -0.5))
                 POD_mode_path = join(self.test_dir, 'pod_mode_%03d.txt')
                 POD_mode_handles = [
                     VecHandlePickle(POD_mode_path % i)
-                    for i in xrange(correlation_mat_eigvals.size)]
+                    for i in xrange(correlation_array_eigvals.size)]
                 DMD.vec_space.lin_combine(
                     POD_mode_handles, vecs_vals, POD_build_coeffs)
-                low_order_linear_op = (
-                    DMD.vec_space.compute_inner_product_mat(
-                        POD_mode_handles, adv_vecs_vals) *
-                    correlation_mat_eigvecs *
-                    np.mat(np.diag(correlation_mat_eigvals ** -0.5)))
+                low_order_linear_op = DMD.vec_space.compute_inner_product_array(
+                    POD_mode_handles, adv_vecs_vals).dot(
+                        correlation_array_eigvecs.dot(
+                            np.diag(correlation_array_eigvals ** -0.5)))
 
                 # Test the left and right eigenvectors of the low-order
                 # (projected) approximating linear operator.
                 np.testing.assert_allclose(
-                    low_order_linear_op * R_low_order_eigvecs,
-                    R_low_order_eigvecs * np.mat(np.diag(eigvals)),
+                    low_order_linear_op.dot(R_low_order_eigvecs),
+                    R_low_order_eigvecs.dot(np.diag(eigvals)),
                     rtol=rtol, atol=atol)
                 np.testing.assert_allclose(
-                    L_low_order_eigvecs.H * low_order_linear_op,
-                    np.mat(np.diag(eigvals)) * L_low_order_eigvecs.H,
+                    L_low_order_eigvecs.conj().T.dot(low_order_linear_op),
+                    np.diag(eigvals).dot(L_low_order_eigvecs.conj().T),
                     rtol=rtol, atol=atol)
 
                 # Check that returned values match internal values
@@ -478,9 +489,9 @@ class TestDMDHandles(unittest.TestCase):
                 np.testing.assert_equal(
                     L_low_order_eigvecs, DMD.L_low_order_eigvecs)
                 np.testing.assert_equal(
-                    correlation_mat_eigvals, DMD.correlation_mat_eigvals)
+                    correlation_array_eigvals, DMD.correlation_array_eigvals)
                 np.testing.assert_equal(
-                    correlation_mat_eigvecs, DMD.correlation_mat_eigvecs)
+                    correlation_array_eigvecs, DMD.correlation_array_eigvecs)
 
         # Check that if mismatched sets of handles are passed in, an error is
         # raised.
@@ -523,14 +534,13 @@ class TestDMDHandles(unittest.TestCase):
                 # Compute the projection of the approximating linear operator
                 # relating the projected vecs to the projected adv_vecs.  To do
                 # this, compute the POD modes of the projected vecs using the
-                # eigendecomposition of the projected correlation mat.
-                POD_build_coeffs = (
-                    DMD.correlation_mat_eigvecs *
-                    np.mat(np.diag(DMD.correlation_mat_eigvals ** -0.5)))
+                # eigendecomposition of the projected correlation array.
+                POD_build_coeffs = DMD.correlation_array_eigvecs.dot(
+                    np.diag(DMD.correlation_array_eigvals ** -0.5))
                 POD_mode_path = join(self.test_dir, 'pod_mode_%03d.txt')
                 POD_mode_handles = [
                     VecHandlePickle(POD_mode_path % i)
-                    for i in xrange(DMD.correlation_mat_eigvals.size)]
+                    for i in xrange(DMD.correlation_array_eigvals.size)]
                 DMD.vec_space.lin_combine(
                     POD_mode_handles, vecs_vals, POD_build_coeffs)
 
@@ -565,7 +575,7 @@ class TestDMDHandles(unittest.TestCase):
                 # using handles, i.e. check mode by mode.  Note that since
                 # np.vdot takes the conjugate of its second argument, whereas
                 # modred assumes a conjugate is taken on the first inner product
-                # argument, the inner product matrix in the LHS computation must
+                # argument, the inner product array in the LHS computation must
                 # be conjugated.
                 LHS_path = join(self.test_dir, 'LHS_%03d.pkl')
                 LHS_handles = [
@@ -576,14 +586,14 @@ class TestDMDHandles(unittest.TestCase):
                 DMD.vec_space.lin_combine(
                     LHS_handles,
                     adv_vecs_vals,
-                    DMD.correlation_mat_eigvecs *
-                    np.mat(np.diag(DMD.correlation_mat_eigvals ** -0.5)) *
-                    DMD.vec_space.compute_inner_product_mat(
-                        POD_mode_handles, DMD_exact_mode_handles))
+                    DMD.correlation_array_eigvecs.dot(
+                        np.diag(DMD.correlation_array_eigvals ** -0.5)).dot(
+                            DMD.vec_space.compute_inner_product_array(
+                                POD_mode_handles, DMD_exact_mode_handles)))
                 DMD.vec_space.lin_combine(
                     RHS_handles,
                     DMD_exact_mode_handles,
-                    np.mat(np.diag(DMD.eigvals[mode_idxs])))
+                    np.diag(DMD.eigvals[mode_idxs]))
                 for LHS, RHS in zip(LHS_handles, RHS_handles):
                     np.testing.assert_allclose(
                         LHS.get(), RHS.get(), rtol=rtol, atol=atol)
@@ -602,16 +612,17 @@ class TestDMDHandles(unittest.TestCase):
                 DMD.vec_space.lin_combine(
                     LHS_handles,
                     POD_mode_handles,
-                    DMD.vec_space.compute_inner_product_mat(
-                        POD_mode_handles, adv_vecs_vals) *
-                    DMD.correlation_mat_eigvecs *
-                    np.mat(np.diag(DMD.correlation_mat_eigvals ** -0.5)) *
-                    DMD.vec_space.compute_inner_product_mat(
-                        POD_mode_handles, DMD_proj_mode_handles))
+                    DMD.vec_space.compute_inner_product_array(
+                        POD_mode_handles, adv_vecs_vals).dot(
+                            DMD.correlation_array_eigvecs.dot(np.diag(
+                                DMD.correlation_array_eigvals ** -0.5).dot(
+                                    DMD.vec_space.compute_inner_product_array(
+                                        POD_mode_handles,
+                                        DMD_proj_mode_handles)))))
                 DMD.vec_space.lin_combine(
                     RHS_handles,
                     DMD_proj_mode_handles,
-                    np.mat(np.diag(DMD.eigvals[mode_idxs])))
+                    np.diag(DMD.eigvals[mode_idxs]))
                 for LHS, RHS in zip(LHS_handles, RHS_handles):
                     np.testing.assert_allclose(
                         LHS.get(), RHS.get(), rtol=rtol, atol=atol)
@@ -622,7 +633,7 @@ class TestDMDHandles(unittest.TestCase):
                 # mode by mode.  Note that since np.vdot takes the conjugate of
                 # its second argument, whereas modred assumes a conjugate is
                 # taken on the first inner product argument, the inner product
-                # matrix in the LHS computation must be conjugated.
+                # array in the LHS computation must be conjugated.
                 LHS_path = join(self.test_dir, 'LHS_%03d.pkl')
                 LHS_handles = [
                     VecHandlePickle(LHS_path % i) for i in mode_idxs]
@@ -632,14 +643,14 @@ class TestDMDHandles(unittest.TestCase):
                 DMD.vec_space.lin_combine(
                     LHS_handles,
                     POD_mode_handles,
-                    np.mat(np.diag(DMD.correlation_mat_eigvals ** -0.5)) *
-                    DMD.correlation_mat_eigvecs.T *
-                    DMD.vec_space.compute_inner_product_mat(
-                        adv_vecs_vals, DMD_adjoint_mode_handles))
+                    np.diag(DMD.correlation_array_eigvals ** -0.5).dot(
+                        DMD.correlation_array_eigvecs.conj().T.dot(
+                            DMD.vec_space.compute_inner_product_array(
+                                adv_vecs_vals, DMD_adjoint_mode_handles))))
                 DMD.vec_space.lin_combine(
                     RHS_handles,
                     DMD_adjoint_mode_handles,
-                    np.mat(np.diag(DMD.eigvals[mode_idxs])).H)
+                    np.diag(DMD.eigvals[mode_idxs]).conj().T)
                 for LHS, RHS in zip(LHS_handles, RHS_handles):
                     np.testing.assert_allclose(
                         LHS.get(), RHS.get(), rtol=rtol, atol=atol)
@@ -683,15 +694,15 @@ class TestDMDHandles(unittest.TestCase):
                 # former approach, as it doesn't require adjoint modes.
                 mode_idxs = range(DMD.eigvals.size)
                 proj_mode_handles = [
-                    V.VecHandlePickle(self.proj_mode_path % i)
+                    VecHandlePickle(self.proj_mode_path % i)
                     for i in mode_idxs]
                 DMD.compute_proj_modes(mode_idxs, proj_mode_handles)
-                spectral_coeffs_true = np.array(np.abs(
+                spectral_coeffs_true = np.abs(
                     np.linalg.inv(
-                        DMD.vec_space.compute_symmetric_inner_product_mat(
-                            proj_mode_handles)) *
-                    DMD.vec_space.compute_inner_product_mat(
-                        proj_mode_handles, vecs_vals[0]))).squeeze()
+                        DMD.vec_space.compute_symmetric_inner_product_array(
+                            proj_mode_handles)).dot(
+                                DMD.vec_space.compute_inner_product_array(
+                                    proj_mode_handles, vecs_vals[0]))).squeeze()
                 spectral_coeffs = DMD.compute_spectrum()
                 np.testing.assert_allclose(
                     spectral_coeffs, spectral_coeffs_true, rtol=rtol, atol=atol)
@@ -734,21 +745,19 @@ class TestDMDHandles(unittest.TestCase):
                 # former approach, as it doesn't require adjoint modes.
                 mode_idxs = range(DMD.eigvals.size)
                 proj_mode_handles = [
-                    V.VecHandlePickle(self.proj_mode_path % i)
+                    VecHandlePickle(self.proj_mode_path % i)
                     for i in mode_idxs]
                 DMD.compute_proj_modes(mode_idxs, proj_mode_handles)
-                proj_coeffs_true = (
-                    np.linalg.inv(
-                        DMD.vec_space.compute_symmetric_inner_product_mat(
-                            proj_mode_handles)) *
-                    DMD.vec_space.compute_inner_product_mat(
-                        proj_mode_handles, vecs_vals))
-                adv_proj_coeffs_true = (
-                    np.linalg.inv(
-                        DMD.vec_space.compute_symmetric_inner_product_mat(
-                            proj_mode_handles)) *
-                    DMD.vec_space.compute_inner_product_mat(
-                        proj_mode_handles, adv_vecs_vals))
+                proj_coeffs_true = np.linalg.inv(
+                    DMD.vec_space.compute_symmetric_inner_product_array(
+                        proj_mode_handles)).dot(
+                            DMD.vec_space.compute_inner_product_array(
+                                proj_mode_handles, vecs_vals))
+                adv_proj_coeffs_true = np.linalg.inv(
+                    DMD.vec_space.compute_symmetric_inner_product_array(
+                        proj_mode_handles)).dot(
+                            DMD.vec_space.compute_inner_product_array(
+                                proj_mode_handles, adv_vecs_vals))
                 proj_coeffs, adv_proj_coeffs = DMD.compute_proj_coeffs()
                 np.testing.assert_allclose(
                     proj_coeffs, proj_coeffs_true, rtol=rtol, atol=atol)
@@ -760,8 +769,7 @@ class TestDMDHandles(unittest.TestCase):
 @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
 class TestTLSqrDMDArraysFunctions(unittest.TestCase):
     def setUp(self):
-        # Generate vecs if we are on the first processor
-        # A random matrix of data (#cols = #vecs)
+        # Specify data dimensions
         self.num_vecs = 30
         self.num_states = 10
         self.max_num_eigvals = int(np.round(self.num_states / 2))
@@ -779,32 +787,35 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
         weights_list = [None, np.random.random(self.num_states), ws]
 
         # Generate random snapshot data
-        vecs_mat = np.mat(np.random.random((self.num_states, self.num_vecs)))
-        adv_vecs_mat = np.mat(np.random.random(
-            (self.num_states, self.num_vecs)))
+        vecs_array = (
+            np.random.random((self.num_states, self.num_vecs)) +
+            1j * np.random.random((self.num_states, self.num_vecs)))
+        adv_vecs_array =(
+            np.random.random((self.num_states, self.num_vecs)) +
+            1j * np.random.random((self.num_states, self.num_vecs)))
 
         # Consider sequential time series as well as non-sequential.  In the
         # below for loop, the first elements of each zipped list correspond to
         # a sequential time series.  The second elements correspond to a
         # non-sequential time series.
         for vecs_arg, adv_vecs_arg, vecs_vals, adv_vecs_vals in zip(
-            [vecs_mat, vecs_mat],
-            [None, adv_vecs_mat],
-            [vecs_mat[:, :-1], vecs_mat],
-            [vecs_mat[:, 1:], adv_vecs_mat]):
+            [vecs_array, vecs_array],
+            [None, adv_vecs_array],
+            [vecs_array[:, :-1], vecs_array],
+            [vecs_array[:, 1:], adv_vecs_array]):
 
-            # Stack the data matrices, for doing total-least squares
-            stacked_vecs_mat = np.mat(np.vstack((vecs_vals, adv_vecs_vals)))
+            # Stack the data arrays, for doing total-least squares
+            stacked_vecs_array = np.vstack((vecs_vals, adv_vecs_vals))
 
             # Test both method of snapshots and direct method
             for method in ['snaps', 'direct']:
 
                 # Consider different inner product weights
                 for weights in weights_list:
-                    IP = VectorSpaceMatrices(
-                        weights=weights).compute_inner_product_mat
-                    symmetric_IP = VectorSpaceMatrices(
-                        weights=weights).compute_symmetric_inner_product_mat
+                    IP = VectorSpaceArrays(
+                        weights=weights).compute_inner_product_array
+                    symmetric_IP = VectorSpaceArrays(
+                        weights=weights).compute_symmetric_inner_product_array
 
                     # Define inner product for stacked vectors
                     if weights is None:
@@ -817,8 +828,8 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                             np.hstack((0. * weights, weights))))
                     else:
                         raise ValueError('Invalid inner product weights.')
-                    stacked_IP = VectorSpaceMatrices(
-                        weights=stacked_weights).compute_inner_product_mat
+                    stacked_IP = VectorSpaceArrays(
+                        weights=stacked_weights).compute_inner_product_array
 
                     # Test that results hold for truncated or untruncated DMD
                     # (i.e., whether or not the underlying POD basis is
@@ -842,39 +853,39 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                         # compute a random subset of the TLSqrDMD modes, in
                         # preparation for later tests.
                         if method == 'snaps':
-                            DMD_res = compute_TLSqrDMD_matrices_snaps_method(
+                            DMD_res = compute_TLSqrDMD_arrays_snaps_method(
                                 vecs_arg, adv_vecs=adv_vecs_arg,
                                 inner_product_weights=weights,
                                 max_num_eigvals=max_num_eigvals)
                             DMD_res_sliced =\
-                                compute_TLSqrDMD_matrices_snaps_method(
+                                compute_TLSqrDMD_arrays_snaps_method(
                                     vecs_arg, adv_vecs=adv_vecs_arg,
                                     mode_indices=mode_indices,
                                     inner_product_weights=weights,
                                     max_num_eigvals=max_num_eigvals)
 
-                            # For method of snapshots, test correlation mats
+                            # For method of snapshots, test correlation arrays
                             # values by simply recomputing them.
                             np.testing.assert_allclose(
                                 IP(vecs_vals, vecs_vals),
-                                DMD_res.correlation_mat,
+                                DMD_res.correlation_array,
                                 rtol=rtol, atol=atol)
                             np.testing.assert_allclose(
                                 IP(vecs_vals, adv_vecs_vals),
-                                DMD_res.cross_correlation_mat,
+                                DMD_res.cross_correlation_array,
                                 rtol=rtol, atol=atol)
                             np.testing.assert_allclose(
                                 IP(adv_vecs_vals, adv_vecs_vals),
-                                DMD_res.adv_correlation_mat,
+                                DMD_res.adv_correlation_array,
                                 rtol=rtol, atol=atol)
 
                         elif method == 'direct':
-                            DMD_res = compute_TLSqrDMD_matrices_direct_method(
+                            DMD_res = compute_TLSqrDMD_arrays_direct_method(
                                 vecs_arg, adv_vecs=adv_vecs_arg,
                                 inner_product_weights=weights,
                                 max_num_eigvals=max_num_eigvals)
                             DMD_res_sliced =\
-                                compute_TLSqrDMD_matrices_direct_method(
+                                compute_TLSqrDMD_arrays_direct_method(
                                     vecs_arg, adv_vecs=adv_vecs_arg,
                                     mode_indices=mode_indices,
                                     inner_product_weights=weights,
@@ -883,101 +894,100 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                         else:
                             raise ValueError('Invalid DMD method.')
 
-                        # Test summed correlation mat eigenvalues and
+                        # Test summed correlation array eigenvalues and
                         # eigenvectors
                         np.testing.assert_allclose((
                             IP(vecs_vals, vecs_vals) +
-                            IP(adv_vecs_vals, adv_vecs_vals)) *\
-                            DMD_res.sum_correlation_mat_eigvecs,
-                            DMD_res.sum_correlation_mat_eigvecs *\
-                            np.mat(np.diag(
-                                DMD_res.sum_correlation_mat_eigvals)),
+                            IP(adv_vecs_vals, adv_vecs_vals)).dot(
+                                DMD_res.sum_correlation_array_eigvecs),
+                            DMD_res.sum_correlation_array_eigvecs.dot(np.diag(
+                                DMD_res.sum_correlation_array_eigvals)),
                             rtol=rtol, atol=atol)
 
-                        # Test projected correlation mat eigenvalues and
+                        # Test projected correlation array eigenvalues and
                         # eigenvectors
-                        proj_vecs_vals = (
-                            vecs_vals *
-                            DMD_res.sum_correlation_mat_eigvecs *
-                            DMD_res.sum_correlation_mat_eigvecs.H)
-                        proj_adv_vecs_vals = (
-                            adv_vecs_vals *
-                            DMD_res.sum_correlation_mat_eigvecs *
-                            DMD_res.sum_correlation_mat_eigvecs.H)
+                        proj_vecs_vals = vecs_vals.dot(
+                            DMD_res.sum_correlation_array_eigvecs.dot(
+                                DMD_res.sum_correlation_array_eigvecs.conj().T))
+                        proj_adv_vecs_vals = adv_vecs_vals.dot(
+                            DMD_res.sum_correlation_array_eigvecs.dot(
+                                DMD_res.sum_correlation_array_eigvecs.conj().T))
                         np.testing.assert_allclose(
-                            IP(proj_vecs_vals, proj_vecs_vals) *\
-                            DMD_res.proj_correlation_mat_eigvecs,
-                            DMD_res.proj_correlation_mat_eigvecs *\
-                            np.mat(np.diag(
-                                DMD_res.proj_correlation_mat_eigvals)),
+                            IP(proj_vecs_vals, proj_vecs_vals).dot(
+                                DMD_res.proj_correlation_array_eigvecs),
+                            DMD_res.proj_correlation_array_eigvecs.dot(np.diag(
+                                DMD_res.proj_correlation_array_eigvals)),
                             rtol=rtol, atol=atol)
 
                         # Compute the approximating linear operator relating the
                         # projected vecs to the projected adv_vecs.  To do this,
                         # compute the POD of the projected vecs using the
-                        # eigendecomposition of the projected correlation mat.
+                        # eigendecomposition of the projected correlation array.
                         proj_vecs_POD_build_coeffs = (
-                            DMD_res.proj_correlation_mat_eigvecs *
-                            np.mat(np.diag(
-                                DMD_res.proj_correlation_mat_eigvals ** -0.5)))
-                        proj_vecs_POD_modes = (
-                            proj_vecs_vals * proj_vecs_POD_build_coeffs)
-                        approx_linear_op = (
-                            proj_adv_vecs_vals *
-                            DMD_res.proj_correlation_mat_eigvecs *
-                            np.mat(np.diag(
-                                DMD_res.proj_correlation_mat_eigvals ** -0.5)) *
-                            proj_vecs_POD_modes.H)
+                            DMD_res.proj_correlation_array_eigvecs.dot(np.diag(
+                                DMD_res.proj_correlation_array_eigvals ** -0.5
+                            )))
+                        proj_vecs_POD_modes = proj_vecs_vals.dot(
+                            proj_vecs_POD_build_coeffs)
+                        approx_linear_op = proj_adv_vecs_vals.dot(
+                            DMD_res.proj_correlation_array_eigvecs.dot(np.diag(
+                                DMD_res.proj_correlation_array_eigvals ** -0.5
+                            )).dot(
+                                proj_vecs_POD_modes.conj().T))
                         low_order_linear_op = IP(
                             proj_vecs_POD_modes,
-                            IP(approx_linear_op.H, proj_vecs_POD_modes))
+                            IP(approx_linear_op.conj().T, proj_vecs_POD_modes))
 
                         # Test the left and right eigenvectors of the low-order
                         # (projected) approximating linear operator.
                         np.testing.assert_allclose(
-                            low_order_linear_op * DMD_res.R_low_order_eigvecs,
-                            DMD_res.R_low_order_eigvecs * np.mat(np.diag(
-                                DMD_res.eigvals)),
+                            low_order_linear_op.dot(
+                                DMD_res.R_low_order_eigvecs),
+                            DMD_res.R_low_order_eigvecs.dot(
+                                np.diag(DMD_res.eigvals)),
                             rtol=rtol, atol=atol)
                         np.testing.assert_allclose(
-                            DMD_res.L_low_order_eigvecs.H * low_order_linear_op,
-                            np.mat(np.diag(DMD_res.eigvals)) *\
-                            DMD_res.L_low_order_eigvecs.H,
+                            DMD_res.L_low_order_eigvecs.conj().T.dot(
+                                low_order_linear_op),
+                            np.diag(DMD_res.eigvals).dot(
+                                DMD_res.L_low_order_eigvecs.conj().T),
                             rtol=rtol, atol=atol)
 
                         # Test the exact modes, which are eigenvectors of the
                         # approximating linear operator.
                         np.testing.assert_allclose(
-                            IP(approx_linear_op.H, DMD_res.exact_modes),
-                            DMD_res.exact_modes * np.mat(np.diag(
-                                DMD_res.eigvals)),
+                            IP(approx_linear_op.conj().T, DMD_res.exact_modes),
+                            DMD_res.exact_modes.dot(
+                                np.diag(DMD_res.eigvals)),
                             rtol=rtol, atol=atol)
 
                         # Test the projected modes, which are eigenvectors of
                         # the approximating linear operator projected onto the
                         # POD modes of the vecs.
                         np.testing.assert_allclose(
-                            proj_vecs_POD_modes * IP(
+                            proj_vecs_POD_modes.dot(IP(
                                 proj_vecs_POD_modes,
-                                IP(approx_linear_op.H, DMD_res.proj_modes)),
-                            DMD_res.proj_modes * np.mat(np.diag(
-                                DMD_res.eigvals)),
+                                IP(
+                                    approx_linear_op.conj().T,
+                                    DMD_res.proj_modes))),
+                            DMD_res.proj_modes.dot(
+                                np.diag(DMD_res.eigvals)),
                             rtol=rtol, atol=atol)
 
                         # Test the adjoint modes, which are left eigenvectors of
                         # the approximating linear operator.
                         np.testing.assert_allclose(
                             IP(approx_linear_op, DMD_res.adjoint_modes),
-                            DMD_res.adjoint_modes * np.mat(np.diag(
-                                DMD_res.eigvals.conj().T)),
+                            DMD_res.adjoint_modes.dot(
+                                np.diag(DMD_res.eigvals.conj().T)),
                             rtol=rtol, atol=atol)
 
                         # Test spectral coefficients against an explicit
                         # projection using the adjoint DMD modes.
                         np.testing.assert_allclose(
-                            np.array(np.abs(IP(
+                            np.abs(IP(
                                 DMD_res.adjoint_modes,
-                                proj_vecs_vals[:, 0]))).squeeze(),
+                                proj_vecs_vals[:, 0])).squeeze(),
                             DMD_res.spectral_coeffs,
                             rtol=rtol, atol=atol)
 
@@ -1002,7 +1012,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
     def setUp(self):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        self.test_dir = 'TLSqrDMD_files'
+        self.test_dir = 'files_TLSqrDMD_DELETE_ME'
         if not os.path.isdir(self.test_dir):
             parallel.call_from_rank_zero(os.mkdir, self.test_dir)
         self.vec_path = join(self.test_dir, 'tlsqrdmd_vec_%03d.pkl')
@@ -1018,10 +1028,16 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         self.num_vecs = 10
 
         # Generate random data and write to disk using handles
-        self.vecs_array = parallel.call_and_bcast(
-            np.random.random, (self.num_states, self.num_vecs))
-        self.adv_vecs_array = parallel.call_and_bcast(
-            np.random.random, (self.num_states, self.num_vecs))
+        self.vecs_array = (
+            parallel.call_and_bcast(
+                np.random.random, (self.num_states, self.num_vecs)) +
+            + 1j * parallel.call_and_bcast(
+                np.random.random, (self.num_states, self.num_vecs)))
+        self.adv_vecs_array = (
+            parallel.call_and_bcast(
+                np.random.random, (self.num_states, self.num_vecs)) +
+            + 1j * parallel.call_and_bcast(
+                np.random.random, (self.num_states, self.num_vecs)))
         self.vec_handles = [
             VecHandlePickle(self.vec_path % i) for i in range(self.num_vecs)]
         self.adv_vec_handles = [
@@ -1058,14 +1074,16 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         def my_IP(vec1, vec2): pass
 
         data_members_default = {
-            'put_mat': util.save_array_text, 'get_mat': util.load_array_text,
-            'verbosity': 0, 'eigvals': None, 'correlation_mat': None,
-            'cross_correlation_mat': None, 'adv_correlation_mat': None,
-            'sum_correlation_mat': None, 'proj_correlation_mat': None,
-            'sum_correlation_mat_eigvals': None,
-            'sum_correlation_mat_eigvecs': None,
-            'proj_correlation_mat_eigvals': None,
-            'proj_correlation_mat_eigvecs': None, 'low_order_linear_map': None,
+            'put_array': util.save_array_text,
+            'get_array': util.load_array_text,
+            'verbosity': 0, 'eigvals': None, 'correlation_array': None,
+            'cross_correlation_array': None, 'adv_correlation_array': None,
+            'sum_correlation_array': None, 'proj_correlation_array': None,
+            'sum_correlation_array_eigvals': None,
+            'sum_correlation_array_eigvecs': None,
+            'proj_correlation_array_eigvals': None,
+            'proj_correlation_array_eigvecs': None,
+            'low_order_linear_map': None,
             'L_low_order_eigvecs': None, 'R_low_order_eigvecs': None,
             'spectral_coeffs': None, 'proj_coeffs': None, 'adv_proj_coeffs':
             None, 'vec_handles': None, 'adv_vec_handles': None, 'vec_space':
@@ -1083,15 +1101,15 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
 
-        my_DMD = TLSqrDMDHandles(my_IP, get_mat=my_load, verbosity=0)
+        my_DMD = TLSqrDMDHandles(my_IP, get_array=my_load, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['get_mat'] = my_load
+        data_members_modified['get_array'] = my_load
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
 
-        my_DMD = TLSqrDMDHandles(my_IP, put_mat=my_save, verbosity=0)
+        my_DMD = TLSqrDMDHandles(my_IP, put_array=my_save, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['put_mat'] = my_save
+        data_members_modified['put_array'] = my_save
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
 
@@ -1099,11 +1117,10 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         my_DMD = TLSqrDMDHandles(my_IP, max_vecs_per_node=max_vecs_per_node,
             verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
-        data_members_modified['vec_space'].max_vecs_per_node = \
-            max_vecs_per_node
-        data_members_modified['vec_space'].max_vecs_per_proc = \
-            max_vecs_per_node * parallel.get_num_nodes() / \
-            parallel.get_num_procs()
+        data_members_modified['vec_space'].max_vecs_per_node = max_vecs_per_node
+        data_members_modified['vec_space'].max_vecs_per_proc = (
+            max_vecs_per_node * parallel.get_num_nodes() /
+            parallel.get_num_procs())
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
 
@@ -1114,48 +1131,48 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         # Generate some random data
         eigvals = parallel.call_and_bcast(np.random.random, 5)
         R_low_order_eigvecs = parallel.call_and_bcast(
-            np.random.random, (10,10))
+            np.random.random, (10, 10))
         L_low_order_eigvecs = parallel.call_and_bcast(
-            np.random.random, (10,10))
-        sum_correlation_mat_eigvals = parallel.call_and_bcast(
+            np.random.random, (10, 10))
+        sum_correlation_array_eigvals = parallel.call_and_bcast(
             np.random.random, 5)
-        sum_correlation_mat_eigvecs = parallel.call_and_bcast(
-            np.random.random, (10,10))
-        proj_correlation_mat_eigvals = parallel.call_and_bcast(
+        sum_correlation_array_eigvecs = parallel.call_and_bcast(
+            np.random.random, (10, 10))
+        proj_correlation_array_eigvals = parallel.call_and_bcast(
             np.random.random, 5)
-        proj_correlation_mat_eigvecs = parallel.call_and_bcast(
-            np.random.random, (10,10))
-        correlation_mat = parallel.call_and_bcast(np.random.random, (10,10))
-        cross_correlation_mat = parallel.call_and_bcast(
-            np.random.random, (10,10))
-        adv_correlation_mat = parallel.call_and_bcast(
-            np.random.random, (10,10))
-        sum_correlation_mat = parallel.call_and_bcast(
-            np.random.random, (10,10))
-        proj_correlation_mat = parallel.call_and_bcast(
-            np.random.random, (10,10))
+        proj_correlation_array_eigvecs = parallel.call_and_bcast(
+            np.random.random, (10, 10))
+        correlation_array = parallel.call_and_bcast(np.random.random, (10, 10))
+        cross_correlation_array = parallel.call_and_bcast(
+            np.random.random, (10, 10))
+        adv_correlation_array = parallel.call_and_bcast(
+            np.random.random, (10, 10))
+        sum_correlation_array = parallel.call_and_bcast(
+            np.random.random, (10, 10))
+        proj_correlation_array = parallel.call_and_bcast(
+            np.random.random, (10, 10))
         spectral_coeffs = parallel.call_and_bcast(np.random.random, 5)
-        proj_coeffs = parallel.call_and_bcast(np.random.random, (5,5))
-        adv_proj_coeffs = parallel.call_and_bcast(np.random.random, (5,5))
+        proj_coeffs = parallel.call_and_bcast(np.random.random, (5, 5))
+        adv_proj_coeffs = parallel.call_and_bcast(np.random.random, (5, 5))
 
         # Create a DMD object and store the data in it
         TLSqrDMD_save = TLSqrDMDHandles(None, verbosity=0)
         TLSqrDMD_save.eigvals = eigvals
         TLSqrDMD_save.R_low_order_eigvecs = R_low_order_eigvecs
         TLSqrDMD_save.L_low_order_eigvecs = L_low_order_eigvecs
-        TLSqrDMD_save.sum_correlation_mat_eigvals =\
-            sum_correlation_mat_eigvals
-        TLSqrDMD_save.sum_correlation_mat_eigvecs =\
-            sum_correlation_mat_eigvecs
-        TLSqrDMD_save.proj_correlation_mat_eigvals =\
-            proj_correlation_mat_eigvals
-        TLSqrDMD_save.proj_correlation_mat_eigvecs =\
-            proj_correlation_mat_eigvecs
-        TLSqrDMD_save.correlation_mat = correlation_mat
-        TLSqrDMD_save.cross_correlation_mat = cross_correlation_mat
-        TLSqrDMD_save.adv_correlation_mat = adv_correlation_mat
-        TLSqrDMD_save.sum_correlation_mat = sum_correlation_mat
-        TLSqrDMD_save.proj_correlation_mat = proj_correlation_mat
+        TLSqrDMD_save.sum_correlation_array_eigvals =\
+            sum_correlation_array_eigvals
+        TLSqrDMD_save.sum_correlation_array_eigvecs =\
+            sum_correlation_array_eigvecs
+        TLSqrDMD_save.proj_correlation_array_eigvals =\
+            proj_correlation_array_eigvals
+        TLSqrDMD_save.proj_correlation_array_eigvecs =\
+            proj_correlation_array_eigvecs
+        TLSqrDMD_save.correlation_array = correlation_array
+        TLSqrDMD_save.cross_correlation_array = cross_correlation_array
+        TLSqrDMD_save.adv_correlation_array = adv_correlation_array
+        TLSqrDMD_save.sum_correlation_array = sum_correlation_array
+        TLSqrDMD_save.proj_correlation_array = proj_correlation_array
         TLSqrDMD_save.spectral_coeffs = spectral_coeffs
         TLSqrDMD_save.proj_coeffs = proj_coeffs
         TLSqrDMD_save.adv_proj_coeffs = adv_proj_coeffs
@@ -1166,23 +1183,23 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             self.test_dir, 'tlsqrdmd_R_low_order_eigvecs.txt')
         L_low_order_eigvecs_path = join(
             self.test_dir, 'tlsqrdmd_L_low_order_eigvecs.txt')
-        sum_correlation_mat_eigvals_path = join(
-            self.test_dir, 'tlsqrdmd_sum_corr_mat_eigvals.txt')
-        sum_correlation_mat_eigvecs_path = join(
-            self.test_dir, 'tlsqrdmd_sum_corr_mat_eigvecs.txt')
-        proj_correlation_mat_eigvals_path = join(
-            self.test_dir, 'tlsqrdmd_proj_corr_mat_eigvals.txt')
-        proj_correlation_mat_eigvecs_path = join(
-            self.test_dir, 'tlsqrdmd_proj_corr_mat_eigvecs.txt')
-        correlation_mat_path = join(self.test_dir, 'tlsqrdmd_corr_mat.txt')
-        cross_correlation_mat_path = join(
-            self.test_dir, 'tlsqrdmd_cross_corr_mat.txt')
-        adv_correlation_mat_path = join(
-            self.test_dir, 'tlsqrdmd_adv_corr_mat.txt')
-        sum_correlation_mat_path = join(
-            self.test_dir, 'tlsqrdmd_sum_corr_mat.txt')
-        proj_correlation_mat_path = join(
-            self.test_dir, 'tlsqrdmd_proj_corr_mat.txt')
+        sum_correlation_array_eigvals_path = join(
+            self.test_dir, 'tlsqrdmd_sum_corr_array_eigvals.txt')
+        sum_correlation_array_eigvecs_path = join(
+            self.test_dir, 'tlsqrdmd_sum_corr_array_eigvecs.txt')
+        proj_correlation_array_eigvals_path = join(
+            self.test_dir, 'tlsqrdmd_proj_corr_array_eigvals.txt')
+        proj_correlation_array_eigvecs_path = join(
+            self.test_dir, 'tlsqrdmd_proj_corr_array_eigvecs.txt')
+        correlation_array_path = join(self.test_dir, 'tlsqrdmd_corr_array.txt')
+        cross_correlation_array_path = join(
+            self.test_dir, 'tlsqrdmd_cross_corr_array.txt')
+        adv_correlation_array_path = join(
+            self.test_dir, 'tlsqrdmd_adv_corr_array.txt')
+        sum_correlation_array_path = join(
+            self.test_dir, 'tlsqrdmd_sum_corr_array.txt')
+        proj_correlation_array_path = join(
+            self.test_dir, 'tlsqrdmd_proj_corr_array.txt')
         spectral_coeffs_path = join(
             self.test_dir, 'tlsqrdmd_spectral_coeffs.txt')
         proj_coeffs_path = join(self.test_dir, 'tlsqrdmd_proj_coeffs.txt')
@@ -1190,15 +1207,15 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             self.test_dir, 'tlsqrdmd_adv_proj_coeffs.txt')
         TLSqrDMD_save.put_decomp(
             eigvals_path, R_low_order_eigvecs_path, L_low_order_eigvecs_path,
-            sum_correlation_mat_eigvals_path,
-            sum_correlation_mat_eigvecs_path,
-            proj_correlation_mat_eigvals_path ,
-            proj_correlation_mat_eigvecs_path)
-        TLSqrDMD_save.put_correlation_mat(correlation_mat_path)
-        TLSqrDMD_save.put_cross_correlation_mat(cross_correlation_mat_path)
-        TLSqrDMD_save.put_adv_correlation_mat(adv_correlation_mat_path)
-        TLSqrDMD_save.put_sum_correlation_mat(sum_correlation_mat_path)
-        TLSqrDMD_save.put_proj_correlation_mat(proj_correlation_mat_path)
+            sum_correlation_array_eigvals_path,
+            sum_correlation_array_eigvecs_path,
+            proj_correlation_array_eigvals_path ,
+            proj_correlation_array_eigvecs_path)
+        TLSqrDMD_save.put_correlation_array(correlation_array_path)
+        TLSqrDMD_save.put_cross_correlation_array(cross_correlation_array_path)
+        TLSqrDMD_save.put_adv_correlation_array(adv_correlation_array_path)
+        TLSqrDMD_save.put_sum_correlation_array(sum_correlation_array_path)
+        TLSqrDMD_save.put_proj_correlation_array(proj_correlation_array_path)
         TLSqrDMD_save.put_spectral_coeffs(spectral_coeffs_path)
         TLSqrDMD_save.put_proj_coeffs(proj_coeffs_path, adv_proj_coeffs_path)
         parallel.barrier()
@@ -1207,51 +1224,51 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         TLSqrDMD_load = TLSqrDMDHandles(None, verbosity=0)
         TLSqrDMD_load.get_decomp(
             eigvals_path, R_low_order_eigvecs_path, L_low_order_eigvecs_path,
-            sum_correlation_mat_eigvals_path,
-            sum_correlation_mat_eigvecs_path,
-            proj_correlation_mat_eigvals_path,
-            proj_correlation_mat_eigvecs_path)
-        TLSqrDMD_load.get_correlation_mat(correlation_mat_path)
-        TLSqrDMD_load.get_cross_correlation_mat(cross_correlation_mat_path)
-        TLSqrDMD_load.get_adv_correlation_mat(adv_correlation_mat_path)
-        TLSqrDMD_load.get_sum_correlation_mat(sum_correlation_mat_path)
-        TLSqrDMD_load.get_proj_correlation_mat(proj_correlation_mat_path)
+            sum_correlation_array_eigvals_path,
+            sum_correlation_array_eigvecs_path,
+            proj_correlation_array_eigvals_path,
+            proj_correlation_array_eigvecs_path)
+        TLSqrDMD_load.get_correlation_array(correlation_array_path)
+        TLSqrDMD_load.get_cross_correlation_array(cross_correlation_array_path)
+        TLSqrDMD_load.get_adv_correlation_array(adv_correlation_array_path)
+        TLSqrDMD_load.get_sum_correlation_array(sum_correlation_array_path)
+        TLSqrDMD_load.get_proj_correlation_array(proj_correlation_array_path)
         TLSqrDMD_load.get_spectral_coeffs(spectral_coeffs_path)
         TLSqrDMD_load.get_proj_coeffs(proj_coeffs_path, adv_proj_coeffs_path)
 
         # Check that the loaded data is correct
-        np.testing.assert_allclose(TLSqrDMD_load.eigvals, eigvals)
-        np.testing.assert_allclose(
+        np.testing.assert_equal(TLSqrDMD_load.eigvals, eigvals)
+        np.testing.assert_equal(
             TLSqrDMD_load.R_low_order_eigvecs, R_low_order_eigvecs)
-        np.testing.assert_allclose(
+        np.testing.assert_equal(
             TLSqrDMD_load.L_low_order_eigvecs, L_low_order_eigvecs)
-        np.testing.assert_allclose(
-            TLSqrDMD_load.sum_correlation_mat_eigvals,
-            sum_correlation_mat_eigvals)
-        np.testing.assert_allclose(
-            TLSqrDMD_load.sum_correlation_mat_eigvecs,
-            sum_correlation_mat_eigvecs)
-        np.testing.assert_allclose(
-            TLSqrDMD_load.proj_correlation_mat_eigvals,
-            proj_correlation_mat_eigvals)
-        np.testing.assert_allclose(
-            TLSqrDMD_load.proj_correlation_mat_eigvecs,
-            proj_correlation_mat_eigvecs)
-        np.testing.assert_allclose(
-            TLSqrDMD_load.correlation_mat, correlation_mat)
-        np.testing.assert_allclose(
-            TLSqrDMD_load.cross_correlation_mat, cross_correlation_mat)
-        np.testing.assert_allclose(
-            TLSqrDMD_load.adv_correlation_mat, adv_correlation_mat)
-        np.testing.assert_allclose(
-            TLSqrDMD_load.sum_correlation_mat, sum_correlation_mat)
-        np.testing.assert_allclose(
-            TLSqrDMD_load.proj_correlation_mat, proj_correlation_mat)
-        np.testing.assert_allclose(
+        np.testing.assert_equal(
+            TLSqrDMD_load.sum_correlation_array_eigvals,
+            sum_correlation_array_eigvals)
+        np.testing.assert_equal(
+            TLSqrDMD_load.sum_correlation_array_eigvecs,
+            sum_correlation_array_eigvecs)
+        np.testing.assert_equal(
+            TLSqrDMD_load.proj_correlation_array_eigvals,
+            proj_correlation_array_eigvals)
+        np.testing.assert_equal(
+            TLSqrDMD_load.proj_correlation_array_eigvecs,
+            proj_correlation_array_eigvecs)
+        np.testing.assert_equal(
+            TLSqrDMD_load.correlation_array, correlation_array)
+        np.testing.assert_equal(
+            TLSqrDMD_load.cross_correlation_array, cross_correlation_array)
+        np.testing.assert_equal(
+            TLSqrDMD_load.adv_correlation_array, adv_correlation_array)
+        np.testing.assert_equal(
+            TLSqrDMD_load.sum_correlation_array, sum_correlation_array)
+        np.testing.assert_equal(
+            TLSqrDMD_load.proj_correlation_array, proj_correlation_array)
+        np.testing.assert_equal(
             np.array(TLSqrDMD_load.spectral_coeffs).squeeze(), spectral_coeffs)
-        np.testing.assert_allclose(
+        np.testing.assert_equal(
             TLSqrDMD_load.proj_coeffs, proj_coeffs)
-        np.testing.assert_allclose(
+        np.testing.assert_equal(
             TLSqrDMD_load.adv_proj_coeffs, adv_proj_coeffs)
 
 
@@ -1279,104 +1296,103 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 # Compute DMD using modred
                 TLSqrDMD = TLSqrDMDHandles(np.vdot, verbosity=0)
                 (eigvals, R_low_order_eigvecs, L_low_order_eigvecs,
-                sum_correlation_mat_eigvals,
-                sum_correlation_mat_eigvecs,
-                proj_correlation_mat_eigvals, proj_correlation_mat_eigvecs) =\
-                    TLSqrDMD.compute_decomp(
-                        vecs_arg, adv_vec_handles=adv_vecs_arg,
-                        max_num_eigvals=max_num_eigvals)
+                sum_correlation_array_eigvals,
+                sum_correlation_array_eigvecs,
+                proj_correlation_array_eigvals,
+                proj_correlation_array_eigvecs) = TLSqrDMD.compute_decomp(
+                    vecs_arg, adv_vec_handles=adv_vecs_arg,
+                    max_num_eigvals=max_num_eigvals)
 
-                # Test correlation mats values by simply recomputing them.  Here
-                # compute the full inner product matrix, rather than assuming it
-                # is symmetric.
+                # Test correlation array values by simply recomputing them.
+                # Here compute the full inner product array, rather than
+                # assuming it is symmetric.
                 np.testing.assert_allclose(
-                    TLSqrDMD.vec_space.compute_inner_product_mat(
+                    TLSqrDMD.vec_space.compute_inner_product_array(
                         vecs_vals, vecs_vals),
-                    TLSqrDMD.correlation_mat,
+                    TLSqrDMD.correlation_array,
                     rtol=rtol, atol=atol)
                 np.testing.assert_allclose(
-                    TLSqrDMD.vec_space.compute_inner_product_mat(
+                    TLSqrDMD.vec_space.compute_inner_product_array(
                         vecs_vals, adv_vecs_vals),
-                    TLSqrDMD.cross_correlation_mat,
+                    TLSqrDMD.cross_correlation_array,
                     rtol=rtol, atol=atol)
                 np.testing.assert_allclose(
-                    TLSqrDMD.vec_space.compute_inner_product_mat(
+                    TLSqrDMD.vec_space.compute_inner_product_array(
                         adv_vecs_vals, adv_vecs_vals),
-                    TLSqrDMD.adv_correlation_mat,
+                    TLSqrDMD.adv_correlation_array,
                     rtol=rtol, atol=atol)
 
-                # Test sum correlation mat values by adding together correlation
-                # mats.
+                # Test sum correlation array values by adding together
+                # correlation arrays.
                 np.testing.assert_allclose(
-                    TLSqrDMD.correlation_mat +
-                    TLSqrDMD.adv_correlation_mat,
-                    TLSqrDMD.sum_correlation_mat,
+                    TLSqrDMD.correlation_array +
+                    TLSqrDMD.adv_correlation_array,
+                    TLSqrDMD.sum_correlation_array,
                     rtol=rtol, atol=atol)
 
-                # Test sum correlation mat eigenvalues and eigenvectors.
-                np.testing.assert_allclose((
-                    TLSqrDMD.sum_correlation_mat *
-                    sum_correlation_mat_eigvecs),
-                    sum_correlation_mat_eigvecs * np.mat(np.diag(
-                        sum_correlation_mat_eigvals)),
+                # Test sum correlation array eigenvalues and eigenvectors.
+                np.testing.assert_allclose(
+                    TLSqrDMD.sum_correlation_array.dot(
+                        sum_correlation_array_eigvecs),
+                    sum_correlation_array_eigvecs.dot(
+                        np.diag(sum_correlation_array_eigvals)),
                     rtol=rtol, atol=atol)
 
-                # Test projected correlation mat values by projecting the raw
+                # Test projected correlation array values by projecting the raw
                 # data, saving them to disk using handles, and then
-                # computing the correlation matrix of the projected vectors.
-                proj_mat = (
-                    TLSqrDMD.sum_correlation_mat_eigvecs *
-                    TLSqrDMD.sum_correlation_mat_eigvecs.H)
+                # computing the correlation array of the projected vectors.
+                proj_array = TLSqrDMD.sum_correlation_array_eigvecs.dot(
+                    TLSqrDMD.sum_correlation_array_eigvecs.conj().T)
                 proj_vec_path = join(
                     self.test_dir, 'tlsqrdmd_proj_vec_%03d.pkl')
                 proj_vecs_handles = [
                     VecHandlePickle(proj_vec_path % i)
                     for i in range(len(vecs_vals))]
                 TLSqrDMD.vec_space.lin_combine(
-                    proj_vecs_handles, vecs_vals, proj_mat)
+                    proj_vecs_handles, vecs_vals, proj_array)
                 np.testing.assert_allclose(
-                    TLSqrDMD.vec_space.compute_inner_product_mat(
+                    TLSqrDMD.vec_space.compute_inner_product_array(
                         proj_vecs_handles, proj_vecs_handles),
-                    TLSqrDMD.proj_correlation_mat,
+                    TLSqrDMD.proj_correlation_array,
                     rtol=rtol, atol=atol)
 
-                # Test projected correlation mat eigenvalues and eigenvectors.
-                np.testing.assert_allclose((
-                    TLSqrDMD.proj_correlation_mat *
-                    proj_correlation_mat_eigvecs),
-                    proj_correlation_mat_eigvecs * np.mat(np.diag(
-                        proj_correlation_mat_eigvals)),
+                # Test projected correlation array eigenvalues and eigenvectors.
+                np.testing.assert_allclose(
+                    TLSqrDMD.proj_correlation_array.dot(
+                        proj_correlation_array_eigvecs),
+                    proj_correlation_array_eigvecs.dot(
+                        np.diag(proj_correlation_array_eigvals)),
                     rtol=rtol, atol=atol)
 
                 # Compute the projection of the approximating linear operator
                 # relating the projected vecs to the projected adv_vecs.  To do
                 # this, compute the POD modes of the projected vecs using the
-                # eigendecomposition of the projected correlation mat.
-                proj_POD_build_coeffs = (
-                    proj_correlation_mat_eigvecs *
-                    np.mat(np.diag(proj_correlation_mat_eigvals ** -0.5)))
+                # eigendecomposition of the projected correlation array.
+                proj_POD_build_coeffs = proj_correlation_array_eigvecs.dot(
+                    np.diag(proj_correlation_array_eigvals ** -0.5))
                 proj_POD_mode_path = join(
                     self.test_dir, 'proj_pod_mode_%03d.txt')
                 proj_POD_mode_handles = [
                     VecHandlePickle(proj_POD_mode_path % i)
-                    for i in xrange(proj_correlation_mat_eigvals.size)]
+                    for i in xrange(proj_correlation_array_eigvals.size)]
                 TLSqrDMD.vec_space.lin_combine(
                     proj_POD_mode_handles, vecs_vals, proj_POD_build_coeffs)
                 low_order_linear_op = (
-                    TLSqrDMD.vec_space.compute_inner_product_mat(
-                        proj_POD_mode_handles, adv_vecs_vals) *
-                    proj_correlation_mat_eigvecs *
-                    np.mat(np.diag(proj_correlation_mat_eigvals ** -0.5)))
+                    TLSqrDMD.vec_space.compute_inner_product_array(
+                        proj_POD_mode_handles, adv_vecs_vals).dot(
+                            proj_correlation_array_eigvecs.dot(
+                                np.diag(proj_correlation_array_eigvals ** -0.5
+                                ))))
 
                 # Test the left and right eigenvectors of the low-order
                 # (projected) approximating linear operator.
                 np.testing.assert_allclose(
-                    low_order_linear_op * R_low_order_eigvecs,
-                    R_low_order_eigvecs * np.mat(np.diag(eigvals)),
+                    low_order_linear_op.dot(R_low_order_eigvecs),
+                    R_low_order_eigvecs.dot(np.diag(eigvals)),
                     rtol=rtol, atol=atol)
                 np.testing.assert_allclose(
-                    L_low_order_eigvecs.H * low_order_linear_op,
-                    np.mat(np.diag(eigvals)) * L_low_order_eigvecs.H,
+                    L_low_order_eigvecs.conj().T.dot(low_order_linear_op),
+                    np.diag(eigvals).dot(L_low_order_eigvecs.conj().T),
                     rtol=rtol, atol=atol)
 
                 # Check that returned values match internal values
@@ -1386,17 +1402,17 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 np.testing.assert_equal(
                     L_low_order_eigvecs, TLSqrDMD.L_low_order_eigvecs)
                 np.testing.assert_equal(
-                    sum_correlation_mat_eigvals,
-                    TLSqrDMD.sum_correlation_mat_eigvals)
+                    sum_correlation_array_eigvals,
+                    TLSqrDMD.sum_correlation_array_eigvals)
                 np.testing.assert_equal(
-                    sum_correlation_mat_eigvecs,
-                    TLSqrDMD.sum_correlation_mat_eigvecs)
+                    sum_correlation_array_eigvecs,
+                    TLSqrDMD.sum_correlation_array_eigvecs)
                 np.testing.assert_equal(
-                    proj_correlation_mat_eigvals,
-                    TLSqrDMD.proj_correlation_mat_eigvals)
+                    proj_correlation_array_eigvals,
+                    TLSqrDMD.proj_correlation_array_eigvals)
                 np.testing.assert_equal(
-                    proj_correlation_mat_eigvecs,
-                    TLSqrDMD.proj_correlation_mat_eigvecs)
+                    proj_correlation_array_eigvecs,
+                    TLSqrDMD.proj_correlation_array_eigvecs)
 
         # Check that if mismatched sets of handles are passed in, an error is
         # raised.
@@ -1439,16 +1455,16 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 # Compute the projection of the approximating linear operator
                 # relating the projected vecs to the projected adv_vecs.  To do
                 # this, compute the POD modes of the projected vecs using the
-                # eigendecomposition of the projected correlation mat.
+                # eigendecomposition of the projected correlation array.
                 proj_POD_build_coeffs = (
-                    TLSqrDMD.proj_correlation_mat_eigvecs *
-                    np.mat(np.diag(
-                        TLSqrDMD.proj_correlation_mat_eigvals ** -0.5)))
+                    TLSqrDMD.proj_correlation_array_eigvecs.dot(
+                        np.diag(TLSqrDMD.proj_correlation_array_eigvals ** -0.5
+                        )))
                 proj_POD_mode_path = join(
                     self.test_dir, 'proj_pod_mode_%03d.txt')
                 proj_POD_mode_handles = [
-                    VecHandlePickle(proj_POD_mode_path % i)
-                    for i in xrange(TLSqrDMD.proj_correlation_mat_eigvals.size)]
+                    VecHandlePickle(proj_POD_mode_path % i) for i in
+                    xrange(TLSqrDMD.proj_correlation_array_eigvals.size)]
                 TLSqrDMD.vec_space.lin_combine(
                     proj_POD_mode_handles, vecs_vals, proj_POD_build_coeffs)
 
@@ -1486,7 +1502,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 # using handles, i.e. check mode by mode.  Note that since
                 # np.vdot takes the conjugate of its second argument, whereas
                 # modred assumes a conjugate is taken on the first inner product
-                # argument, the inner product matrix in the LHS computation must
+                # argument, the inner product array in the LHS computation must
                 # be conjugated.
                 LHS_path = join(self.test_dir, 'LHS_%03d.pkl')
                 LHS_handles = [
@@ -1497,15 +1513,15 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 TLSqrDMD.vec_space.lin_combine(
                     LHS_handles,
                     adv_vecs_vals,
-                    TLSqrDMD.proj_correlation_mat_eigvecs *
-                    np.mat(np.diag(
-                        TLSqrDMD.proj_correlation_mat_eigvals ** -0.5)) *
-                    TLSqrDMD.vec_space.compute_inner_product_mat(
-                        proj_POD_mode_handles, TLSqrDMD_exact_mode_handles))
+                    TLSqrDMD.proj_correlation_array_eigvecs.dot(np.diag(
+                        TLSqrDMD.proj_correlation_array_eigvals ** -0.5).dot(
+                            TLSqrDMD.vec_space.compute_inner_product_array(
+                                proj_POD_mode_handles,
+                                TLSqrDMD_exact_mode_handles))))
                 TLSqrDMD.vec_space.lin_combine(
                     RHS_handles,
                     TLSqrDMD_exact_mode_handles,
-                    np.mat(np.diag(TLSqrDMD.eigvals[mode_idxs])))
+                    np.diag(TLSqrDMD.eigvals[mode_idxs]))
                 for LHS, RHS in zip(LHS_handles, RHS_handles):
                     np.testing.assert_allclose(
                         LHS.get(), RHS.get(), rtol=rtol, atol=atol)
@@ -1524,17 +1540,18 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 TLSqrDMD.vec_space.lin_combine(
                     LHS_handles,
                     proj_POD_mode_handles,
-                    TLSqrDMD.vec_space.compute_inner_product_mat(
-                        proj_POD_mode_handles, adv_vecs_vals) *
-                    TLSqrDMD.proj_correlation_mat_eigvecs *
-                    np.mat(np.diag(
-                        TLSqrDMD.proj_correlation_mat_eigvals ** -0.5)) *
-                    TLSqrDMD.vec_space.compute_inner_product_mat(
-                        proj_POD_mode_handles, TLSqrDMD_proj_mode_handles))
+                    TLSqrDMD.vec_space.compute_inner_product_array(
+                        proj_POD_mode_handles, adv_vecs_vals).dot(
+                            TLSqrDMD.proj_correlation_array_eigvecs.dot(np.diag(
+                                TLSqrDMD.proj_correlation_array_eigvals ** -0.5
+                            ).dot(
+                                TLSqrDMD.vec_space.compute_inner_product_array(
+                                    proj_POD_mode_handles,
+                                    TLSqrDMD_proj_mode_handles)))))
                 TLSqrDMD.vec_space.lin_combine(
                     RHS_handles,
                     TLSqrDMD_proj_mode_handles,
-                    np.mat(np.diag(TLSqrDMD.eigvals[mode_idxs])))
+                    np.diag(TLSqrDMD.eigvals[mode_idxs]))
                 for LHS, RHS in zip(LHS_handles, RHS_handles):
                     np.testing.assert_allclose(
                         LHS.get(), RHS.get(), rtol=rtol, atol=atol)
@@ -1545,7 +1562,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 # mode by mode.  Note that since np.vdot takes the conjugate of
                 # its second argument, whereas modred assumes a conjugate is
                 # taken on the first inner product argument, the inner product
-                # matrix in the LHS computation must be conjugated.
+                # array in the LHS computation must be conjugated.
                 LHS_path = join(self.test_dir, 'LHS_%03d.pkl')
                 LHS_handles = [
                     VecHandlePickle(LHS_path % i) for i in mode_idxs]
@@ -1555,15 +1572,17 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 TLSqrDMD.vec_space.lin_combine(
                     LHS_handles,
                     proj_POD_mode_handles,
-                    np.mat(np.diag(
-                        TLSqrDMD.proj_correlation_mat_eigvals ** -0.5)) *
-                    TLSqrDMD.proj_correlation_mat_eigvecs.T *
-                    TLSqrDMD.vec_space.compute_inner_product_mat(
-                        adv_vecs_vals, TLSqrDMD_adjoint_mode_handles))
+                    np.diag(
+                        TLSqrDMD.proj_correlation_array_eigvals ** -0.5).dot(
+                            TLSqrDMD.proj_correlation_array_eigvecs.\
+                            conj().T.dot(
+                                TLSqrDMD.vec_space.compute_inner_product_array(
+                                    adv_vecs_vals,
+                                    TLSqrDMD_adjoint_mode_handles))))
                 TLSqrDMD.vec_space.lin_combine(
                     RHS_handles,
                     TLSqrDMD_adjoint_mode_handles,
-                    np.mat(np.diag(TLSqrDMD.eigvals[mode_idxs])).H)
+                    np.diag(TLSqrDMD.eigvals[mode_idxs]).conj().T)
                 for LHS, RHS in zip(LHS_handles, RHS_handles):
                     np.testing.assert_allclose(
                         LHS.get(), RHS.get(), rtol=rtol, atol=atol)
@@ -1601,14 +1620,13 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                     max_num_eigvals=max_num_eigvals)
 
                 # Compute the projection of the vecs.
-                proj_mat = (
-                    TLSqrDMD.sum_correlation_mat_eigvecs *
-                    TLSqrDMD.sum_correlation_mat_eigvecs.H)
+                proj_array = TLSqrDMD.sum_correlation_array_eigvecs.dot(
+                    TLSqrDMD.sum_correlation_array_eigvecs.conj().T)
                 proj_vecs_handles = [
                     VecHandlePickle(self.proj_vec_path % i)
                     for i in range(len(vecs_vals))]
                 TLSqrDMD.vec_space.lin_combine(
-                    proj_vecs_handles, vecs_vals, proj_mat)
+                    proj_vecs_handles, vecs_vals, proj_array)
 
                 # Test by checking a least-squares projection (of the projected
                 # vecs) onto the projected modes, which is analytically
@@ -1618,15 +1636,15 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 # require adjoint modes.
                 mode_idxs = range(TLSqrDMD.eigvals.size)
                 proj_mode_handles = [
-                    V.VecHandlePickle(self.proj_mode_path % i)
+                    VecHandlePickle(self.proj_mode_path % i)
                     for i in mode_idxs]
                 TLSqrDMD.compute_proj_modes(mode_idxs, proj_mode_handles)
-                spectral_coeffs_true = np.array(np.abs(
-                    np.linalg.inv(
-                        TLSqrDMD.vec_space.compute_symmetric_inner_product_mat(
-                            proj_mode_handles)) *
-                    TLSqrDMD.vec_space.compute_inner_product_mat(
-                        proj_mode_handles, proj_vecs_handles[0]))).squeeze()
+                spectral_coeffs_true = np.abs(np.linalg.inv(
+                    TLSqrDMD.vec_space.compute_symmetric_inner_product_array(
+                        proj_mode_handles)).dot(
+                            TLSqrDMD.vec_space.compute_inner_product_array(
+                                proj_mode_handles,
+                                proj_vecs_handles[0]))).squeeze()
                 spectral_coeffs = TLSqrDMD.compute_spectrum()
                 np.testing.assert_allclose(
                     spectral_coeffs, spectral_coeffs_true, rtol=rtol, atol=atol)
@@ -1663,9 +1681,8 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                     max_num_eigvals=max_num_eigvals)
 
                 # Compute the projection of the vecs and advanced vecs.
-                proj_mat = (
-                    TLSqrDMD.sum_correlation_mat_eigvecs *
-                    TLSqrDMD.sum_correlation_mat_eigvecs.H)
+                proj_array = TLSqrDMD.sum_correlation_array_eigvecs.dot(
+                    TLSqrDMD.sum_correlation_array_eigvecs.conj().T)
                 proj_vecs_handles = [
                     VecHandlePickle(self.proj_vec_path % i)
                     for i in range(len(vecs_vals))]
@@ -1673,9 +1690,9 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                     VecHandlePickle(self.proj_adv_vec_path % i)
                     for i in range(len(vecs_vals))]
                 TLSqrDMD.vec_space.lin_combine(
-                    proj_vecs_handles, vecs_vals, proj_mat)
+                    proj_vecs_handles, vecs_vals, proj_array)
                 TLSqrDMD.vec_space.lin_combine(
-                    proj_adv_vecs_handles, adv_vecs_vals, proj_mat)
+                    proj_adv_vecs_handles, adv_vecs_vals, proj_array)
 
                 # Test by checking a least-squares projection (of the projected
                 # vecs) onto the projected modes, which is analytically
@@ -1685,21 +1702,19 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 # require adjoint modes.
                 mode_idxs = range(TLSqrDMD.eigvals.size)
                 proj_mode_handles = [
-                    V.VecHandlePickle(self.proj_mode_path % i)
+                    VecHandlePickle(self.proj_mode_path % i)
                     for i in mode_idxs]
                 TLSqrDMD.compute_proj_modes(mode_idxs, proj_mode_handles)
-                proj_coeffs_true = (
-                    np.linalg.inv(
-                        TLSqrDMD.vec_space.compute_symmetric_inner_product_mat(
-                            proj_mode_handles)) *
-                    TLSqrDMD.vec_space.compute_inner_product_mat(
-                        proj_mode_handles, proj_vecs_handles))
-                adv_proj_coeffs_true = (
-                    np.linalg.inv(
-                        TLSqrDMD.vec_space.compute_symmetric_inner_product_mat(
-                            proj_mode_handles)) *
-                    TLSqrDMD.vec_space.compute_inner_product_mat(
-                        proj_mode_handles, proj_adv_vecs_handles))
+                proj_coeffs_true = np.linalg.inv(
+                    TLSqrDMD.vec_space.compute_symmetric_inner_product_array(
+                        proj_mode_handles)).dot(
+                            TLSqrDMD.vec_space.compute_inner_product_array(
+                                proj_mode_handles, proj_vecs_handles))
+                adv_proj_coeffs_true = np.linalg.inv(
+                    TLSqrDMD.vec_space.compute_symmetric_inner_product_array(
+                        proj_mode_handles)).dot(
+                            TLSqrDMD.vec_space.compute_inner_product_array(
+                                proj_mode_handles, proj_adv_vecs_handles))
                 proj_coeffs, adv_proj_coeffs = TLSqrDMD.compute_proj_coeffs()
                 np.testing.assert_allclose(
                     proj_coeffs, proj_coeffs_true, rtol=rtol, atol=atol)

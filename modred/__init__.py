@@ -19,11 +19,11 @@ from .pod import (
 
 from .dmd import (
     DMDHandles,
-    compute_DMD_matrices_direct_method,
-    compute_DMD_matrices_snaps_method,
+    compute_DMD_arrays_direct_method,
+    compute_DMD_arrays_snaps_method,
     TLSqrDMDHandles,
-    compute_TLSqrDMD_matrices_direct_method,
-    compute_TLSqrDMD_matrices_snaps_method,
+    compute_TLSqrDMD_arrays_direct_method,
+    compute_TLSqrDMD_arrays_snaps_method,
 )
 
 from .bpod import BPODHandles, compute_BPOD_matrices
