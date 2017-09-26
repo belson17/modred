@@ -30,7 +30,7 @@ parser.add_argument(
     help='Directory in which to save data.')
 parser.add_argument(
     '--function',
-    choices=['lin_combine', 'inner_product_mat', 'symmetric_inner_product_mat'],
+    choices=['lin_combine', 'inner_product_mat', 'symm_inner_product_mat'],
     help='Function to benchmark.')
 args = parser.parse_args()
 data_dir = args.outdir
@@ -92,7 +92,7 @@ def inner_product_mat(
     return total_time
 
 
-def symmetric_inner_product_mat(
+def symm_inner_product_mat(
     num_states, num_vecs, max_vecs_per_node, verbosity=1):
     """
     Computes symmetric inner product matrix from known vecs (as in POD).
@@ -107,9 +107,9 @@ def symmetric_inner_product_mat(
 
     prof = cProfile.Profile()
     start_time = T.time()
-    prof.runcall(my_VS.compute_symmetric_inner_product_mat, vec_handles)
+    prof.runcall(my_VS.compute_symm_inner_product_mat, vec_handles)
     total_time = T.time() - start_time
-    prof.dump_stats('IP_symmetric_mat_r%d.prof'%mr.parallel.get_rank())
+    prof.dump_stats('IP_symm_mat_r%d.prof'%mr.parallel.get_rank())
 
     return total_time
 
@@ -155,7 +155,7 @@ def clean_up():
 def main():
     #method_to_test = 'lin_combine'
     #method_to_test = 'inner_product_mat'
-    #method_to_test = 'symmetric_inner_product_mat'
+    #method_to_test = 'symm_inner_product_mat'
     method_to_test = args.function
 
     # Common parameters
@@ -176,14 +176,14 @@ def main():
         time_elapsed = inner_product_mat(num_states, num_rows, num_cols,
             max_vecs_per_node)
 
-    elif method_to_test == 'symmetric_inner_product_mat':
-        # symmetric_inner_product_mat test
+    elif method_to_test == 'symm_inner_product_mat':
+        # symm_inner_product_mat test
         num_vecs = 1200
-        time_elapsed = symmetric_inner_product_mat(
+        time_elapsed = symm_inner_product_mat(
             num_states, num_vecs, max_vecs_per_node)
     else:
         print('Did not recognize --function argument, choose from')
-        print('lin_combine, inner_product_mat, and symmetric_inner_product_mat')
+        print('lin_combine, inner_product_mat, and symm_inner_product_mat')
     #print 'Time for %s is %f'%(method_to_test, time_elapsed)
 
     mr.parallel.barrier()

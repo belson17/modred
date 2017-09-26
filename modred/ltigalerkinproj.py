@@ -256,7 +256,7 @@ class LTIGalerkinProjectionMatrices(LTIGalerkinProjectionBase):
         """Gets the projection mat, i.e. inv(Psi^* Phi)."""
         if self._proj_mat is None:
             if self.symmetric:
-                IP_mat = self.vec_space.compute_symmetric_inner_product_mat(
+                IP_mat = self.vec_space.compute_symm_inner_product_mat(
                     self.basis_vecs)
             else:
                 IP_mat = self.vec_space.compute_inner_product_mat(
@@ -470,7 +470,7 @@ class LTIGalerkinProjectionHandles(LTIGalerkinProjectionBase):
         """Gets the projection mat, i.e. ``inv(adjoint_vecs^* direct_vecs)``."""
         if self._proj_mat is None:
             if self.symmetric:
-                IP_mat = self.vec_space.compute_symmetric_inner_product_mat(
+                IP_mat = self.vec_space.compute_symm_inner_product_mat(
                     self.basis_vec_handles)
             else:
                 IP_mat = self.vec_space.compute_inner_product_mat(

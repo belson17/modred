@@ -699,7 +699,7 @@ class TestDMDHandles(unittest.TestCase):
                 DMD.compute_proj_modes(mode_idxs, proj_mode_handles)
                 spectral_coeffs_true = np.abs(
                     np.linalg.inv(
-                        DMD.vec_space.compute_symmetric_inner_product_array(
+                        DMD.vec_space.compute_symm_inner_product_array(
                             proj_mode_handles)).dot(
                                 DMD.vec_space.compute_inner_product_array(
                                     proj_mode_handles, vecs_vals[0]))).squeeze()
@@ -749,12 +749,12 @@ class TestDMDHandles(unittest.TestCase):
                     for i in mode_idxs]
                 DMD.compute_proj_modes(mode_idxs, proj_mode_handles)
                 proj_coeffs_true = np.linalg.inv(
-                    DMD.vec_space.compute_symmetric_inner_product_array(
+                    DMD.vec_space.compute_symm_inner_product_array(
                         proj_mode_handles)).dot(
                             DMD.vec_space.compute_inner_product_array(
                                 proj_mode_handles, vecs_vals))
                 adv_proj_coeffs_true = np.linalg.inv(
-                    DMD.vec_space.compute_symmetric_inner_product_array(
+                    DMD.vec_space.compute_symm_inner_product_array(
                         proj_mode_handles)).dot(
                             DMD.vec_space.compute_inner_product_array(
                                 proj_mode_handles, adv_vecs_vals))
@@ -814,8 +814,8 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                 for weights in weights_list:
                     IP = VectorSpaceArrays(
                         weights=weights).compute_inner_product_array
-                    symmetric_IP = VectorSpaceArrays(
-                        weights=weights).compute_symmetric_inner_product_array
+                    symm_IP = VectorSpaceArrays(
+                        weights=weights).compute_symm_inner_product_array
 
                     # Define inner product for stacked vectors
                     if weights is None:
@@ -1640,7 +1640,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                     for i in mode_idxs]
                 TLSqrDMD.compute_proj_modes(mode_idxs, proj_mode_handles)
                 spectral_coeffs_true = np.abs(np.linalg.inv(
-                    TLSqrDMD.vec_space.compute_symmetric_inner_product_array(
+                    TLSqrDMD.vec_space.compute_symm_inner_product_array(
                         proj_mode_handles)).dot(
                             TLSqrDMD.vec_space.compute_inner_product_array(
                                 proj_mode_handles,
@@ -1706,12 +1706,12 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                     for i in mode_idxs]
                 TLSqrDMD.compute_proj_modes(mode_idxs, proj_mode_handles)
                 proj_coeffs_true = np.linalg.inv(
-                    TLSqrDMD.vec_space.compute_symmetric_inner_product_array(
+                    TLSqrDMD.vec_space.compute_symm_inner_product_array(
                         proj_mode_handles)).dot(
                             TLSqrDMD.vec_space.compute_inner_product_array(
                                 proj_mode_handles, proj_vecs_handles))
                 adv_proj_coeffs_true = np.linalg.inv(
-                    TLSqrDMD.vec_space.compute_symmetric_inner_product_array(
+                    TLSqrDMD.vec_space.compute_symm_inner_product_array(
                         proj_mode_handles)).dot(
                             TLSqrDMD.vec_space.compute_inner_product_array(
                                 proj_mode_handles, proj_adv_vecs_handles))

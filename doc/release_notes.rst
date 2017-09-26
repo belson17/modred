@@ -9,6 +9,8 @@ modred 2.1.0
 
 [IN PROGRESS]
 
+Now work only with arrays!  Many method names have been changed.
+
 Implemented the total least-squares variant of DMD, which deals with noise
 better than standard DMD does.  Also did a major rewrite of the unit tests,
 which now check mathematical properties, rather than comparing the results of
@@ -36,6 +38,10 @@ unit tests are more robust and fail much less often.
   fixed in the matrix versions???]
 
 **Interface changes**
+
+* Changed symmetric to symm, i.e.,
+  :py:meth:`VecSpacehandles.compute_symmetric_inner_product_array` is now
+  :py:meth:`VecSpacehandles.compute_symm_inner_product_array`.
 
 * Fixed order of return arguments in DMD matrix routines [which ones were
   changed??] to be consistent. (Also in TLSqrDMD matrix routines)

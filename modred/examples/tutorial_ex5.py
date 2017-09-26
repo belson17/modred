@@ -42,6 +42,6 @@ my_POD.compute_modes(mode_indices, modes)
 
 # Check that modes are orthonormal
 vec_space = mr.VectorSpaceHandles(inner_product=np.vdot)
-IP_mat = vec_space.compute_symmetric_inner_product_mat(modes)
+IP_mat = vec_space.compute_symm_inner_product_mat(modes)
 if not np.allclose(IP_mat, np.eye(len(mode_indices))):
     print('Warning: modes are not orthonormal', IP_mat)

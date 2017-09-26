@@ -104,7 +104,7 @@ def compute_DMD_arrays_snaps_method(
         # product routine, even though we don't need the last row and column
         # yet.
         expanded_correlation_array =\
-            vec_space.compute_symmetric_inner_product_array(vecs)
+            vec_space.compute_symm_inner_product_array(vecs)
         correlation_array = expanded_correlation_array[:-1, :-1]
         cross_correlation_array = expanded_correlation_array[:-1, 1:]
     # Non-sequential data
@@ -113,7 +113,7 @@ def compute_DMD_arrays_snaps_method(
             raise ValueError(('vecs and adv_vecs are not the same shape.'))
 
         # Compute the correlation array from the unadvanced snapshots only.
-        correlation_array = vec_space.compute_symmetric_inner_product_array(
+        correlation_array = vec_space.compute_symm_inner_product_array(
             vecs)
         cross_correlation_array = vec_space.compute_inner_product_array(
             vecs, adv_vecs)
@@ -784,7 +784,7 @@ class DMDHandles(object):
         # slice the expanded correlation array accordingly.
         if adv_vec_handles is None:
             self.expanded_correlation_array =\
-                self.vec_space.compute_symmetric_inner_product_array(
+                self.vec_space.compute_symm_inner_product_array(
                 self.vec_handles)
             self.correlation_array = self.expanded_correlation_array[:-1, :-1]
             self.cross_correlation_array = self.expanded_correlation_array[
@@ -794,8 +794,8 @@ class DMDHandles(object):
         # involving the unadvanced and advanced snapshots separately.
         else:
             self.correlation_array =\
-                self.vec_space.compute_symmetric_inner_product_array(
-                self.vec_handles)
+                self.vec_space.compute_symm_inner_product_array(
+                    self.vec_handles)
             self.cross_correlation_array =\
                 self.vec_space.compute_inner_product_array(
                 self.vec_handles, self.adv_vec_handles)
@@ -1136,8 +1136,8 @@ def compute_TLSqrDMD_arrays_snaps_method(
         # This is more efficient because only one call is made to the inner
         # product routine, even though we don't need the last row and column
         # yet.
-        expanded_correlation_array =\
-            vec_space.compute_symmetric_inner_product_array(vecs)
+        expanded_correlation_array = vec_space.compute_symm_inner_product_array(
+            vecs)
         correlation_array = expanded_correlation_array[:-1, :-1]
         cross_correlation_array = expanded_correlation_array[:-1, 1:]
         adv_correlation_array = expanded_correlation_array[1:, 1:]
@@ -1146,11 +1146,10 @@ def compute_TLSqrDMD_arrays_snaps_method(
         if vecs.shape != adv_vecs.shape:
             raise ValueError(('vecs and adv_vecs are not the same shape.'))
         # Compute the correlation array from the unadvanced snapshots only.
-        correlation_array = vec_space.compute_symmetric_inner_product_array(
-            vecs)
+        correlation_array = vec_space.compute_symm_inner_product_array(vecs)
         cross_correlation_array = vec_space.compute_inner_product_array(
             vecs, adv_vecs)
-        adv_correlation_array = vec_space.compute_symmetric_inner_product_array(
+        adv_correlation_array = vec_space.compute_symm_inner_product_array(
             adv_vecs)
 
     sum_correlation_array_eigvals, sum_correlation_array_eigvecs =\
@@ -1733,8 +1732,8 @@ class TLSqrDMDHandles(DMDHandles):
         # slice the expanded correlation array accordingly.
         if adv_vec_handles is None:
             self.expanded_correlation_array =\
-                self.vec_space.compute_symmetric_inner_product_array(
-                self.vec_handles)
+                self.vec_space.compute_symm_inner_product_array(
+                    self.vec_handles)
             self.correlation_array = self.expanded_correlation_array[:-1, :-1]
             self.cross_correlation_array = self.expanded_correlation_array[
                 :-1, 1:]
@@ -1744,14 +1743,14 @@ class TLSqrDMDHandles(DMDHandles):
         # involving the unadvanced and advanced snapshots separately.
         else:
             self.correlation_array =\
-                self.vec_space.compute_symmetric_inner_product_array(
-                self.vec_handles)
+                self.vec_space.compute_symm_inner_product_array(
+                    self.vec_handles)
             self.cross_correlation_array =\
                 self.vec_space.compute_inner_product_array(
                 self.vec_handles, self.adv_vec_handles)
             self.adv_correlation_array =\
-                self.vec_space.compute_symmetric_inner_product_array(
-                self.adv_vec_handles)
+                self.vec_space.compute_symm_inner_product_array(
+                    self.adv_vec_handles)
 
         # Compute eigendecomposition of low-order linear map.
         self.compute_eigendecomp(

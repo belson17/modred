@@ -74,7 +74,7 @@ def compute_POD_matrices_snaps_method(
 
     # Compute decomp
     vecs = util.make_mat(vecs)
-    correlation_mat = vec_space.compute_symmetric_inner_product_mat(vecs)
+    correlation_mat = vec_space.compute_symm_inner_product_mat(vecs)
     eigvals, eigvecs = util.eigh(
         correlation_mat, atol=atol, rtol=rtol, is_positive_definite=True)
 
@@ -366,9 +366,8 @@ class PODHandles(object):
             matrix.
         """
         self.vec_handles = vec_handles
-        self.correlation_mat = (
-            self.vec_space.compute_symmetric_inner_product_mat(
-            self.vec_handles))
+        self.correlation_mat = self.vec_space.compute_symm_inner_product_mat(
+            self.vec_handles)
         self.compute_eigendecomp(atol=atol, rtol=rtol)
         return self.eigvals, self.eigvecs
 

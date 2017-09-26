@@ -99,7 +99,7 @@ class TestExamples(unittest.TestCase):
             max_vecs_per_node, verbosity=0)
         self.assertEqual(type(time), float)
 
-        time = B.symmetric_inner_product_mat(num_states, num_rows,
+        time = B.symm_inner_product_mat(num_states, num_rows,
             max_vecs_per_node, verbosity=0)
         self.assertEqual(type(time), float)
 

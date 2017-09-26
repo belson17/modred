@@ -47,7 +47,7 @@ class VectorSpaceArrays(object):
         return vecs1.conj().T.dot(self.weights.dot(vecs2))
 
 
-    def compute_symmetric_inner_product_array(self, vecs):
+    def compute_symm_inner_product_array(self, vecs):
         return self.compute_inner_product_array(vecs, vecs)
 
 
@@ -241,7 +241,7 @@ class VectorSpaceHandles(object):
         The vectors are retrieved in memory-efficient chunks and are not all in
         memory at once.  The row vectors and column vectors are assumed to be
         different.  When they are the same, use
-        :py:meth:`compute_symmetric_inner_product` for a 2x speedup.
+        :py:meth:`compute_symm_inner_product` for a 2x speedup.
 
         Each MPI worker (processor) is responsible for retrieving a subset of
         the rows and columns. The processors then send/receive columns via MPI
@@ -494,7 +494,7 @@ class VectorSpaceHandles(object):
         return IP_array
 
 
-    def compute_symmetric_inner_product_array(self, vec_handles):
+    def compute_symm_inner_product_array(self, vec_handles):
         """Computes symmetric array whose elements are inner products of the
         vector objects in ``vec_handles`` with each other.
 

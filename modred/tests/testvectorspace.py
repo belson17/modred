@@ -107,7 +107,7 @@ class TestVectorSpaceArrays(unittest.TestCase):
             vec_space = VectorSpaceArrays(weights=weights)
             ip_array = vec_space.compute_inner_product_array(
                 row_array, col_array)
-            ip_array_symm = vec_space.compute_symmetric_inner_product_array(
+            ip_array_symm = vec_space.compute_symm_inner_product_array(
                 row_array)
             np.testing.assert_allclose(
                 ip_array, ip_array_true, rtol=rtol, atol=atol)
@@ -392,7 +392,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
             inner_product_array = self.vec_space.compute_inner_product_array(
                 row_vec_handles, col_vec_handles)
             symm_inner_product_array =\
-                self.vec_space.compute_symmetric_inner_product_array(
+                self.vec_space.compute_symm_inner_product_array(
                     row_vec_handles)
             self.assertEqual(inner_product_array.dtype, row_vec_array.dtype)
             self.assertEqual(
@@ -463,7 +463,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
                 # Test symm ip computation
                 product_true = np.dot(row_vec_array.conj().T, row_vec_array)
                 product_computed =\
-                    self.vec_space.compute_symmetric_inner_product_array(
+                    self.vec_space.compute_symm_inner_product_array(
                         row_vec_handles)
                 np.testing.assert_allclose(
                     product_computed, product_true, rtol=rtol, atol=atol)
