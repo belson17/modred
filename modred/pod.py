@@ -36,10 +36,14 @@ def compute_POD_arrays_snaps_method(
         ``res``: Results of POD computation, stored in a namedtuple with
         the following attributes:
 
-        * ``modes``: Array whose columns are POD modes.
-
         * ``eigvals``: 1D array of eigenvalues of correlation array
           (:math:`E`).
+
+        * ``modes``: Array whose columns are POD modes.
+
+        * ``proj_coeffs``: Array of projection coefficients for vector objects,
+          expressed as a linear combination of POD modes.  Columns correspond to
+          vector objects, rows correspond to POD modes.
 
         * ``eigvecs``: Array wholse columns are eigenvectors of correlation
           array (:math:`U`).
@@ -82,11 +86,15 @@ def compute_POD_arrays_snaps_method(
     modes = vec_space.lin_combine(
         vecs, build_coeffs, coeff_array_col_indices=mode_indices)
 
+    # Compute projection coefficients
+    proj_coeffs = np.diag(eigvals ** 0.5).dot(eigvecs.conj().T)
+
     # Return a namedtuple
     POD_results = namedtuple(
-        'POD_results', ['modes', 'eigvals', 'eigvecs', 'correlation_array'])
+        'POD_results',
+        ['eigvals', 'modes', 'proj_coeffs', 'eigvecs', 'correlation_array'])
     return POD_results(
-        modes=modes, eigvals=eigvals, eigvecs=eigvecs,
+        eigvals=eigvals, modes=modes, proj_coeffs=proj_coeffs, eigvecs=eigvecs,
         correlation_array=correlation_array)
 
 
@@ -117,10 +125,14 @@ def compute_POD_arrays_direct_method(
         ``res``: Results of POD computation, stored in a namedtuple with the
         following attributes:
 
-        * ``modes``: Array whose columns are POD modes.
-
         * ``eigvals``: 1D array of eigenvalues of correlation array
           (:math:`E`).
+
+        * ``modes``: Array whose columns are POD modes.
+
+        * ``proj_coeffs``: Array of projection coefficients for vector objects,
+          expressed as a linear combination of POD modes.  Columns correspond to
+          vector objects, rows correspond to POD modes.
 
         * ``eigvecs``: Array wholse columns are eigenvectors of correlation
           array (:math:`U`).
@@ -177,11 +189,16 @@ def compute_POD_arrays_direct_method(
         #inv_sqrt_weights = np.linalg.inv(sqrt_weights)
         #modes = inv_sqrt_weights.dot(modes_weighted[:, mode_indices])
 
+    # Compute projection coefficients
     eigvals = sing_vals ** 2.
+    proj_coeffs = np.diag(eigvals ** 0.5).dot(eigvecs.conj().T)
 
     # Return a namedtuple
-    POD_results = namedtuple('POD_results', ['modes', 'eigvals', 'eigvecs'])
-    return POD_results(modes=modes, eigvals=eigvals, eigvecs=eigvecs)
+    POD_results = namedtuple(
+        'POD_results',
+        ['eigvals', 'modes', 'proj_coeffs', 'eigvecs'])
+    return POD_results(
+        eigvals=eigvals, modes=modes, proj_coeffs=proj_coeffs, eigvecs=eigvecs)
 
 
 class PODHandles(object):

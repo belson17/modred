@@ -91,6 +91,11 @@ class TestPODArraysFunctions(unittest.TestCase):
                     POD_res.modes.dot(np.diag(POD_res.eigvals)),
                     rtol=rtol, atol=atol)
 
+                # Check projection coefficients
+                np.testing.assert_allclose(
+                    POD_res.proj_coeffs, IP(POD_res.modes, vecs_array),
+                    rtol=rtol, atol=atol)
+
                 # Check that if mode indices are passed in, the correct
                 # modes are returned.
                 np.testing.assert_allclose(
