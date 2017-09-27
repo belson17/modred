@@ -23,9 +23,9 @@ if plot:
 
 
 def diff(arr_measured, arr_true, normalize=False):
-    err = np.mean((arr_measured-arr_true)**2)
+    err = np.mean((arr_measured - arr_true)**2)
     if normalize:
-        return err/np.mean(arr_measured**2)
+        return err / np.mean(arr_measured ** 2)
     else:
         return err
 
@@ -35,10 +35,15 @@ class TestOKID(unittest.TestCase):
     def setUp(self):
         self.test_dir = join(os.path.dirname(__file__), 'files_OKID')
 
+
     def tearDown(self):
         pass
 
+
     def test_OKID(self):
+        rtol = 1e-8
+        atol = 1e-10
+
         for case in ['SISO', 'SIMO', 'MISO', 'MIMO']:
             inputs = util.load_array_text(
                 join(join(self.test_dir, case), 'inputs.txt'))
@@ -51,25 +56,26 @@ class TestOKID(unittest.TestCase):
 
             Markovs_true = np.zeros((nt, num_outputs, num_inputs))
 
-            temp = util.load_array_text(join(join(self.test_dir, case),
-                'Markovs_Matlab_output1.txt'))
-            temp = temp.reshape((num_inputs, -1))
-            num_Markovs_OKID = temp.shape[1]
+            tmp = util.load_array_text(
+                join(join(self.test_dir, case), 'Markovs_Matlab_output1.txt'))
+            tmp = tmp.reshape((num_inputs, -1))
+            num_Markovs_OKID = tmp.shape[1]
             Markovs_Matlab = np.zeros(
                 (num_Markovs_OKID, num_outputs, num_inputs))
 
-            for iOut in range(num_outputs):
+            for i_out in range(num_outputs):
                 data = util.load_array_text(
                     join(join( self.test_dir, case),
-                    'Markovs_Matlab_output%d.txt'%(iOut+1)))
+                    'Markovs_Matlab_output%d.txt' % (i_out + 1)))
                 if num_inputs > 1:
                     data = np.swapaxes(data, 0, 1)
-                Markovs_Matlab[:,iOut,:] = data
-                data = util.load_array_text(join(join(
-                    self.test_dir, case), 'Markovs_true_output%d.txt'%(iOut+1)))
+                Markovs_Matlab[:, i_out, :] = data
+                data = util.load_array_text(join(
+                    join(self.test_dir, case),
+                    'Markovs_true_output%d.txt' % (i_out + 1)))
                 if num_inputs > 1:
                     data = np.swapaxes(data, 0, 1)
-                Markovs_true[:,iOut,:] = data
+                Markovs_true[:,i_out,:] = data
 
             Markovs_python = OKID(inputs, outputs, num_Markovs_OKID)
 
@@ -89,12 +95,14 @@ class TestOKID(unittest.TestCase):
                 PLT.show()
             #print (
             #    'Diff between matlab and python is',
-            #    diff(Markovs_Matlab, Markovs_python)
+            #    diff(Markovs_Matlab, Markovs_python))
             np.testing.assert_allclose(
-                Markovs_python, Markovs_Matlab, atol=1e-3, rtol=1e-3)
+                Markovs_python.squeeze(), Markovs_Matlab.squeeze(),
+                rtol=rtol, atol=atol)
             np.testing.assert_allclose(
-                Markovs_python, Markovs_true[:num_Markovs_OKID], atol=1e-3,
-                rtol=1e-3)
+                Markovs_python.squeeze(),
+                Markovs_true[:num_Markovs_OKID].squeeze(),
+                rtol=rtol, atol=atol)
 
 
 if __name__ == '__main__':
