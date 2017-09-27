@@ -26,7 +26,7 @@ from .dmd import (
     compute_TLSqrDMD_arrays_snaps_method,
 )
 
-from .bpod import BPODHandles, compute_BPOD_matrices
+from .bpod import BPODHandles, compute_BPOD_arrays
 
 from .era import compute_ERA_model, make_sampled_format, ERA
 
