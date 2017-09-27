@@ -54,11 +54,21 @@ def compute_BPOD_arrays(
         ``res``: Results of BPOD computation, stored in a namedtuple with
         the following attributes:
 
+        * ``sing_vals``: 1D array of Hankel singular values (:math:`E`).
+
         * ``direct_modes``: Array whose columns are direct modes.
 
         * ``adjoint_modes``: Array whose columns are adjoint modes.
 
-        * ``sing_vals``: 1D array of Hankel singular values (:math:`E`).
+        * ``direct_proj_coeffs``: Array of projection coefficients for direct
+          vector objects, expressed as a linear combination of direct BPOD
+          modes.  Columns correspond to direct vector objects, rows correspond
+          to direct BPOD modes.
+
+        * ``adjoint_proj_coeffs``: Array of projection coefficients for adjoint
+           vector objects, expressed as a linear combination of adjoint BPOD
+           modes.  Columns correspond to adjoint vector objects, rows correspond
+           to adjoint BPOD modes.
 
         * ``L_sing_vecs``: Array whose columns are left singular vectors of
           Hankel array (:math:`U`).
@@ -113,14 +123,22 @@ def compute_BPOD_arrays(
         adjoint_vecs, adjoint_build_coeffs,
         coeff_array_col_indices=adjoint_mode_indices)
 
+    # Compute projection coefficients
+    direct_proj_coeffs = np.diag(sing_vals ** 0.5).dot(R_sing_vecs.conj().T)
+    adjoint_proj_coeffs = np.diag(sing_vals ** 0.5).dot(L_sing_vecs.conj().T)
+
     # Return a namedtuple
     BPOD_results = namedtuple(
         'BPOD_results', [
-            'direct_modes', 'adjoint_modes', 'sing_vals', 'L_sing_vecs',
-            'R_sing_vecs', 'Hankel_array'])
+            'sing_vals', 'direct_modes', 'adjoint_modes',
+            'direct_proj_coeffs', 'adjoint_proj_coeffs',
+            'L_sing_vecs', 'R_sing_vecs', 'Hankel_array'])
     return BPOD_results(
+        sing_vals=sing_vals,
         direct_modes=direct_modes, adjoint_modes=adjoint_modes,
-        sing_vals=sing_vals, L_sing_vecs=L_sing_vecs, R_sing_vecs=R_sing_vecs,
+        direct_proj_coeffs=direct_proj_coeffs,
+        adjoint_proj_coeffs=adjoint_proj_coeffs,
+        L_sing_vecs=L_sing_vecs, R_sing_vecs=R_sing_vecs,
         Hankel_array=Hankel_array)
 
 
@@ -212,7 +230,7 @@ class BPODHandles(object):
             ``src``: Source from which to retrieve direct projection
             coefficients.
         """
-        self.proj_coeffs = parallel.call_and_bcast(self.get_array, src)
+        self.direct_proj_coeffs = parallel.call_and_bcast(self.get_array, src)
 
 
     def get_adjoint_proj_coeffs(self, src):
@@ -276,7 +294,7 @@ class BPODHandles(object):
     def put_direct_proj_coeffs(self, dest):
         """Puts direct projection coefficients to ``dest``"""
         if parallel.is_rank_zero():
-            self.put_array(self.proj_coeffs, dest)
+            self.put_array(self.direct_proj_coeffs, dest)
         parallel.barrier()
 
 
@@ -447,19 +465,19 @@ class BPODHandles(object):
             coeff_array_col_indices=mode_indices)
 
 
-    def compute_proj_coeffs(self):
+    def compute_direct_proj_coeffs(self):
         """Computes biorthogonal projection of direct vector objects onto
         direct BPOD modes, using adjoint BPOD modes.
 
         Returns:
-            ``proj_coeffs``: Array of projection coefficients for direct
+            ``direct_proj_coeffs``: Array of projection coefficients for direct
             vector objects, expressed as a linear combination of direct BPOD
             modes.  Columns correspond to direct vector objects, rows
             correspond to direct BPOD modes.
         """
-        self.proj_coeffs = np.diag(self.sing_vals ** 0.5).dot(
+        self.direct_proj_coeffs = np.diag(self.sing_vals ** 0.5).dot(
             self.R_sing_vecs.conj().T)
-        return self.proj_coeffs
+        return self.direct_proj_coeffs
 
 
     def compute_adjoint_proj_coeffs(self):

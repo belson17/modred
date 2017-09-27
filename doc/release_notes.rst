@@ -39,6 +39,8 @@ unit tests are more robust and fail much less often.
 
 **Interface changes**
 
+* Added "direct" to methods for projection coefficients in BPOD.
+
 * Changed symmetric to symm, i.e.,
   :py:meth:`VecSpacehandles.compute_symmetric_inner_product_array` is now
   :py:meth:`VecSpacehandles.compute_symm_inner_product_array`.

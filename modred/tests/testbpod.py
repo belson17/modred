@@ -176,6 +176,18 @@ class TestBPODArrays(unittest.TestCase):
                         np.diag(BPOD_res.sing_vals),
                         rtol=rtol_sqr, atol=atol_sqr)
 
+                    # Check the value of the projection coefficients against a
+                    # projection onto the adjoint and direct modes,
+                    # respectively.
+                    np.testing.assert_allclose(
+                        BPOD_res.direct_proj_coeffs,
+                        IP(BPOD_res.adjoint_modes, direct_vecs_array),
+                        rtol=rtol, atol=atol)
+                    np.testing.assert_allclose(
+                        BPOD_res.adjoint_proj_coeffs,
+                        IP(BPOD_res.direct_modes, adjoint_vecs_array),
+                        rtol=rtol, atol=atol)
+
                     # Check that if mode indices are passed in, the correct
                     # modes are returned.
                     mode_indices = np.unique(np.random.randint(
@@ -298,7 +310,7 @@ class TestBPODHandles(unittest.TestCase):
             np.random.random, ((self.num_states, self.num_states)))
         L_sing_vecs_true, sing_vals_true, R_sing_vecs_true = \
             parallel.call_and_bcast(util.svd, Hankel_array_true)
-        proj_coeffs_true = parallel.call_and_bcast(
+        direct_proj_coeffs_true = parallel.call_and_bcast(
             np.random.random, ((self.num_steps, self.num_steps)))
         adj_proj_coeffs_true = parallel.call_and_bcast(
             np.random.random, ((self.num_steps, self.num_steps)))
@@ -309,7 +321,7 @@ class TestBPODHandles(unittest.TestCase):
         BPOD_save.sing_vals = sing_vals_true
         BPOD_save.L_sing_vecs = L_sing_vecs_true
         BPOD_save.R_sing_vecs = R_sing_vecs_true
-        BPOD_save.proj_coeffs = proj_coeffs_true
+        BPOD_save.direct_proj_coeffs = direct_proj_coeffs_true
         BPOD_save.adjoint_proj_coeffs = adj_proj_coeffs_true
 
         # Use the BPOD object to save the data to disk
@@ -317,18 +329,18 @@ class TestBPODHandles(unittest.TestCase):
         L_sing_vecs_path = join(self.test_dir, 'L_sing_vecs.txt')
         R_sing_vecs_path = join(self.test_dir, 'R_sing_vecs.txt')
         Hankel_array_path = join(self.test_dir, 'Hankel_array.txt')
-        proj_coeffs_path = join(self.test_dir, 'proj_coeffs.txt')
+        direct_proj_coeffs_path = join(self.test_dir, 'direct_proj_coeffs.txt')
         adj_proj_coeffs_path = join(self.test_dir, 'adj_proj_coeffs.txt')
         BPOD_save.put_decomp(sing_vals_path, L_sing_vecs_path, R_sing_vecs_path)
         BPOD_save.put_Hankel_array(Hankel_array_path)
-        BPOD_save.put_direct_proj_coeffs(proj_coeffs_path)
+        BPOD_save.put_direct_proj_coeffs(direct_proj_coeffs_path)
         BPOD_save.put_adjoint_proj_coeffs(adj_proj_coeffs_path)
 
         # Create a BPOD object and use it to load the data from disk
         BPOD_load = BPODHandles(None, verbosity=0)
         BPOD_load.get_decomp(sing_vals_path, L_sing_vecs_path, R_sing_vecs_path)
         BPOD_load.get_Hankel_array(Hankel_array_path)
-        BPOD_load.get_direct_proj_coeffs(proj_coeffs_path)
+        BPOD_load.get_direct_proj_coeffs(direct_proj_coeffs_path)
         BPOD_load.get_adjoint_proj_coeffs(adj_proj_coeffs_path)
 
         # Compare loaded data or original data
@@ -336,7 +348,8 @@ class TestBPODHandles(unittest.TestCase):
         np.testing.assert_equal(BPOD_load.L_sing_vecs, L_sing_vecs_true)
         np.testing.assert_equal(BPOD_load.R_sing_vecs, R_sing_vecs_true)
         np.testing.assert_equal(BPOD_load.Hankel_array, Hankel_array_true)
-        np.testing.assert_equal(BPOD_load.proj_coeffs, proj_coeffs_true)
+        np.testing.assert_equal(
+            BPOD_load.direct_proj_coeffs, direct_proj_coeffs_true)
         np.testing.assert_equal(
             BPOD_load.adjoint_proj_coeffs, adj_proj_coeffs_true)
 
@@ -581,7 +594,7 @@ class TestBPODHandles(unittest.TestCase):
                 # avoids actually manipulating handles and computing inner
                 # products, instead using elements of the decomposition for a
                 # more efficient computation.
-                direct_proj_coeffs = BPOD.compute_proj_coeffs()
+                direct_proj_coeffs = BPOD.compute_direct_proj_coeffs()
                 adjoint_proj_coeffs = BPOD.compute_adjoint_proj_coeffs()
 
                 # Test values
