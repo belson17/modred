@@ -35,8 +35,8 @@ from .okid import OKID
 from .ltigalerkinproj import (
     LTIGalerkinProjectionBase,
     LTIGalerkinProjectionHandles,
-    LTIGalerkinProjectionMatrices,
-    compute_derivs_handles, compute_derivs_matrices, standard_basis
+    LTIGalerkinProjectionArrays,
+    compute_derivs_handles, compute_derivs_arrays, standard_basis
 )
 
 from .vectorspace import VectorSpaceHandles, VectorSpaceArrays
