@@ -56,7 +56,7 @@ def make_sampled_format(times, Markovs, dt_tol=1e-6):
 
 def compute_ERA_model(Markovs, num_states):
     """Convenience function to compute linear time-invariant (LTI)
-    reduced-order model (ROM) matrices A, B, and C using the eigensystem
+    reduced-order model (ROM) arrays A, B, and C using the eigensystem
     realization algorithm (ERA) with default settings.
 
     Args:
@@ -66,11 +66,11 @@ def compute_ERA_model(Markovs, num_states):
         ``num_states``: Number of states in reduced-order model.
 
     Returns:
-        ``A``: A matrix of reduced-order model.
+        ``A``: A array of reduced-order model.
 
-        ``B``: B matrix of reduced-order model.
+        ``B``: B array of reduced-order model.
 
-        ``C``: C matrix of reduced-order model.
+        ``C``: C array of reduced-order model.
 
     Usage::
 
@@ -95,14 +95,14 @@ class ERA(object):
     systems.
 
     Kwargs:
-        ``put_mat``: Function to put a matrix out of modred, e.g., write it to
+        ``put_array``: Function to put an array out of modred, e.g., write it to
         file.
 
         ``mc``: Number of Markov parameters for controllable dimension of
-        Hankel matrix.
+        Hankel array.
 
         ``mo``: Number of Markov parameters for observable dimension of Hankel
-        matrix.
+        array.
 
         ``verbosity``: 1 prints progress and warnings, 0 prints almost nothing.
 
@@ -140,9 +140,9 @@ class ERA(object):
     - See convenience function :py:func:`compute_ERA_model`.
     """
     def __init__(
-        self, put_mat=util.save_array_text, mc=None, mo=None, verbosity=1):
+        self, put_array=util.save_array_text, mc=None, mo=None, verbosity=1):
         """Constructor"""
-        self.put_mat = put_mat
+        self.put_array = put_array
         self.mc = mc
         self.mo = mo
         self.outputs = None
@@ -156,14 +156,14 @@ class ERA(object):
         self.num_outputs = None
         self.num_inputs = None
         self.num_time_steps = None
-        self.Hankel_mat = None
-        self.Hankel_mat2 = None
+        self.Hankel_array = None
+        self.Hankel_array2 = None
         self.num_Markovs = None
         self.Markovs = None
 
 
     def compute_model(self, Markovs, num_states, mc=None, mo=None):
-        """Computes the A, B, and C matrices of the linear time-invariant (LTI)
+        """Computes the A, B, and C arrays of the linear time-invariant (LTI)
         reduced-order model (ROM).
 
         Args:
@@ -174,79 +174,80 @@ class ERA(object):
 
         Kwargs:
             ``mc``: Number of Markov parameters for controllable dimension of
-            Hankel matrix.
+            Hankel array.
 
             ``mo``: Number of Markov parameters for observable dimension of
-            Hankel matrix.
+            Hankel array.
 
-        Assembles the Hankel matrices from self.Markovs and computes a singular
-        value decomposition. Uses the results to form the A, B, and C matrices.
+        Assembles the Hankel arrays from self.Markovs and computes a singular
+        value decomposition. Uses the results to form the A, B, and C arrays.
 
         Note that the default values of ``mc`` and ``mo`` are equal and maximal
         for a balanced model.
 
         Tip: For discrete time systems the impulse is applied over a time
         interval :math:`dt` and so has a time-integral :math:`1*dt` rather than
-        :math:`1`.  This means the reduced B matrix is "off" by a factor of
+        :math:`1`.  This means the reduced B array is "off" by a factor of
         :math:`dt`.  You can account for this by multiplying B by :math:`dt`.
         """
-        #SVD is ``L_sing_vecs*np.mat(np.diag(sing_vals))*\
-        #    R_sing_vecs.H = Hankel_mat``
         self._set_Markovs(Markovs)
         self.mc = mc
         self.mo = mo
 
         self._assemble_Hankel()
         self.L_sing_vecs, self.sing_vals, self.R_sing_vecs = util.svd(
-            self.Hankel_mat)
+            self.Hankel_array)
 
-        # Truncate matrices
-        Ur = np.mat(self.L_sing_vecs[:, :num_states])
-        Er = np.squeeze(self.sing_vals[:num_states])
-        Vr = np.mat(self.R_sing_vecs[:, :num_states])
+        # Truncate arrays
+        Ur = self.L_sing_vecs[:, :num_states]
+        Er = self.sing_vals[:num_states]
+        Vr = self.R_sing_vecs[:, :num_states]
 
-        self.A = (
-            np.mat(np.diag(Er**-.5)) * Ur.H * self.Hankel_mat2 * Vr *
-            np.mat(np.diag(Er**-.5)))
-        self.B = (np.mat(np.diag(Er**.5)) * (Vr.H)[:, :self.num_inputs])
+        self.A = np.diag(Er ** -0.5).dot(
+            Ur.conj().T.dot(
+                self.Hankel_array2.dot(
+                    Vr.dot(
+                        np.diag(Er ** -0.5)))))
+        self.B = np.diag(Er ** 0.5).dot((Vr.conj().T)[:, :self.num_inputs])
         # *dt above is removed, users must do this themselves.
         # It is explained in the docs.
 
-        self.C = Ur[:self.num_Markovs] * np.mat(np.diag(Er**.5))
+        self.C = Ur[:self.num_Markovs].dot(np.diag(Er ** 0.5))
 
         if (np.abs(np.linalg.eigvals(self.A)) >= 1.).any() and self.verbosity:
-            print('Warning: Unstable eigenvalues of reduced A matrix')
-            print('eig vals are', np.linalg.eigvals(self.A))
+            print('Warning: Reduced A array is unstable.')
+            print('Unstable eigenvalues are', np.linalg.eigvals(self.A))
         return self.A, self.B, self.C
 
 
     def put_model(self, A_dest, B_dest, C_dest):
-        """Puts the A, B, and C matrices of the linear time-invariant (LTI)
+        """Puts the A, B, and C arrays of the linear time-invariant (LTI)
         reduced-order model (ROM) in destinations (file or memory).
 
         Args:
-            ``A_dest``: Destination in which to put A matrix of reduced-order
+            ``A_dest``: Destination in which to put A array of reduced-order
             model.
 
-            ``B_dest``: Destination in which to put B matrix of reduced-order
+            ``B_dest``: Destination in which to put B array of reduced-order
             model.
 
-            ``C_dest``: Destination in which to put C matrix of reduced-order
+            ``C_dest``: Destination in which to put C array of reduced-order
             model.
         """
-        self.put_mat(self.A, A_dest)
-        self.put_mat(self.B, B_dest)
-        self.put_mat(self.C, C_dest)
+        self.put_array(self.A, A_dest)
+        self.put_array(self.B, B_dest)
+        self.put_array(self.C, C_dest)
         if self.verbosity:
-            print('Put ROM matrices to:')
+            print('Put ROM arrays to:')
             print(A_dest)
             print(B_dest)
             print(C_dest)
 
+
     def put_decomp(
         self, sing_vals_dest, L_sing_vecs_dest, R_sing_vecs_dest,
-        Hankel_mat_dest, Hankel_mat2_dest):
-        """Puts the decomposition matrices and Hankel matrices in destinations
+        Hankel_array_dest, Hankel_array2_dest):
+        """Puts the decomposition arrays and Hankel arrays in destinations
         (file or memory).
 
         Args:
@@ -254,26 +255,26 @@ class ERA(object):
             values.
 
             ``L_sing_vecs_dest``: Destination in which to put left singular
-            vectors of Hankel matrix.
+            vectors of Hankel array.
 
             ``R_sing_vecs_dest``: Destination in which to put right singular
-            vectors of Hankel matrix.
+            vectors of Hankel array.
 
-            ``Hankel_mat_dest``: Destination in which to put Hankel matrix.
+            ``Hankel_array_dest``: Destination in which to put Hankel array.
 
-            ``Hankel_mat2_dest``: Destination in which to put second Hankel
-            matrix.
+            ``Hankel_array2_dest``: Destination in which to put second Hankel
+            array.
         """
-        self.put_mat(self.Hankel_mat, Hankel_mat_dest)
-        self.put_mat(self.Hankel_mat2, Hankel_mat2_dest)
-        self.put_mat(self.L_sing_vecs, L_sing_vecs_dest)
-        self.put_mat(self.sing_vals, sing_vals_dest)
-        self.put_mat(self.R_sing_vecs, R_sing_vecs_dest)
+        self.put_array(self.Hankel_array, Hankel_array_dest)
+        self.put_array(self.Hankel_array2, Hankel_array2_dest)
+        self.put_array(self.L_sing_vecs, L_sing_vecs_dest)
+        self.put_array(self.sing_vals, sing_vals_dest)
+        self.put_array(self.R_sing_vecs, R_sing_vecs_dest)
 
 
     def put_sing_vals(self, sing_vals_dest):
         """Puts the singular values to ``sing_vals_dest``."""
-        self.put_mat(self.sing_vals, sing_vals_dest)
+        self.put_array(self.sing_vals, sing_vals_dest)
 
 
     def _set_Markovs(self, Markovs):
@@ -282,15 +283,15 @@ class ERA(object):
         Args:
             ``Markovs``: Array of Markov params w/indices [time, output, input].
 
-        ``Markovs[i]`` is the Markov parameter C*A**i*B.
+        ``Markovs[i]`` is the Markov parameter C * A ** i * B.
         """
         self.Markovs = Markovs
         ndims = self.Markovs.ndim
         if ndims == 1:
             self.Markovs = self.Markovs.reshape((self.Markovs.shape[0], 1, 1))
         elif ndims == 2:
-            self.Markovs = self.Markovs.reshape((self.Markovs.shape[0],
-                self.Markovs.shape[1], 1))
+            self.Markovs = self.Markovs.reshape(
+                (self.Markovs.shape[0], self.Markovs.shape[1], 1))
         elif ndims > 3:
             raise RuntimeError('Markovs can have 1, 2, or 3 dims, '
                 'yours had %d'%ndims)
@@ -305,7 +306,7 @@ class ERA(object):
 
 
     def _assemble_Hankel(self):
-        """Assembles and sets ``self.Hankel_mat`` and ``self.Hankel_mat2``
+        """Assembles and sets ``self.Hankel_array`` and ``self.Hankel_array2``
 
         See variables H and H' in Ma 2011.
         """
@@ -324,22 +325,25 @@ class ERA(object):
             self.mo = (self.num_time_steps-2)//4
             self.mc = self.mo
 
-        if (self.mo + self.mc) +2 > self.num_time_steps:
-            raise ValueError('mo+mc+2=%d and must be <= than the number of '
-                'samples %d'%(self.mo+self.mc+2, self.num_time_steps))
+        if (self.mo + self.mc) + 2 > self.num_time_steps:
+            raise ValueError(
+                'mo + mc + 2= %d and must be <= than the number of samples %d'
+                % (self.mo + self.mc + 2, self.num_time_steps))
 
-        self.Hankel_mat = np.zeros((self.num_Markovs*self.mo,
-            self.num_inputs*self.mc))
-        self.Hankel_mat2 = np.zeros(self.Hankel_mat.shape)
+        self.Hankel_array = np.zeros(
+            (self.num_Markovs * self.mo, self.num_inputs * self.mc))
+        self.Hankel_array2 = np.zeros(self.Hankel_array.shape)
         #Markovs_flattened = \
         #    self.Markovs.swapaxes(0,1).reshape((num_Markovs, -1))
         for row in range(self.mo):
-            row_start = row*self.num_Markovs
+            row_start = row * self.num_Markovs
             row_end = row_start + self.num_Markovs
             for col in range(self.mc):
-                col_start = col*self.num_inputs
+                col_start = col * self.num_inputs
                 col_end = col_start + self.num_inputs
-                self.Hankel_mat[row_start:row_end, col_start:col_end] = \
-                    self.Markovs[2*(row+col)]
-                self.Hankel_mat2[row_start:row_end, col_start:col_end] = \
-                    self.Markovs[2*(row+col)+1]
+                self.Hankel_array[
+                    row_start:row_end, col_start:col_end] = self.Markovs[
+                        2 * (row + col)]
+                self.Hankel_array2[
+                    row_start:row_end, col_start:col_end] = self.Markovs[
+                        2 * (row + col) + 1]

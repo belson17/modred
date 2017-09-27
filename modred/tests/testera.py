@@ -39,14 +39,14 @@ class testERA(unittest.TestCase):
     def setUp(self):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        self.test_dir = 'ERA_files'
+        self.test_dir = 'files_ERA_DELETE_ME'
         if not os.path.exists(self.test_dir):
             os.mkdir(self.test_dir)
         self.impulse_file_path = join(self.test_dir, 'impulse_input%03d.txt')
 
 
     def tearDown(self):
-        """Deletes all of the matrices created by the tests"""
+        """Deletes all of the arrays created by the tests"""
         rmtree(self.test_dir, ignore_errors=True)
 
 
@@ -62,80 +62,98 @@ class testERA(unittest.TestCase):
         for num_inputs in [1, 3]:
             for num_outputs in [1, 2, 4]:
                 for num_time_steps in [4, 10, 12]:
-                    sample_interval = 2
+                    # Generate data
                     # P=2 format [0, 1, 2, 3, ...]
+                    sample_interval = 2
                     dt_system = np.random.random()
-                    dt_sample = sample_interval*dt_system
-                    outputs = np.random.random((num_time_steps, num_outputs,
-                        num_inputs))
-                    time_steps = make_time_steps(num_time_steps,
-                        sample_interval)
-                    time_values = time_steps*dt_system
+                    dt_sample = sample_interval * dt_system
+                    outputs = np.random.random(
+                        (num_time_steps, num_outputs, num_inputs))
+                    time_steps = make_time_steps(
+                        num_time_steps, sample_interval)
+                    time_values = time_steps * dt_system
+
+                    # Compute using modred
                     my_ERA = era.ERA()
-                    time_steps_computed, outputs_computed = \
-                         era.make_sampled_format(time_values, outputs)
+                    time_steps_computed, outputs_computed =\
+                        era.make_sampled_format(time_values, outputs)
                     #self.assertEqual(dt_system_computed, dt_system)
-                    num_time_steps_true = (num_time_steps - 1)*2
+
+                    # Reference values
+                    num_time_steps_true = (num_time_steps - 1) * 2
                     time_steps_true = make_time_steps(num_time_steps_true, 1)
-                    outputs_true = np.zeros((num_time_steps_true, num_outputs,
-                        num_inputs))
+                    outputs_true = np.zeros(
+                        (num_time_steps_true, num_outputs, num_inputs))
                     outputs_true[::2] = outputs[:-1]
                     outputs_true[1::2] = outputs[1:]
-                    np.testing.assert_allclose(time_steps_computed,
-                        time_steps_true)
-                    np.testing.assert_allclose(outputs_computed, outputs_true)
+
+                    # Compare values
+                    np.testing.assert_equal(
+                        time_steps_computed, time_steps_true)
+                    np.testing.assert_equal(outputs_computed, outputs_true)
 
                     # Test that if there is a wrong time value, get an error
                     time_values[num_time_steps // 2] = -1
-                    self.assertRaises(ValueError, era.make_sampled_format,
-                        time_values, outputs)
+                    self.assertRaises(
+                        ValueError, era.make_sampled_format, time_values,
+                        outputs)
 
 
     #@unittest.skip("testing others")
     def test_assemble_Hankel(self):
-        """ Tests Hankel mats are symmetric given
+        """ Tests Hankel arrays are symmetric given
         ``[CB CAB CA**P CA**(P+1)B ...]``."""
+        rtol = 1e-10
+        atol = 1e-12
         for num_inputs in [1,3]:
             for num_outputs in [1, 2, 4]:
                 for sample_interval in [1]:
                     num_time_steps = 50
                     num_states = 5
-                    A,B,C = util.drss(num_states, num_inputs, num_outputs)
-                    time_steps = make_time_steps(num_time_steps,
-                        sample_interval)
-                    Markovs = util.impulse(A, B, C, time_steps[-1]+1)
+                    A, B, C = util.drss(num_states, num_inputs, num_outputs)
+                    time_steps = make_time_steps(
+                        num_time_steps, sample_interval)
+                    Markovs = util.impulse(A, B, C, time_steps[-1] + 1)
                     Markovs = Markovs[time_steps]
 
                     if sample_interval == 2:
                         time_steps, Markovs = era.make_sampled_format(
                             time_steps, Markovs)
 
-                    myERA = era.ERA(verbosity=0)
-                    myERA._set_Markovs(Markovs)
-                    myERA._assemble_Hankel()
-                    H = myERA.Hankel_mat
-                    Hp = myERA.Hankel_mat2
+                    my_ERA = era.ERA(verbosity=0)
+                    my_ERA._set_Markovs(Markovs)
+                    my_ERA._assemble_Hankel()
+                    H = my_ERA.Hankel_array
+                    Hp = my_ERA.Hankel_array2
 
-                    for row in range(myERA.mc):
-                        for col in range(myERA.mo):
+                    for row in range(my_ERA.mc):
+                        for col in range(my_ERA.mo):
+                            np.testing.assert_equal(
+                                H[row * num_outputs:(row + 1) * num_outputs,
+                                  col * num_inputs:(col + 1) * num_inputs],
+                                H[col * num_outputs:(col + 1) * num_outputs,
+                                  row * num_inputs:(row + 1) * num_inputs])
+                            np.testing.assert_equal(
+                                Hp[row * num_outputs:(row + 1) * num_outputs,
+                                   col * num_inputs:(col + 1) * num_inputs],
+                                Hp[col * num_outputs:(col + 1) * num_outputs,
+                                   row * num_inputs:(row + 1) * num_inputs])
                             np.testing.assert_allclose(
-                                H[row*num_outputs:(row+1)*num_outputs,
-                                    col*num_inputs:(col+1)*num_inputs],
-                                H[col*num_outputs:(col+1)*num_outputs,
-                                    row*num_inputs:(row+1)*num_inputs])
+                                H[row * num_outputs:(row + 1) * num_outputs,
+                                  col * num_inputs:(col + 1) * num_inputs],
+                                C.dot(
+                                    np.linalg.matrix_power(
+                                        A, time_steps[(row + col) * 2]).dot(
+                                            B)),
+                                rtol=rtol, atol=atol)
                             np.testing.assert_allclose(
-                                Hp[row*num_outputs:(row+1)*num_outputs,
-                                    col*num_inputs:(col+1)*num_inputs],
-                                Hp[col*num_outputs:(col+1)*num_outputs,
-                                    row*num_inputs:(row+1)*num_inputs])
-                            np.testing.assert_allclose(
-                                H[row*num_outputs:(row+1)*num_outputs,
-                                    col*num_inputs:(col+1)*num_inputs],
-                                C*(A**time_steps[(row+col)*2])*B)
-                            np.testing.assert_allclose(
-                                Hp[row*num_outputs:(row+1)*num_outputs,
-                                    col*num_inputs:(col+1)*num_inputs],
-                                C*(A**time_steps[(row+col)*2 + 1])*B)
+                                Hp[row * num_outputs:(row + 1) * num_outputs,
+                                   col * num_inputs:(col + 1) * num_inputs],
+                                C.dot(
+                                    np.linalg.matrix_power(
+                                        A, time_steps[(row + col) * 2 + 1]).dot(
+                                            B)),
+                                rtol=rtol, atol=atol)
 
 
     #@unittest.skip('testing others')
@@ -144,9 +162,9 @@ class testERA(unittest.TestCase):
         Test ROM Markov params similar to those given
 
         - generates data
-        - assembles Hankel matrix
+        - assembles Hankel array
         - computes SVD
-        - forms the ROM discrete matrices A, B, and C (D=0)
+        - forms the ROM discrete arrays A, B, and C (D = 0)
         - Tests Markov parameters from ROM are approx. equal to full plant's
         """
         num_time_steps = 40
@@ -155,16 +173,16 @@ class testERA(unittest.TestCase):
         for num_inputs in [1, 3]:
             for num_outputs in [1, 2]:
                 for sample_interval in [1, 2, 4]:
-                    time_steps = make_time_steps(num_time_steps,
-                        sample_interval)
-                    A, B, C = util.drss(num_states_plant, num_inputs,
-                        num_outputs)
-                    myERA = era.ERA(verbosity=0)
-                    Markovs = util.impulse(A, B, C, time_steps[-1]+1)
+                    time_steps = make_time_steps(
+                        num_time_steps, sample_interval)
+                    A, B, C = util.drss(
+                        num_states_plant, num_inputs, num_outputs)
+                    my_ERA = era.ERA(verbosity=0)
+                    Markovs = util.impulse(A, B, C, time_steps[-1] + 1)
                     Markovs = Markovs[time_steps]
 
                     if sample_interval == 2:
-                        time_steps, Markovs = \
+                        time_steps, Markovs =\
                             era.make_sampled_format(time_steps, Markovs)
                     num_time_steps = time_steps.shape[0]
 
@@ -172,15 +190,14 @@ class testERA(unittest.TestCase):
                     B_path_computed = join(self.test_dir, 'B_computed.txt')
                     C_path_computed = join(self.test_dir, 'C_computed.txt')
 
-                    A, B, C = myERA.compute_model(Markovs, num_states_model)
-                    myERA.put_model(A_path_computed, B_path_computed,
-                        C_path_computed)
-                    #sing_vals = myERA.sing_vals[:num_states_model]
+                    A, B, C = my_ERA.compute_model(Markovs, num_states_model)
+                    my_ERA.put_model(
+                        A_path_computed, B_path_computed, C_path_computed)
+                    #sing_vals = my_ERA.sing_vals[:num_states_model]
 
-                    # Flatten vecs into 2D X and Y mats:
+                    # Flatten vecs into 2D X and Y arrays:
                     # [B AB A**PB A**(P+1)B ...]
-                    #direct_vecs_flat = np.mat(
-                    #    direct_vecs.swapaxes(0,1).reshape(
+                    #direct_vecs_flat = direct_vecs.swapaxes(0,1).reshape(
                     #    (num_states_model,-1)))
 
                     # Exact grammians from Lyapunov eqn solve
@@ -208,7 +225,9 @@ class testERA(unittest.TestCase):
                     # Check the ROM Markov params match the full plant's
                     Markovs_model = np.zeros(Markovs.shape)
                     for ti, tv in enumerate(time_steps):
-                        Markovs_model[ti] = C * (A**tv) * B
+                        Markovs_model[ti] = C.dot(
+                            np.linalg.matrix_power(A, tv).dot(
+                                B))
                         #print 'computing ROM Markov param at time step %d'%tv
                     """
                     import matplotlib.pyplot as PLT
@@ -227,12 +246,13 @@ class testERA(unittest.TestCase):
                         PLT.show()
                     """
                     np.testing.assert_allclose(
-                        Markovs_model, Markovs, rtol=0.5, atol=0.5)
-                    np.testing.assert_allclose(
+                        Markovs_model.squeeze(), Markovs.squeeze(),
+                        rtol=0.5, atol=0.5)
+                    np.testing.assert_equal(
                         util.load_array_text(A_path_computed), A)
-                    np.testing.assert_allclose(
+                    np.testing.assert_equal(
                         util.load_array_text(B_path_computed), B)
-                    np.testing.assert_allclose(
+                    np.testing.assert_equal(
                         util.load_array_text(C_path_computed), C)
 
 
