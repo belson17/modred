@@ -12,14 +12,15 @@ out_dir = 'tutorial_ex4_out'
 if not os.path.isdir(out_dir):
     os.makedirs(out_dir)
 
-# Uniform grid and corresponding inner product weights
-num_vecs = 100
+# Define non-uniform grid and corresponding inner product weights
 nx = 80
 ny = 100
 x_grid = 1. - np.cos(np.linspace(0, np.pi, nx))
 y_grid = np.linspace(0, 1., ny) ** 2
 Y, X = np.meshgrid(y_grid, x_grid)
 
+# Create random snapshot data
+num_vecs = 100
 snapshots = [
     mr.VecHandlePickle('%s/vec%d.pkl' % (out_dir, i)) for i in range(num_vecs)]
 if parallel.is_rank_zero():
@@ -27,9 +28,8 @@ if parallel.is_rank_zero():
         snap.put(np.sin(X * i) + np.cos(Y * i))
 parallel.barrier()
 
-weighted_IP = mr.InnerProductTrapz(x_grid, y_grid)
-
 # Calculate DMD modes and save them to pickle files
+weighted_IP = mr.InnerProductTrapz(x_grid, y_grid)
 my_DMD = mr.DMDHandles(weighted_IP)
 my_DMD.compute_decomp(snapshots)
 my_DMD.put_decomp(
