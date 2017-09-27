@@ -61,6 +61,20 @@ def compute_DMD_arrays_snaps_method(
           (biorthogonal) adjoint DMD modes.  Note that this is the same as a
           least-squares projection onto the span of the DMD modes.
 
+        * ``proj_coeffs``: Array of projection coefficients for data vectors
+          expressed as a linear combination of DMD modes.  Columns correspond to
+          vector objects, rows correspond to DMD modes. The projection is onto
+          the span of the DMD modes using the (biorthogonal) adjoint DMD modes.
+          Note that this is the same as a least-squares projection onto the span
+          of the DMD modes.
+
+        * ``adv_proj_coeffs``: Array of projection coefficients for data vectors
+          advanced in time, expressed as a linear combination of DMD modes.
+          Columns correspond to vector objects, rows correspond to DMD
+          modes. The projection is onto the span of the DMD modes using the
+          (biorthogonal) adjoint DMD modes.  Note that this is the same as a
+          least-squares projection onto the span of the DMD modes.
+
         * ``eigvals``: 1D array of eigenvalues of approximating low-order linear
           map (DMD eigenvalues).
 
@@ -92,6 +106,7 @@ def compute_DMD_arrays_snaps_method(
     rows than columns, i.e., when there are more elements in a vector than
     there are vectors. However, it "squares" this array and its singular
     values, making it slightly less accurate than the direct method.
+
     """
     if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
@@ -140,6 +155,8 @@ def compute_DMD_arrays_snaps_method(
     # Compute eigendecomposition of low-order linear map.
     eigvals, R_low_order_eigvecs, L_low_order_eigvecs =\
         util.eig_biorthog(low_order_linear_map, scale_choice='left')
+
+    # Compute build coefficients
     build_coeffs_proj = correlation_array_eigvecs.dot(
         correlation_array_eigvals_sqrt_inv.dot(
             R_low_order_eigvecs))
@@ -147,9 +164,20 @@ def compute_DMD_arrays_snaps_method(
     build_coeffs_adjoint = correlation_array_eigvecs.dot(
         correlation_array_eigvals_sqrt_inv.dot(
             L_low_order_eigvecs))
+
+    # Compute spectral coefficients
     spectral_coeffs = np.abs(L_low_order_eigvecs.conj().T.dot(
         np.diag(correlation_array_eigvals ** 0.5).dot(
             correlation_array_eigvecs[0, :].conj().T)).squeeze())
+
+    # Compute projection coefficients
+    proj_coeffs = L_low_order_eigvecs.conj().T.dot(
+        np.diag(correlation_array_eigvals ** 0.5).dot(
+            correlation_array_eigvecs.conj().T))
+    adv_proj_coeffs = L_low_order_eigvecs.conj().T.dot(
+        np.diag(correlation_array_eigvals ** -0.5).dot(
+            correlation_array_eigvecs.conj().T.dot(
+                cross_correlation_array)))
 
     # For sequential data, user must provide one more vec than columns of
     # build_coeffs.
@@ -180,13 +208,16 @@ def compute_DMD_arrays_snaps_method(
     # Return a namedtuple
     DMD_results = namedtuple(
         'DMD_results', [
-            'exact_modes', 'proj_modes', 'adjoint_modes', 'spectral_coeffs',
+            'exact_modes', 'proj_modes', 'adjoint_modes',
+            'spectral_coeffs', 'proj_coeffs', 'adv_proj_coeffs',
             'eigvals', 'R_low_order_eigvecs', 'L_low_order_eigvecs',
             'correlation_array_eigvals', 'correlation_array_eigvecs',
             'correlation_array', 'cross_correlation_array'])
     return DMD_results(
-        exact_modes=exact_modes, proj_modes=proj_modes,
-        adjoint_modes=adjoint_modes, spectral_coeffs=spectral_coeffs,
+        exact_modes=exact_modes,
+        proj_modes=proj_modes, adjoint_modes=adjoint_modes,
+        spectral_coeffs=spectral_coeffs,
+        proj_coeffs=proj_coeffs, adv_proj_coeffs=adv_proj_coeffs,
         eigvals=eigvals, R_low_order_eigvecs=R_low_order_eigvecs,
         L_low_order_eigvecs=L_low_order_eigvecs,
         correlation_array_eigvals=correlation_array_eigvals,
@@ -242,6 +273,20 @@ def compute_DMD_arrays_direct_method(
         * ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
           as the magnitudes of the projection coefficients of first data vector.
           The projection is onto the span of the DMD modes using the
+          (biorthogonal) adjoint DMD modes.  Note that this is the same as a
+          least-squares projection onto the span of the DMD modes.
+
+        * ``proj_coeffs``: Array of projection coefficients for data vectors
+          expressed as a linear combination of DMD modes.  Columns correspond to
+          vector objects, rows correspond to DMD modes. The projection is onto
+          the span of the DMD modes using the (biorthogonal) adjoint DMD modes.
+          Note that this is the same as a least-squares projection onto the span
+          of the DMD modes.
+
+        * ``adv_proj_coeffs``: Array of projection coefficients for data vectors
+          advanced in time, expressed as a linear combination of DMD modes.
+          Columns correspond to vector objects, rows correspond to DMD
+          modes. The projection is onto the span of the DMD modes using the
           (biorthogonal) adjoint DMD modes.  Note that this is the same as a
           least-squares projection onto the span of the DMD modes.
 
@@ -305,19 +350,20 @@ def compute_DMD_arrays_direct_method(
             correlation_array_eigvecs = correlation_array_eigvecs[
                 :, :max_num_eigvals]
 
+        # Compute correlation arrays.  Note that these include the truncation of
+        # the singular vectors, so they are not equal to the full correlation
+        # arrays.  However, they are useful for computations involving the
+        # singular vectors.
         correlation_array_eigvals = sing_vals ** 2.
         correlation_array_eigvals_sqrt_inv = np.diag(sing_vals ** -1.)
         correlation_array = correlation_array_eigvecs.dot(
             np.diag(correlation_array_eigvals).dot(
                 correlation_array_eigvecs.conj().T))
-        last_col = U.conj().T.dot(vecs_weighted[:, -1])
-        low_order_linear_map = np.concatenate((
-            correlation_array_eigvals_sqrt_inv.dot(
-                correlation_array_eigvecs.conj().T.dot(
-                    correlation_array[:, 1:])),
-            util.atleast_2d_col(last_col)), axis=1).dot(
-                correlation_array_eigvecs.dot(
-                    correlation_array_eigvals_sqrt_inv))
+        cross_correlation_array = np.hstack((
+            correlation_array[:, 1:],
+            util.atleast_2d_col(
+                vecs_weighted[:, :-1].conj().T.dot(vecs_weighted[:, -1]))))
+
     else:
         if vecs.shape != adv_vecs.shape:
             raise ValueError(('vecs and adv_vecs are not the same shape.'))
@@ -332,16 +378,29 @@ def compute_DMD_arrays_direct_method(
             correlation_array_eigvecs = correlation_array_eigvecs[
                 :, :max_num_eigvals]
 
-        correlation_array_eigvals = sing_vals ** 2
+        # Compute correlation arrays.  Note that these include the truncation of
+        # the singular vectors, so they are not equal to the full correlation
+        # arrays.  However, they are useful for computations involving the
+        # singular vectors.
+        correlation_array_eigvals = sing_vals ** 2.
         correlation_array_eigvals_sqrt_inv = np.diag(sing_vals ** -1.)
-        low_order_linear_map = U.conj().T.dot(
-            adv_vecs_weighted.dot(
-                correlation_array_eigvecs.dot(
-                    correlation_array_eigvals_sqrt_inv)))
+        correlation_array = correlation_array_eigvecs.dot(
+            np.diag(correlation_array_eigvals).dot(
+                correlation_array_eigvecs.conj().T))
+        cross_correlation_array = vecs_weighted.conj().T.dot(adv_vecs_weighted)
 
-    # Compute eigendecomposition of low-order linear map.
+    # Compute low-order lienar map
+    low_order_linear_map = correlation_array_eigvals_sqrt_inv.dot(
+        correlation_array_eigvecs.conj().T.dot(
+            cross_correlation_array.dot(
+                correlation_array_eigvecs.dot(
+                    correlation_array_eigvals_sqrt_inv))))
+
+    # Compute eigendecomposition of low-order linear map
     eigvals, R_low_order_eigvecs, L_low_order_eigvecs =\
         util.eig_biorthog(low_order_linear_map, scale_choice='left')
+
+    # Compute build coefficients
     build_coeffs_proj = correlation_array_eigvecs.dot(
         correlation_array_eigvals_sqrt_inv.dot(
             R_low_order_eigvecs))
@@ -349,9 +408,20 @@ def compute_DMD_arrays_direct_method(
     build_coeffs_adjoint = correlation_array_eigvecs.dot(
         correlation_array_eigvals_sqrt_inv.dot(
             L_low_order_eigvecs))
+
+    # Compute spectral coefficients
     spectral_coeffs = np.abs(L_low_order_eigvecs.conj().T.dot(
         np.diag(correlation_array_eigvals ** 0.5).dot(
             correlation_array_eigvecs[0, :].conj().T))).squeeze()
+
+    # Compute projection coefficients
+    proj_coeffs = L_low_order_eigvecs.conj().T.dot(
+        np.diag(correlation_array_eigvals ** 0.5).dot(
+            correlation_array_eigvecs.conj().T))
+    adv_proj_coeffs = L_low_order_eigvecs.conj().T.dot(
+        np.diag(correlation_array_eigvals ** -0.5).dot(
+            correlation_array_eigvecs.conj().T.dot(
+                cross_correlation_array)))
 
     # For sequential data, user must provide one more vec than columns of
     # build_coeffs.
@@ -381,12 +451,15 @@ def compute_DMD_arrays_direct_method(
     # Return a namedtuple
     DMD_results = namedtuple(
         'DMD_results', [
-            'exact_modes', 'proj_modes', 'adjoint_modes', 'spectral_coeffs',
+            'exact_modes', 'proj_modes', 'adjoint_modes',
+            'spectral_coeffs', 'proj_coeffs', 'adv_proj_coeffs',
             'eigvals', 'R_low_order_eigvecs', 'L_low_order_eigvecs',
             'correlation_array_eigvals', 'correlation_array_eigvecs'])
     return DMD_results(
-        exact_modes=exact_modes, proj_modes=proj_modes,
-        adjoint_modes=adjoint_modes, spectral_coeffs=spectral_coeffs,
+        exact_modes=exact_modes,
+        proj_modes=proj_modes, adjoint_modes=adjoint_modes,
+        spectral_coeffs=spectral_coeffs,
+        proj_coeffs=proj_coeffs, adv_proj_coeffs=adv_proj_coeffs,
         eigvals=eigvals, R_low_order_eigvecs=R_low_order_eigvecs,
         L_low_order_eigvecs=L_low_order_eigvecs,
         correlation_array_eigvals=correlation_array_eigvals,
@@ -988,7 +1061,7 @@ class DMDHandles(object):
         # ie first, last, or mean?
         self.spectral_coeffs = np.abs(
             self.L_low_order_eigvecs.conj().T.dot(
-                np.diag(np.sqrt(self.correlation_array_eigvals)).dot(
+                np.diag(self.correlation_array_eigvals ** 0.5).dot(
                     self.correlation_array_eigvecs[0, :]).conj().T)).squeeze()
         return self.spectral_coeffs
 
@@ -1012,7 +1085,7 @@ class DMDHandles(object):
             DMD modes.
         """
         self.proj_coeffs = self.L_low_order_eigvecs.conj().T.dot(
-            np.diag(np.sqrt(self.correlation_array_eigvals)).dot(
+            np.diag(self.correlation_array_eigvals ** 0.5).dot(
                 self.correlation_array_eigvecs.conj().T))
         self.adv_proj_coeffs = self.L_low_order_eigvecs.conj().T.dot(
             np.diag(self.correlation_array_eigvals ** -0.5).dot(
@@ -1070,6 +1143,20 @@ def compute_TLSqrDMD_arrays_snaps_method(
           as the magnitudes of the projection coefficients of first (de-noised)
           data vector.  The projection is onto the span of the DMD modes using
           the (biorthogonal) adjoint DMD modes.  Note that this is the same as a
+          least-squares projection onto the span of the DMD modes.
+
+        * ``proj_coeffs``: Array of projection coefficients for (de-noised) data
+          vectors expressed as a linear combination of DMD modes.  Columns
+          correspond to vector objects, rows correspond to DMD modes. The
+          projection is onto the span of the DMD modes using the (biorthogonal)
+          adjoint DMD modes.  Note that this is the same as a least-squares
+          projection onto the span of the DMD modes.
+
+        * ``adv_proj_coeffs``: Array of projection coefficients for (de-noised)
+          data vectors advanced in time, expressed as a linear combination of
+          DMD modes.  Columns correspond to vector objects, rows correspond to
+          DMD modes. The projection is onto the span of the DMD modes using the
+          (biorthogonal) adjoint DMD modes.  Note that this is the same as a
           least-squares projection onto the span of the DMD modes.
 
         * ``eigvals``: 1D array of eigenvalues of approximating low-order linear
@@ -1200,6 +1287,8 @@ def compute_TLSqrDMD_arrays_snaps_method(
     # Compute eigendecomposition of low-order linear map.
     eigvals, R_low_order_eigvecs, L_low_order_eigvecs = util.eig_biorthog(
         low_order_linear_map, scale_choice='left')
+
+    # Compute build coefficients
     build_coeffs_proj = sum_correlation_array_eigvecs.dot(
         sum_correlation_array_eigvecs.conj().T.dot(
             proj_correlation_array_eigvecs.dot(
@@ -1211,10 +1300,26 @@ def compute_TLSqrDMD_arrays_snaps_method(
             proj_correlation_array_eigvecs.dot(
                 np.diag(proj_correlation_array_eigvals ** -0.5).dot(
                     L_low_order_eigvecs))))
+
+    # Compute spectral coefficients
     spectral_coeffs = np.abs(
         L_low_order_eigvecs.conj().T.dot(
-            np.diag(np.sqrt(proj_correlation_array_eigvals)).dot(
+            np.diag(proj_correlation_array_eigvals ** 0.5).dot(
                 proj_correlation_array_eigvecs[0, :].T))).squeeze()
+
+    # Compute projection coefficients
+    proj_coeffs = L_low_order_eigvecs.conj().T.dot(
+        np.diag(proj_correlation_array_eigvals ** 0.5).dot(
+            proj_correlation_array_eigvecs.conj().T))
+    adv_proj_coeffs = L_low_order_eigvecs.conj().T.dot(
+        np.diag(proj_correlation_array_eigvals ** -0.5).dot(
+            proj_correlation_array_eigvecs.conj().T.dot(
+                sum_correlation_array_eigvecs.dot(
+                    sum_correlation_array_eigvecs.conj().T.dot(
+                        cross_correlation_array.dot(
+                            sum_correlation_array_eigvecs.dot(
+                                sum_correlation_array_eigvecs.conj().T
+                            )))))))
 
     # For sequential data, user must provide one more vec than columns of
     # build_coeffs.
@@ -1244,15 +1349,18 @@ def compute_TLSqrDMD_arrays_snaps_method(
     # Return a namedtuple
     TLSqrDMD_results = namedtuple(
         'TLSqrDMD_results', [
-            'exact_modes', 'proj_modes', 'adjoint_modes', 'spectral_coeffs',
+            'exact_modes', 'proj_modes', 'adjoint_modes',
+            'spectral_coeffs', 'proj_coeffs', 'adv_proj_coeffs',
             'eigvals', 'R_low_order_eigvecs', 'L_low_order_eigvecs',
             'sum_correlation_array_eigvals', 'sum_correlation_array_eigvecs',
             'proj_correlation_array_eigvals', 'proj_correlation_array_eigvecs',
             'correlation_array', 'adv_correlation_array',
             'cross_correlation_array'])
     return TLSqrDMD_results(
-        exact_modes=exact_modes, proj_modes=proj_modes,
-        adjoint_modes=adjoint_modes, spectral_coeffs=spectral_coeffs,
+        exact_modes=exact_modes,
+        proj_modes=proj_modes, adjoint_modes=adjoint_modes,
+        spectral_coeffs=spectral_coeffs,
+        proj_coeffs=proj_coeffs, adv_proj_coeffs=adv_proj_coeffs,
         eigvals=eigvals, R_low_order_eigvecs=R_low_order_eigvecs,
         L_low_order_eigvecs=L_low_order_eigvecs,
         sum_correlation_array_eigvals=sum_correlation_array_eigvals,
@@ -1313,6 +1421,20 @@ def compute_TLSqrDMD_arrays_direct_method(
           as the magnitudes of the projection coefficients of first (de-noised)
           data vector.  The projection is onto the span of the DMD modes using
           the (biorthogonal) adjoint DMD modes.  Note that this is the same as a
+          least-squares projection onto the span of the DMD modes.
+
+        * ``proj_coeffs``: Array of projection coefficients for (de-noised) data
+          vectors expressed as a linear combination of DMD modes.  Columns
+          correspond to vector objects, rows correspond to DMD modes. The
+          projection is onto the span of the DMD modes using the (biorthogonal)
+          adjoint DMD modes.  Note that this is the same as a least-squares
+          projection onto the span of the DMD modes.
+
+        * ``adv_proj_coeffs``: Array of projection coefficients for (de-noised)
+          data vectors advanced in time, expressed as a linear combination of
+          DMD modes.  Columns correspond to vector objects, rows correspond to
+          DMD modes. The projection is onto the span of the DMD modes using the
+          (biorthogonal) adjoint DMD modes.  Note that this is the same as a
           least-squares projection onto the span of the DMD modes.
 
         * ``eigvals``: 1D array of eigenvalues of approximating low-order linear
@@ -1435,14 +1557,17 @@ def compute_TLSqrDMD_arrays_direct_method(
     # Return a namedtuple
     TLSqrDMD_results = namedtuple(
         'TLSqrDMD_results', [
-            'exact_modes', 'proj_modes', 'adjoint_modes', 'spectral_coeffs',
+            'exact_modes', 'proj_modes', 'adjoint_modes',
+            'spectral_coeffs', 'proj_coeffs', 'adv_proj_coeffs',
             'eigvals', 'R_low_order_eigvecs', 'L_low_order_eigvecs',
             'sum_correlation_array_eigvals', 'sum_correlation_array_eigvecs',
             'proj_correlation_array_eigvals', 'proj_correlation_array_eigvecs'])
     return TLSqrDMD_results(
-        exact_modes=DMD_res.exact_modes, proj_modes=DMD_res.proj_modes,
-        adjoint_modes=DMD_res.adjoint_modes,
+        exact_modes=DMD_res.exact_modes,
+        proj_modes=DMD_res.proj_modes, adjoint_modes=DMD_res.adjoint_modes,
         spectral_coeffs=DMD_res.spectral_coeffs,
+        proj_coeffs=DMD_res.proj_coeffs,
+        adv_proj_coeffs=DMD_res.adv_proj_coeffs,
         eigvals=DMD_res.eigvals,
         R_low_order_eigvecs=DMD_res.R_low_order_eigvecs,
         L_low_order_eigvecs=DMD_res.L_low_order_eigvecs,

@@ -94,7 +94,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
                                 inner_product_weights=weights,
                                 max_num_eigvals=max_num_eigvals)
 
-                            # For method of snapshots, test correlation arrays
+                            # For method of snapshots, test correlation array
                             # values by simply recomputing them.
                             np.testing.assert_allclose(
                                 IP(vecs_vals, vecs_vals),
@@ -194,6 +194,17 @@ class TestDMDArraysFunctions(unittest.TestCase):
                                 DMD_res.adjoint_modes,
                                 vecs_vals[:, 0])).squeeze(),
                             DMD_res.spectral_coeffs,
+                            rtol=rtol, atol=atol)
+
+                        # Test projection coefficients against an explicit
+                        # projection using the adjoint DMD modes.
+                        np.testing.assert_allclose(
+                            IP(DMD_res.adjoint_modes, vecs_vals),
+                            DMD_res.proj_coeffs,
+                            rtol=rtol, atol=atol)
+                        np.testing.assert_allclose(
+                            IP(DMD_res.adjoint_modes, adv_vecs_vals),
+                            DMD_res.adv_proj_coeffs,
                             rtol=rtol, atol=atol)
 
                         # Test that use of mode indices argument returns correct
@@ -989,6 +1000,17 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                                 DMD_res.adjoint_modes,
                                 proj_vecs_vals[:, 0])).squeeze(),
                             DMD_res.spectral_coeffs,
+                            rtol=rtol, atol=atol)
+
+                        # Test projection coefficients against an explicit
+                        # projection using the adjoint DMD modes.
+                        np.testing.assert_allclose(
+                            IP(DMD_res.adjoint_modes, proj_vecs_vals),
+                            DMD_res.proj_coeffs,
+                            rtol=rtol, atol=atol)
+                        np.testing.assert_allclose(
+                            IP(DMD_res.adjoint_modes, proj_adv_vecs_vals),
+                            DMD_res.adv_proj_coeffs,
                             rtol=rtol, atol=atol)
 
                         # Test that use of mode indices argument returns correct
