@@ -14,7 +14,7 @@ from ._version import __version__
 
 from .pod import (
     PODHandles,
-    compute_POD_matrices_direct_method, compute_POD_matrices_snaps_method
+    compute_POD_arrays_direct_method, compute_POD_arrays_snaps_method
 )
 
 from .dmd import (
