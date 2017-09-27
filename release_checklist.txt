@@ -1,0 +1,29 @@
+Make sure to do these things before releasing new versions:
+- Run tests in serial
+    - Python 2
+    - Python 3
+- Run tests in parallel
+    - Python 2
+    - Python 3
+- Run all examples
+    - Python 2
+    - Python 3
+- Run benchmark
+    - Python 2
+    - Python 3
+- Update release notes
+- Change version number
+
+Then package the code using
+    python setup.py sdist
+
+Upload the distribution using
+    twine upload dist/*
+
+Build the documentation on readthedocs.org
+
+If everything looks ok with the release, create a tag using
+    git tag -a vX.X.X
+
+Then push the tags to the main repo using
+    git push --tags

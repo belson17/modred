@@ -7,9 +7,6 @@ include an "algorithms" section like matlab.
 
 Allow for larger col chunks if extra memory.
 
-Remove requirements for having arguments be lists. This is not
-pythonic.
-
 Generalize the parallelization so that users can have parallel Vector
 classes.  That is, modred would work in units of larger groups of
 processors/nodes, MPI communicators, and the lower level
@@ -23,12 +20,6 @@ paradigm to communicators, and mpi4py already has the hard stuff
 implemented.
 
 #### Less important ####
-
-Make the formatting at line breaks better, do not break at '.'s. Talk
-to Clancy about possible solutions to our many line breaks.  Find a
-better, more natural, way to deal with line continuation/breaks. As it
-is, the code is chopped to bits and hard to read.  It's completely
-imposed and unnatural currently.
 
 Make a style guide for future developers.
 
