@@ -190,21 +190,21 @@ class TestDMDArraysFunctions(unittest.TestCase):
                         # Test spectral coefficients against an explicit
                         # projection using the adjoint DMD modes.
                         np.testing.assert_allclose(
+                            DMD_res.spectral_coeffs,
                             np.abs(IP(
                                 DMD_res.adjoint_modes,
                                 vecs_vals[:, 0])).squeeze(),
-                            DMD_res.spectral_coeffs,
                             rtol=rtol, atol=atol)
 
                         # Test projection coefficients against an explicit
                         # projection using the adjoint DMD modes.
                         np.testing.assert_allclose(
-                            IP(DMD_res.adjoint_modes, vecs_vals),
                             DMD_res.proj_coeffs,
+                            IP(DMD_res.adjoint_modes, vecs_vals),
                             rtol=rtol, atol=atol)
                         np.testing.assert_allclose(
-                            IP(DMD_res.adjoint_modes, adv_vecs_vals),
                             DMD_res.adv_proj_coeffs,
+                            IP(DMD_res.adjoint_modes, adv_vecs_vals),
                             rtol=rtol, atol=atol)
 
                         # Test that use of mode indices argument returns correct
@@ -996,21 +996,21 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                         # Test spectral coefficients against an explicit
                         # projection using the adjoint DMD modes.
                         np.testing.assert_allclose(
+                            DMD_res.spectral_coeffs,
                             np.abs(IP(
                                 DMD_res.adjoint_modes,
                                 proj_vecs_vals[:, 0])).squeeze(),
-                            DMD_res.spectral_coeffs,
                             rtol=rtol, atol=atol)
 
                         # Test projection coefficients against an explicit
                         # projection using the adjoint DMD modes.
                         np.testing.assert_allclose(
-                            IP(DMD_res.adjoint_modes, proj_vecs_vals),
                             DMD_res.proj_coeffs,
+                            IP(DMD_res.adjoint_modes, proj_vecs_vals),
                             rtol=rtol, atol=atol)
                         np.testing.assert_allclose(
-                            IP(DMD_res.adjoint_modes, proj_adv_vecs_vals),
                             DMD_res.adv_proj_coeffs,
+                            IP(DMD_res.adjoint_modes, proj_adv_vecs_vals),
                             rtol=rtol, atol=atol)
 
                         # Test that use of mode indices argument returns correct

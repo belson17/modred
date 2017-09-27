@@ -49,17 +49,20 @@ def compute_DMD_arrays_snaps_method(
         ``res``: Results of DMD computation, stored in a namedtuple with
         the following attributes:
 
-        * ``exact_modes``: Array whose columns are exact DMD modes.
-
-        * ``proj_modes``: Array whose columns are projected DMD modes.
-
-        * ``adjoint_modes``: Array whose columns are adjoint DMD modes.
+        * ``eigvals``: 1D array of eigenvalues of approximating low-order linear
+          map (DMD eigenvalues).
 
         * ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
           as the magnitudes of the projection coefficients of first data vector.
           The projection is onto the span of the DMD modes using the
           (biorthogonal) adjoint DMD modes.  Note that this is the same as a
           least-squares projection onto the span of the DMD modes.
+
+        * ``exact_modes``: Array whose columns are exact DMD modes.
+
+        * ``proj_modes``: Array whose columns are projected DMD modes.
+
+        * ``adjoint_modes``: Array whose columns are adjoint DMD modes.
 
         * ``proj_coeffs``: Array of projection coefficients for data vectors
           expressed as a linear combination of DMD modes.  Columns correspond to
@@ -74,9 +77,6 @@ def compute_DMD_arrays_snaps_method(
           modes. The projection is onto the span of the DMD modes using the
           (biorthogonal) adjoint DMD modes.  Note that this is the same as a
           least-squares projection onto the span of the DMD modes.
-
-        * ``eigvals``: 1D array of eigenvalues of approximating low-order linear
-          map (DMD eigenvalues).
 
         * ``R_low_order_eigvecs``: Array of right eigenvectors of approximating
           low-order linear map.
@@ -208,17 +208,18 @@ def compute_DMD_arrays_snaps_method(
     # Return a namedtuple
     DMD_results = namedtuple(
         'DMD_results', [
+            'eigvals', 'spectral_coeffs',
             'exact_modes', 'proj_modes', 'adjoint_modes',
-            'spectral_coeffs', 'proj_coeffs', 'adv_proj_coeffs',
-            'eigvals', 'R_low_order_eigvecs', 'L_low_order_eigvecs',
+            'proj_coeffs', 'adv_proj_coeffs',
+            'R_low_order_eigvecs', 'L_low_order_eigvecs',
             'correlation_array_eigvals', 'correlation_array_eigvecs',
             'correlation_array', 'cross_correlation_array'])
     return DMD_results(
+        eigvals=eigvals, spectral_coeffs=spectral_coeffs,
         exact_modes=exact_modes,
         proj_modes=proj_modes, adjoint_modes=adjoint_modes,
-        spectral_coeffs=spectral_coeffs,
         proj_coeffs=proj_coeffs, adv_proj_coeffs=adv_proj_coeffs,
-        eigvals=eigvals, R_low_order_eigvecs=R_low_order_eigvecs,
+        R_low_order_eigvecs=R_low_order_eigvecs,
         L_low_order_eigvecs=L_low_order_eigvecs,
         correlation_array_eigvals=correlation_array_eigvals,
         correlation_array_eigvecs=correlation_array_eigvecs,
@@ -264,17 +265,20 @@ def compute_DMD_arrays_direct_method(
         ``res``: Results of DMD computation, stored in a namedtuple with
         the following attributes:
 
-        * ``exact_modes``: Array whose columns are exact DMD modes.
-
-        * ``proj_modes``: Array whose columns are projected DMD modes.
-
-        * ``adjoint_modes``: Array whose columns are adjoint DMD modes.
+        * ``eigvals``: 1D array of eigenvalues of approximating low-order linear
+          map (DMD eigenvalues).
 
         * ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
           as the magnitudes of the projection coefficients of first data vector.
           The projection is onto the span of the DMD modes using the
           (biorthogonal) adjoint DMD modes.  Note that this is the same as a
           least-squares projection onto the span of the DMD modes.
+
+        * ``exact_modes``: Array whose columns are exact DMD modes.
+
+        * ``proj_modes``: Array whose columns are projected DMD modes.
+
+        * ``adjoint_modes``: Array whose columns are adjoint DMD modes.
 
         * ``proj_coeffs``: Array of projection coefficients for data vectors
           expressed as a linear combination of DMD modes.  Columns correspond to
@@ -289,9 +293,6 @@ def compute_DMD_arrays_direct_method(
           modes. The projection is onto the span of the DMD modes using the
           (biorthogonal) adjoint DMD modes.  Note that this is the same as a
           least-squares projection onto the span of the DMD modes.
-
-        * ``eigvals``: 1D array of eigenvalues of approximating low-order linear
-          map (DMD eigenvalues).
 
         * ``R_low_order_eigvecs``: Array of right eigenvectors of approximating
           low-order linear map.
@@ -1133,17 +1134,21 @@ def compute_TLSqrDMD_arrays_snaps_method(
         ``res``: Results of DMD computation, stored in a namedtuple with
         the following attributes:
 
-        * ``exact_modes``: Array whose columns are exact DMD modes.
+        * ``eigvals``: 1D array of eigenvalues of approximating low-order linear
+          map (DMD eigenvalues).
 
-        * ``proj_modes``: Array whose columns are projected DMD modes.
-
-        * ``adjoint_modes``: Array whose columns are adjoint DMD modes.
 
         * ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
           as the magnitudes of the projection coefficients of first (de-noised)
           data vector.  The projection is onto the span of the DMD modes using
           the (biorthogonal) adjoint DMD modes.  Note that this is the same as a
           least-squares projection onto the span of the DMD modes.
+
+        * ``exact_modes``: Array whose columns are exact DMD modes.
+
+        * ``proj_modes``: Array whose columns are projected DMD modes.
+
+        * ``adjoint_modes``: Array whose columns are adjoint DMD modes.
 
         * ``proj_coeffs``: Array of projection coefficients for (de-noised) data
           vectors expressed as a linear combination of DMD modes.  Columns
@@ -1158,9 +1163,6 @@ def compute_TLSqrDMD_arrays_snaps_method(
           DMD modes. The projection is onto the span of the DMD modes using the
           (biorthogonal) adjoint DMD modes.  Note that this is the same as a
           least-squares projection onto the span of the DMD modes.
-
-        * ``eigvals``: 1D array of eigenvalues of approximating low-order linear
-          map (DMD eigenvalues).
 
         * ``R_low_order_eigvecs``: Array of right eigenvectors of approximating
           low-order linear map.
@@ -1349,19 +1351,20 @@ def compute_TLSqrDMD_arrays_snaps_method(
     # Return a namedtuple
     TLSqrDMD_results = namedtuple(
         'TLSqrDMD_results', [
+            'eigvals','spectral_coeffs',
             'exact_modes', 'proj_modes', 'adjoint_modes',
-            'spectral_coeffs', 'proj_coeffs', 'adv_proj_coeffs',
-            'eigvals', 'R_low_order_eigvecs', 'L_low_order_eigvecs',
+            'proj_coeffs', 'adv_proj_coeffs',
+            'R_low_order_eigvecs', 'L_low_order_eigvecs',
             'sum_correlation_array_eigvals', 'sum_correlation_array_eigvecs',
             'proj_correlation_array_eigvals', 'proj_correlation_array_eigvecs',
             'correlation_array', 'adv_correlation_array',
             'cross_correlation_array'])
     return TLSqrDMD_results(
+        eigvals=eigvals, spectral_coeffs=spectral_coeffs,
         exact_modes=exact_modes,
         proj_modes=proj_modes, adjoint_modes=adjoint_modes,
-        spectral_coeffs=spectral_coeffs,
         proj_coeffs=proj_coeffs, adv_proj_coeffs=adv_proj_coeffs,
-        eigvals=eigvals, R_low_order_eigvecs=R_low_order_eigvecs,
+        R_low_order_eigvecs=R_low_order_eigvecs,
         L_low_order_eigvecs=L_low_order_eigvecs,
         sum_correlation_array_eigvals=sum_correlation_array_eigvals,
         sum_correlation_array_eigvecs=sum_correlation_array_eigvecs,
@@ -1411,17 +1414,20 @@ def compute_TLSqrDMD_arrays_direct_method(
         ``res``: Results of DMD computation, stored in a namedtuple with
         the following attributes:
 
-        * ``exact_modes``: Array whose columns are exact DMD modes.
-
-        * ``proj_modes``: Array whose columns are projected DMD modes.
-
-        * ``adjoint_modes``: Array whose columns are adjoint DMD modes.
+        * ``eigvals``: 1D array of eigenvalues of approximating low-order linear
+          map (DMD eigenvalues).
 
         * ``spectral_coeffs``: 1D array of DMD spectral coefficients, calculated
           as the magnitudes of the projection coefficients of first (de-noised)
           data vector.  The projection is onto the span of the DMD modes using
           the (biorthogonal) adjoint DMD modes.  Note that this is the same as a
           least-squares projection onto the span of the DMD modes.
+
+        * ``exact_modes``: Array whose columns are exact DMD modes.
+
+        * ``proj_modes``: Array whose columns are projected DMD modes.
+
+        * ``adjoint_modes``: Array whose columns are adjoint DMD modes.
 
         * ``proj_coeffs``: Array of projection coefficients for (de-noised) data
           vectors expressed as a linear combination of DMD modes.  Columns
@@ -1436,9 +1442,6 @@ def compute_TLSqrDMD_arrays_direct_method(
           DMD modes. The projection is onto the span of the DMD modes using the
           (biorthogonal) adjoint DMD modes.  Note that this is the same as a
           least-squares projection onto the span of the DMD modes.
-
-        * ``eigvals``: 1D array of eigenvalues of approximating low-order linear
-          map (DMD eigenvalues).
 
         * ``R_low_order_eigvecs``: Array of right eigenvectors of approximating
           low-order linear map.
