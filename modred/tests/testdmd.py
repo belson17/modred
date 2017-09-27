@@ -31,11 +31,11 @@ class TestDMDArraysFunctions(unittest.TestCase):
         atol = 1e-12
 
         # Generate weights to test different inner products.
-        ws = np.identity(self.num_states)
-        ws[0, 0] = 2.
-        ws[2, 1] = 0.3
-        ws[1, 2] = 0.3
-        weights_list = [None, np.random.random(self.num_states), ws]
+        weights_1D = np.random.random(self.num_states)
+        weights_2D = np.identity(self.num_states, dtype=np.complex)
+        weights_2D[0, 0] = 2.
+        weights_2D[2, 1] = 0.3j
+        weights_2D[1, 2] = weights_2D[2, 1].conj()
 
         # Generate random snapshot data
         vecs_array = (
@@ -59,7 +59,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
             for method in ['snaps', 'direct']:
 
                 # Consider different inner product weights
-                for weights in weights_list:
+                for weights in [None, weights_1D, weights_2D]:
                     IP = VectorSpaceArrays(
                         weights=weights).compute_inner_product_array
 

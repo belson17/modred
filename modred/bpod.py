@@ -42,7 +42,7 @@ def compute_BPOD_arrays(
         modes to compute.  Examples are ``range(10)`` or ``[3, 0, 6, 8]``.  If
         no mode indices are specified, then all modes will be computed.
 
-        ``inner_product_weights``: 1D array of inner product weights.
+        ``inner_product_weights``: 1D or 2D array of inner product weights.
         Corresponds to :math:`W` in inner product :math:`v_1^* W v_2`.
 
         ``atol``: Level below which Hankel singular values are truncated.

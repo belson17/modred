@@ -75,13 +75,14 @@ class TestBPODArrays(unittest.TestCase):
         # weights close to one, to avoid overly weighting certain states over
         # others.  This can dramatically affect the rate at which the tests
         # pass.
-        ws = np.identity(self.num_states)
-        ws[0, 0] = 1.01
-        ws[2, 1] = 0.02
-        ws[1, 2] = 0.02
-        weights_list = [None, 0.02 * np.random.random(self.num_states) + 1., ws]
-        weights_arrays = [
-            np.identity(self.num_states), np.diag(weights_list[1]), ws]
+        weights_1D = np.random.random(self.num_states)
+        weights_2D = np.identity(self.num_states, dtype=np.complex)
+        weights_2D[0, 0] = 2.
+        weights_2D[2, 1] = 0.3j
+        weights_2D[1, 2] = weights_2D[2, 1].conj()
+        weights_list = [None, weights_1D, weights_2D]
+        weights_array_list = [
+            np.identity(self.num_states), np.diag(weights_1D), weights_2D]
 
         # Check different system sizes.  Make sure to test a single input/output
         # in addition to multiple inputs/outputs.  Also allow for the number of
@@ -100,7 +101,8 @@ class TestBPODArrays(unittest.TestCase):
                     A, B, self.num_steps)
 
                 # Loop through different inner product weights
-                for weights, weights_array in zip(weights_list, weights_arrays):
+                for weights, weights_array in zip(
+                    weights_list, weights_array_list):
 
                     # Define inner product based on weights
                     IP = VectorSpaceArrays(
