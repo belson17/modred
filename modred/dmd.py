@@ -401,10 +401,10 @@ class DMDHandles(object):
         objects.
 
     Kwargs:
-        ``put_array``: Function to put a array out of modred, e.g., write it to
+        ``put_array``: Function to put an array out of modred, e.g., write it to
         file.
 
-        ``get_array``: Function to get a array into modred, e.g., load it from
+        ``get_array``: Function to get an array into modred, e.g., load it from
         file.
 
         ``max_vecs_per_node``: Maximum number of vectors that can be stored in
@@ -1461,10 +1461,10 @@ class TLSqrDMDHandles(DMDHandles):
         objects.
 
     Kwargs:
-        ``put_array``: Function to put a array out of modred, e.g., write it to
+        ``put_array``: Function to put an array out of modred, e.g., write it to
         file.
 
-      	``get_array``: Function to get a array into modred, e.g., load it from
+      	``get_array``: Function to get an array into modred, e.g., load it from
         file.
 
         ``max_vecs_per_node``: Maximum number of vectors that can be stored in

@@ -12,7 +12,7 @@ from . import parallel
 
 def compute_POD_arrays_snaps_method(
     vecs, mode_indices=None, inner_product_weights=None, atol=1e-13, rtol=None):
-    """Computes POD modes using data stored in a array, using the method of
+    """Computes POD modes using data stored in an array, using the method of
     snapshots.
 
     Args:
@@ -92,7 +92,7 @@ def compute_POD_arrays_snaps_method(
 
 def compute_POD_arrays_direct_method(
     vecs, mode_indices=None, inner_product_weights=None, atol=1e-13, rtol=None):
-    """Computes POD modes using data stored in a array, using direct method.
+    """Computes POD modes using data stored in an array, using direct method.
 
     Args:
         ``vecs``: Array whose columns are data vectors (:math:`X`).
@@ -192,10 +192,10 @@ class PODHandles(object):
         objects.
 
     Kwargs:
-        ``put_array``: Function to put a array out of modred, e.g., write it to
+        ``put_array``: Function to put an array out of modred, e.g., write it to
         file.
 
-      	``get_array``: Function to get a array into modred, e.g., load it from
+      	``get_array``: Function to get an array into modred, e.g., load it from
         file.
 
         ``max_vecs_per_node``: Maximum number of vectors that can be stored in
