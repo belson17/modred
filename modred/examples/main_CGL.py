@@ -56,11 +56,11 @@ inv_M = np.linalg.inv(M)
 M_sqrt = np.diag(weights ** 0.5)
 inv_M_sqrt = np.diag(weights ** -0.5)
 
-# LTI system matrices for direct and adjoint ("_adj") systems
+# LTI system arrays for direct and adjoint ("_adj") systems
 mu = (mu_0 - c_u ** 2) + mu_2 * x ** 2 / 2.
 A = -nu * Ds[0] + gamma * Ds[1] + np.diag(mu)
 
-# Compute optimal disturbance and use it as B matrix
+# Compute optimal disturbance and use it as B array
 A_discrete = spla.expm(A * dt)
 exp_array = np.identity(nx, dtype=complex)
 max_sing_val = 0

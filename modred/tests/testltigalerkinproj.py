@@ -130,7 +130,7 @@ class TestLTIGalerkinProjectionArrays(unittest.TestCase):
 
     #@unittest.skip('Testing something else')
     def test_reduce_A(self):
-        """Reduction of A matrix for Matrix, LookUp operators and in_memory."""
+        """Reduction of A array for Array, LookUp operators and in_memory."""
         A_returned = self.LTI_proj.reduce_A(self.A_on_basis_vecs)
         np.testing.assert_equal(A_returned, self.A_true)
 
@@ -144,7 +144,7 @@ class TestLTIGalerkinProjectionArrays(unittest.TestCase):
 
     #@unittest.skip('Testing something else')
     def test_reduce_B(self):
-        """Given modes, test reduced B matrix"""
+        """Given modes, test reduced B array"""
         B_returned = self.LTI_proj.reduce_B(self.B_on_standard_basis_array)
         np.testing.assert_equal(B_returned, self.B_true)
 
@@ -157,7 +157,7 @@ class TestLTIGalerkinProjectionArrays(unittest.TestCase):
 
     #@unittest.skip('Testing something else')
     def test_reduce_C(self):
-        """Test that, given modes, can find correct C matrix"""
+        """Test that, given modes, can find correct C array"""
         C_returned = self.LTI_proj.reduce_C(self.C_on_basis_vecs)
         np.testing.assert_equal(C_returned, self.C_true)
 
@@ -183,7 +183,7 @@ class TestLTIGalerkinProjectionArrays(unittest.TestCase):
 #@unittest.skip('Testing something else.')
 #@unittest.skipIf(parallel.is_distributed(), 'Only test in serial')
 class TestLTIGalerkinProjectionHandles(unittest.TestCase):
-    """Tests that can find the correct A, B, and C matrices from modes."""
+    """Tests that can find the correct A, B, and C arrays from modes."""
     def setUp(self):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
@@ -337,7 +337,7 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
 
     #@unittest.skip('Testing something else')
     def test_reduce_A(self):
-        """Reduction of A matrix for Matrix, LookUp operators and in_memory."""
+        """Reduction of A array for Array, LookUp operators and in_memory."""
         A_returned = self.LTI_proj.reduce_A(self.A_on_basis_vec_handles)
         np.testing.assert_allclose(A_returned, self.A_true)
 
@@ -352,7 +352,7 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
 
     #@unittest.skip('Testing something else')
     def test_reduce_B(self):
-        """Given modes, test reduced B matrix, orthogonal and non-orthogonal."""
+        """Given modes, test reduced B array, orthogonal and non-orthogonal."""
         B_returned = self.LTI_proj.reduce_B(self.B_on_standard_basis_handles)
         np.testing.assert_allclose(B_returned, self.B_true)
 
@@ -366,7 +366,7 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
 
     #@unittest.skip('Testing something else')
     def test_reduce_C(self):
-        """Test that, given modes, can find correct C matrix"""
+        """Test that, given modes, can find correct C array"""
         C_returned = self.LTI_proj.reduce_C(self.C_on_basis_vecs)
         np.testing.assert_allclose(C_returned, self.C_true)
 

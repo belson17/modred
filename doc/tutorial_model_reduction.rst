@@ -30,7 +30,7 @@ or discrete time:
 where :math:`k` is the time step.
 Here :math:`x` is the state vector.
 :math:`A`, :math:`B`, and :math:`C` are, in general, linear operators (often
-matrices).
+arrays).
 In cases where there are no inputs and outputs, :math:`B` and :math:`C` are
 zero.
 :math:`A` acts on :math:`x` and returns a vector that lives in the same vector
@@ -43,7 +43,7 @@ lives.
 
 These dynamical equations can be projected onto a set of modes.
 First, approximate the state vector as a linear combination of :math:`r` modes,
-stacked as columns of matrix :math:`\Phi`, and time-varying coefficients
+stacked as columns of array :math:`\Phi`, and time-varying coefficients
 :math:`q(k)`:
 
 .. math::
@@ -51,7 +51,7 @@ stacked as columns of matrix :math:`\Phi`, and time-varying coefficients
   x(k) \approx \Phi q(k) .
 
 Then substitute into the governing equations and take the inner product with a
-set of adjoint modes, columns of matrix :math:`\Psi`.
+set of adjoint modes, columns of array :math:`\Psi`.
 The result is a reduced system for :math:`q`, which has as many elements as
 :math:`\Phi` has columns, :math:`r`.
 The adjoint, :math:`(\,\,)^+`, is defined with respect to inner product weight
@@ -68,7 +68,7 @@ The adjoint, :math:`(\,\,)^+`, is defined with respect to inner product weight
 
 An analagous result exists for continuous time.
 
-If the modes are not stacked into matrices, then the following equations are
+If the modes are not stacked into arrays, then the following equations are
 used, where :math:`[\,\,]_{i,j}` denotes row :math:`i` and column :math:`j`.
 
 .. math::
@@ -79,7 +79,7 @@ used, where :math:`[\,\,]_{i,j}` denotes row :math:`i` and column :math:`j`.
   [C \Phi]_{:,j} &= C \phi_j
 
 :math:`e_j` is the jth standard basis (intuitively :math:`B e_j` is
-:math:`[B]_{:,j}` if :math:`B` is a matrix.).
+:math:`[B]_{:,j}` if :math:`B` is an array.).
 
 The :math:`A`, :math:`B`, and :math:`C` operators may or may not be available
 within Python.
@@ -89,11 +89,11 @@ vectors, i.e., the products :math:`A \phi_j`, :math:`Be_j`, and :math:`C
 \phi_j`, and *not* the operators :math:`A`, :math:`B`, and :math:`C` themselves.
 
 
-************************************
-Example 1: Smaller data and matrices
-************************************
+**********************************
+Example 1: Smaller data and arrays
+**********************************
 
-Here's an example that uses matrices.
+Here's an example that uses arrays.
 
 .. literalinclude:: ../modred/examples/rom_ex1.py
 
@@ -110,10 +110,10 @@ The last two lines would then be replaced with::
 
 Another variant is if the basis vecs are known to be orthonormal, as is always
 the case with POD modes.
-Then, the :math:`\Psi^* W \Phi` matrix and its inverse are identity, and
+Then, the :math:`\Psi^* W \Phi` array and its inverse are identity, and
 computing it is wasteful.
 Specifying the constructor keyword argument ``is_basis_orthonormal=True`` tells
-modred this matrix is identity and to not compute it.
+modred this array is identity and to not compute it.
 
 
 *****************************************

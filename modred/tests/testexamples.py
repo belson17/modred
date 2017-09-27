@@ -95,11 +95,11 @@ class TestExamples(unittest.TestCase):
 
         num_rows = 10
         num_cols = 12
-        time = B.inner_product_mat(num_states, num_rows, num_cols,
+        time = B.inner_product_array(num_states, num_rows, num_cols,
             max_vecs_per_node, verbosity=0)
         self.assertEqual(type(time), float)
 
-        time = B.symm_inner_product_mat(num_states, num_rows,
+        time = B.symm_inner_product_array(num_states, num_rows,
             max_vecs_per_node, verbosity=0)
         self.assertEqual(type(time), float)
 

@@ -229,11 +229,11 @@ class VectorSpaceHandles(object):
         Args:
             ``row_vec_handles``: List of handles for vector objects
             corresponding to rows of the inner product array.  For example, in
-            BPOD this is the adjoint snapshot matrix :math:`Y`.
+            BPOD this is the adjoint snapshot array :math:`Y`.
 
             ``col_vec_handles``: List of handles for vector objects
             corresponding to columns of the inner product array.  For example,
-            in BPOD this is the direct snapshot matrix :math:`X`.
+            in BPOD this is the direct snapshot array :math:`X`.
 
         Returns:
             ``IP_array``: 2D array of inner products.
@@ -501,7 +501,7 @@ class VectorSpaceHandles(object):
         Args:
             ``vec_handles``: List of handles for vector objects corresponding
             to both rows and columns.  For example, in POD this is the snapshot
-            matrix :math:`X`.
+            array :math:`X`.
 
         Returns:
             ``IP_array``: 2D array of inner products.

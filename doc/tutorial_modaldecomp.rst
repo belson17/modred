@@ -20,7 +20,7 @@ The examples below build on one another, each introducing new aspects.
 
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Example 1 -- All data in a matrix
+Example 1 -- All data in an array
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A simple way to find POD modes is:
@@ -30,26 +30,26 @@ A simple way to find POD modes is:
 Let's walk through the important steps.
 First, we create an array of random data.
 Each column is a vector represented as a 1D array.
-Then we call the function ``compute_POD_matrices_direct_method``, which returns
-the first ``num_modes`` modes as columns of the matrix ``modes``, and all of the
+Then we call the function ``compute_POD_arrays_direct_method``, which returns
+the first ``num_modes`` modes as columns of the array ``modes``, and all of the
 non-zero eigenvalues, sorted from largest to smallest.
 
 This function implements the "method of snapshots", as described in Section 3.4
 of [HLBR]_.
-In short, it computes the correlation matrix :math:`X^* X`, where :math:`X` is `
+In short, it computes the correlation array :math:`X^* X`, where :math:`X` is `
 `vecs``, then finds its eigenvectors and eigenvalues, which are related to the
 modes.
 
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Example 2 -- Inner products with all data in a matrix
+Example 2 -- Inner products with all data in an array
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can use a weighted inner product, specified here by a 1D array of weights,
-so that the correlation matrix is :math:`X^* W X`, where :math:`X` is ``vecs``
+so that the correlation array is :math:`X^* W X`, where :math:`X` is ``vecs``
 and :math:`W` contains the inner product weights.
-The weights also can, more generally, be a matrix.
-The vectors are again represented as columns of a matrix.
+The weights also can, more generally, be an array.
+The vectors are again represented as columns of an array.
 
 .. literalinclude:: ../modred/examples/tutorial_ex2.py
 
@@ -66,7 +66,7 @@ Example 3 -- Vector handles for loading and saving
 
 This example demonstrates *vector handles*, which are very important because
 they allow modred to interact with large and complicated datasets without
-requiring that all of the vectors be stacked into a single matrix.
+requiring that all of the vectors be stacked into a single array.
 This is necessary, for example, if the data is too large to all fit in memory
 simultaneously.
 
@@ -153,7 +153,7 @@ it acts as the inner product the usual way: ``value = weighted_IP(vec1, vec2)``.
 
 Also shown in this example is the useful ``put_decomp``, which, by default
 saves the arrays associated with the decomposition to text files.
-(See :ref:`sec_matrices`.)
+(See :ref:`sec_arrays`.)
 
 Again, this code can be executed in parallel without any modifications.
 
@@ -259,18 +259,19 @@ will probably resemble them.
 As usual, this example can be executed in parallel without any modifications.
 
 
-.. _sec_matrices:
+.. _sec_arrays:
 
 ^^^^^^^^^^^^^^^^^^^^^^^
-Matrix input and output
+Array input and output
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-By default, ``put_mat`` and ``get_mat`` save and load to text files.
+By default, ``put_array`` and ``get_array`` save and load to text files.
 If you prefer a different format, you can pass your own functions as keyword
-arguments ``put_mat`` and ``get_mat`` to the constructors.
-The functions should have the following interfaces: ``put_mat(mat, mat_dest)``
-and ``mat = get_mat(mat_source)``.
-The ``mat`` argument could be a numpy matrix, 1D array, or 2D array.
+arguments ``put_array`` and ``get_array`` to the constructors.
+The functions should have the following interfaces:
+``put_array(array, array_dest)``
+and ``array = get_array(array_source)``.
+The ``array`` argument could be a 1D or 2D array.
 
 
 ^^^^^^^^^^

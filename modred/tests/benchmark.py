@@ -30,7 +30,7 @@ parser.add_argument(
     help='Directory in which to save data.')
 parser.add_argument(
     '--function',
-    choices=['lin_combine', 'inner_product_mat', 'symm_inner_product_mat'],
+    choices=['lin_combine', 'inner_product_array', 'symm_inner_product_array'],
     help='Function to benchmark.')
 args = parser.parse_args()
 data_dir = args.outdir
@@ -65,7 +65,7 @@ def generate_vecs(vec_dir, num_states, vec_handles):
     mr.parallel.barrier()
 
 
-def inner_product_mat(
+def inner_product_array(
     num_states, num_rows, num_cols, max_vecs_per_node, verbosity=1):
     """
     Computes inner products from known vecs.
@@ -85,17 +85,17 @@ def inner_product_mat(
     prof = cProfile.Profile()
     start_time = T.time()
     prof.runcall(
-        my_VS.compute_inner_product_mat, *(col_vec_handles, row_vec_handles))
+        my_VS.compute_inner_product_array, *(col_vec_handles, row_vec_handles))
     total_time = T.time() - start_time
-    prof.dump_stats('IP_mat_r%d.prof'%mr.parallel.get_rank())
+    prof.dump_stats('IP_array_r%d.prof'%mr.parallel.get_rank())
 
     return total_time
 
 
-def symm_inner_product_mat(
+def symm_inner_product_array(
     num_states, num_vecs, max_vecs_per_node, verbosity=1):
     """
-    Computes symmetric inner product matrix from known vecs (as in POD).
+    Computes symmetric inner product array from known vecs (as in POD).
     """
     vec_handles = [mr.VecHandlePickle(join(data_dir, row_vec_name%row_num))
         for row_num in range(num_vecs)]
@@ -107,9 +107,9 @@ def symm_inner_product_mat(
 
     prof = cProfile.Profile()
     start_time = T.time()
-    prof.runcall(my_VS.compute_symm_inner_product_mat, vec_handles)
+    prof.runcall(my_VS.compute_symm_inner_product_array, vec_handles)
     total_time = T.time() - start_time
-    prof.dump_stats('IP_symm_mat_r%d.prof'%mr.parallel.get_rank())
+    prof.dump_stats('IP_symm_array_r%d.prof'%mr.parallel.get_rank())
 
     return total_time
 
@@ -132,13 +132,13 @@ def lin_combine(
     generate_vecs(data_dir, num_states, basis_handles)
     my_VS = mr.VectorSpaceHandles(np.vdot, max_vecs_per_node=max_vecs_per_node,
         verbosity=verbosity)
-    coeff_mat = np.random.random((num_bases, num_products))
+    coeff_array = np.random.random((num_bases, num_products))
     mr.parallel.barrier()
 
     prof = cProfile.Profile()
     start_time = T.time()
     prof.runcall(my_VS.lin_combine, *(product_handles, basis_handles,
-        coeff_mat))
+        coeff_array))
     total_time = T.time() - start_time
     prof.dump_stats('lincomb_r%d.prof'%mr.parallel.get_rank())
     return total_time
@@ -154,8 +154,8 @@ def clean_up():
 
 def main():
     #method_to_test = 'lin_combine'
-    #method_to_test = 'inner_product_mat'
-    #method_to_test = 'symm_inner_product_mat'
+    #method_to_test = 'inner_product_array'
+    #method_to_test = 'symm_inner_product_array'
     method_to_test = args.function
 
     # Common parameters
@@ -169,21 +169,21 @@ def main():
         num_products = 400
         time_elapsed = lin_combine(
             num_states, num_bases, num_products, max_vecs_per_node)
-    elif method_to_test == 'inner_product_mat':
-        # inner_product_mat test
+    elif method_to_test == 'inner_product_array':
+        # inner_product_array test
         num_rows = 1200
         num_cols = 1200
-        time_elapsed = inner_product_mat(num_states, num_rows, num_cols,
+        time_elapsed = inner_product_array(num_states, num_rows, num_cols,
             max_vecs_per_node)
 
-    elif method_to_test == 'symm_inner_product_mat':
-        # symm_inner_product_mat test
+    elif method_to_test == 'symm_inner_product_array':
+        # symm_inner_product_array test
         num_vecs = 1200
-        time_elapsed = symm_inner_product_mat(
+        time_elapsed = symm_inner_product_array(
             num_states, num_vecs, max_vecs_per_node)
     else:
         print('Did not recognize --function argument, choose from')
-        print('lin_combine, inner_product_mat, and symm_inner_product_mat')
+        print('lin_combine, inner_product_array, and symm_inner_product_array')
     #print 'Time for %s is %f'%(method_to_test, time_elapsed)
 
     mr.parallel.barrier()

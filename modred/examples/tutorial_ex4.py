@@ -35,8 +35,8 @@ my_DMD.compute_decomp(snapshots)
 my_DMD.put_decomp(
     '%s/eigvals.txt' % out_dir, '%s/R_low_order_eigvecs.txt' % out_dir,
     '%s/L_low_order_eigvecs.txt' % out_dir,
-    '%s/correlation_mat_eigvals.txt' % out_dir,
-    '%s/correlation_mat_eigvecs.txt' % out_dir)
+    '%s/correlation_array_eigvals.txt' % out_dir,
+    '%s/correlation_array_eigvecs.txt' % out_dir)
 mode_indices = [1, 4, 5, 0, 10]
 modes = [
     mr.VecHandlePickle('%s/mode%d.pkl' % (out_dir, i)) for i in mode_indices]

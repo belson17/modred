@@ -326,7 +326,7 @@ class BPODHandles(object):
     def compute_decomp(
         self, direct_vec_handles, adjoint_vec_handles, num_inputs=1,
         num_outputs=1, atol=1e-13, rtol=None):
-        """Computes Hankel matrix :math:`H=Y^*X` and its singular value
+        """Computes Hankel array :math:`H=Y^*X` and its singular value
         decomposition :math:`UEV^*=H`.
 
         Args:
