@@ -14,9 +14,7 @@ except:
 
 def run():
     test_loader = unittest.defaultTestLoader
-    #print 'discovering tests in path',os.path.dirname(__file__)
     test_suites = test_loader.discover(os.path.dirname(__file__))
-        #, top_level_dir='../')
     unittest.TextTestRunner(buffer=True).run(test_suites)
     #parallel.barrier()
 

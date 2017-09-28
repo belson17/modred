@@ -2,15 +2,13 @@
 """ !!This file is not used!!
 
 Examples are used with ../examples/Makefile."""
-from __future__ import absolute_import
-from past.builtins import execfile
-from future.builtins import range
 import unittest
 import os, sys
 from os.path import join
 from shutil import rmtree
 
 import modred.parallel as parallel
+from modred.py2to3 import range
 
 
 # Directory we start from, absolute path.
@@ -28,7 +26,8 @@ class np.PrintingStream(object):
     def flush(self): pass
     def close(self): pass
 
-old_printers = [sys.stdout,sys.stderr,sys.stdin,sys.__stdout__,
+old_printers = [
+    sys.stdout,sys.stderr,sys.stdin,sys.__stdout__,
     sys.__stderr__,sys.__stdin__][:]
 
 def printing(on):
@@ -77,7 +76,7 @@ class TestExamples(unittest.TestCase):
             if not (parallel.is_distributed() and example_num != 3):
                 #printing(False)
                 parallel.barrier()
-                execfile(join(examples_dir, example_script%example_num))
+                mr.run_script(join(examples_dir, example_script % example_num))
                 parallel.barrier()
                 #printing(True)
 

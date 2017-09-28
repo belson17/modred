@@ -1,12 +1,7 @@
-"""Functions and classes for ERA models. See paper by Ma et al. 2011, TCFD."""
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
-from future.builtins import range
-from future.builtins import object
-
+"""Functions and classes fo rERA models. See paper by Ma et al. 2011, TCFD."""
 import numpy as np
 
+from .py2to3 import range
 from . import util
 
 
@@ -215,8 +210,9 @@ class ERA(object):
         self.C = Ur[:self.num_Markovs].dot(np.diag(Er ** 0.5))
 
         if (np.abs(np.linalg.eigvals(self.A)) >= 1.).any() and self.verbosity:
-            print('Warning: Reduced A array is unstable.')
-            print('Unstable eigenvalues are', np.linalg.eigvals(self.A))
+            print(
+                'Warning: Reduced A array is unstable. '
+                'Unstable eigenvalues are %s' % np.linalg.eigvals(self.A))
         return self.A, self.B, self.C
 
 

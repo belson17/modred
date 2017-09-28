@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 """Test util module"""
-from future.builtins import range
 import unittest
 from shutil import rmtree   # For deleting directories and their contents
 import os
@@ -10,6 +9,7 @@ import numpy as np
 
 import modred.parallel as parallel
 from modred import util
+from modred.py2to3 import range
 
 
 class TestUtil(unittest.TestCase):

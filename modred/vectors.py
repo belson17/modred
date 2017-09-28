@@ -4,11 +4,6 @@ We recommend using these functions and classes when possible.
 Otherwise, you can write your own vector class and/or vector handle,
 see documentation :ref:`sec_details`.
 """
-from __future__ import absolute_import
-from future.builtins import str
-from future import standard_library
-standard_library.install_hooks()
-from future.builtins import object
 import pickle
 
 import numpy as np
@@ -182,8 +177,7 @@ class InnerProductTrapz(object):
         for grid in reversed(self.grids):
             if not isinstance(grid, np.ndarray):
                 raise TypeError(
-                    'Each grid must be a numpy array, not a '
-                    '%s' % str(type(grid)))
+                    'Each grid must be a numpy array, not a %s' % type(grid))
             IP = np.trapz(IP, x=grid)
         return IP
 

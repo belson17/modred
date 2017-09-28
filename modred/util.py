@@ -1,11 +1,10 @@
 """A group of useful functions"""
-from __future__ import print_function
-from future.builtins import range
-from future.builtins import object
 import inspect
 import os
 
 import numpy as np
+
+from . py2to3 import range
 
 
 class UndefinedError(Exception): pass
@@ -145,7 +144,7 @@ def get_file_list(directory, file_extension=None):
     files = os.listdir(directory)
     if file_extension is not None:
         if len(file_extension) == 0:
-            print('Warning: gave an empty file extension')
+            print('Warning: gave an empty file extension.')
         filtered_files = []
         for f in files:
             if f[-len(file_extension):] == file_extension:
@@ -416,7 +415,8 @@ def solve_Lyapunov_iterative(A, Q, max_iters=10000, tol=1e-8):
         iter += 1
 
     if iter >= max_iters:
-        print('Warning: did not converge to solution. Error is %f.'%error)
+        print('Warning: did not converge to solution. Error is %f.' % error)
+
     return X
 
 

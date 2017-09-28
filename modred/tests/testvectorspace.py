@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 """Test vectorspace module"""
-from __future__ import division
-from future.builtins import range
 import os
 from os.path import join
 from shutil import rmtree
@@ -14,6 +12,7 @@ import modred.parallel as parallel
 from modred.vectorspace import *
 import modred.vectors as vcs
 import modred.util
+from modred.py2to3 import range
 
 
 #@unittest.skip('Testing other things')

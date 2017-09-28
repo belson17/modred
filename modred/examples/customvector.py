@@ -1,5 +1,3 @@
-from future import standard_library
-standard_library.install_hooks()
 import pickle
 from copy import deepcopy
 

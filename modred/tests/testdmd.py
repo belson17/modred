@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 """Test dmd module"""
-from __future__ import division
-from future.builtins import range
 import copy
 import unittest
 import os
@@ -14,6 +12,7 @@ import modred.parallel as parallel
 from modred.dmd import *
 from modred.vectorspace import *
 from modred.vectors import VecHandlePickle
+from modred.py2to3 import range
 from modred import util
 from modred import pod
 

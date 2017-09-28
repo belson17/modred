@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 """Test vectors module"""
-from __future__ import division
 import unittest
 import os
 from os.path import join

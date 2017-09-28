@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 """Test ltigalerkinproj module"""
-from __future__ import division
-from future.builtins import zip
-from future.builtins import map
-from future.builtins import range
 import unittest
 import os
 from os.path import join
@@ -15,6 +11,7 @@ import modred.parallel as parallel
 import modred.ltigalerkinproj as LGP
 from modred import util
 from modred.vectors import VecHandlePickle
+from modred.py2to3 import range
 
 
 #@unittest.skip('Testing something else.')

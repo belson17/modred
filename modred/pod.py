@@ -1,11 +1,9 @@
-from __future__ import print_function
-from __future__ import absolute_import
-from future.builtins import object
 from collections import namedtuple
 
 import numpy as np
 
 from .vectorspace import VectorSpaceArrays, VectorSpaceHandles
+from .py2to3 import range
 from . import util
 from . import parallel
 

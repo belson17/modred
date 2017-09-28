@@ -6,10 +6,6 @@ Then in python, do this to view the results, see load_prof_parallel.py
 
 benchmark.py is to be used after installing modred.
 """
-from __future__ import print_function
-from future import standard_library
-standard_library.install_hooks()
-from future.builtins import range
 import os
 from os.path import join
 from shutil import rmtree
@@ -53,7 +49,7 @@ def generate_vecs(vec_dir, num_states, vec_handles):
     """
     # Parallelize saving of vecs (may slow down sequoia)
     proc_vec_num_asignments = \
-        mr.parallel.find_assignments(range(num_vecs))[mr.parallel.getRank()]
+        mr.parallel.find_assignments(mr.range(num_vecs))[mr.parallel.getRank()]
     for vec_num in proc_vec_num_asignments:
         vec = np.random.random(num_states)
         save_vec(vec, vec_dir + vec_name%vec_num)
@@ -73,9 +69,9 @@ def inner_product_array(
     Remember that rows correspond to adjoint modes and cols to direct modes
     """
     col_vec_handles = [mr.VecHandlePickle(join(data_dir, col_vec_name%col_num))
-        for col_num in range(num_cols)]
+        for col_num in mr.range(num_cols)]
     row_vec_handles = [mr.VecHandlePickle(join(data_dir, row_vec_name%row_num))
-        for row_num in range(num_rows)]
+        for row_num in mr.range(num_rows)]
 
     generate_vecs(data_dir, num_states, row_vec_handles+col_vec_handles)
 
@@ -98,7 +94,7 @@ def symm_inner_product_array(
     Computes symmetric inner product array from known vecs (as in POD).
     """
     vec_handles = [mr.VecHandlePickle(join(data_dir, row_vec_name%row_num))
-        for row_num in range(num_vecs)]
+        for row_num in mr.range(num_vecs)]
 
     generate_vecs(data_dir, num_states, vec_handles)
 
@@ -124,10 +120,10 @@ def lin_combine(
     """
 
     basis_handles = [mr.VecHandlePickle(join(data_dir, basis_name%basis_num))
-        for basis_num in range(num_bases)]
+        for basis_num in mr.range(num_bases)]
     product_handles = [mr.VecHandlePickle(join(data_dir,
         product_name%product_num))
-        for product_num in range(num_products)]
+        for product_num in mr.range(num_products)]
 
     generate_vecs(data_dir, num_states, basis_handles)
     my_VS = mr.VectorSpaceHandles(np.vdot, max_vecs_per_node=max_vecs_per_node,
@@ -182,9 +178,10 @@ def main():
         time_elapsed = symm_inner_product_array(
             num_states, num_vecs, max_vecs_per_node)
     else:
-        print('Did not recognize --function argument, choose from')
-        print('lin_combine, inner_product_array, and symm_inner_product_array')
-    #print 'Time for %s is %f'%(method_to_test, time_elapsed)
+        print(
+            'Did not recognize --function argument. Choose from: lin_combine, '
+            'inner_product_array, symm_inner_product_array.')
+    #print('Time for %s is %f' % (method_to_test, time_elapsed))
 
     mr.parallel.barrier()
     clean_up()
