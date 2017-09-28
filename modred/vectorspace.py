@@ -482,7 +482,7 @@ class VectorSpaceHandles(object):
 
         percent_completed_IPs = 100.
         self.print_msg(
-            'Completed 100%% of inner products', output_channel='stderr')
+            'Completed 100% of inner products', output_channel='stderr')
         self.prev_print_time = time()
 
         parallel.barrier()
@@ -810,7 +810,7 @@ class VectorSpaceHandles(object):
 
         # Print progress
         self.print_msg(
-            'Completed 100%% of inner products', output_channel='stderr')
+            'Completed 100% of inner products', output_channel='stderr')
         self.prev_print_time = time()
 
         # Return inner product array
@@ -1054,8 +1054,7 @@ class VectorSpaceHandles(object):
             del sum_layers
 
         self.print_msg(
-            'Completed %.1f%% of linear combinations' % 100.,
-            output_channel='stderr')
+            'Completed 100% of linear combinations', output_channel='stderr')
         self.prev_print_time = time()
         parallel.barrier()
 
