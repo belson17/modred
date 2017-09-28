@@ -88,6 +88,10 @@ def compute_BPOD_arrays(
         raise RuntimeError('Cannot run in parallel.')
     vec_space = VectorSpaceArrays(weights=inner_product_weights)
 
+    # Force data to be arrays (not matrices)
+    direct_vecs = np.array(direct_vecs)
+    adjoint_vecs = np.array(adjoint_vecs)
+
     # Compute first column (of chunks) of Hankel array
     all_adjoint_first_direct = vec_space.compute_inner_product_array(
         adjoint_vecs, direct_vecs[:, :num_inputs])
