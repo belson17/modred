@@ -460,7 +460,7 @@ class TestDMDHandles(unittest.TestCase):
                 POD_mode_path = join(self.test_dir, 'pod_mode_%03d.txt')
                 POD_mode_handles = [
                     VecHandlePickle(POD_mode_path % i)
-                    for i in xrange(correlation_array_eigvals.size)]
+                    for i in range(correlation_array_eigvals.size)]
                 DMD.vec_space.lin_combine(
                     POD_mode_handles, vecs_vals, POD_build_coeffs)
                 low_order_linear_op = DMD.vec_space.compute_inner_product_array(
@@ -537,7 +537,7 @@ class TestDMDHandles(unittest.TestCase):
                 POD_mode_path = join(self.test_dir, 'pod_mode_%03d.txt')
                 POD_mode_handles = [
                     VecHandlePickle(POD_mode_path % i)
-                    for i in xrange(DMD.correlation_array_eigvals.size)]
+                    for i in range(DMD.correlation_array_eigvals.size)]
                 DMD.vec_space.lin_combine(
                     POD_mode_handles, vecs_vals, POD_build_coeffs)
 
@@ -1369,7 +1369,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                     self.test_dir, 'proj_pod_mode_%03d.txt')
                 proj_POD_mode_handles = [
                     VecHandlePickle(proj_POD_mode_path % i)
-                    for i in xrange(proj_correlation_array_eigvals.size)]
+                    for i in range(proj_correlation_array_eigvals.size)]
                 TLSqrDMD.vec_space.lin_combine(
                     proj_POD_mode_handles, vecs_vals, proj_POD_build_coeffs)
                 low_order_linear_op = (
@@ -1459,7 +1459,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                     self.test_dir, 'proj_pod_mode_%03d.txt')
                 proj_POD_mode_handles = [
                     VecHandlePickle(proj_POD_mode_path % i) for i in
-                    xrange(TLSqrDMD.proj_correlation_array_eigvals.size)]
+                    range(TLSqrDMD.proj_correlation_array_eigvals.size)]
                 TLSqrDMD.vec_space.lin_combine(
                     proj_POD_mode_handles, vecs_vals, proj_POD_build_coeffs)
 
