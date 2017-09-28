@@ -1,8 +1,8 @@
 """Functions and classes fo rERA models. See paper by Ma et al. 2011, TCFD."""
 import numpy as np
 
-from .py2to3 import range
 from . import util
+from .py2to3 import range
 
 
 def make_sampled_format(times, Markovs, dt_tol=1e-6):

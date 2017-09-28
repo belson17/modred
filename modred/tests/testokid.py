@@ -6,9 +6,7 @@ import unittest
 
 import numpy as np
 
-import modred.parallel as parallel
-from modred.okid import OKID
-from modred import util
+from modred import OKID, parallel, util
 from modred.py2to3 import range
 
 

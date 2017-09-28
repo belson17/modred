@@ -3,8 +3,8 @@ from time import time
 
 import numpy as np
 
-from . import util
 from . import parallel
+from . import util
 from .py2to3 import print_msg, range
 
 
@@ -1043,7 +1043,7 @@ class VectorSpaceHandles(object):
                             self.print_interval):
                             self.print_msg(
                                 'Completed %.1f%% of linear combinations' %
-                                sum_index * 100. / len(sum_tasks[rank]),
+                                (sum_index * 100. / len(sum_tasks[rank])),
                                 output_channel='stderr')
                             self.prev_print_time = time()
 

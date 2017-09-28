@@ -7,8 +7,7 @@ from shutil import rmtree
 
 import numpy as np
 
-import modred.parallel as parallel
-import modred.vectors as vcs
+from modred import vectors as vcs, parallel
 
 
 @unittest.skipIf(parallel.is_distributed(), 'No need to test in parallel')

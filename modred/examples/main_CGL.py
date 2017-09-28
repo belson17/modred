@@ -7,7 +7,6 @@ import modred as mr
 import hermite as hr
 
 plots = True
-
 if plots:
     try:
         import matplotlib.pyplot as plt

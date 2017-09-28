@@ -11,7 +11,7 @@ from os.path import join
 from shutil import rmtree
 import argparse
 import pickle
-import time as T
+import time
 import cProfile
 
 import numpy as np
@@ -79,10 +79,10 @@ def inner_product_array(
         np.vdot, max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
 
     prof = cProfile.Profile()
-    start_time = T.time()
+    start_time = time.time()
     prof.runcall(
         my_VS.compute_inner_product_array, *(col_vec_handles, row_vec_handles))
-    total_time = T.time() - start_time
+    total_time = time.time() - start_time
     prof.dump_stats('IP_array_r%d.prof'%mr.parallel.get_rank())
 
     return total_time
@@ -102,9 +102,9 @@ def symm_inner_product_array(
         np.vdot, max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
 
     prof = cProfile.Profile()
-    start_time = T.time()
+    start_time = time.time()
     prof.runcall(my_VS.compute_symm_inner_product_array, vec_handles)
-    total_time = T.time() - start_time
+    total_time = time.time() - start_time
     prof.dump_stats('IP_symm_array_r%d.prof'%mr.parallel.get_rank())
 
     return total_time
@@ -132,10 +132,10 @@ def lin_combine(
     mr.parallel.barrier()
 
     prof = cProfile.Profile()
-    start_time = T.time()
+    start_time = time.time()
     prof.runcall(my_VS.lin_combine, *(product_handles, basis_handles,
         coeff_array))
-    total_time = T.time() - start_time
+    total_time = time.time() - start_time
     prof.dump_stats('lincomb_r%d.prof'%mr.parallel.get_rank())
     return total_time
 
