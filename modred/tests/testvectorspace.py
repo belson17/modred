@@ -318,7 +318,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
                             0, high=num_modes, size=num_modes // 2))
                         mode_idxs_vals = mode_idxs_arg
                     mode_handles = [
-                        vcs.VecHandlePickle(mode_path % mode_num)
+                        VecHandlePickle(mode_path % mode_num)
                         for mode_num in mode_idxs_vals]
 
                     # Saves modes to files
@@ -328,7 +328,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
 
                     # Test modes one by one
                     for mode_idx in mode_idxs_vals:
-                        computed_mode = vcs.VecHandlePickle(
+                        computed_mode = VecHandlePickle(
                             mode_path % mode_idx).get()
                         np.testing.assert_allclose(
                             computed_mode, true_modes[:, mode_idx],
