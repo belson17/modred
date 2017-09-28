@@ -57,6 +57,12 @@ class TestDMDArraysFunctions(unittest.TestCase):
 
             # Test both method of snapshots and direct method
             for method in ['snaps', 'direct']:
+                if method == 'snaps':
+                    compute_DMD = compute_DMD_arrays_snaps_method
+                elif method == 'direct':
+                    compute_DMD = compute_DMD_arrays_direct_method
+                else:
+                    raise ValueError('Invalid method choice.')
 
                 # Consider different inner product weights
                 for weights in [None, weights_1D, weights_2D]:
@@ -68,34 +74,15 @@ class TestDMDArraysFunctions(unittest.TestCase):
                     # truncated).
                     for max_num_eigvals in [None, self.num_vecs // 2]:
 
-                        # Choose subset of modes to compute, for testing mode
-                        # indices argument
-                        if max_num_eigvals is None:
-                            mode_indices = np.unique(np.random.randint(
-                                0, high=np.linalg.matrix_rank(vecs_vals),
-                                size=np.linalg.matrix_rank(vecs_vals) // 2))
-                        else:
-                            mode_indices = np.unique(np.random.randint(
-                                0, high=max_num_eigvals,
-                                size=max_num_eigvals // 2))
+                        # Compute DMD
+                        DMD_res = compute_DMD(
+                            vecs_arg, adv_vecs=adv_vecs_arg,
+                            inner_product_weights=weights,
+                            max_num_eigvals=max_num_eigvals)
 
-                        # Compute DMD using appropriate method.  Also compute
-                        # POD modes of vecs using same method, and a random
-                        # subset of the DMD modes, in preparation for later
-                        # tests.
+                        # For method of snapshots, test correlation array values
+                        # by simply recomputing them.
                         if method == 'snaps':
-                            DMD_res = compute_DMD_arrays_snaps_method(
-                                vecs_arg, adv_vecs=adv_vecs_arg,
-                                inner_product_weights=weights,
-                                max_num_eigvals=max_num_eigvals)
-                            DMD_res_sliced = compute_DMD_arrays_snaps_method(
-                                vecs_arg, adv_vecs=adv_vecs_arg,
-                                mode_indices=mode_indices,
-                                inner_product_weights=weights,
-                                max_num_eigvals=max_num_eigvals)
-
-                            # For method of snapshots, test correlation array
-                            # values by simply recomputing them.
                             np.testing.assert_allclose(
                                 IP(vecs_vals, vecs_vals),
                                 DMD_res.correlation_array,
@@ -104,20 +91,6 @@ class TestDMDArraysFunctions(unittest.TestCase):
                                 IP(vecs_vals, adv_vecs_vals),
                                 DMD_res.cross_correlation_array,
                                 rtol=rtol, atol=atol)
-
-                        elif method == 'direct':
-                            DMD_res = compute_DMD_arrays_direct_method(
-                                vecs_arg, adv_vecs=adv_vecs_arg,
-                                inner_product_weights=weights,
-                                max_num_eigvals=max_num_eigvals)
-                            DMD_res_sliced = compute_DMD_arrays_direct_method(
-                                vecs_arg, adv_vecs=adv_vecs_arg,
-                                mode_indices=mode_indices,
-                                inner_product_weights=weights,
-                                max_num_eigvals=max_num_eigvals)
-
-                        else:
-                            raise ValueError('Invalid DMD method.')
 
                         # Test correlation array eigenvalues and eigenvectors.
                         np.testing.assert_allclose(
@@ -139,7 +112,7 @@ class TestDMDArraysFunctions(unittest.TestCase):
                             DMD_res.correlation_array_eigvecs.dot(
                                 np.diag(
                                     DMD_res.correlation_array_eigvals ** -0.5)
-                                ).dot(vecs_POD_modes.conj().T))
+                            ).dot(vecs_POD_modes.conj().T))
                         low_order_linear_op = IP(
                             vecs_POD_modes,
                             IP(approx_linear_op.conj().T, vecs_POD_modes))
@@ -207,20 +180,37 @@ class TestDMDArraysFunctions(unittest.TestCase):
                             IP(DMD_res.adjoint_modes, adv_vecs_vals),
                             rtol=rtol, atol=atol)
 
-                        # Test that use of mode indices argument returns correct
-                        # subset of modes
-                        np.testing.assert_allclose(
-                            DMD_res_sliced.exact_modes,
-                            DMD_res.exact_modes[:, mode_indices],
-                            rtol=rtol, atol=atol)
-                        np.testing.assert_allclose(
-                            DMD_res_sliced.proj_modes,
-                            DMD_res.proj_modes[:, mode_indices],
-                            rtol=rtol, atol=atol)
-                        np.testing.assert_allclose(
-                            DMD_res_sliced.adjoint_modes,
-                            DMD_res.adjoint_modes[:, mode_indices],
-                            rtol=rtol, atol=atol)
+                        # Choose subset of modes to compute, for testing mode
+                        # indices argument. Test both an explicit selection of
+                        # mode indices and a None argument.
+                        mode_indices_trunc = np.unique(np.random.randint(
+                            0, high=DMD_res.eigvals.size,
+                            size=DMD_res.eigvals.size // 2))
+                        for mode_idxs_arg, mode_idxs_vals in zip(
+                            [None, mode_indices_trunc],
+                            [range(DMD_res.eigvals.size), mode_indices_trunc]):
+
+                            # Compute DMD
+                            DMD_res_sliced = compute_DMD(
+                                vecs_arg, adv_vecs=adv_vecs_arg,
+                                mode_indices=mode_idxs_arg,
+                                inner_product_weights=weights,
+                                max_num_eigvals=max_num_eigvals)
+
+                            # Test that use of mode indices argument returns
+                            # correct subset of modes
+                            np.testing.assert_allclose(
+                                DMD_res_sliced.exact_modes,
+                                DMD_res.exact_modes[:, mode_idxs_vals],
+                                rtol=rtol, atol=atol)
+                            np.testing.assert_allclose(
+                                DMD_res_sliced.proj_modes,
+                                DMD_res.proj_modes[:, mode_idxs_vals],
+                                rtol=rtol, atol=atol)
+                            np.testing.assert_allclose(
+                                DMD_res_sliced.adjoint_modes,
+                                DMD_res.adjoint_modes[:, mode_idxs_vals],
+                                rtol=rtol, atol=atol)
 
 
 #@unittest.skip('Testing something else.')
@@ -820,6 +810,12 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
 
             # Test both method of snapshots and direct method
             for method in ['snaps', 'direct']:
+                if method == 'snaps':
+                    compute_TLSqrDMD = compute_TLSqrDMD_arrays_snaps_method
+                elif method == 'direct':
+                    compute_TLSqrDMD = compute_TLSqrDMD_arrays_direct_method
+                else:
+                    raise ValueError('Invalid method choice.')
 
                 # Consider different inner product weights
                 for weights in weights_list:
@@ -847,36 +843,15 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                     # truncated).
                     for max_num_eigvals in [None, self.num_states // 2]:
 
-                        # Choose subset of modes to compute, for testing mode
-                        # indices argument
-                        if max_num_eigvals is None:
-                            mode_indices = np.unique(np.random.randint(
-                                0, high=np.linalg.matrix_rank(vecs_vals),
-                                size=np.linalg.matrix_rank(vecs_vals) // 2))
-                        else:
-                            mode_indices = np.unique(np.random.randint(
-                                0, high=max_num_eigvals,
-                                size=max_num_eigvals // 2))
+                        # Compute DMD
+                        DMD_res = compute_TLSqrDMD(
+                            vecs_arg, adv_vecs=adv_vecs_arg,
+                            inner_product_weights=weights,
+                            max_num_eigvals=max_num_eigvals)
 
-                        # Compute TLSqrDMD using appropriate method.  Then
-                        # compute transformation of raw data for TLSqrDMD using
-                        # POD of the stacked vecs, and transform the data.  Also
-                        # compute a random subset of the TLSqrDMD modes, in
-                        # preparation for later tests.
+                        # For method of snapshots, test correlation arrays
+                        # values by simply recomputing them.
                         if method == 'snaps':
-                            DMD_res = compute_TLSqrDMD_arrays_snaps_method(
-                                vecs_arg, adv_vecs=adv_vecs_arg,
-                                inner_product_weights=weights,
-                                max_num_eigvals=max_num_eigvals)
-                            DMD_res_sliced =\
-                                compute_TLSqrDMD_arrays_snaps_method(
-                                    vecs_arg, adv_vecs=adv_vecs_arg,
-                                    mode_indices=mode_indices,
-                                    inner_product_weights=weights,
-                                    max_num_eigvals=max_num_eigvals)
-
-                            # For method of snapshots, test correlation arrays
-                            # values by simply recomputing them.
                             np.testing.assert_allclose(
                                 IP(vecs_vals, vecs_vals),
                                 DMD_res.correlation_array,
@@ -889,21 +864,6 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                                 IP(adv_vecs_vals, adv_vecs_vals),
                                 DMD_res.adv_correlation_array,
                                 rtol=rtol, atol=atol)
-
-                        elif method == 'direct':
-                            DMD_res = compute_TLSqrDMD_arrays_direct_method(
-                                vecs_arg, adv_vecs=adv_vecs_arg,
-                                inner_product_weights=weights,
-                                max_num_eigvals=max_num_eigvals)
-                            DMD_res_sliced =\
-                                compute_TLSqrDMD_arrays_direct_method(
-                                    vecs_arg, adv_vecs=adv_vecs_arg,
-                                    mode_indices=mode_indices,
-                                    inner_product_weights=weights,
-                                    max_num_eigvals=max_num_eigvals)
-
-                        else:
-                            raise ValueError('Invalid DMD method.')
 
                         # Test summed correlation array eigenvalues and
                         # eigenvectors
@@ -1013,20 +973,37 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
                             IP(DMD_res.adjoint_modes, proj_adv_vecs_vals),
                             rtol=rtol, atol=atol)
 
-                        # Test that use of mode indices argument returns correct
-                        # subset of modes
-                        np.testing.assert_allclose(
-                            DMD_res_sliced.exact_modes,
-                            DMD_res.exact_modes[:, mode_indices],
-                            rtol=rtol, atol=atol)
-                        np.testing.assert_allclose(
-                            DMD_res_sliced.proj_modes,
-                            DMD_res.proj_modes[:, mode_indices],
-                            rtol=rtol, atol=atol)
-                        np.testing.assert_allclose(
-                            DMD_res_sliced.adjoint_modes,
-                            DMD_res.adjoint_modes[:, mode_indices],
-                            rtol=rtol, atol=atol)
+                        # Choose subset of modes to compute, for testing mode
+                        # indices argument. Test both an explicit selection of
+                        # mode indices and a None argument.
+                        mode_indices_trunc = np.unique(np.random.randint(
+                            0, high=DMD_res.eigvals.size,
+                            size=DMD_res.eigvals.size // 2))
+                        for mode_idxs_arg, mode_idxs_vals in zip(
+                            [None, mode_indices_trunc],
+                            [range(DMD_res.eigvals.size), mode_indices_trunc]):
+
+                            # Compute DMD
+                            DMD_res_sliced = compute_TLSqrDMD(
+                                vecs_arg, adv_vecs=adv_vecs_arg,
+                                mode_indices=mode_idxs_arg,
+                                inner_product_weights=weights,
+                                max_num_eigvals=max_num_eigvals)
+
+                            # Test that use of mode indices argument returns
+                            # correct subset of modes
+                            np.testing.assert_allclose(
+                                DMD_res_sliced.exact_modes,
+                                DMD_res.exact_modes[:, mode_idxs_vals],
+                                rtol=rtol, atol=atol)
+                            np.testing.assert_allclose(
+                                DMD_res_sliced.proj_modes,
+                                DMD_res.proj_modes[:, mode_idxs_vals],
+                                rtol=rtol, atol=atol)
+                            np.testing.assert_allclose(
+                                DMD_res_sliced.adjoint_modes,
+                                DMD_res.adjoint_modes[:, mode_idxs_vals],
+                                rtol=rtol, atol=atol)
 
 
 #@unittest.skip('Testing something else.')

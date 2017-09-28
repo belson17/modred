@@ -71,6 +71,12 @@ class TestBPODArrays(unittest.TestCase):
         rtol_sqr = 1e-8
         atol_sqr = 1e-8
 
+        # Set tolerances for SVD step of BPOD.  This is necessary to avoid
+        # dealing with very uncontrollable/unobservable states, which can cause
+        # the tests to fail.
+        rtol_svd = 1e-6
+        atol_svd = 1e-12
+
         # Generate weights to test different inner products.  Keep most of the
         # weights close to one, to avoid overly weighting certain states over
         # others.  This can dramatically affect the rate at which the tests
@@ -128,7 +134,8 @@ class TestBPODArrays(unittest.TestCase):
                     BPOD_res = compute_BPOD_arrays(
                         direct_vecs_array, adjoint_vecs_array,
                         num_inputs=num_inputs, num_outputs=num_outputs,
-                        inner_product_weights=weights, rtol=1e-6, atol=1e-12)
+                        inner_product_weights=weights,
+                        rtol=rtol_svd, atol=atol_svd)
 
                     # Check Hankel array values.  These are computed fast
                     # internally by only computing the first column and last row
@@ -189,25 +196,29 @@ class TestBPODArrays(unittest.TestCase):
                         rtol=rtol, atol=atol)
 
                     # Check that if mode indices are passed in, the correct
-                    # modes are returned.
-                    mode_indices = np.unique(np.random.randint(
+                    # modes are returned.  Test both an explicit selection of
+                    # mode indices and a None argument.
+                    mode_indices_trunc = np.unique(np.random.randint(
                         0, high=BPOD_res.sing_vals.size,
                         size=(BPOD_res.sing_vals.size // 2)))
-                    BPOD_res_sliced = compute_BPOD_arrays(
-                        direct_vecs_array, adjoint_vecs_array,
-                        direct_mode_indices=mode_indices,
-                        adjoint_mode_indices=mode_indices,
-                        num_inputs=num_inputs, num_outputs=num_outputs,
-                        inner_product_weights=weights,
-                        rtol=1e-12, atol=1e-12)
-                    np.testing.assert_allclose(
-                        BPOD_res_sliced.direct_modes,
-                        BPOD_res.direct_modes[:, mode_indices],
-                        rtol=rtol, atol=atol)
-                    np.testing.assert_allclose(
-                        BPOD_res_sliced.adjoint_modes,
-                        BPOD_res.adjoint_modes[:, mode_indices],
-                        rtol=rtol, atol=atol)
+                    for mode_indices_arg, mode_indices_vals in zip(
+                        [None, mode_indices_trunc],
+                        [range(BPOD_res.sing_vals.size), mode_indices_trunc]):
+                        BPOD_res_sliced = compute_BPOD_arrays(
+                            direct_vecs_array, adjoint_vecs_array,
+                            direct_mode_indices=mode_indices_arg,
+                            adjoint_mode_indices=mode_indices_arg,
+                            num_inputs=num_inputs, num_outputs=num_outputs,
+                            inner_product_weights=weights,
+                            rtol=rtol_svd, atol=atol_svd)
+                        np.testing.assert_allclose(
+                            BPOD_res_sliced.direct_modes,
+                            BPOD_res.direct_modes[:, mode_indices_vals],
+                            rtol=rtol, atol=atol)
+                        np.testing.assert_allclose(
+                            BPOD_res_sliced.adjoint_modes,
+                            BPOD_res.adjoint_modes[:, mode_indices_vals],
+                            rtol=rtol, atol=atol)
 
 
 #@unittest.skip('Testing something else.')

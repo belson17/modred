@@ -841,7 +841,8 @@ class VectorSpaceHandles(object):
         Kwargs:
             ``coeff_array_col_indices``: List of column indices.  Only the
             ``sum_vecs`` corresponding to these columns of the coefficient
-            array are computed.
+            array are computed.  If no column indices are specified, then all
+            columns will be used.
 
         Each MPI worker (processor) retrieves a subset of the basis vectors to
         compute as many outputs as an MPI worker (processor) can have in memory

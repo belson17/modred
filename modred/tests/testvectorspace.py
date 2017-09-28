@@ -6,7 +6,6 @@ import os
 from os.path import join
 from shutil import rmtree
 import copy
-import random
 import unittest
 
 import numpy as np
@@ -58,14 +57,19 @@ class TestVectorSpaceArrays(unittest.TestCase):
             1j * np.random.random((num_vecs, num_modes)))
         modes_array_true = vecs_array.dot(coeffs_array)
 
-        # Do computation using a vector space object
-        mode_indices = np.random.randint(0, high=num_modes, size=num_modes // 2)
+        # Do computation using a vector space object.  Check an explicit
+        # mode_indices argument, as well as a None value.
         vec_space = VectorSpaceArrays()
-        modes_array = vec_space.lin_combine(
-            vecs_array, coeffs_array, coeff_array_col_indices=mode_indices)
-        np.testing.assert_allclose(
-            modes_array, modes_array_true[:, mode_indices],
-            rtol=rtol, atol=atol)
+        mode_indices_trunc = np.random.randint(
+            0, high=num_modes, size=num_modes // 2)
+        for mode_idxs_arg, mode_idxs_vals in zip(
+            [None, mode_indices_trunc],
+            [range(num_modes), mode_indices_trunc]):
+            modes_array = vec_space.lin_combine(
+                vecs_array, coeffs_array, coeff_array_col_indices=mode_idxs_arg)
+            np.testing.assert_allclose(
+                modes_array, modes_array_true[:, mode_idxs_vals],
+                rtol=rtol, atol=atol)
 
 
     def test_inner_product_arrays(self):
@@ -239,20 +243,18 @@ class TestVectorSpaceHandles(unittest.TestCase):
 
 
     def generate_vecs_modes(
-        self, num_states, num_vecs, num_modes, squeeze=False):
+        self, num_states, num_vecs, num_modes=None, squeeze=False):
         """Generates random vecs and finds the modes.
 
         Returns:
             vec_array: array in which each column is a vec (in order)
-            mode_indices: unordered list of integers representing mode indices,
-                each entry is unique. Mode indices are picked randomly.
             coeff_array: array of shape num_vecs x num_modes, random
                 entries
             mode_array: array of modes, each column is a mode.
                 The index of the array column equals the mode index.
         """
-        mode_indices = list(range(num_modes))
-        random.shuffle(mode_indices)
+        if num_modes == None:
+            num_modes = num_vecs
         coeff_array = (
             np.random.random((num_vecs, num_modes)) +
             1j * np.random.random((num_vecs, num_modes)))
@@ -262,7 +264,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
         mode_array = vec_array.dot(coeff_array)
         if squeeze:
             build_coeff_array = coeff_array.squeeze()
-        return vec_array, mode_indices, coeff_array, mode_array
+        return vec_array, coeff_array, mode_array
 
 
     #@unittest.skip('Testing other things')
@@ -279,10 +281,12 @@ class TestVectorSpaceHandles(unittest.TestCase):
         #   less, equal, more than num_states
         #   less, equal, more than num_vecs
         #   less, equal, more than total_num_vecs_in_mem
+        # Also check the case of passing a None value to the mode_indices
+        # argument.
         num_states = 20
         num_vecs_list = [1, 15, 40]
         num_modes_list = [
-            1, 8, 10, 20, 25, 45,
+            None, 1, 8, 10, 20, 25, 45,
             int(np.ceil(self.total_num_vecs_in_mem / 2.)),
             self.total_num_vecs_in_mem, self.total_num_vecs_in_mem * 2]
 
@@ -295,40 +299,41 @@ class TestVectorSpaceHandles(unittest.TestCase):
                     vec_handles = [
                         vcs.VecHandlePickle(vec_path % i)
                         for i in range(num_vecs)]
-                    vec_array, mode_indices, coeff_array, true_modes =\
+                    vec_array, coeff_array, true_modes =\
                         parallel.call_and_bcast(
                             self.generate_vecs_modes, num_states, num_vecs,
-                            num_modes, squeeze=squeeze)
+                            num_modes=num_modes, squeeze=squeeze)
                     if parallel.is_rank_zero():
                         for vec_index, vec_handle in enumerate(vec_handles):
                             vec_handle.put(vec_array[:, vec_index])
                     parallel.barrier()
+
+                    # Choose which modes to compute
+                    if num_modes is None:
+                        mode_idxs_arg = None
+                        mode_idxs_vals = range(true_modes.shape[1])
+                    elif num_modes == 1:
+                        mode_idxs_arg = 0
+                        mode_idxs_vals = [0]
+                    else:
+                        mode_idxs_arg = np.unique(np.random.randint(
+                            0, high=num_modes, size=num_modes // 2))
+                        mode_idxs_vals = mode_idxs_arg
                     mode_handles = [
                         vcs.VecHandlePickle(mode_path % mode_num)
-                        for mode_num in mode_indices]
-
-                    # Test the case that only one mode is desired,
-                    # in which case user might pass in an int
-                    if len(mode_indices) == 1:
-                        mode_indices = mode_indices[0]
-                        mode_handles = mode_handles[0]
+                        for mode_num in mode_idxs_vals]
 
                     # Saves modes to files
                     self.vec_space.lin_combine(
                         mode_handles, vec_handles, coeff_array,
-                        mode_indices)
+                        coeff_array_col_indices=mode_idxs_arg)
 
-                    # Change mode indices back to list to make iterable for
-                    # testing modes one by one.
-                    if not isinstance(mode_indices, list):
-                        mode_indices = [mode_indices]
-                    parallel.barrier()
-
-                    for mode_index in mode_indices:
+                    # Test modes one by one
+                    for mode_idx in mode_idxs_vals:
                         computed_mode = vcs.VecHandlePickle(
-                            mode_path % mode_index).get()
+                            mode_path % mode_idx).get()
                         np.testing.assert_allclose(
-                            computed_mode, true_modes[:, mode_index],
+                            computed_mode, true_modes[:, mode_idx],
                             rtol=rtol, atol=atol)
                     parallel.barrier()
 

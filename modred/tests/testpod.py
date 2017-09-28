@@ -43,41 +43,27 @@ class TestPODArraysFunctions(unittest.TestCase):
 
         # Test both method of snapshots and direct method
         for method in ['snaps', 'direct']:
+            if method == 'snaps':
+                compute_POD = compute_POD_arrays_snaps_method
+            elif method == 'direct':
+                compute_POD = compute_POD_arrays_direct_method
+            else:
+                raise ValueError('Invalid method choice.')
 
             # Loop through different inner product weights
             for weights in [None, weights_1D, weights_2D]:
                 IP = VectorSpaceArrays(
                     weights=weights).compute_inner_product_array
 
-                # Choose a random subset of modes to compute, for testing mode
-                # indices argument
-                mode_indices = np.unique(np.random.randint(
-                    0, high=np.linalg.matrix_rank(vecs_array),
-                    size=np.linalg.matrix_rank(vecs_array) // 2))
+                # Compute POD
+                POD_res = compute_POD_arrays_snaps_method(
+                    vecs_array, inner_product_weights=weights)
 
-                # Compute POD using appropriate method.  Also compute a subset
-                # of modes, for later testing mode indices argument.
+                # For method of snapshots, test correlation array values
                 if method == 'snaps':
-                    POD_res = compute_POD_arrays_snaps_method(
-                        vecs_array, inner_product_weights=weights)
-                    POD_res_sliced = compute_POD_arrays_snaps_method(
-                        vecs_array, mode_indices=mode_indices,
-                        inner_product_weights=weights)
-
-                    # For method of snapshots, test correlation array values
                     np.testing.assert_allclose(
                         IP(vecs_array, vecs_array), POD_res.correlation_array,
                         rtol=rtol, atol=atol)
-
-                elif method == 'direct':
-                    POD_res = compute_POD_arrays_direct_method(
-                        vecs_array, inner_product_weights=weights)
-                    POD_res_sliced = compute_POD_arrays_direct_method(
-                        vecs_array, mode_indices=mode_indices,
-                        inner_product_weights=weights)
-
-                else:
-                    raise ValueError('Invalid POD method.')
 
                 # Check POD eigenvalues and eigenvectors
                 np.testing.assert_allclose(
@@ -96,11 +82,27 @@ class TestPODArraysFunctions(unittest.TestCase):
                     POD_res.proj_coeffs, IP(POD_res.modes, vecs_array),
                     rtol=rtol, atol=atol)
 
-                # Check that if mode indices are passed in, the correct
-                # modes are returned.
-                np.testing.assert_allclose(
-                    POD_res_sliced.modes, POD_res.modes[:, mode_indices],
-                    rtol=rtol, atol=atol)
+                # Choose a random subset of modes to compute, for testing mode
+                # indices argument. Test both an explicit selection of mode
+                # indices and a None argument.
+                mode_indices_trunc = np.unique(np.random.randint(
+                    0, high=np.linalg.matrix_rank(vecs_array),
+                    size=np.linalg.matrix_rank(vecs_array) // 2))
+                for mode_idxs_arg, mode_idxs_vals in zip(
+                    [None, mode_indices_trunc],
+                    [range(POD_res.eigvals.size), mode_indices_trunc]):
+
+                    # Compute POD
+                    POD_res_sliced = compute_POD_arrays_snaps_method(
+                        vecs_array, mode_indices=mode_idxs_arg,
+                        inner_product_weights=weights)
+
+                    # Check that if mode indices are passed in, the correct
+                    # modes are returned.
+                    np.testing.assert_allclose(
+                        POD_res_sliced.modes,
+                        POD_res.modes[:, mode_idxs_vals],
+                        rtol=rtol, atol=atol)
 
 
 #@unittest.skip('Testing something else.')
