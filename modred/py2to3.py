@@ -2,13 +2,17 @@
 import sys
 
 
-def run_script(path):
-    """Run a script from a file"""
+def run_script(path, globals=None, locals=None):
     # In Python 2, we can use execfile(...), but in Python 3 that function
     # doesn't exist, and we instead use exec(open(...)).  Since the latter
-    # approach always works, just use that.
-    with open(path) as fid:
-        exec(fid.read())
+    # approach always works, just use that.  Also, make sure to handle global
+    # and local namespace, otherwise imports don't seem to work.
+    if globals is None:
+        globals = sys._getframe(1).f_globals
+    if locals is None:
+        locals = sys._getframe(1).f_locals
+    with open(path, "r") as fh:
+        exec(fh.read()+"\n", globals, locals)
 
 
 def print_stdout(msg):
