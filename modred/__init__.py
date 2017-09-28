@@ -62,7 +62,7 @@ from .util import (
 )
 
 from .py2to3 import (
-    run_script, print_msg, range
+    run_script, print_msg, print_stdout, print_stderr, range
 )
 
 from modred import tests
