@@ -1,14 +1,10 @@
 """Module for Galerkin projection of LTI systems."""
-from __future__ import division
-from __future__ import absolute_import
-from future.builtins import range
-from future.builtins import object
-
 import numpy as np
 
-from . import util
 from .vectors import VecHandleInMemory
 from .vectorspace import *
+from .py2to3 import range
+from . import util
 from . import parallel
 
 

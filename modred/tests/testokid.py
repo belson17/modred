@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 """Test OKID"""
-from __future__ import division
-from future.builtins import range
 import os
 from os.path import join
 import unittest
@@ -11,13 +9,14 @@ import numpy as np
 import modred.parallel as parallel
 from modred.okid import OKID
 from modred import util
+from modred.py2to3 import range
 
 
 # Useful for debugging, makes plots
 plot = False
 if plot:
     try:
-        import matplotlib.pyplot as PLT
+        import matplotlib.pyplot as plt
     except:
         plot = False
 
@@ -80,22 +79,20 @@ class TestOKID(unittest.TestCase):
             Markovs_python = OKID(inputs, outputs, num_Markovs_OKID)
 
             if plot:
-                PLT.figure(figsize=(14,10))
+                plt.figure(figsize=(14,10))
                 for output_num in range(num_outputs):
                     for input_num in range(num_inputs):
-                        PLT.subplot(num_outputs, num_inputs,
+                        plt.subplot(num_outputs, num_inputs,
                             output_num*(num_inputs) + input_num + 1)
-                        PLT.hold(True)
-                        PLT.plot(Markovs_true[:,output_num,input_num],'k*-')
-                        PLT.plot(Markovs_Matlab[:,output_num,input_num],'b--')
-                        PLT.plot(Markovs_python[:,output_num,input_num],'r.')
-                        PLT.legend(['True', 'Matlab OKID', 'Python OKID'])
-                        PLT.title('Input %d to output %d'%(input_num+1,
+                        plt.hold(True)
+                        plt.plot(Markovs_true[:,output_num,input_num],'k*-')
+                        plt.plot(Markovs_Matlab[:,output_num,input_num],'b--')
+                        plt.plot(Markovs_python[:,output_num,input_num],'r.')
+                        plt.legend(['True', 'Matlab OKID', 'Python OKID'])
+                        plt.title('Input %d to output %d'%(input_num+1,
                             output_num+1))
-                PLT.show()
-            #print (
-            #    'Diff between matlab and python is',
-            #    diff(Markovs_Matlab, Markovs_python))
+                plt.show()
+
             np.testing.assert_allclose(
                 Markovs_python.squeeze(), Markovs_Matlab.squeeze(),
                 rtol=rtol, atol=atol)

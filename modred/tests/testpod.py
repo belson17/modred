@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 """Test POD module"""
-from __future__ import division
-from future.builtins import range
 import unittest
 import os
 from os.path import join
@@ -15,6 +13,7 @@ from modred.pod import *
 from modred.vectorspace import *
 from modred.vectors import VecHandlePickle
 from modred import util
+from modred.py2to3 import range
 
 
 #@unittest.skip('Testing something else.')

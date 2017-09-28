@@ -1,11 +1,10 @@
 """
 Spectral differentiation from J.A.C. Weideman and S.C. Reddy 1998, ACM TOMS.
 """
-from __future__ import division
-from future.builtins import range
-
 import numpy as np
 import numpy.ma as ma
+
+import modred as mr
 
 
 def herroots(n):
@@ -39,7 +38,7 @@ def herdif(n, m, b):
     beta = np.zeros((m + 1, x.shape[0]))
     beta[0] = 1.
     beta[1] = -x
-    for i in range(2, m + 1):
+    for i in mr.range(2, m + 1):
         beta[i] = -x * beta[i - 1] - (i - 1) * beta[i - 2]
 
     # Remove initializing row from beta
@@ -52,7 +51,7 @@ def herdif(n, m, b):
     x = x/b
 
     # Adjust derivatives for b not equal to 1
-    for i in range(1, m + 1):
+    for i in mr.range(1, m + 1):
         Dm[i-1] *= b ** i
 
     return x, Dm
@@ -117,7 +116,7 @@ def poldif(x, m=None, alpha=None, B=None):
     Y = np.ones((n, n))
     D = np.eye(n)
     Dm = []
-    for i in range(1, m + 1):
+    for i in mr.range(1, m + 1):
 
         # Diagonals
         Y = np.cumsum(

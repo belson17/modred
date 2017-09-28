@@ -1,5 +1,3 @@
-from __future__ import print_function
-from future.builtins import range
 import os
 
 import numpy as np
@@ -21,7 +19,7 @@ snapshots = [
     mr.VecHandlePickle(
         '%s/vec%d.pkl' % (out_dir, i),base_vec_handle=base_vec_handle,
         scale=quad_weights[i])
-    for i in range(num_vecs)]
+    for i in mr.range(num_vecs)]
 
 # Save arbitrary snapshot data
 num_elements = 2000
@@ -44,4 +42,5 @@ my_POD.compute_modes(mode_indices, modes)
 vec_space = mr.VectorSpaceHandles(inner_product=np.vdot)
 IP_array = vec_space.compute_symm_inner_product_array(modes)
 if not np.allclose(IP_array, np.eye(len(mode_indices))):
-    print('Warning: modes are not orthonormal', IP_array)
+    print('Warning: modes are not orthonormal')
+    print(IP_array)

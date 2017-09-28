@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 """Test the bpod module"""
-from __future__ import division
-from future.builtins import zip, range
 import unittest
 import os
 from os.path import join
@@ -10,6 +8,7 @@ from shutil import rmtree
 from modred.bpod import *
 from modred.vectorspace import *
 from modred.vectors import VecHandlePickle
+from modred.py2to3 import range
 from modred import util
 
 

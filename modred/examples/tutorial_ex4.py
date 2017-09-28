@@ -1,4 +1,3 @@
-from future.builtins import range
 import os
 
 import numpy as np
@@ -22,7 +21,8 @@ Y, X = np.meshgrid(y_grid, x_grid)
 # Create random snapshot data
 num_vecs = 100
 snapshots = [
-    mr.VecHandlePickle('%s/vec%d.pkl' % (out_dir, i)) for i in range(num_vecs)]
+    mr.VecHandlePickle('%s/vec%d.pkl' % (out_dir, i))
+    for i in mr.range(num_vecs)]
 if parallel.is_rank_zero():
     for i, snap in enumerate(snapshots):
         snap.put(np.sin(X * i) + np.cos(Y * i))
