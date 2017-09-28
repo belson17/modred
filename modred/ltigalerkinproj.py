@@ -1,11 +1,11 @@
 """Module for Galerkin projection of LTI systems."""
 import numpy as np
 
-from .vectors import VecHandleInMemory
-from .vectorspace import *
-from .py2to3 import range
-from . import util
 from . import parallel
+from . import util
+from .py2to3 import range
+from .vectors import VecHandleInMemory
+from .vectorspace import VectorSpaceArrays, VectorSpaceHandles
 
 
 def standard_basis(num_dims):

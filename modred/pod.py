@@ -2,10 +2,10 @@ from collections import namedtuple
 
 import numpy as np
 
-from .vectorspace import VectorSpaceArrays, VectorSpaceHandles
-from .py2to3 import range
-from . import util
 from . import parallel
+from . import util
+from .py2to3 import range
+from .vectorspace import VectorSpaceArrays, VectorSpaceHandles
 
 
 def compute_POD_arrays_snaps_method(

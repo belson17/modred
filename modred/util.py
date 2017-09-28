@@ -4,7 +4,7 @@ import os
 
 import numpy as np
 
-from . py2to3 import range
+from .py2to3 import range
 
 
 class UndefinedError(Exception): pass

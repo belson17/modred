@@ -7,8 +7,7 @@ from os.path import join
 
 import numpy as np
 
-import modred.parallel as parallel
-from modred import util
+from modred import util, parallel
 from modred.py2to3 import range
 
 
