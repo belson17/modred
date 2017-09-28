@@ -73,6 +73,9 @@ def compute_POD_arrays_snaps_method(
     if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
 
+    # Force data to be arrays (not matrices)
+    vecs = np.array(vecs)
+
     # Set up vector space (for inner products)
     vec_space = VectorSpaceArrays(weights=inner_product_weights)
 
@@ -160,12 +163,17 @@ def compute_POD_arrays_direct_method(
     if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
 
+    # Force data to be arrays (not matrices)
+    vecs = np.array(vecs)
+
+    # If no inner product weights, compute SVD directly
     if inner_product_weights is None:
         modes, sing_vals, eigvecs = util.svd(vecs, atol=atol, rtol=rtol)
         if mode_indices is None:
             mode_indices = range(sing_vals.size)
         modes = modes[:, mode_indices]
-
+    # For 1D inner product weights, compute square root and weight vecs
+    # accordingly
     elif inner_product_weights.ndim == 1:
         sqrt_weights = inner_product_weights ** 0.5
         vecs_weighted = np.diag(sqrt_weights).dot(vecs)
@@ -175,7 +183,8 @@ def compute_POD_arrays_direct_method(
             mode_indices = range(sing_vals.size)
         modes = np.diag(sqrt_weights ** -1.).dot(
             modes_weighted[:, mode_indices])
-
+    # For 2D inner product weights, compute Cholesky factorization and weight
+    # vecs accordingly.
     elif inner_product_weights.ndim == 2:
         if inner_product_weights.shape[0] > 500:
             print('Warning: Cholesky decomposition could be time consuming.')
@@ -185,9 +194,9 @@ def compute_POD_arrays_direct_method(
             vecs_weighted, atol=atol, rtol=rtol)
         if mode_indices is None:
             mode_indices = range(sing_vals.size)
-        modes = np.linalg.solve(sqrt_weights, modes_weighted[:, mode_indices])
-        #inv_sqrt_weights = np.linalg.inv(sqrt_weights)
-        #modes = inv_sqrt_weights.dot(modes_weighted[:, mode_indices])
+        #modes = np.linalg.solve(sqrt_weights, modes_weighted[:, mode_indices])
+        inv_sqrt_weights = np.linalg.inv(sqrt_weights)
+        modes = inv_sqrt_weights.dot(modes_weighted[:, mode_indices])
 
     # Compute projection coefficients
     eigvals = sing_vals ** 2.

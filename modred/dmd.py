@@ -110,6 +110,13 @@ def compute_DMD_arrays_snaps_method(
     """
     if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
+
+    # Force data to be arrays (not matrices)
+    vecs = np.array(vecs)
+    if adv_vecs is not None:
+        adv_vecs = np.array(adv_vecs)
+
+    # Set up vector space (for inner products)
     vec_space = VectorSpaceArrays(weights=inner_product_weights)
 
     # Sequential dataset
@@ -124,6 +131,7 @@ def compute_DMD_arrays_snaps_method(
         cross_correlation_array = expanded_correlation_array[:-1, 1:]
     # Non-sequential data
     else:
+        # Check that dimensions match
         if vecs.shape != adv_vecs.shape:
             raise ValueError(('vecs and adv_vecs are not the same shape.'))
 
@@ -317,8 +325,16 @@ def compute_DMD_arrays_direct_method(
     """
     if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
+
+    # Force data to be arrays (not matrices)
+    vecs = np.array(vecs)
+    if adv_vecs is not None:
+        adv_vecs = np.array(adv_vecs)
+
+    # Set up vector space (for inner products)
     vec_space = VectorSpaceArrays(weights=inner_product_weights)
 
+    # Weight data as necessary
     if inner_product_weights is None:
         vecs_weighted = vecs
         if adv_vecs is not None:
@@ -1217,6 +1233,13 @@ def compute_TLSqrDMD_arrays_snaps_method(
     """
     if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
+
+    # Force data to be arrays (not matrices)
+    vecs = np.array(vecs)
+    if adv_vecs is not None:
+        adv_vecs = np.array(adv_vecs)
+
+    # Set up vector space (for inner products)
     vec_space = VectorSpaceArrays(weights=inner_product_weights)
 
     # Sequential dataset
@@ -1485,8 +1508,16 @@ def compute_TLSqrDMD_arrays_direct_method(
     """
     if parallel.is_distributed():
         raise RuntimeError('Cannot run in parallel.')
+
+    # Force data to be arrays (not matrices)
+    vecs = np.array(vecs)
+    if adv_vecs is not None:
+        adv_vecs = np.array(adv_vecs)
+
+    # Set up vector space (for inner products)
     vec_space = VectorSpaceArrays(weights=inner_product_weights)
 
+    # Weight data as necessary
     if inner_product_weights is None:
         vecs_weighted = vecs
         if adv_vecs is not None:

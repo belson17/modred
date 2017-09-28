@@ -3,6 +3,8 @@ from future.builtins import range
 
 import numpy as np
 
+from . import util
+
 
 def OKID(inputs, outputs, num_Markovs):
     """Approximates Markov paramters using arbitrary input and output data.
@@ -33,12 +35,11 @@ def OKID(inputs, outputs, num_Markovs):
     - Data with more than one input tends to be harder to work with.
     """
     # Some internal comments and variables refer to textbook (J.-N. Juang 1994).
-    # Force arrays to be 2 dimensional
-    if inputs.ndim == 1:
-        inputs = inputs.reshape((1, inputs.shape[0]))
-    if outputs.ndim == 1:
-        outputs = outputs.reshape((1, outputs.shape[0]))
+    # Force data to be arrays.  Force arrays to be 2 dimensional
+    inputs = util.atleast_2d_row(np.array(inputs))
+    outputs = util.atleast_2d_row(np.array(outputs))
 
+    # Check dimensions
     num_inputs, num_samples = inputs.shape
     num_outputs, num_samples_outputs = outputs.shape
     if num_samples != num_samples_outputs:

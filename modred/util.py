@@ -31,6 +31,7 @@ def make_list(arg):
 
 def atleast_2d_row(array):
     """Converts 1d arrays to 2d arrays, but always as row vectors"""
+    array = np.array(array)
     if array.ndim < 2:
         return np.atleast_2d(array)
     else:
@@ -39,6 +40,7 @@ def atleast_2d_row(array):
 
 def atleast_2d_col(array):
     """Converts 1d arrays to 2d arrays, but always as column vectors"""
+    array = np.array(array)
     if array.ndim < 2:
         return np.atleast_2d(array).T
     else:
@@ -88,11 +90,16 @@ def save_array_text(array, file_name, delimiter=None):
     Files can be read in Matlab with the provided functions or often
     with Matlab's ``load``.
     """
-    # If one-dimensional array, then make a vector of many rows, 1 column
+    # Force data to be an array
+    array = np.array(array)
+
+    # If array is 1d, then make it into a 2d column vector
     if array.ndim == 1:
-        array = array.reshape((-1, 1))
+        array = atleast_2d_col(array)
     elif array.ndim > 2:
         raise RuntimeError('Cannot save an array with >2 dimensions')
+
+    # Save data
     if delimiter is None:
         np.savetxt(file_name, array.view(float))
     else:
@@ -116,21 +123,14 @@ def load_array_text(file_name, delimiter=None, is_complex=False):
 
     See :py:func:`save_array_text` for the format used by this function.
     """
+    # Set data type
     if is_complex:
         dtype = complex
     else:
         dtype = float
-    array = np.loadtxt(file_name, delimiter=delimiter) #, ndmin=2)
-    ## This section reproduces behavior of ndmin=2 option of np.loadtxt
-    if array.ndim == 1:
-        with open(file_name) as f:
-            num_rows = sum(1 for line in f)
-        if num_rows > 1:
-            array = array.reshape((-1, 1))
-        else:
-            array = array.reshape((1, -1))
-    ## End work around for ndmin=2 option.
 
+    # Load data
+    array = np.loadtxt(file_name, delimiter=delimiter, ndmin=2)
     if is_complex and array.shape[1] % 2 != 0:
         raise ValueError(
             ('Cannot load complex data, file %s has an odd number of columns. '
@@ -167,7 +167,7 @@ def get_data_members(obj):
 
 def sum_arrays(arr1, arr2):
     """Used for ``allreduce`` command."""
-    return arr1 + arr2
+    return np.array(arr1) + np.array(arr2)
 
 
 def sum_lists(list1, list2):
@@ -197,7 +197,8 @@ class InnerProductBlock(object):
     def __call__(self, vecs1, vecs2):
         n1 = len(vecs1)
         n2 = len(vecs2)
-        IP_array = np.zeros((n1,n2),
+        IP_array = np.zeros(
+            (n1, n2),
             dtype=type(self.inner_product(vecs1[0], vecs2[0])))
         for i in range(n1):
             for j in range(n2):
@@ -228,8 +229,9 @@ def svd(array, atol=1e-13, rtol=None):
     Truncates ``U``, ``S``, and ``V`` such that the singular values
     obey both ``atol`` and ``rtol``.
     """
-    U, S, V_comp_conj = np.linalg.svd(array, full_matrices=0)
-    V = V_comp_conj.conj().T
+    # Compute SVD (force data to be array)
+    U, S, V_conj_T = np.linalg.svd(np.array(array), full_matrices=0)
+    V = V_conj_T.conj().T
 
     # Figure out how many singular values satisfy the tolerances
     if atol is not None:
@@ -274,8 +276,8 @@ def eigh(array, atol=1e-13, rtol=None, is_positive_definite=False):
 
         ``eigvecs``: Array whose columns are eigenvectors.
     """
-    # Compute eigendecomposition
-    eigvals, eigvecs = np.linalg.eigh(array)
+    # Compute eigendecomposition (force data to be array)
+    eigvals, eigvecs = np.linalg.eigh(np.array(array))
 
     # Sort the vecs and eigvals by eigval magnitude.  The first element will
     # have the largest magnitude and the last element will have the smallest
@@ -328,6 +330,9 @@ def eig_biorthog(array, scale_choice='left'):
 
         ``L_evecs``: Array whose columns are left eigenvectors.
     """
+    # Force data to be array
+    array = np.array(array)
+
     # Compute eigendecompositions
     R_evals, R_evecs= np.linalg.eig(array)
     L_evals_conj, L_evecs= np.linalg.eig(array.conj().T)
@@ -370,9 +375,12 @@ def solve_Lyapunov_direct(A, Q):
     See also :py:func:`solve_Lyapunov_iterative` and
     http://en.wikipedia.org/wiki/Lyapunov_equation
     """
+    A = np.array(A)
+    Q = np.array(Q)
+
     if A.shape != Q.shape:
         raise ValueError("A and Q don't have same shape")
-    #A_flat = A.flatten()
+
     Q_flat = Q.flatten()
     kron_AA = np.kron(A, A)
     X_flat = np.linalg.solve(np.identity(kron_AA.shape[0]) - kron_AA, Q_flat)
@@ -392,6 +400,9 @@ def solve_Lyapunov_iterative(A, Q, max_iters=10000, tol=1e-8):
     This function may not be as computationally efficient or stable as
     Matlab's ``dylap``.
     """
+    A = np.array(A)
+    Q = np.array(Q)
+
     if A.shape[0] != A.shape[1]:
         raise ValueError('A must be square.')
     if A.shape != Q.shape:
@@ -446,6 +457,10 @@ def balanced_truncation(
     - This function may not be as computationally efficient or stable as
       Matlab's ``balancmr``.
     """
+    A = np.array(A)
+    B = np.array(B)
+    C = np.array(C)
+
     if iterative_solver:
         gram_cont = solve_Lyapunov_iterative(A, B.dot(B.transpose().conj()))
         gram_obsv = solve_Lyapunov_iterative(A.transpose().conj(),
@@ -454,6 +469,7 @@ def balanced_truncation(
         gram_cont = solve_Lyapunov_direct(A, B.dot(B.transpose().conj()))
         gram_obsv = solve_Lyapunov_direct(A.transpose().conj(),
             C.transpose().conj().dot(C))
+
     Uc, Ec, Vc = svd(gram_cont)
     Uo, Eo, Vo = svd(gram_obsv)
     Lc = Uc.dot(np.diag(Ec**0.5))
@@ -541,7 +557,9 @@ def lsim(A, B, C, inputs, initial_condition=None):
 
     ``D`` array is assumed to be zero.
     """
-    #D = 0
+    A = np.array(A)
+    B = np.array(B)
+    C = np.array(C)
     if inputs.ndim == 1:
         inputs = inputs.reshape((len(inputs), 1))
     num_steps, num_inputs = inputs.shape
@@ -553,10 +571,6 @@ def lsim(A, B, C, inputs, initial_condition=None):
         raise ValueError('B has the wrong shape ', B.shape)
     if C.shape != (num_outputs, num_states):
         raise ValueError('C has the wrong shape ', C.shape)
-    #if D == 0:
-    #    D = np.zeros((num_outputs, num_inputs))
-    #if D.shape != (num_outputs, num_inputs):
-    #    raise ValueError('D has the wrong shape, D=', D)
     if initial_condition is not None:
         if initial_condition.shape[0] != num_states or \
             initial_condition.ndim != 1:
@@ -590,6 +604,10 @@ def impulse(A, B, C, num_time_steps=None):
     No D array is included, but one can simply be prepended to the output if
     it is non-zero.
     """
+    A = np.array(A)
+    B = np.array(B)
+    C = np.array(C)
+
     num_inputs = B.shape[1]
     num_outputs = C.shape[0]
     A_powers = np.identity(A.shape[0])
@@ -705,7 +723,7 @@ def Hankel(first_col, last_row=None):
     Returns:
         Hankel: 2D array with dimensions ``[len(first_col), len(last_row)]``.
     """
-    first_col = first_col.flatten()
+    first_col = np.array(first_col).flatten()
     if last_row is None:
         last_row = np.zeros(first_col.shape)
     else:
@@ -752,5 +770,5 @@ def Hankel_chunks(first_col_chunks, last_row_chunks=None):
     # it.  Finally, call vstack on the list comprehension to get the whole
     # Hankel array.
     return np.vstack([np.hstack(
-        unique_chunks[idx:idx + len(last_row_chunks)])
+        np.array(unique_chunks[idx:idx + len(last_row_chunks)]))
         for idx in range(len(first_col_chunks))])

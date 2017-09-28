@@ -73,7 +73,8 @@ def compute_derivs_arrays(vecs, adv_vecs, dt):
 
     Computes d(``vec``)/dt = ( ``vec``\(t=dt) -  ``vec``\(t=0) ) / dt.
     """
-    return (adv_vecs - vecs)/(1. * dt)
+    # Force data to be arrays, then compute derivatives
+    return (np.array(adv_vecs) - np.array(vecs))/(1. * dt)
 
 
 class LTIGalerkinProjectionBase(object):
@@ -166,13 +167,13 @@ class LTIGalerkinProjectionArrays(LTIGalerkinProjectionBase):
             put_array=put_array)
         if parallel.is_distributed():
             raise RuntimeError('Not for parallel use.')
-        self.basis_vecs = basis_vecs
+        self.basis_vecs = np.array(basis_vecs)
         if adjoint_basis_vecs is None:
             self.adjoint_basis_vecs = self.basis_vecs
             self.symmetric = True
         else:
             self.symmetric = False
-            self.adjoint_basis_vecs = adjoint_basis_vecs
+            self.adjoint_basis_vecs = np.array(adjoint_basis_vecs)
             if self.adjoint_basis_vecs.shape != self.basis_vecs.shape:
                 raise ValueError(
                     'Basis vec and adjoint basis vec arrays are different '
@@ -194,7 +195,7 @@ class LTIGalerkinProjectionArrays(LTIGalerkinProjectionBase):
             ``A_reduced``: Reduced-order A array.
         """
         self.A_reduced = self.vec_space.compute_inner_product_array(
-            self.adjoint_basis_vecs, A_on_basis_vecs)
+            self.adjoint_basis_vecs, np.array(A_on_basis_vecs))
         if not self.is_basis_orthonormal:
             self.A_reduced = self._get_proj_array().dot(self.A_reduced)
         return self.A_reduced
@@ -231,7 +232,7 @@ class LTIGalerkinProjectionArrays(LTIGalerkinProjectionBase):
         #(where I+dt*A ~ A_d)
         #The important thing to see is the factor of dt difference.
         self.B_reduced = self.vec_space.compute_inner_product_array(
-            self.adjoint_basis_vecs, B_on_standard_basis_array)
+            self.adjoint_basis_vecs, np.array(B_on_standard_basis_array))
         if not self.is_basis_orthonormal:
             self.B_reduced = self._get_proj_array().dot(self.B_reduced)
         return self.B_reduced
@@ -293,9 +294,9 @@ class LTIGalerkinProjectionArrays(LTIGalerkinProjectionBase):
 
             ``C_reduced``: Reduced-order C array.
         """
-        self.reduce_A(A_on_basis_vecs)
-        self.reduce_B(B_on_standard_basis_array)
-        self.reduce_C(C_on_basis_vecs)
+        self.reduce_A(np.array(A_on_basis_vecs))
+        self.reduce_B(np.array(B_on_standard_basis_array))
+        self.reduce_C(np.array(C_on_basis_vecs))
         return self.A_reduced, self.B_reduced, self.C_reduced
 
 

@@ -35,6 +35,9 @@ def make_sampled_format(times, Markovs, dt_tol=1e-6):
     (ERA), the resulting model has a time step of :math:`dt` rather than
     :math:`2*dt`.
     """
+    times = np.array(times)
+    Markovs = np.array(Markovs)
+
     num_time_steps, num_Markovs, num_inputs = Markovs.shape
     if num_time_steps != times.shape[0]:
         raise RuntimeError('Size of time and output arrays differ')
@@ -86,8 +89,9 @@ def compute_ERA_model(Markovs, num_states):
     - The functions :py:func:`util.load_signals` and
       :py:func:`util.load_multiple_signals` are often useful.
     """
+    # Compute ERA using ERA object.  Force data to be array.
     my_ERA = ERA()
-    return my_ERA.compute_model(Markovs, num_states)
+    return my_ERA.compute_model(np.array(Markovs), num_states)
 
 
 class ERA(object):
@@ -190,7 +194,7 @@ class ERA(object):
         :math:`1`.  This means the reduced B array is "off" by a factor of
         :math:`dt`.  You can account for this by multiplying B by :math:`dt`.
         """
-        self._set_Markovs(Markovs)
+        self._set_Markovs(np.array(Markovs))
         self.mc = mc
         self.mo = mo
 
@@ -285,7 +289,7 @@ class ERA(object):
 
         ``Markovs[i]`` is the Markov parameter C * A ** i * B.
         """
-        self.Markovs = Markovs
+        self.Markovs = np.array(Markovs)
         ndims = self.Markovs.ndim
         if ndims == 1:
             self.Markovs = self.Markovs.reshape((self.Markovs.shape[0], 1, 1))
@@ -296,7 +300,7 @@ class ERA(object):
             raise RuntimeError('Markovs can have 1, 2, or 3 dims, '
                 'yours had %d'%ndims)
 
-        self.num_time_steps, self.num_Markovs, self.num_inputs = \
+        self.num_time_steps, self.num_Markovs, self.num_inputs =\
             self.Markovs.shape
 
         # Must have an even number of time steps, remove last entry if odd.

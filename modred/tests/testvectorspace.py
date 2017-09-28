@@ -316,8 +316,10 @@ class TestVectorSpaceHandles(unittest.TestCase):
                         mode_idxs_arg = 0
                         mode_idxs_vals = [0]
                     else:
-                        mode_idxs_arg = np.unique(np.random.randint(
-                            0, high=num_modes, size=num_modes // 2))
+                        mode_idxs_arg = np.unique(
+                            parallel.call_and_bcast(
+                                np.random.randint, 0, high=num_modes,
+                                size=num_modes // 2))
                         mode_idxs_vals = mode_idxs_arg
                     mode_handles = [
                         vcs.VecHandlePickle(mode_path % mode_num)

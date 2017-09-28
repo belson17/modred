@@ -83,7 +83,7 @@ class TestUtil(unittest.TestCase):
                             array = np.random.random((num_rows, num_cols))
                             if is_complex:
                                 array = array + (
-                                    1j *np.random.random((num_rows, num_cols)))
+                                    1j * np.random.random((num_rows, num_cols)))
 
                             # Check row and column vectors, no squeeze (1, 1)
                             if squeeze and (num_rows > 1 or num_cols > 1):

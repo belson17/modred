@@ -53,6 +53,7 @@ class VectorSpaceArrays(object):
 
     def lin_combine(
         self, basis_vecs, coeff_array, coeff_array_col_indices=None):
+        coeff_array = np.array(coeff_array)
         if coeff_array_col_indices is not None:
             coeff_array = coeff_array[:, coeff_array_col_indices]
         return basis_vecs.dot(coeff_array)
@@ -868,6 +869,9 @@ class VectorSpaceHandles(object):
         basis_vec_handles = util.make_iterable(basis_vec_handles)
         num_bases = len(basis_vec_handles)
         num_sums = len(sum_vec_handles)
+
+        # Force coefficients to be array
+        coeff_array = np.array(coeff_array)
 
         # Check for 1d coefficient arrays
         if coeff_array.ndim < 2:

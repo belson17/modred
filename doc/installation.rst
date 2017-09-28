@@ -6,7 +6,7 @@ Mandatory:
 
 1. Python 2 (>2.6, tested for 2.7) or Python 3 (>=3.3), http://python.org.
 
-2. Relatively new version of Numpy (>1.5, tested for 1.10),
+2. Relatively new version of Numpy (>1.6, tested for 1.10),
    http://numpy.scipy.org.
 
 Optional:
