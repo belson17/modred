@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """ Test the parallel module"""
 import unittest
-import copy
 import os
 from os.path import join
+import copy
 
-import modred.parallel as parallel
+from modred import parallel
 
 
 try:

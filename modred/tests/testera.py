@@ -7,9 +7,7 @@ from shutil import rmtree
 
 import numpy as np
 
-import modred.parallel as parallel
-from modred import era
-from modred import util
+from modred import era, parallel, util
 from modred.py2to3 import range
 
 

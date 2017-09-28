@@ -8,12 +8,10 @@ import copy
 
 import numpy as np
 
-import modred.parallel as parallel
-from modred.pod import *
-from modred.vectorspace import *
-from modred.vectors import VecHandlePickle
-from modred import util
+from modred import pod, parallel, util
 from modred.py2to3 import range
+from modred.vectorspace import VectorSpaceArrays, VectorSpaceHandles
+from modred.vectors import VecHandlePickle
 
 
 #@unittest.skip('Testing something else.')
@@ -155,30 +153,30 @@ class TestPODHandles(unittest.TestCase):
             'correlation_array': None, 'vec_handles': None, 'vecs': None,
             'vec_space': VectorSpaceHandles(inner_product=my_IP, verbosity=0)}
         for k,v in util.get_data_members(
-            PODHandles(my_IP, verbosity=0)).items():
+            pod.PODHandles(my_IP, verbosity=0)).items():
             self.assertEqual(v, data_members_default[k])
 
-        my_POD = PODHandles(my_IP, verbosity=0)
+        my_POD = pod.PODHandles(my_IP, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_space'] = VectorSpaceHandles(
             inner_product=my_IP, verbosity=0)
         for k,v in util.get_data_members(my_POD).items():
             self.assertEqual(v, data_members_modified[k])
 
-        my_POD = PODHandles(my_IP, get_array=my_load, verbosity=0)
+        my_POD = pod.PODHandles(my_IP, get_array=my_load, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['get_array'] = my_load
         for k,v in util.get_data_members(my_POD).items():
             self.assertEqual(v, data_members_modified[k])
 
-        my_POD = PODHandles(my_IP, put_array=my_save, verbosity=0)
+        my_POD = pod.PODHandles(my_IP, put_array=my_save, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['put_array'] = my_save
         for k,v in util.get_data_members(my_POD).items():
             self.assertEqual(v, data_members_modified[k])
 
         max_vecs_per_node = 500
-        my_POD = PODHandles(
+        my_POD = pod.PODHandles(
             my_IP, max_vecs_per_node=max_vecs_per_node, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_space'].max_vecs_per_node = max_vecs_per_node
@@ -203,7 +201,7 @@ class TestPODHandles(unittest.TestCase):
             np.random.random, ((self.num_vecs, self.num_vecs)))
 
         # Create a POD object and store the data in it
-        POD_save = PODHandles(None, verbosity=0)
+        POD_save = pod.PODHandles(None, verbosity=0)
         POD_save.correlation_array = correlation_array_true
         POD_save.eigvals = eigvals_true
         POD_save.eigvecs = eigvecs_true
@@ -220,7 +218,7 @@ class TestPODHandles(unittest.TestCase):
         parallel.barrier()
 
         # Create a new POD object and use it to load the data
-        POD_load = PODHandles(None, verbosity=0)
+        POD_load = pod.PODHandles(None, verbosity=0)
         POD_load.get_decomp(eigvals_path, eigvecs_path)
         POD_load.get_correlation_array(correlation_array_path)
         POD_load.get_proj_coeffs(proj_coeffs_path)
@@ -240,7 +238,7 @@ class TestPODHandles(unittest.TestCase):
         atol = 1e-12
 
         # Compute POD using modred
-        POD = PODHandles(np.vdot, verbosity=0)
+        POD = pod.PODHandles(np.vdot, verbosity=0)
         eigvals, eigvecs = POD.compute_decomp(self.vec_handles)
 
         # Test correlation array values by simply recomputing them.  Here simply
@@ -270,7 +268,7 @@ class TestPODHandles(unittest.TestCase):
         # Compute POD using modred.  (The properties defining a POD mode require
         # manipulations involving the correct decomposition, so we cannot
         # isolate the mode computation from the decomposition step.)
-        POD = PODHandles(np.vdot, verbosity=0)
+        POD = pod.PODHandles(np.vdot, verbosity=0)
         POD.compute_decomp(self.vec_handles)
 
         # Select a subset of modes to compute.  Compute at least half
@@ -308,7 +306,7 @@ class TestPODHandles(unittest.TestCase):
         # POD modes require manipulations involving the correct decomposition
         # and modes, so we cannot isolate the mode computation from those
         # computations.)
-        POD = PODHandles(np.vdot, verbosity=0)
+        POD = pod.PODHandles(np.vdot, verbosity=0)
         POD.compute_decomp(self.vec_handles)
         mode_idxs = range(POD.eigvals.size)
         mode_handles = [VecHandlePickle(self.mode_path % i) for i in mode_idxs]

@@ -40,12 +40,12 @@ from .ltigalerkinproj import (
 from .vectorspace import VectorSpaceHandles, VectorSpaceArrays
 
 from .vectors import (
-    VecHandlePickle, VecHandleInMemory,
-    Vector, VecHandle, VecHandleArrayText,
+    Vector, VecHandle,
+    VecHandlePickle, VecHandleInMemory, VecHandleArrayText,
     InnerProductTrapz, inner_product_array_uniform
 )
 
-import parallel
+from . import parallel
 
 from .util import (
     UndefinedError,

@@ -41,6 +41,15 @@ def print_msg(msg, output_channel='stdout'):
 try:
     xrange
     range = xrange
-# For Python 3, do nothing.
+
+# For Python 3, use the built-in range function, which acts like Python 2's
+# xrange.
 except NameError:
-    pass
+    range = range
+
+# Use this to check that modules are using the custom range function
+'''
+def range(*args):
+    print('Using custom range function')
+    return range(*args)
+'''
