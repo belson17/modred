@@ -56,7 +56,7 @@ class TestVectorSpaceArrays(unittest.TestCase):
 
         # Do computation using a vector space object.  Check an explicit
         # mode_indices argument, as well as a None value.
-        vec_space = VectorSpaceArrays()
+        vec_space = vspc.VectorSpaceArrays()
         mode_indices_trunc = np.random.randint(
             0, high=num_modes, size=num_modes // 2)
         for mode_idxs_arg, mode_idxs_vals in zip(

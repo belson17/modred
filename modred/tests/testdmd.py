@@ -54,9 +54,9 @@ class TestDMDArraysFunctions(unittest.TestCase):
             # Test both method of snapshots and direct method
             for method in ['snaps', 'direct']:
                 if method == 'snaps':
-                    compute_DMD = compute_DMD_arrays_snaps_method
+                    compute_DMD = dmd.compute_DMD_arrays_snaps_method
                 elif method == 'direct':
-                    compute_DMD = compute_DMD_arrays_direct_method
+                    compute_DMD = dmd.compute_DMD_arrays_direct_method
                 else:
                     raise ValueError('Invalid method choice.')
 
@@ -807,9 +807,9 @@ class TestTLSqrDMDArraysFunctions(unittest.TestCase):
             # Test both method of snapshots and direct method
             for method in ['snaps', 'direct']:
                 if method == 'snaps':
-                    compute_TLSqrDMD = compute_TLSqrDMD_arrays_snaps_method
+                    compute_TLSqrDMD = dmd.compute_TLSqrDMD_arrays_snaps_method
                 elif method == 'direct':
-                    compute_TLSqrDMD = compute_TLSqrDMD_arrays_direct_method
+                    compute_TLSqrDMD = dmd.compute_TLSqrDMD_arrays_direct_method
                 else:
                     raise ValueError('Invalid method choice.')
 

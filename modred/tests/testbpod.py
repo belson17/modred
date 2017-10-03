@@ -205,7 +205,7 @@ class TestBPODArrays(unittest.TestCase):
                     for mode_indices_arg, mode_indices_vals in zip(
                         [None, mode_indices_trunc],
                         [range(BPOD_res.sing_vals.size), mode_indices_trunc]):
-                        BPOD_res_sliced = compute_BPOD_arrays(
+                        BPOD_res_sliced = bpod.compute_BPOD_arrays(
                             direct_vecs_array, adjoint_vecs_array,
                             direct_mode_indices=mode_indices_arg,
                             adjoint_mode_indices=mode_indices_arg,

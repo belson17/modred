@@ -41,9 +41,9 @@ class TestPODArraysFunctions(unittest.TestCase):
         # Test both method of snapshots and direct method
         for method in ['snaps', 'direct']:
             if method == 'snaps':
-                compute_POD = compute_POD_arrays_snaps_method
+                compute_POD = pod.compute_POD_arrays_snaps_method
             elif method == 'direct':
-                compute_POD = compute_POD_arrays_direct_method
+                compute_POD = pod.compute_POD_arrays_direct_method
             else:
                 raise ValueError('Invalid method choice.')
 
@@ -53,8 +53,7 @@ class TestPODArraysFunctions(unittest.TestCase):
                     weights=weights).compute_inner_product_array
 
                 # Compute POD
-                POD_res = compute_POD_arrays_snaps_method(
-                    vecs_array, inner_product_weights=weights)
+                POD_res = compute_POD(vecs_array, inner_product_weights=weights)
 
                 # For method of snapshots, test correlation array values
                 if method == 'snaps':
@@ -90,7 +89,7 @@ class TestPODArraysFunctions(unittest.TestCase):
                     [range(POD_res.eigvals.size), mode_indices_trunc]):
 
                     # Compute POD
-                    POD_res_sliced = compute_POD_arrays_snaps_method(
+                    POD_res_sliced = compute_POD(
                         vecs_array, mode_indices=mode_idxs_arg,
                         inner_product_weights=weights)
 
