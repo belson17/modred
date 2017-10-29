@@ -1,16 +1,11 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
-from future.builtins import range
-from future.builtins import object
-import sys
 import copy
 from time import time
 
 import numpy as np
 
-from . import util
 from . import parallel
+from . import util
+from .py2to3 import print_msg, range
 
 
 class VectorSpaceArrays(object):
@@ -119,7 +114,7 @@ class VectorSpaceHandles(object):
             self.max_vecs_per_proc = 2
             self.print_msg(
                 'Warning: max_vecs_per_node too small for given number of '
-                'nodes and procs. Assuming 2 vecs can be in memory per '
+                'nodes and procs. Assuming two vecs can be in memory per '
                 'processor. If possible, increase max_vecs_per_node for a '
                 'speedup.')
         else:
@@ -134,10 +129,10 @@ class VectorSpaceHandles(object):
             raise RuntimeError('inner product function is not defined')
 
 
-    def print_msg(self, msg, output_channel=sys.stdout):
+    def print_msg(self, msg, output_channel='stdout'):
         """Print a message from rank zero MPI worker/processor."""
         if self.verbosity > 0 and parallel.is_rank_zero():
-            print(msg, file=output_channel)
+            print_msg(msg, output_channel=output_channel)
 
 
     def sanity_check(self, test_vec_handle):
@@ -220,7 +215,7 @@ class VectorSpaceHandles(object):
                 'value after scalar multiplication and vector addition.')
 
         # Report results to user
-        self.print_msg('Passed the sanity check')
+        self.print_msg('Passed the sanity check.')
 
 
     def compute_inner_product_array(self, row_vec_handles, col_vec_handles):
@@ -419,7 +414,6 @@ class VectorSpaceHandles(object):
                 col_vecs_recv = (None, None)
                 col_indices = list(range(start_col_index, end_col_index))
                 for pass_index in range(parallel.get_num_procs()):
-                    #if rank==0: print 'starting pass index=',pass_index
                     # If on the first pass, get the col vecs, no send/recv
                     # This is all that is called when in serial, loop iterates
                     # once.
@@ -468,9 +462,10 @@ class VectorSpaceHandles(object):
                                 num_completed_IPs *
                                 parallel.get_num_MPI_workers() /
                                 (num_cols * num_rows)) * 100.
-                            self.print_msg((
-                                'Completed %.1f%% of inner products'
-                                % percent_completed_IPs), sys.stderr)
+                            self.print_msg(
+                                'Completed %.1f%% of inner products' %
+                                percent_completed_IPs,
+                                output_channel='stderr')
                             self.prev_print_time = time()
 
                 # Clear the retrieved column vecs after done this pass cycle
@@ -488,7 +483,7 @@ class VectorSpaceHandles(object):
 
         percent_completed_IPs = 100.
         self.print_msg(
-            'Completed 100%% of inner products', sys.stderr)
+            'Completed 100% of inner products', output_channel='stderr')
         self.prev_print_time = time()
 
         parallel.barrier()
@@ -699,9 +694,10 @@ class VectorSpaceHandles(object):
                                     num_completed_IPs *
                                     parallel.get_num_MPI_workers() /
                                     total_num_IPs) * 100.
-                                self.print_msg((
+                                self.print_msg(
                                     'Completed %.1f%% of inner products' %
-                                    percent_completed_IPs), sys.stderr)
+                                    percent_completed_IPs,
+                                    output_channel='stderr')
                                 self.prev_print_time = time()
 
                     # Sync after send/receive
@@ -786,9 +782,10 @@ class VectorSpaceHandles(object):
                                 num_completed_IPs *
                                 parallel.get_num_MPI_workers() /
                                 total_num_IPs) * 100.
-                            self.print_msg((
+                            self.print_msg(
                                 'Completed %.1f%% of inner products' %
-                                percent_completed_IPs), sys.stderr)
+                                percent_completed_IPs,
+                                output_channel='stderr')
                             self.prev_print_time = time()
 
             # Completed a chunk of rows and all columns on all processors.
@@ -814,7 +811,7 @@ class VectorSpaceHandles(object):
 
         # Print progress
         self.print_msg(
-            'Completed 100%% of inner products', sys.stderr)
+            'Completed 100% of inner products', output_channel='stderr')
         self.prev_print_time = time()
 
         # Return inner product array
@@ -1051,7 +1048,8 @@ class VectorSpaceHandles(object):
                             self.print_interval):
                             self.print_msg(
                                 'Completed %.1f%% of linear combinations' %
-                                (sum_index * 100. / len(sum_tasks[rank])))
+                                (sum_index * 100. / len(sum_tasks[rank])),
+                                output_channel='stderr')
                             self.prev_print_time = time()
 
             # Completed this set of sum vecs, puts them to memory or file
@@ -1060,7 +1058,8 @@ class VectorSpaceHandles(object):
                     sum_layers[sum_index - start_sum_index])
             del sum_layers
 
-        self.print_msg('Completed %.1f%% of linear combinations' % 100.)
+        self.print_msg(
+            'Completed 100% of linear combinations', output_channel='stderr')
         self.prev_print_time = time()
         parallel.barrier()
 

@@ -1,4 +1,3 @@
-from future.builtins import range
 import os
 
 import numpy as np
@@ -13,24 +12,25 @@ if not os.path.isdir(out_dir):
     os.makedirs(out_dir)
 
 # Create handles for modes
+num_modes = 10
 basis_vecs = [
     mr.VecHandlePickle('%s/dir_mode_%02d.pkl' % (out_dir, i))
-    for i in range(num_modes)]
+    for i in mr.range(num_modes)]
 adjoint_basis_vecs = [
     mr.VecHandlePickle('%s/adj_mode_%02d.pkl' % (out_dir, i))
-    for i in range(num_modes)]
+    for i in mr.range(num_modes)]
 
 # Define system dimensions and create handles for action on modes
 num_inputs = 2
 num_outputs = 4
 A_on_basis_vecs = [
     mr.VecHandlePickle('%s/A_on_dir_mode_%02d.pkl' % (out_dir, i))
-    for i in range(num_modes)]
+    for i in mr.range(num_modes)]
 B_on_bases = [
     mr.VecHandlePickle('%s/B_on_basis_%02d.pkl' % (out_dir, i))
-    for i in range(num_inputs)]
+    for i in mr.range(num_inputs)]
 C_on_basis_vecs = [
-    np.sin(np.linspace(0, 0.1 * i, num_outputs)) for i in range(num_modes)]
+    np.sin(np.linspace(0, 0.1 * i, num_outputs)) for i in mr.range(num_modes)]
 
 # Create random modes and action on modes. Typically this data already exists
 # and this section is unnecesary.

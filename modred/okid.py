@@ -1,9 +1,8 @@
 """OKID function. (Book: Applied System Identification, Jer-Nan Juang, 1994)"""
-from future.builtins import range
-
 import numpy as np
 
 from . import util
+from .py2to3 import range
 
 
 def OKID(inputs, outputs, num_Markovs):

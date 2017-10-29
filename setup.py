@@ -70,5 +70,5 @@ setup(
             'tests/files_OKID/SIMO/*',
             'tests/files_OKID/MISO/*',
             'tests/files_OKID/MIMO/*']},
-    install_requires=['numpy', 'future']
+    install_requires=['numpy']
     )

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 """Test vectors module"""
-from __future__ import division
 import unittest
 import os
 from os.path import join
@@ -8,8 +7,7 @@ from shutil import rmtree
 
 import numpy as np
 
-import modred.parallel as parallel
-import modred.vectors as vcs
+from modred import vectors as vcs, parallel
 
 
 @unittest.skipIf(parallel.is_distributed(), 'No need to test in parallel')

@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 """Test ltigalerkinproj module"""
-from __future__ import division
-from future.builtins import zip
-from future.builtins import map
-from future.builtins import range
 import unittest
 import os
 from os.path import join
@@ -11,9 +7,9 @@ from shutil import rmtree
 
 import numpy as np
 
-import modred.parallel as parallel
-import modred.ltigalerkinproj as LGP
+from modred import ltigalerkinproj as lgp, parallel, util
 from modred import util
+from modred.py2to3 import range
 from modred.vectors import VecHandlePickle
 
 
@@ -42,7 +38,7 @@ class TestLTIGalerkinProjectionBase(unittest.TestCase):
         A = parallel.call_and_bcast(np.random.random, ((10, 10)))
         B = parallel.call_and_bcast(np.random.random, ((1, 10)))
         C = parallel.call_and_bcast(np.random.random, ((10, 2)))
-        LTI_proj = LGP.LTIGalerkinProjectionBase()
+        LTI_proj = lgp.LTIGalerkinProjectionBase()
         LTI_proj.A_reduced = A.copy()
         LTI_proj.B_reduced = B.copy()
         LTI_proj.C_reduced = C.copy()
@@ -67,7 +63,7 @@ class TestLTIGalerkinProjectionArrays(unittest.TestCase):
             self.num_basis_vecs, self.num_adjoint_basis_vecs,
             self.num_states, self.num_inputs, self.num_outputs)
 
-        self.LTI_proj = LGP.LTIGalerkinProjectionArrays(
+        self.LTI_proj = lgp.LTIGalerkinProjectionArrays(
             self.basis_vecs, adjoint_basis_vecs=self.adjoint_basis_vecs,
             is_basis_orthonormal=True)
 
@@ -134,7 +130,7 @@ class TestLTIGalerkinProjectionArrays(unittest.TestCase):
         A_returned = self.LTI_proj.reduce_A(self.A_on_basis_vecs)
         np.testing.assert_equal(A_returned, self.A_true)
 
-        LTI_proj = LGP.LTIGalerkinProjectionArrays(
+        LTI_proj = lgp.LTIGalerkinProjectionArrays(
             self.basis_vecs, adjoint_basis_vecs=self.adjoint_basis_vecs,
             is_basis_orthonormal=False)
         A_returned = LTI_proj.reduce_A(self.A_on_basis_vecs)
@@ -148,7 +144,7 @@ class TestLTIGalerkinProjectionArrays(unittest.TestCase):
         B_returned = self.LTI_proj.reduce_B(self.B_on_standard_basis_array)
         np.testing.assert_equal(B_returned, self.B_true)
 
-        LTI_proj = LGP.LTIGalerkinProjectionArrays(
+        LTI_proj = lgp.LTIGalerkinProjectionArrays(
             self.basis_vecs, adjoint_basis_vecs=self.adjoint_basis_vecs,
             is_basis_orthonormal=False)
         B_returned = LTI_proj.reduce_B(self.B_on_standard_basis_array)
@@ -173,7 +169,7 @@ class TestLTIGalerkinProjectionArrays(unittest.TestCase):
     #@unittest.skip('Testing something else')
     def test_adjoint_basis_vec_optional(self):
         """Test that adjoint modes default to direct modes"""
-        no_adjoints_LTI_proj = LGP.LTIGalerkinProjectionArrays(
+        no_adjoints_LTI_proj = lgp.LTIGalerkinProjectionArrays(
             self.basis_vecs, is_basis_orthonormal=True)
         np.testing.assert_equal(
             no_adjoints_LTI_proj.adjoint_basis_vecs,
@@ -210,7 +206,7 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
             self.num_basis_vecs, self.num_adjoint_basis_vecs,
             self.num_states, self.num_inputs, self.num_outputs)
 
-        self.LTI_proj = LGP.LTIGalerkinProjectionHandles(
+        self.LTI_proj = lgp.LTIGalerkinProjectionHandles(
             np.vdot, self.basis_vec_handles,
             adjoint_basis_vec_handles=self.adjoint_basis_vec_handles,
             is_basis_orthonormal=True, verbosity=0)
@@ -327,7 +323,7 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
         deriv_handles = [
             VecHandlePickle(join(self.test_dir, 'deriv_test%d' % i))
             for i in range(num_vecs)]
-        LGP.compute_derivs_handles(
+        lgp.compute_derivs_handles(
             self.basis_vec_handles, self.A_on_basis_vec_handles,
             deriv_handles, dt)
         derivs_loaded = [v.get() for v in deriv_handles]
@@ -341,7 +337,7 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
         A_returned = self.LTI_proj.reduce_A(self.A_on_basis_vec_handles)
         np.testing.assert_allclose(A_returned, self.A_true)
 
-        LTI_proj = LGP.LTIGalerkinProjectionHandles(
+        LTI_proj = lgp.LTIGalerkinProjectionHandles(
             np.vdot, self.basis_vec_handles,
             adjoint_basis_vec_handles=self.adjoint_basis_vec_handles,
             is_basis_orthonormal=False, verbosity=0)
@@ -356,7 +352,7 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
         B_returned = self.LTI_proj.reduce_B(self.B_on_standard_basis_handles)
         np.testing.assert_allclose(B_returned, self.B_true)
 
-        LTI_proj = LGP.LTIGalerkinProjectionHandles(
+        LTI_proj = lgp.LTIGalerkinProjectionHandles(
             np.vdot, self.basis_vec_handles,
             adjoint_basis_vec_handles=self.adjoint_basis_vec_handles,
             is_basis_orthonormal=False, verbosity=0)
@@ -374,7 +370,7 @@ class TestLTIGalerkinProjectionHandles(unittest.TestCase):
     #@unittest.skip('Testing something else')
     def test_adjoint_basis_vec_optional(self):
         """Test that adjoint modes default to direct modes"""
-        no_adjoints_LTI_proj = LGP.LTIGalerkinProjectionHandles(
+        no_adjoints_LTI_proj = lgp.LTIGalerkinProjectionHandles(
             np.vdot, self.basis_vec_handles, is_basis_orthonormal=True,
             verbosity=0)
         np.testing.assert_equal(

@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 """Test era module"""
-from __future__ import division
-from future.builtins import range
 import unittest
 import os
 from os.path import join
@@ -9,9 +7,8 @@ from shutil import rmtree
 
 import numpy as np
 
-import modred.parallel as parallel
-from modred import era
-from modred import util
+from modred import era, parallel, util
+from modred.py2to3 import range
 
 
 def make_time_steps(num_steps, interval):
@@ -203,8 +200,8 @@ class testERA(unittest.TestCase):
                     # Exact grammians from Lyapunov eqn solve
                     #gram_cont = util.solve_Lyapunov(A, B*B.H)
                     #gram_obs = util.solve_Lyapunov(A.H, C.H*C)
-                    #print np.sort(np.linalg.eig(gram_cont)[0])[::-1]
-                    #print sing_vals
+                    #print(np.sort(np.linalg.eig(gram_cont)[0])[::-1])
+                    #print(sing_vals)
                     #np.testing.assert_allclose(gram_cont.diagonal(),
                     #    sing_vals, atol=.1, rtol=.1)
                     #np.testing.assert_allclose(gram_obs.diagonal(),
@@ -228,7 +225,8 @@ class testERA(unittest.TestCase):
                         Markovs_model[ti] = C.dot(
                             np.linalg.matrix_power(A, tv).dot(
                                 B))
-                        #print 'computing ROM Markov param at time step %d'%tv
+                        #print(
+                        #    'Computing ROM Markov param at time step %d' % tv)
                     """
                     import matplotlib.pyplot as PLT
                     for input_num in range(num_inputs):

@@ -1,12 +1,11 @@
-from __future__ import absolute_import
-from future.builtins import object, range
 from collections import namedtuple
 
 import numpy as np
 
-from .vectorspace import VectorSpaceArrays, VectorSpaceHandles
-from . import util
 from . import parallel
+from . import util
+from . py2to3 import range
+from .vectorspace import VectorSpaceArrays, VectorSpaceHandles
 
 
 def compute_BPOD_arrays(

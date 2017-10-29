@@ -1,10 +1,5 @@
 #!/usr/bin/env python
 """Simulate linearized CGL and find BPOD modes and reduced-order model."""
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
-from future.builtins import range
-
 import numpy as np
 import scipy.linalg as spla
 
@@ -12,7 +7,6 @@ import modred as mr
 import hermite as hr
 
 plots = True
-
 if plots:
     try:
         import matplotlib.pyplot as plt
@@ -36,12 +30,11 @@ gamma = 1. + 1j * c_d
 chi = (-mu_2 / (2. * gamma)) ** 0.25    # chi: decay rate of global modes
 
 # Print parameters
-print('----- Parameters ------')
+print('Parameters:')
 for var in [
     'nx', 'dt', 'U', 'c_u', 'c_d', 'mu_0', 'mu_2', 's', 'x_s', 'nu', 'gamma',
     'chi']:
-    print(var, '=', eval(var))
-print('-----------------------')
+    print('    %s = %s' % (var, str(eval(var))))
 
 # Collocation points in x are roughly [-85, 85], as in Ilak 2010
 x, Ds = hr.herdif(nx, 2, np.real(chi))
@@ -64,7 +57,7 @@ A = -nu * Ds[0] + gamma * Ds[1] + np.diag(mu)
 A_discrete = spla.expm(A * dt)
 exp_array = np.identity(nx, dtype=complex)
 max_sing_val = 0
-for i in range(1, 100):
+for i in mr.range(1, 100):
     exp_array = exp_array.dot(A_discrete)
     U, E, VH = np.linalg.svd(M_sqrt.dot(exp_array.dot(inv_M_sqrt)))
     if max_sing_val < E[0]:
@@ -113,7 +106,7 @@ q_adj = np.zeros((nx, nt), dtype=complex)
 q[:, 0] = B
 q_adj[:, 0] = C_adj
 
-for ti in range(nt - 1):
+for ti in mr.range(nt - 1):
     q[:, ti + 1] = np.linalg.solve(LHS, RHS.dot(q[:, ti]))
     q_adj[:, ti + 1] = np.linalg.solve(LHS_adj, RHS_adj.dot(q_adj[:, ti]))
 
@@ -139,13 +132,13 @@ if plots:
 r = 10
 BPOD_res = mr.compute_BPOD_arrays(
     q, q_adj,
-    adjoint_mode_indices=list(range(r)),
-    direct_mode_indices=list(range(r)),
+    adjoint_mode_indices=list(mr.range(r)),
+    direct_mode_indices=list(mr.range(r)),
     inner_product_weights=weights)
 
 # Plot the first 3 modes
 if plots:
-    for i in range(3):
+    for i in mr.range(3):
         plt.figure()
         plt.plot(x, BPOD_res.direct_modes[:, i].real, '-o')
         plt.plot(x, BPOD_res.adjoint_modes[:, i].real, '-x')
@@ -167,15 +160,15 @@ qr = np.zeros((r, nt), dtype=complex)
 qr[:, 0] = Br
 LHSr = np.identity(r) - dt / 2. * Ar
 RHSr = np.identity(r) + dt / 2. * Ar
-for ti in range(nt - 1):
+for ti in mr.range(nt - 1):
     qr[:, ti + 1] = np.linalg.solve(LHSr, RHSr.dot(qr[:, ti]))
 y = C.dot(q)
 yr = Cr.dot(qr)
 
 # Print error in reduced-order model impulse response
 print(
-    'Max error in reduced system impulse response output y is',
-    np.amax(np.abs(y - yr)))
+    'Max error in reduced system impulse response output y is %0.4e'
+    % np.abs(y - yr).max())
 
 # Plot impulse response output
 if plots:
