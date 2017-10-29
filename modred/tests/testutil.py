@@ -368,30 +368,6 @@ class TestUtil(unittest.TestCase):
 
     #@unittest.skip('Testing something else.')
     @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
-    def test_solve_Lyapunov(self):
-        """Test solution of Lyapunov w/known solution from Matlab's dlyap"""
-        # Generate data
-        A = np.array([
-            [0.725404224946106, 0.714742903826096],
-            [-0.063054873189656, -0.204966058299775]])
-        Q = np.array([
-            [0.318765239858981, -0.433592022305684],
-            [-1.307688296305273, 0.342624466538650]])
-        X_true = np.array([
-            [-0.601761400231752, -0.351368789021923],
-            [-1.143398707577891, 0.334986522655114]])
-
-        # Test direct method
-        X_computed = util.solve_Lyapunov_direct(A, Q)
-        np.testing.assert_allclose(X_computed, X_true)
-
-        # Test iterative method
-        X_computed = util.solve_Lyapunov_iterative(A, Q)
-        np.testing.assert_allclose(X_computed, X_true)
-
-
-    #@unittest.skip('Testing something else.')
-    @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
     def test_balanced_truncation(self):
         """Test balanced system is close to original."""
         for num_inputs in [1, 3]:
@@ -427,40 +403,11 @@ class TestUtil(unittest.TestCase):
             for num_inputs in [1, 2, 4]:
                 for num_outputs in [1, 2, 3, 5]:
                     A, B, C = util.drss(num_states, num_inputs, num_outputs)
-                    nt = 5
+                    nt = 20
                     inputs = np.random.random((nt, num_inputs))
                     outputs = util.lsim(A, B, C, inputs)
                     self.assertEqual(outputs.shape, (nt, num_outputs))
 
-
-    #@unittest.skip('Testing something else.')
-    @unittest.skipIf(parallel.is_distributed(), 'Serial only.')
-    def test_impulse(self):
-        """Test impulse response of discrete system"""
-        rtol = 1e-10
-        atol = 1e-12
-        for num_states in [1, 10]:
-            for num_inputs in [1, 3]:
-                for num_outputs in [1, 2, 3, 5]:
-                    # Generate state-space system arrays
-                    A, B, C = util.drss(num_states, num_inputs, num_outputs)
-
-                    # Check that can give time_steps as argument
-                    outputs = util.impulse(A, B, C)
-                    num_time_steps = len(outputs)
-                    outputs_true = np.zeros(
-                        (num_time_steps, num_outputs, num_inputs))
-                    for ti in range(num_time_steps):
-                        outputs_true[ti] = C.dot(
-                            np.linalg.matrix_power(A, ti).dot(B))
-                    np.testing.assert_allclose(
-                        outputs, outputs_true, rtol=rtol, atol=atol)
-
-                    # Check can give num_time_steps as an argument
-                    outputs = util.impulse(
-                        A, B, C, num_time_steps=num_time_steps)
-                    np.testing.assert_allclose(
-                        outputs, outputs_true, rtol=rtol, atol=atol)
 
 
     #@unittest.skip('Testing something else.')

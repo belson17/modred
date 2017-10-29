@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 from pkg_resources import parse_version
-import glob
+# import glob
 import os
 here = os.path.abspath(os.path.dirname(__file__))
 

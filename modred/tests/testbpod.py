@@ -97,7 +97,7 @@ class TestBPODArrays(unittest.TestCase):
         for num_inputs in [1, np.random.randint(2, high=self.num_states + 2)]:
 
             for num_outputs in [
-                1, np.random.randint(2, high=self.num_states + 2)]:
+                    1, np.random.randint(2, high=self.num_states + 2)]:
 
                 # Get state space system
                 A, B, C = get_system_arrays(

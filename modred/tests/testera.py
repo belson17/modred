@@ -6,6 +6,7 @@ from os.path import join
 from shutil import rmtree
 
 import numpy as np
+import scipy.signal
 
 from modred import era, parallel, util
 from modred.py2to3 import range
@@ -31,7 +32,7 @@ def make_time_steps(num_steps, interval):
     return time_steps
 
 
-@unittest.skipIf(parallel.is_distributed(), 'Only test ERA in serial')
+# @unittest.skipIf(parallel.is_distributed(), 'Only test ERA in serial')
 class testERA(unittest.TestCase):
     def setUp(self):
         if not os.access('.', os.W_OK):
@@ -112,6 +113,9 @@ class testERA(unittest.TestCase):
                         num_time_steps, sample_interval)
                     Markovs = util.impulse(A, B, C, time_steps[-1] + 1)
                     Markovs = Markovs[time_steps]
+                    # ss = scipy.signal.StateSpace(A, B, C, 0, dt=1)
+                    # dum, Markovs = scipy.signal.dimpulse(ss, t=time_steps)
+                    # Markovs = np.array(Markovs).squeeze()
 
                     if sample_interval == 2:
                         time_steps, Markovs = era.make_sampled_format(
@@ -120,8 +124,8 @@ class testERA(unittest.TestCase):
                     my_ERA = era.ERA(verbosity=0)
                     my_ERA._set_Markovs(Markovs)
                     my_ERA._assemble_Hankel()
-                    H = my_ERA.Hankel_array
-                    Hp = my_ERA.Hankel_array2
+                    H = my_ERA.Hankel_mat
+                    Hp = my_ERA.Hankel_mat2
 
                     for row in range(my_ERA.mc):
                         for col in range(my_ERA.mo):
@@ -172,22 +176,32 @@ class testERA(unittest.TestCase):
                 for sample_interval in [1, 2, 4]:
                     time_steps = make_time_steps(
                         num_time_steps, sample_interval)
+                    print("Time steps", time_steps)
+                    print("sample interval", sample_interval)
                     A, B, C = util.drss(
                         num_states_plant, num_inputs, num_outputs)
                     my_ERA = era.ERA(verbosity=0)
+
                     Markovs = util.impulse(A, B, C, time_steps[-1] + 1)
                     Markovs = Markovs[time_steps]
+                    # ss = scipy.signal.StateSpace(A, B, C, 0, dt=1)
+                    # dum, Markovs = scipy.signal.dimpulse(ss, t=time_steps)
+                    # Markovs = np.array(Markovs).squeeze()
 
                     if sample_interval == 2:
-                        time_steps, Markovs =\
+                        time_steps_sampled, Markovs_sampled =\
                             era.make_sampled_format(time_steps, Markovs)
+                    # else:
+                    #     time_steps_sampled = time_steps
+                    #     Markovs_sampled = Markovs
                     num_time_steps = time_steps.shape[0]
 
                     A_path_computed = join(self.test_dir, 'A_computed.txt')
                     B_path_computed = join(self.test_dir, 'B_computed.txt')
                     C_path_computed = join(self.test_dir, 'C_computed.txt')
 
-                    A, B, C = my_ERA.compute_model(Markovs, num_states_model)
+                    A_reduced, B_reduced, C_reduced = \
+                        my_ERA.compute_model(Markovs, num_states_model)
                     my_ERA.put_model(
                         A_path_computed, B_path_computed, C_path_computed)
                     #sing_vals = my_ERA.sing_vals[:num_states_model]
@@ -220,13 +234,19 @@ class testERA(unittest.TestCase):
                     #    np.abs(gram_obs.diagonal())).all())
 
                     # Check the ROM Markov params match the full plant's
-                    Markovs_model = np.zeros(Markovs.shape)
-                    for ti, tv in enumerate(time_steps):
-                        Markovs_model[ti] = C.dot(
-                            np.linalg.matrix_power(A, tv).dot(
-                                B))
-                        #print(
-                        #    'Computing ROM Markov param at time step %d' % tv)
+
+                    # Markovs_model = np.zeros(Markovs.shape)
+                    # for ti, tv in enumerate(time_steps):
+                    #     Markovs_model[ti] = C.dot(
+                    #         np.linalg.matrix_power(A, tv).dot(
+                    #             B))
+                        #print 'computing ROM Markov param at time step %d'%tv
+                    Markovs_model = util.impulse(A_reduced, B_reduced, C_reduced, time_steps[-1] + 1)
+                    Markovs_model = Markovs_model[time_steps]
+                    # ss_reduced = scipy.signal.StateSpace(
+                    #     A_reduced, B_reduced, C_reduced, 0, dt=1)
+                    # dum, Markovs_model = scipy.signal.dimpulse(ss_reduced, t=time_steps)
+                    # Markovs_model = np.array(Markovs_model).squeeze()
                     """
                     import matplotlib.pyplot as PLT
                     for input_num in range(num_inputs):
@@ -247,11 +267,71 @@ class testERA(unittest.TestCase):
                         Markovs_model.squeeze(), Markovs.squeeze(),
                         rtol=0.5, atol=0.5)
                     np.testing.assert_equal(
-                        util.load_array_text(A_path_computed), A)
+                        util.load_array_text(A_path_computed), A_reduced)
                     np.testing.assert_equal(
-                        util.load_array_text(B_path_computed), B)
+                        util.load_array_text(B_path_computed), B_reduced)
                     np.testing.assert_equal(
-                        util.load_array_text(C_path_computed), C)
+                        util.load_array_text(C_path_computed), C_reduced)
+
+
+    @unittest.skip('testing others')
+    def test_error_bounds(self):
+        num_time_steps = 40
+        num_states_plant = 12
+        num_states_model = num_states_plant // 3
+        for num_inputs in [1]:#, 3]:
+            for num_outputs in [1]:#, 2]:
+                for sample_interval in [1]:#, 2, 4]:
+                    time_steps = make_time_steps(
+                        num_time_steps, sample_interval)
+                    A, B, C = util.drss(
+                        num_states_plant, num_inputs, num_outputs)
+                    my_ERA = era.ERA(verbosity=0)
+                    Markovs = util.impulse(A, B, C, time_steps[-1] + 1)
+                    Markovs = Markovs[time_steps]
+                    # ss = scipy.signal.StateSpace(A, B, C, 0, dt=1)
+                    # dum, Markovs = scipy.signal.dimpulse(ss, t=time_steps)
+                    # Markovs = np.array(Markovs).squeeze()
+
+                    if sample_interval == 2:
+                        time_steps, Markovs =\
+                            era.make_sampled_format(time_steps, Markovs)
+                    num_time_steps = time_steps.shape[0]
+                    # A_path_computed = join(self.test_dir, 'A_computed.txt')
+                    # B_path_computed = join(self.test_dir, 'B_computed.txt')
+                    # C_path_computed = join(self.test_dir, 'C_computed.txt')
+                    Ar, Br, Cr = my_ERA.compute_model(Markovs, num_states_model)
+                    inf_norm = self.compute_inf_norm_system(A, B, C)
+
+
+
+
+    def compute_inf_norm_system(self, A, B, C):
+        min_inf_norm = 1e-10
+        max_inf_norm = 1e10
+        tol = 1e-10
+        i = 0
+        while (max_inf_norm - min_inf_norm > tol):
+            mid_inf_norm = (min_inf_norm + max_inf_norm) / 2
+            valid = self.is_valid_inf_norm(mid_inf_norm, A, B, C)
+            if valid:
+                min_inf_norm = mid_inf_norm
+            else:
+                max_inf_norm = mid_inf_norm
+            print(i, valid, min_inf_norm, max_inf_norm, mid_inf_norm)
+            i += 1
+        return mid_inf_norm
+
+
+
+    def is_valid_inf_norm(self, inf_norm, A, B, C):
+        sys_mat = np.concatenate((np.concatenate((A, B.dot(B.H) / inf_norm ** 2), axis=1),
+                                  np.concatenate((-C.H.dot(C), -A.H), axis=1)), axis=0)
+        eig_vals = np.linalg.eigvals(np.mat(sys_mat))
+        print(eig_vals)
+        is_imag_eig_val = ((np.abs(eig_vals.imag) > 1e-12) & (np.abs(eig_vals.real) < 1e-12)).any()
+        return is_imag_eig_val
+
 
 
 if __name__ == '__main__':
