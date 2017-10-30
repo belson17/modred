@@ -301,6 +301,14 @@ class testERA(unittest.TestCase):
                     # B_path_computed = join(self.test_dir, 'B_computed.txt')
                     # C_path_computed = join(self.test_dir, 'C_computed.txt')
                     Ar, Br, Cr = my_ERA.compute_model(Markovs, num_states_model)
+                    tf_full = scipy.signal.ss2tf(
+                        scipy.signal.StateSpace(
+                            A, B, C, np.zeros((C.shape[0], B.shape[1])), dt=1))
+                    tf_red = scipy.signal.ss2tf(
+                        scipy.signal.StateSpace(
+                            Ar, Br, Cr, np.zeros((Cr.shape[0], Br.shape[1])), dt=1))
+                    tf_diff = tf_full - tf_red
+                    inf_norm = scipy.linalg.norm()
                     inf_norm = self.compute_inf_norm_system(A, B, C)
 
 
