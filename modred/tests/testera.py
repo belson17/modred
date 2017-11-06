@@ -103,7 +103,7 @@ class testERA(unittest.TestCase):
         ``[CB CAB CA**P CA**(P+1)B ...]``."""
         rtol = 1e-10
         atol = 1e-12
-        for num_inputs in [1,3]:
+        for num_inputs in [1, 3]:
             for num_outputs in [1, 2, 4]:
                 for sample_interval in [1]:
                     num_time_steps = 50
@@ -113,6 +113,8 @@ class testERA(unittest.TestCase):
                         num_time_steps, sample_interval)
                     Markovs = util.impulse(A, B, C, time_steps[-1] + 1)
                     Markovs = Markovs[time_steps]
+                    print("time steps", time_steps)
+                    print("Markovs", Markovs)
                     # ss = scipy.signal.StateSpace(A, B, C, 0, dt=1)
                     # dum, Markovs = scipy.signal.dimpulse(ss, t=time_steps)
                     # Markovs = np.array(Markovs).squeeze()
@@ -124,8 +126,10 @@ class testERA(unittest.TestCase):
                     my_ERA = era.ERA(verbosity=0)
                     my_ERA._set_Markovs(Markovs)
                     my_ERA._assemble_Hankel()
-                    H = my_ERA.Hankel_mat
-                    Hp = my_ERA.Hankel_mat2
+                    H = np.mat(my_ERA.Hankel_array)
+                    Hp = np.mat(my_ERA.Hankel_array2)
+                    print("Hankel", H)
+                    print("Hankel2", Hp)
 
                     for row in range(my_ERA.mc):
                         for col in range(my_ERA.mo):
@@ -176,8 +180,6 @@ class testERA(unittest.TestCase):
                 for sample_interval in [1, 2, 4]:
                     time_steps = make_time_steps(
                         num_time_steps, sample_interval)
-                    print("Time steps", time_steps)
-                    print("sample interval", sample_interval)
                     A, B, C = util.drss(
                         num_states_plant, num_inputs, num_outputs)
                     my_ERA = era.ERA(verbosity=0)
@@ -263,9 +265,13 @@ class testERA(unittest.TestCase):
                             PLT.legend(['ROM','Plant','Dense plant'])
                         PLT.show()
                     """
-                    np.testing.assert_allclose(
-                        Markovs_model.squeeze(), Markovs.squeeze(),
-                        rtol=0.5, atol=0.5)
+                    # np.testing.assert_allclose(Markovs_model, Markovs,
+                    #     rtol=0.5, atol=0.5)
+                    # Check normalized Markovs
+                    max_Markov = np.amax(Markovs)
+                    np.testing.assert_allclose(Markovs_model / max_Markov, Markovs / max_Markov,
+                                               rtol=1e-2, atol=1e-2)
+
                     np.testing.assert_equal(
                         util.load_array_text(A_path_computed), A_reduced)
                     np.testing.assert_equal(
@@ -276,6 +282,10 @@ class testERA(unittest.TestCase):
 
     @unittest.skip('testing others')
     def test_error_bounds(self):
+        """
+        cont SS -> cont TF and disc SS.
+        :return:
+        """
         num_time_steps = 40
         num_states_plant = 12
         num_states_model = num_states_plant // 3
@@ -307,10 +317,12 @@ class testERA(unittest.TestCase):
                     tf_red = scipy.signal.ss2tf(
                         scipy.signal.StateSpace(
                             Ar, Br, Cr, np.zeros((Cr.shape[0], Br.shape[1])), dt=1))
-                    tf_diff = tf_full - tf_red
-                    inf_norm = scipy.linalg.norm()
-                    inf_norm = self.compute_inf_norm_system(A, B, C)
-
+                    tf_diff = util.sub_transfer_functions(tf_full, tf_red, dt=1)
+                    ss_diff = scipy.signal.tf2ss(tf_diff)
+                    print("SS diff", ss_diff)
+                    inf_norm_error = self.compute_inf_norm_system(ss_diff)
+                    balanced_trunc_max_error = 2 * self.sing_vals[num_states_model+1:].sum()
+                    print("err", inf_norm_error, "max err bal tr", balanced_trunc_max_error)
 
 
 

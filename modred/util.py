@@ -3,9 +3,11 @@ import inspect
 import os
 
 import numpy as np
+from numpy import polymul, polyadd
 import scipy
 import scipy.linalg
 import scipy.signal
+from scipy.signal.ltisys import TransferFunction
 
 from .py2to3 import range
 
@@ -518,6 +520,20 @@ def impulse(A, B, C, num_time_steps=None):
         dum, Markovs = scipy.signal.dimpulse(ss)
     Markovs = np.array(Markovs).swapaxes(0, 1)
     return Markovs
+
+
+def sub_transfer_functions(a, b, dt=None):
+    """
+    Returns a - b, where a and b are scipy TransferFunctions.
+
+    https://stackoverflow.com/questions/35304245/multiply-scipy-lti-transfer-functions
+    """
+    numer = polyadd(polymul(a.num, b.den), -polymul(a.den, b.num))
+    denom = polymul(a.den, b.den)
+    if dt is not None:
+        return TransferFunction(numer, denom, dt=dt)
+    else:
+        return TransferFunction(numer, denom)
 
 
 def load_signals(signal_path, delimiter=None):
