@@ -518,7 +518,7 @@ def impulse(A, B, C, num_time_steps=None):
         dum, Markovs = scipy.signal.dimpulse(ss, n=num_time_steps)
     else:
         dum, Markovs = scipy.signal.dimpulse(ss)
-    Markovs = np.array(Markovs).swapaxes(0, 1)
+    Markovs = np.array(Markovs).swapaxes(0, 1)[1:]
     return Markovs
 
 

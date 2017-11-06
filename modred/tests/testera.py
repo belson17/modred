@@ -111,8 +111,8 @@ class testERA(unittest.TestCase):
                     A, B, C = util.drss(num_states, num_inputs, num_outputs)
                     time_steps = make_time_steps(
                         num_time_steps, sample_interval)
-                    Markovs = util.impulse(A, B, C, time_steps[-1] + 1)
-                    Markovs = Markovs[time_steps]
+                    impulse_response = util.impulse(A, B, C, time_steps[-1] + 2)
+                    Markovs = impulse_response[time_steps]
                     print("time steps", time_steps)
                     print("Markovs", Markovs)
                     # ss = scipy.signal.StateSpace(A, B, C, 0, dt=1)
@@ -126,8 +126,8 @@ class testERA(unittest.TestCase):
                     my_ERA = era.ERA(verbosity=0)
                     my_ERA._set_Markovs(Markovs)
                     my_ERA._assemble_Hankel()
-                    H = np.mat(my_ERA.Hankel_array)
-                    Hp = np.mat(my_ERA.Hankel_array2)
+                    H = my_ERA.Hankel_array
+                    Hp = my_ERA.Hankel_array2
                     print("Hankel", H)
                     print("Hankel2", Hp)
 
@@ -161,7 +161,7 @@ class testERA(unittest.TestCase):
                                 rtol=rtol, atol=atol)
 
 
-    #@unittest.skip('testing others')
+    @unittest.skip('testing others')
     def test_compute_model(self):
         """
         Test ROM Markov params similar to those given
