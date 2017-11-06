@@ -111,13 +111,8 @@ class testERA(unittest.TestCase):
                     A, B, C = util.drss(num_states, num_inputs, num_outputs)
                     time_steps = make_time_steps(
                         num_time_steps, sample_interval)
-                    impulse_response = util.impulse(A, B, C, time_steps[-1] + 2)
+                    impulse_response = util.impulse(A, B, C, time_steps[-1] + 1)
                     Markovs = impulse_response[time_steps]
-                    print("time steps", time_steps)
-                    print("Markovs", Markovs)
-                    # ss = scipy.signal.StateSpace(A, B, C, 0, dt=1)
-                    # dum, Markovs = scipy.signal.dimpulse(ss, t=time_steps)
-                    # Markovs = np.array(Markovs).squeeze()
 
                     if sample_interval == 2:
                         time_steps, Markovs = era.make_sampled_format(
@@ -128,8 +123,6 @@ class testERA(unittest.TestCase):
                     my_ERA._assemble_Hankel()
                     H = my_ERA.Hankel_array
                     Hp = my_ERA.Hankel_array2
-                    print("Hankel", H)
-                    print("Hankel2", Hp)
 
                     for row in range(my_ERA.mc):
                         for col in range(my_ERA.mo):
@@ -161,7 +154,7 @@ class testERA(unittest.TestCase):
                                 rtol=rtol, atol=atol)
 
 
-    @unittest.skip('testing others')
+    # @unittest.skip('testing others')
     def test_compute_model(self):
         """
         Test ROM Markov params similar to those given
@@ -186,9 +179,6 @@ class testERA(unittest.TestCase):
 
                     Markovs = util.impulse(A, B, C, time_steps[-1] + 1)
                     Markovs = Markovs[time_steps]
-                    # ss = scipy.signal.StateSpace(A, B, C, 0, dt=1)
-                    # dum, Markovs = scipy.signal.dimpulse(ss, t=time_steps)
-                    # Markovs = np.array(Markovs).squeeze()
 
                     if sample_interval == 2:
                         time_steps_sampled, Markovs_sampled =\
@@ -206,49 +196,9 @@ class testERA(unittest.TestCase):
                         my_ERA.compute_model(Markovs, num_states_model)
                     my_ERA.put_model(
                         A_path_computed, B_path_computed, C_path_computed)
-                    #sing_vals = my_ERA.sing_vals[:num_states_model]
 
-                    # Flatten vecs into 2D X and Y arrays:
-                    # [B AB A**PB A**(P+1)B ...]
-                    #direct_vecs_flat = direct_vecs.swapaxes(0,1).reshape(
-                    #    (num_states_model,-1)))
-
-                    # Exact grammians from Lyapunov eqn solve
-                    #gram_cont = util.solve_Lyapunov(A, B*B.H)
-                    #gram_obs = util.solve_Lyapunov(A.H, C.H*C)
-                    #print(np.sort(np.linalg.eig(gram_cont)[0])[::-1])
-                    #print(sing_vals)
-                    #np.testing.assert_allclose(gram_cont.diagonal(),
-                    #    sing_vals, atol=.1, rtol=.1)
-                    #np.testing.assert_allclose(gram_obs.diagonal(),
-                    #   sing_vals, atol=.1, rtol=.1)
-                    #np.testing.assert_allclose(np.sort(np.linalg.eig(
-                    #   gram_cont)[0])[::-1], sing_vals,
-                    #    atol=.1, rtol=.1)
-                    #np.testing.assert_allclose(np.sort(np.linalg.eig(
-                    #   gram_obs)[0])[::-1], sing_vals,
-                    #    atol=.1, rtol=.1)
-
-                    # Check that the diagonals are largest entry on each row
-                    #self.assertTrue((np.max(np.abs(gram_cont),axis=1) ==
-                    #    np.abs(gram_cont.diagonal())).all())
-                    #self.assertTrue((np.max(np.abs(gram_obs),axis=1) ==
-                    #    np.abs(gram_obs.diagonal())).all())
-
-                    # Check the ROM Markov params match the full plant's
-
-                    # Markovs_model = np.zeros(Markovs.shape)
-                    # for ti, tv in enumerate(time_steps):
-                    #     Markovs_model[ti] = C.dot(
-                    #         np.linalg.matrix_power(A, tv).dot(
-                    #             B))
-                        #print 'computing ROM Markov param at time step %d'%tv
-                    Markovs_model = util.impulse(A_reduced, B_reduced, C_reduced, time_steps[-1] + 1)
-                    Markovs_model = Markovs_model[time_steps]
-                    # ss_reduced = scipy.signal.StateSpace(
-                    #     A_reduced, B_reduced, C_reduced, 0, dt=1)
-                    # dum, Markovs_model = scipy.signal.dimpulse(ss_reduced, t=time_steps)
-                    # Markovs_model = np.array(Markovs_model).squeeze()
+                    Markovs_reduced = util.impulse(A_reduced, B_reduced, C_reduced, time_steps[-1] + 1)
+                    Markovs_reduced = Markovs_reduced[time_steps]
                     """
                     import matplotlib.pyplot as PLT
                     for input_num in range(num_inputs):
@@ -265,13 +215,10 @@ class testERA(unittest.TestCase):
                             PLT.legend(['ROM','Plant','Dense plant'])
                         PLT.show()
                     """
-                    # np.testing.assert_allclose(Markovs_model, Markovs,
-                    #     rtol=0.5, atol=0.5)
                     # Check normalized Markovs
                     max_Markov = np.amax(Markovs)
-                    np.testing.assert_allclose(Markovs_model / max_Markov, Markovs / max_Markov,
-                                               rtol=1e-2, atol=1e-2)
-
+                    np.testing.assert_allclose(Markovs_reduced / max_Markov, Markovs / max_Markov,
+                                               rtol=1e-1, atol=1e-1)
                     np.testing.assert_equal(
                         util.load_array_text(A_path_computed), A_reduced)
                     np.testing.assert_equal(
@@ -282,10 +229,6 @@ class testERA(unittest.TestCase):
 
     @unittest.skip('testing others')
     def test_error_bounds(self):
-        """
-        cont SS -> cont TF and disc SS.
-        :return:
-        """
         num_time_steps = 40
         num_states_plant = 12
         num_states_model = num_states_plant // 3

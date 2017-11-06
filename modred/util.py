@@ -515,10 +515,12 @@ def impulse(A, B, C, num_time_steps=None):
     """
     ss = scipy.signal.StateSpace(A, B, C, np.zeros((C.shape[0], B.shape[1])), dt=1)
     if num_time_steps is not None:
-        dum, Markovs = scipy.signal.dimpulse(ss, n=num_time_steps)
+        dum, Markovs = scipy.signal.dimpulse(ss, n=num_time_steps+1)
     else:
         dum, Markovs = scipy.signal.dimpulse(ss)
-    Markovs = np.array(Markovs).swapaxes(0, 1)[1:]
+    # Remove the first element, which is 0, since we define C*B as first output
+    # of impulse response, i.e., x(0) == B.
+    Markovs = np.array(Markovs).swapaxes(0, 1).swapaxes(1, 2)[1:]
     return Markovs
 
 
