@@ -1,19 +1,16 @@
 #!/usr/bin/env python
 """Test vectorspace module"""
-from __future__ import division
-from future.builtins import range
+import unittest
 import os
 from os.path import join
 from shutil import rmtree
 import copy
-import unittest
 
 import numpy as np
 
-import modred.parallel as parallel
-from modred.vectorspace import *
-import modred.vectors as vcs
-import modred.util
+from modred import vectorspace as vspc, parallel, util
+from modred.py2to3 import range
+from modred.vectors import Vector, VecHandleInMemory, VecHandlePickle
 
 
 #@unittest.skip('Testing other things')
@@ -30,10 +27,10 @@ class TestVectorSpaceArrays(unittest.TestCase):
 
     def test_equals(self):
         """ Test equality operator """
-        vec_space1 = VectorSpaceArrays(weights=np.array([1., 1., 1.]))
-        vec_space2 = VectorSpaceArrays(weights=[1., 1., 1.])
-        vec_space3 = VectorSpaceArrays(weights=[2., 4., 6.])
-        vec_space4 = VectorSpaceArrays(weights=np.diag(np.ones(3) * 2.))
+        vec_space1 = vspc.VectorSpaceArrays(weights=np.array([1., 1., 1.]))
+        vec_space2 = vspc.VectorSpaceArrays(weights=[1., 1., 1.])
+        vec_space3 = vspc.VectorSpaceArrays(weights=[2., 4., 6.])
+        vec_space4 = vspc.VectorSpaceArrays(weights=np.diag(np.ones(3) * 2.))
         self.assertEquals(vec_space1, vec_space2)
         self.assertNotEqual(vec_space1, vec_space3)
         self.assertNotEqual(vec_space1, vec_space4)
@@ -59,7 +56,7 @@ class TestVectorSpaceArrays(unittest.TestCase):
 
         # Do computation using a vector space object.  Check an explicit
         # mode_indices argument, as well as a None value.
-        vec_space = VectorSpaceArrays()
+        vec_space = vspc.VectorSpaceArrays()
         mode_indices_trunc = np.random.randint(
             0, high=num_modes, size=num_modes // 2)
         for mode_idxs_arg, mode_idxs_vals in zip(
@@ -108,7 +105,7 @@ class TestVectorSpaceArrays(unittest.TestCase):
                 weights_array.dot(row_array))
 
             # Compute inner products using vec space object
-            vec_space = VectorSpaceArrays(weights=weights)
+            vec_space = vspc.VectorSpaceArrays(weights=weights)
             ip_array = vec_space.compute_inner_product_array(
                 row_array, col_array)
             ip_array_symm = vec_space.compute_symm_inner_product_array(
@@ -131,7 +128,8 @@ class TestVectorSpaceHandles(unittest.TestCase):
         self.total_num_vecs_in_mem = (
             parallel.get_num_procs() * self.max_vecs_per_proc)
 
-        self.vec_space = VectorSpaceHandles(inner_product=np.vdot, verbosity=0)
+        self.vec_space = vspc.VectorSpaceHandles(
+            inner_product=np.vdot, verbosity=0)
         self.vec_space.max_vecs_per_proc = self.max_vecs_per_proc
 
         # Default data members; set verbosity to 0 even though default is 1
@@ -154,11 +152,11 @@ class TestVectorSpaceHandles(unittest.TestCase):
     def test_init(self):
         """Test arguments passed to the constructor are assigned properly."""
         data_members_original = util.get_data_members(
-            VectorSpaceHandles(inner_product=np.vdot, verbosity=0))
+            vspc.VectorSpaceHandles(inner_product=np.vdot, verbosity=0))
         self.assertEqual(data_members_original, self.default_data_members)
 
         max_vecs_per_node = 500
-        vec_space = VectorSpaceHandles(
+        vec_space = vspc.VectorSpaceHandles(
             inner_product=np.vdot, max_vecs_per_node=max_vecs_per_node,
             verbosity=0)
         data_members = copy.deepcopy(data_members_original)
@@ -176,13 +174,13 @@ class TestVectorSpaceHandles(unittest.TestCase):
         nx = 40
         ny = 15
         test_array = np.random.random((nx, ny))
-        vec_space = VectorSpaceHandles(inner_product=np.vdot, verbosity=0)
-        in_mem_handle = vcs.VecHandleInMemory(test_array)
+        vec_space = vspc.VectorSpaceHandles(inner_product=np.vdot, verbosity=0)
+        in_mem_handle = VecHandleInMemory(test_array)
         vec_space.sanity_check(in_mem_handle)
 
         # Define some weird vectors that alter their internal data when adding
         # or multiplying (which they shouldn't do).
-        class SanityMultVec(vcs.Vector):
+        class SanityMultVec(Vector):
             def __init__(self, arr):
                 self.arr = arr
 
@@ -195,7 +193,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
                 self.arr *= a
                 return self
 
-        class SanityAddVec(vcs.Vector):
+        class SanityAddVec(Vector):
             def __init__(self, arr):
                 self.arr = arr
 
@@ -220,14 +218,14 @@ class TestVectorSpaceHandles(unittest.TestCase):
         # vector operations.  Do so by simply calling the function.  If it
         # passes, then no error will be raised.
         vec_space.inner_product = np.vdot
-        vec_space.sanity_check(vcs.VecHandleInMemory(test_array))
+        vec_space.sanity_check(VecHandleInMemory(test_array))
 
         # Make sure that sanity check fails if inner product values are not
         # correct.
         vec_space.inner_product = bad_array_ip
         self.assertRaises(
             ValueError,
-            vec_space.sanity_check, vcs.VecHandleInMemory(test_array))
+            vec_space.sanity_check, VecHandleInMemory(test_array))
 
         # Make sure that sanity check fails if vectors alter their
         # internal data when doing vector space operations.
@@ -235,11 +233,11 @@ class TestVectorSpaceHandles(unittest.TestCase):
         sanity_mult_vec = SanityMultVec(test_array)
         self.assertRaises(
             ValueError,
-            vec_space.sanity_check, vcs.VecHandleInMemory(sanity_mult_vec))
+            vec_space.sanity_check, VecHandleInMemory(sanity_mult_vec))
         sanity_add_vec = SanityAddVec(test_array)
         self.assertRaises(
             ValueError,
-            vec_space.sanity_check, vcs.VecHandleInMemory(sanity_add_vec))
+            vec_space.sanity_check, VecHandleInMemory(sanity_add_vec))
 
 
     def generate_vecs_modes(
@@ -297,7 +295,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
 
                     # Generate data and then broadcast to all procs
                     vec_handles = [
-                        vcs.VecHandlePickle(vec_path % i)
+                        VecHandlePickle(vec_path % i)
                         for i in range(num_vecs)]
                     vec_array, coeff_array, true_modes =\
                         parallel.call_and_bcast(
@@ -322,7 +320,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
                                 size=num_modes // 2))
                         mode_idxs_vals = mode_idxs_arg
                     mode_handles = [
-                        vcs.VecHandlePickle(mode_path % mode_num)
+                        VecHandlePickle(mode_path % mode_num)
                         for mode_num in mode_idxs_vals]
 
                     # Saves modes to files
@@ -332,7 +330,7 @@ class TestVectorSpaceHandles(unittest.TestCase):
 
                     # Test modes one by one
                     for mode_idx in mode_idxs_vals:
-                        computed_mode = vcs.VecHandlePickle(
+                        computed_mode = VecHandlePickle(
                             mode_path % mode_idx).get()
                         np.testing.assert_allclose(
                             computed_mode, true_modes[:, mode_idx],
@@ -345,9 +343,9 @@ class TestVectorSpaceHandles(unittest.TestCase):
 
         # Test that errors are caught for mismatched dimensions
         mode_handles = [
-            vcs.VecHandlePickle(mode_path % i) for i in range(10)]
+            VecHandlePickle(mode_path % i) for i in range(10)]
         vec_handles = [
-            vcs.VecHandlePickle(vec_path % i) for i in range(15)]
+            VecHandlePickle(vec_path % i) for i in range(15)]
         coeffs_array_too_short = np.zeros(
             (len(vec_handles) - 1, len(mode_handles)))
         coeffs_array_too_fat = np.zeros(
@@ -387,9 +385,9 @@ class TestVectorSpaceHandles(unittest.TestCase):
             row_vec_paths = [row_vec_path % i for i in range(num_row_vecs)]
             col_vec_paths = [col_vec_path % i for i in range(num_col_vecs)]
             row_vec_handles = [
-                vcs.VecHandlePickle(path) for path in row_vec_paths]
+                VecHandlePickle(path) for path in row_vec_paths]
             col_vec_handles = [
-                vcs.VecHandlePickle(path) for path in col_vec_paths]
+                VecHandlePickle(path) for path in col_vec_paths]
             for idx, handle in enumerate(row_vec_handles):
                 handle.put(row_vec_array[:, idx])
             for idx, handle in enumerate(col_vec_handles):
@@ -440,10 +438,10 @@ class TestVectorSpaceHandles(unittest.TestCase):
                     + 1j * parallel.call_and_bcast(
                         np.random.random, (num_states, num_col_vecs)))
                 row_vec_handles = [
-                    vcs.VecHandlePickle(row_vec_path % i)
+                    VecHandlePickle(row_vec_path % i)
                     for i in range(num_row_vecs)]
                 col_vec_handles = [
-                    vcs.VecHandlePickle(col_vec_path % i)
+                    VecHandlePickle(col_vec_path % i)
                     for i in range(num_col_vecs)]
 
                 # Save vecs

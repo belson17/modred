@@ -1,4 +1,3 @@
-from future.builtins import range
 import os
 
 import numpy as np
@@ -15,10 +14,10 @@ if not os.path.isdir(out_dir):
 num_vecs = 30
 direct_snapshots = [
     mr.VecHandleArrayText('%s/direct_vec%d.txt' % (out_dir, i))
-    for i in range(num_vecs)]
+    for i in mr.range(num_vecs)]
 adjoint_snapshots = [
     mr.VecHandleArrayText('%s/adjoint_vec%d.txt' % (out_dir, i))
-    for i in range(num_vecs)]
+    for i in mr.range(num_vecs)]
 
 # Save random snapshot data in text files
 x = np.linspace(0, np.pi, 200)
@@ -32,7 +31,7 @@ my_BPOD = mr.BPODHandles(np.vdot, max_vecs_per_node=10)
 sing_vals, L_sing_vecs, R_sing_vecs = my_BPOD.compute_decomp(
     direct_snapshots, adjoint_snapshots)
 num_modes = 10
-mode_nums = list(range(num_modes))
+mode_nums = list(mr.range(num_modes))
 direct_modes = [
     mr.VecHandleArrayText('%s/direct_mode%d' % (out_dir, i))
     for i in mode_nums]

@@ -13,7 +13,7 @@ def add_to_path(directory):
 
 """
 if rank==0:
-    print 'To fully test, must do both:'
-    print '  1) python testutil.py'
-    print '  2) mpiexec -n <# procs> python testutil.py\n\n'
+    print('To fully test, must do both:')
+    print('  1) python testutil.py')
+    print('  2) mpiexec -n <# procs> python testutil.py\n\n')
 """

@@ -1,5 +1,3 @@
-from future.builtins import range
-
 import numpy as np
 
 import modred as mr
@@ -19,6 +17,6 @@ weights = 0.5 * np.append(np.append(
 # Compute POD
 num_modes = 10
 POD_res = mr.compute_POD_arrays_direct_method(
-    vecs, list(range(num_modes)), inner_product_weights=weights)
+    vecs, list(mr.range(num_modes)), inner_product_weights=weights)
 modes = POD_res.modes
 eigvals = POD_res.eigvals

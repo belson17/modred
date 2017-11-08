@@ -1,6 +1,4 @@
 """This file makes the modred directory a python package."""
-from __future__ import absolute_import
-
 from ._version import __version__
 
 
@@ -42,21 +40,29 @@ from .ltigalerkinproj import (
 from .vectorspace import VectorSpaceHandles, VectorSpaceArrays
 
 from .vectors import (
-    VecHandlePickle, VecHandleInMemory,
-    Vector, VecHandle, VecHandleArrayText,
+    Vector, VecHandle,
+    VecHandlePickle, VecHandleInMemory, VecHandleArrayText,
     InnerProductTrapz, inner_product_array_uniform
 )
 
 from . import parallel
 
 from .util import (
-    UndefinedError, make_iterable, flatten_list, save_array_text,
-    load_array_text, get_file_list, get_data_members, sum_arrays, sum_lists,
-    smart_eq, InnerProductBlock, svd, eigh, eig_biorthog,
-    solve_Lyapunov_iterative, solve_Lyapunov_direct, balanced_truncation, drss,
-    rss, lsim, impulse, load_multiple_signals, load_signals, Hankel
+    UndefinedError,
+    atleast_2d_row, atleast_2d_col,
+    make_iterable, flatten_list,
+    save_array_text, load_array_text, get_file_list, get_data_members,
+    sum_arrays, sum_lists,
+    smart_eq,
+    InnerProductBlock,
+    svd, eigh, eig_biorthog,
+    solve_Lyapunov_direct, solve_Lyapunov_iterative, balanced_truncation,
+    drss, rss, lsim, impulse, load_signals, load_multiple_signals,
+    Hankel, Hankel_chunks
+)
+
+from .py2to3 import (
+    run_script, print_msg, print_stdout, print_stderr, range
 )
 
 from modred import tests
-
-del absolute_import

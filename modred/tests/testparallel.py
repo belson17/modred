@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 """ Test the parallel module"""
-from __future__ import print_function
 import unittest
-import copy
 import os
 from os.path import join
+import copy
 
-import modred.parallel as parallel
+from modred import parallel
 
 
 try:
@@ -14,7 +13,7 @@ try:
     rank = MPI.COMM_WORLD.Get_rank()
     distributed = MPI.COMM_WORLD.Get_size() > 1
 except ImportError:
-    print('Warning: without mpi4py module, only serial behavior is tested')
+    print('Warning: without mpi4py module, only serial behavior is tested.')
     distributed = False
     rank = 0
 

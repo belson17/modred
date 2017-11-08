@@ -1,12 +1,9 @@
 """Parallel class and functions for distributed memory"""
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
-from future.builtins import range
-from future.builtins import object
 import socket
 
 import numpy as np
+
+from .py2to3 import range
 
 
 # Check to see if MPI is available by importing MPI-related modules
@@ -98,10 +95,10 @@ def barrier():
         comm.Barrier()
 
 
-def print_from_rank_zero(msgs):
-    """Prints ``msgs`` from rank zero processor/MPI worker only."""
+def print_from_rank_zero(msg, output_channel='stdout'):
+    """Prints ``msg`` from rank zero processor/MPI worker only."""
     if is_rank_zero():
-        print(msgs)
+        print(msg)
 
 
 def call_from_rank_zero(func, *args, **kwargs):
