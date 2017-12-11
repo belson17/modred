@@ -433,7 +433,9 @@ def drss(num_states, num_inputs, num_outputs):
 
     By construction, all eigenvalues are real and stable.
     """
-    eig_vals = np.linspace(.9, .95, num_states)
+    # eig_vals = np.linspace(.9, .95, num_states)
+    # eig_vecs = np.random.normal(0, 2., (num_states, num_states))
+    eig_vals = np.linspace(.2, .95, num_states)
     eig_vecs = np.random.normal(0, 2., (num_states, num_states))
     A = np.real(
         np.linalg.inv(eig_vecs).dot(np.diag(eig_vals).dot(eig_vecs)))
@@ -536,6 +538,26 @@ def sub_transfer_functions(a, b, dt=None):
         return TransferFunction(numer, denom, dt=dt)
     else:
         return TransferFunction(numer, denom)
+
+
+def compute_inf_norm_discrete(transfer_function, dt):
+    """
+    Finds infinity norm of discrete time TF using inefficient method.
+
+    If this function is ever used for more than testing, improve the method.
+    """
+    freq, mag = scipy.signal.freqz(transfer_function.num, a=transfer_function.den)
+    return np.max(np.abs(mag)) / dt
+
+def compute_inf_norm_continuous(transfer_function):
+    """
+    Finds infinity norm of continuous time TF using inefficient method.
+
+    If this function is ever used for more than testing, improve the method.
+    """
+    freq, mag = scipy.signal.freqs(transfer_function.num, a=transfer_function.den)
+    return np.max(np.abs(mag))
+
 
 
 def load_signals(signal_path, delimiter=None):

@@ -7,6 +7,7 @@ from shutil import rmtree
 
 import numpy as np
 import scipy.signal
+import matplotlib.pyplot as plt 
 
 from modred import era, parallel, util
 from modred.py2to3 import range
@@ -48,7 +49,7 @@ class testERA(unittest.TestCase):
         rmtree(self.test_dir, ignore_errors=True)
 
 
-    #@unittest.skip('Testing others')
+    @unittest.skip('Testing others')
     def test_make_sampled_format(self):
         """
         Test that can give time_values and outputs in either format.
@@ -97,7 +98,7 @@ class testERA(unittest.TestCase):
                         outputs)
 
 
-    #@unittest.skip("testing others")
+    @unittest.skip("testing others")
     def test_assemble_Hankel(self):
         """ Tests Hankel arrays are symmetric given
         ``[CB CAB CA**P CA**(P+1)B ...]``."""
@@ -154,7 +155,7 @@ class testERA(unittest.TestCase):
                                 rtol=rtol, atol=atol)
 
 
-    # @unittest.skip('testing others')
+    @unittest.skip('testing others')
     def test_compute_model(self):
         """
         Test ROM Markov params similar to those given
@@ -227,10 +228,23 @@ class testERA(unittest.TestCase):
                         util.load_array_text(C_path_computed), C_reduced)
 
 
-    @unittest.skip('testing others')
+
+    # @unittest.skip('testing others')
     def test_error_bounds(self):
+        """
+        Tests that model is close to original system using the balanced
+        truncation error bound as a guide.
+
+        - Pick a discrete SS full system
+        - Find a discrete SS model
+        - Find TF representation of full and model systems, discrete time
+        - Find TF_error = TF_full - TF_model
+        - Find inf norm of TF_error 
+        - Check inf norm is less than a little more than the 
+            balanced truncation max error, which is 2*sum(truncated singular values)
+        """
         num_time_steps = 40
-        num_states_plant = 12
+        num_states_plant = 15
         num_states_model = num_states_plant // 3
         for num_inputs in [1]:#, 3]:
             for num_outputs in [1]:#, 2]:
@@ -254,46 +268,69 @@ class testERA(unittest.TestCase):
                     # B_path_computed = join(self.test_dir, 'B_computed.txt')
                     # C_path_computed = join(self.test_dir, 'C_computed.txt')
                     Ar, Br, Cr = my_ERA.compute_model(Markovs, num_states_model)
-                    tf_full = scipy.signal.ss2tf(
-                        scipy.signal.StateSpace(
-                            A, B, C, np.zeros((C.shape[0], B.shape[1])), dt=1))
-                    tf_red = scipy.signal.ss2tf(
-                        scipy.signal.StateSpace(
-                            Ar, Br, Cr, np.zeros((Cr.shape[0], Br.shape[1])), dt=1))
+                    Abt, Bbt, Cbt, sing_vals_bt = util.balanced_truncation(A, B, C, return_sing_vals=True)
+                    Abt = Abt[:num_states_model,:num_states_model]
+                    Bbt = Bbt[:num_states_model]
+                    Cbt = Cbt[:, :num_states_model]
+                    tf_full = scipy.signal.StateSpace(
+                            A, B, C, np.zeros((C.shape[0], B.shape[1])), dt=1).to_tf()
+                    tf_red = scipy.signal.StateSpace(
+                            Ar, Br, Cr, np.zeros((Cr.shape[0], Br.shape[1])), dt=1).to_tf()
+                    tf_bt = scipy.signal.StateSpace(Abt, Bbt, Cbt, np.zeros((Cr.shape[0], Br.shape[1])), dt=1).to_tf()
                     tf_diff = util.sub_transfer_functions(tf_full, tf_red, dt=1)
-                    ss_diff = scipy.signal.tf2ss(tf_diff)
-                    print("SS diff", ss_diff)
-                    inf_norm_error = self.compute_inf_norm_system(ss_diff)
-                    balanced_trunc_max_error = 2 * self.sing_vals[num_states_model+1:].sum()
-                    print("err", inf_norm_error, "max err bal tr", balanced_trunc_max_error)
+                    tf_diff_bt = util.sub_transfer_functions(tf_full, tf_bt, dt=1)
+                    w_full, h_full = scipy.signal.freqz(tf_full.num, a=tf_full.den)
+                    w_red, h_red = scipy.signal.freqz(tf_red.num, a=tf_red.den)
+                    w_bt, h_bt = scipy.signal.freqz(tf_bt.num, a=tf_bt.den)
+                    w_err, h_err = scipy.signal.freqz(tf_diff.num, a=tf_diff.den)
+                    w_err_bt, h_err_bt = scipy.signal.freqz(tf_diff_bt.num, a=tf_diff_bt.den)
+                    # ss_diff = scipy.signal.tf2ss(tf_diff)
+                    # print("SS diff", ss_diff)
+                    # inf_norm_error = self.compute_inf_norm_system(ss_diff)
+                    inf_norm_error = util.compute_inf_norm_discrete(tf_diff, 1)
+                    inf_norm_error_bt = util.compute_inf_norm_discrete(tf_diff_bt, 1)
+                    balanced_trunc_max_error = 2 * my_ERA.sing_vals[num_states_model+1:].sum()
+                    print("inf norm era err:", inf_norm_error, "inf norm BT err:", inf_norm_error_bt,
+                        "error bound for bal trunc:", balanced_trunc_max_error)
+                    print("era truncated sing vals:", my_ERA.sing_vals[num_states_model+1:])
+                    print("all era sing vals:", my_ERA.sing_vals)
+                    print("BT sing vals:", sing_vals_bt)
+                    plt.plot(w_full, np.abs(h_full), 'x')
+                    plt.plot(w_red, np.abs(h_red), '.')
+                    plt.plot(w_bt, np.abs(h_bt), '*')
+                    plt.plot(w_err, np.abs(h_err))
+                    plt.plot(w_err_bt, np.abs(h_err_bt))
+                    plt.grid(True)
+                    plt.legend(['full', 'era', 'bt', 'err era', 'err bt'])
+                    plt.show()
+                    
+
+
+    # def compute_inf_norm_system(self, A, B, C):
+    #     min_inf_norm = 1e-10
+    #     max_inf_norm = 1e10
+    #     tol = 1e-10
+    #     i = 0
+    #     while (max_inf_norm - min_inf_norm > tol):
+    #         mid_inf_norm = (min_inf_norm + max_inf_norm) / 2
+    #         valid = self.is_valid_inf_norm(mid_inf_norm, A, B, C)
+    #         if valid:
+    #             min_inf_norm = mid_inf_norm
+    #         else:
+    #             max_inf_norm = mid_inf_norm
+    #         print(i, valid, min_inf_norm, max_inf_norm, mid_inf_norm)
+    #         i += 1
+    #     return mid_inf_norm
 
 
 
-    def compute_inf_norm_system(self, A, B, C):
-        min_inf_norm = 1e-10
-        max_inf_norm = 1e10
-        tol = 1e-10
-        i = 0
-        while (max_inf_norm - min_inf_norm > tol):
-            mid_inf_norm = (min_inf_norm + max_inf_norm) / 2
-            valid = self.is_valid_inf_norm(mid_inf_norm, A, B, C)
-            if valid:
-                min_inf_norm = mid_inf_norm
-            else:
-                max_inf_norm = mid_inf_norm
-            print(i, valid, min_inf_norm, max_inf_norm, mid_inf_norm)
-            i += 1
-        return mid_inf_norm
-
-
-
-    def is_valid_inf_norm(self, inf_norm, A, B, C):
-        sys_mat = np.concatenate((np.concatenate((A, B.dot(B.H) / inf_norm ** 2), axis=1),
-                                  np.concatenate((-C.H.dot(C), -A.H), axis=1)), axis=0)
-        eig_vals = np.linalg.eigvals(np.mat(sys_mat))
-        print(eig_vals)
-        is_imag_eig_val = ((np.abs(eig_vals.imag) > 1e-12) & (np.abs(eig_vals.real) < 1e-12)).any()
-        return is_imag_eig_val
+    # def is_valid_inf_norm(self, inf_norm, A, B, C):
+    #     sys_mat = np.concatenate((np.concatenate((A, B.dot(B.H) / inf_norm ** 2), axis=1),
+    #                               np.concatenate((-C.H.dot(C), -A.H), axis=1)), axis=0)
+    #     eig_vals = np.linalg.eigvals(np.mat(sys_mat))
+    #     print(eig_vals)
+    #     is_imag_eig_val = ((np.abs(eig_vals.imag) > 1e-12) & (np.abs(eig_vals.real) < 1e-12)).any()
+    #     return is_imag_eig_val
 
 
 
