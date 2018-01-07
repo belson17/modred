@@ -371,7 +371,7 @@ def eig_biorthog(array, scale_choice='left'):
 def balanced_truncation(
         A, B, C, order=None, return_sing_vals=False):
     """Balance and truncate discrete-time linear time-invariant (LTI) system
-    defined by A, B, C arrays.
+    defined by A, B, C arrays. It's not very accurate due to numerical issues.
 
     Args:
         ``A``, ``B``, ``C``: LTI discrete-time arrays.
@@ -391,7 +391,7 @@ def balanced_truncation(
     Notes:
 
     - ``D`` is unchanged by balanced truncation.
-    - This function may not be as computationally efficient or stable as
+    - This function is not computationally efficient or accurate relative to
       Matlab's ``balancmr``.
     """
     A = np.array(A)
@@ -407,8 +407,8 @@ def balanced_truncation(
     U, E, V = svd(Lo.transpose().dot(Lc))
     if order is None:
         order = len(E)
-    SL = Lo.dot(U[:, :order]).dot(np.diag(E**-0.5))
-    SR = Lc.dot(V[:, :order]).dot(np.diag(E**-0.5))
+    SL = Lo.dot(U[:, :order]).dot(np.diag(E[:order]**-0.5))
+    SR = Lc.dot(V[:, :order]).dot(np.diag(E[:order]**-0.5))
     A_bal_trunc = SL.transpose().dot(A).dot(SR)
     B_bal_trunc = SL.transpose().dot(B)
     C_bal_trunc = C.dot(SR)
