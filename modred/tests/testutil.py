@@ -378,7 +378,7 @@ class TestUtil(unittest.TestCase):
                     num_time_steps = 10
                     y = util.impulse(A, B, C, num_time_steps=num_time_steps)
                     yr = util.impulse(Ar, Br, Cr, num_time_steps=num_time_steps)
-                    np.testing.assert_allclose(yr, y, rtol=1e-5, atol=1e-5)
+                    np.testing.assert_allclose(yr, y, rtol=1e-3, atol=1e-3)
 
 
     #@unittest.skip('Testing something else.')
