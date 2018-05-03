@@ -127,7 +127,8 @@ class testERA(unittest.TestCase):
 
                     for row in range(my_ERA.mc):
                         for col in range(my_ERA.mo):
-                            # Test values in H are accurate using that, roughly, H[r,c] = C * A^(r+c) * B.
+                            # Test values in H are accurate using that, roughly,
+                            # H[r,c] = C * A^(r+c) * B.
                             np.testing.assert_allclose(
                                 H[row * num_outputs:(row + 1) * num_outputs,
                                 col * num_inputs:(col + 1) * num_inputs],
@@ -136,7 +137,9 @@ class testERA(unittest.TestCase):
                                         A, time_steps[(row + col) * 2]).dot(
                                         B)),
                                 rtol=rtol, atol=atol)
-                            # Test values in H are accurate using that, roughly, H[r,c] = C * A^(r+c+1) * B.
+
+                            # Test values in H are accurate using that, roughly,
+                            # Hp[r,c] = C * A^(r+c+1) * B.
                             np.testing.assert_allclose(
                                 Hp[row * num_outputs:(row + 1) * num_outputs,
                                    col * num_inputs:(col + 1) * num_inputs],
@@ -145,12 +148,14 @@ class testERA(unittest.TestCase):
                                         A, time_steps[(row + col) * 2 + 1]).dot(
                                             B)),
                                 rtol=rtol, atol=atol)
+
                             # Test H is block symmetric
                             np.testing.assert_equal(
                                 H[row * num_outputs:(row + 1) * num_outputs,
                                   col * num_inputs:(col + 1) * num_inputs],
                                 H[col * num_outputs:(col + 1) * num_outputs,
                                   row * num_inputs:(row + 1) * num_inputs])
+
                             # Test Hp is block symmetric
                             np.testing.assert_equal(
                                 Hp[row * num_outputs:(row + 1) * num_outputs,
@@ -162,8 +167,8 @@ class testERA(unittest.TestCase):
     # @unittest.skip('testing others')
     def test_compute_model(self):
         """
-        Test ROM Markov params similar to those given when the reduced system has
-        the same number of states as the full system.
+        Test ROM Markov params similar to those given when the reduced system
+        has the same number of states as the full system.
 
         - generates data
         - assembles Hankel array
@@ -177,7 +182,8 @@ class testERA(unittest.TestCase):
         dt = 1
         inf_norm_tol = 0.1
         num_time_steps = 40
-        # Using more than 8 states causes poorly conditioned TF coeffs (https://github.com/scipy/scipy/issues/2980)
+        # Using more than 8 states causes poorly conditioned TF coeffs
+        # (https://github.com/scipy/scipy/issues/2980)
         num_states_plant = 8
         num_states_model = num_states_plant
         for num_inputs in [1, 3]:
@@ -192,46 +198,48 @@ class testERA(unittest.TestCase):
                     Markovs = util.impulse(A, B, C, time_steps[-1] + 1)
                     Markovs = Markovs[time_steps]
 
-                    if sample_interval == 2:
-                        time_steps_sampled, Markovs_sampled =\
-                            era.make_sampled_format(time_steps, Markovs)
-                    # else:
-                    #     time_steps_sampled = time_steps
-                    #     Markovs_sampled = Markovs
-                    num_time_steps = time_steps.shape[0]
-
                     A_path_computed = join(self.test_dir, 'A_computed.txt')
                     B_path_computed = join(self.test_dir, 'B_computed.txt')
                     C_path_computed = join(self.test_dir, 'C_computed.txt')
 
-                    A_reduced, B_reduced, C_reduced = \
-                        my_ERA.compute_model(Markovs, num_states_model)
+                    A_reduced, B_reduced, C_reduced = my_ERA.compute_model(
+                        Markovs, num_states_model)
                     my_ERA.put_model(
                         A_path_computed, B_path_computed, C_path_computed)
 
-                    # Scipy can't handle MIMO transfer functions,
-                    # so for each input-output pair, find the inf norm of TF_full - TF_model.
-                    inf_norm_error = 0
+                    # Scipy can't handle MIMO transfer functions, so for each
+                    # input-output pair, find the inf norm of TF_full -
+                    # TF_model.
                     for input_index in range(num_inputs):
                         for output_index in range(num_outputs):
-                            print(np.mat(B)[:, input_index], np.mat(C)[output_index, :])
                             tf_full = scipy.signal.StateSpace(
-                                A, np.mat(B)[:, input_index], np.mat(C)[output_index, :], 0, dt=dt).to_tf()
+                                A, np.mat(B)[:, input_index],
+                                np.mat(C)[output_index, :], 0, dt=dt).to_tf()
                             tf_red = scipy.signal.StateSpace(
-                                A_reduced, np.mat(B_reduced)[:, input_index], np.mat(C_reduced)[output_index, :], 0,
+                                A_reduced, np.mat(B_reduced)[:, input_index],
+                                np.mat(C_reduced)[output_index, :], 0,
                                 dt=dt).to_tf()
-                            tf_diff = util.sub_transfer_functions(tf_full, tf_red, dt=dt)
-                            inf_norm_error = util.compute_inf_norm_discrete(tf_diff, dt)
-                            self.assertTrue(inf_norm_error < inf_norm_tol +
-                                            inf_norm_tol * util.compute_inf_norm_discrete(tf_full, dt))
+                            tf_diff = util.sub_transfer_functions(
+                                tf_full, tf_red, dt=dt)
+                            inf_norm_error = util.compute_inf_norm_discrete(
+                                tf_diff, dt)
+                            self.assertTrue(
+                                inf_norm_error <
+                                inf_norm_tol +
+                                inf_norm_tol * util.compute_inf_norm_discrete(
+                                    tf_full, dt))
 
                     # Check normalized Markovs
-                    # Markovs_reduced = util.impulse(A_reduced, B_reduced, C_reduced, time_steps[-1] + 1)
+                    # Markovs_reduced = util.impulse(
+                    # A_reduced, B_reduced, C_reduced, time_steps[-1] + 1)
                     # Markovs_reduced = Markovs_reduced[time_steps]
                     # max_Markov = np.amax(Markovs)
-                    # np.testing.assert_allclose(Markovs_reduced/max_Markov, Markovs/max_Markov, rtol=rtol, atol=atol)
+                    # np.testing.assert_allclose(
+                    # Markovs_reduced/max_Markov, Markovs/max_Markov, rtol=rtol,
+                    # atol=atol)
 
-                    # Also test that saved reduced model mats are equal to those returned in memory
+                    # Also test that saved reduced model mats are equal to those
+                    # returned in memory
                     np.testing.assert_equal(
                         util.load_array_text(A_path_computed), A_reduced)
                     np.testing.assert_equal(
