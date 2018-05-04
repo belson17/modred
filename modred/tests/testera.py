@@ -181,7 +181,7 @@ class testERA(unittest.TestCase):
         """
         # Set test tolerances (for infinity norm of transfer function difference)
         tf_abs_tol = 1e-6
-        tf_rel_tol = 1e-6
+        tf_rel_tol = 1e-4
 
         # Set time parameters for discrete-time simulation
         dt = 0.1
@@ -260,10 +260,11 @@ class testERA(unittest.TestCase):
                                 tf_diff, dt)
 
                             # Test values
-                            print 'tf_diff_inf_norm', tf_diff_inf_norm
+                            #print 'tf_diff_inf_norm', tf_diff_inf_norm
+                            print 'tf_diff_inf_norm / tf_plant_inf_norm', tf_diff_inf_norm / tf_plant_inf_norm
                             self.assertTrue(
-                                tf_diff_inf_norm <
-                                tf_abs_tol + tf_rel_tol * tf_plant_inf_norm)
+                                tf_diff_inf_norm / tf_plant_inf_norm <
+                                tf_rel_tol)
 
 
                     # Also test that saved reduced model mats are equal to those
