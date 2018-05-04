@@ -179,7 +179,8 @@ class testERA(unittest.TestCase):
         Also, unrelated:
         - Tests that saved ROM mats are equal to those returned in memory
         """
-        # Set test tolerances (for infinity norm of transfer function difference)
+        # Set test tolerances (for infinity norm of transfer function
+        # difference)
         tf_abs_tol = 1e-6
         tf_rel_tol = 1e-4
 
@@ -231,9 +232,27 @@ class testERA(unittest.TestCase):
                     my_ERA.put_model(
                         A_path_computed, B_path_computed, C_path_computed)
 
+                    # Check normalized Markovs
+                    rtol = 1e-6
+                    atol = 1e-10
+                    Markovs_model = util.impulse(
+                        A_model, B_model, C_model,
+                        time_steps[-1] + 1)[time_steps]
+                    max_Markov = np.amax(Markovs)
+                    eigs_plant = np.linalg.eig(A_plant)[0]
+                    eigs_model = np.linalg.eig(A_model)[0]
+                    print 'max plant eig', np.abs(eigs_plant).max()
+                    print 'max model eig', np.abs(eigs_model).max()
+                    print 'max plant markov', max_Markov
+                    print 'max model markov', np.amax(Markovs_model)
+                    np.testing.assert_allclose(
+                        Markovs_model / max_Markov, Markovs/max_Markov,
+                        rtol=rtol, atol=atol)
+
+                    '''
                     # Use Scipy to check that transfer function of ERA model is
                     # close to transfer function of full model.  Do so by
-                     # computing the infinity norm (H_inf) of the difference
+                    # computing the infinity norm (H_inf) of the difference
                     # between the transfer functions. Since Scipy can't handle
                     # MIMO transfer functions, loop through each input-output
                     # pair individually.
@@ -260,12 +279,12 @@ class testERA(unittest.TestCase):
                                 tf_diff, dt)
 
                             # Test values
-                            #print 'tf_diff_inf_norm', tf_diff_inf_norm
-                            print 'tf_diff_inf_norm / tf_plant_inf_norm', tf_diff_inf_norm / tf_plant_inf_norm
+                            print 'err_frac', (
+                                tf_diff_inf_norm / tf_plant_inf_norm)
                             self.assertTrue(
                                 tf_diff_inf_norm / tf_plant_inf_norm <
                                 tf_rel_tol)
-
+                    '''
 
                     # Also test that saved reduced model mats are equal to those
                     # returned in memory
