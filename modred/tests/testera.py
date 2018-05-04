@@ -22,7 +22,8 @@ def make_time_steps(num_steps, interval):
         interval: interval between pairs of time steps in return value.
 
     Returns:
-        time_steps: array of integer time steps with len==num_steps, [0 1 interval interval+1 ...]
+        time_steps: array of integer time steps with len==num_steps,
+        [0 1 interval interval+1 ...]
     """
     if num_steps % 2 != 0:
         raise ValueError('num_steps, %d, must be even'%num_steps)
@@ -55,8 +56,7 @@ class testERA(unittest.TestCase):
         Test that can give time_values and outputs in either format.
 
         First tests format [0, 1, P, P+1, ...] and if there is a wrong time
-        value.
-        Then tests [0, 1, 2, 3, ...] format.
+        value.  Then tests [0, 1, 2, 3, ...] format.
         """
         for num_inputs in [1, 3]:
             for num_outputs in [1, 2, 4]:
@@ -179,73 +179,101 @@ class testERA(unittest.TestCase):
         Also, unrelated:
         - Tests that saved ROM mats are equal to those returned in memory
         """
-        dt = 1
-        inf_norm_tol = 0.1
-        num_time_steps = 40
-        # Using more than 8 states causes poorly conditioned TF coeffs
+        # Set test tolerances (for infinity norm of transfer function difference)
+        tf_abs_tol = 1e-6
+        tf_rel_tol = 1e-6
+
+        # Set time parameters for discrete-time simulation
+        dt = 0.1
+        num_time_steps = 1000
+
+        # Set size of plant and model. For test, don't reduce the system, just
+        # check that it comes back close to the original plant.  Also, note that
+        # using more than 8 states causes poorly conditioned TF coeffs
         # (https://github.com/scipy/scipy/issues/2980)
         num_states_plant = 8
         num_states_model = num_states_plant
+
+        # Loop through different numbers of inputs, numbers of outputs, and
+        # sampling intervals
         for num_inputs in [1, 3]:
             for num_outputs in [1, 2]:
                 for sample_interval in [1, 2, 4]:
+
+                    # Define time steps at which to save data.  These will be of
+                    # the form [0, 1, p, p + 1, 2p, 2p + 1, ...] where p is the
+                    # sample interval.
                     time_steps = make_time_steps(
                         num_time_steps, sample_interval)
-                    A, B, C = util.drss(
+
+                    # Create a state space system
+                    A_plant, B_plant, C_plant = util.drss(
                         num_states_plant, num_inputs, num_outputs)
+
+                    # Simulate an impulse response using the state space system.
+                    # This will generate Markov parameters at all timesteps [0,
+                    # 1, 2, 3, ...].  Only keep data at the desired time steps,
+                    # which are separated by a sampling interval (see above
+                    # comment).
+                    Markovs = util.impulse(
+                        A_plant, B_plant, C_plant,
+                        time_steps[-1] + 1)[time_steps]
+
+                    # Compute a model using ERA
                     my_ERA = era.ERA(verbosity=0)
+                    A_model, B_model, C_model = my_ERA.compute_model(
+                        Markovs, num_states_model)
 
-                    Markovs = util.impulse(A, B, C, time_steps[-1] + 1)
-                    Markovs = Markovs[time_steps]
-
+                    # Save ERA model to disk
                     A_path_computed = join(self.test_dir, 'A_computed.txt')
                     B_path_computed = join(self.test_dir, 'B_computed.txt')
                     C_path_computed = join(self.test_dir, 'C_computed.txt')
-
-                    A_reduced, B_reduced, C_reduced = my_ERA.compute_model(
-                        Markovs, num_states_model)
                     my_ERA.put_model(
                         A_path_computed, B_path_computed, C_path_computed)
 
-                    # Scipy can't handle MIMO transfer functions, so for each
-                    # input-output pair, find the inf norm of TF_full -
-                    # TF_model.
-                    for input_index in range(num_inputs):
-                        for output_index in range(num_outputs):
-                            tf_full = scipy.signal.StateSpace(
-                                A, np.mat(B)[:, input_index],
-                                np.mat(C)[output_index, :], 0, dt=dt).to_tf()
-                            tf_red = scipy.signal.StateSpace(
-                                A_reduced, np.mat(B_reduced)[:, input_index],
-                                np.mat(C_reduced)[output_index, :], 0,
-                                dt=dt).to_tf()
-                            tf_diff = util.sub_transfer_functions(
-                                tf_full, tf_red, dt=dt)
-                            inf_norm_error = util.compute_inf_norm_discrete(
-                                tf_diff, dt)
-                            self.assertTrue(
-                                inf_norm_error <
-                                inf_norm_tol +
-                                inf_norm_tol * util.compute_inf_norm_discrete(
-                                    tf_full, dt))
+                    # Use Scipy to check that transfer function of ERA model is
+                    # close to transfer function of full model.  Do so by
+                     # computing the infinity norm (H_inf) of the difference
+                    # between the transfer functions. Since Scipy can't handle
+                    # MIMO transfer functions, loop through each input-output
+                    # pair individually.
+                    for input_idx in range(num_inputs):
+                        for output_idx in range(num_outputs):
 
-                    # Check normalized Markovs
-                    # Markovs_reduced = util.impulse(
-                    # A_reduced, B_reduced, C_reduced, time_steps[-1] + 1)
-                    # Markovs_reduced = Markovs_reduced[time_steps]
-                    # max_Markov = np.amax(Markovs)
-                    # np.testing.assert_allclose(
-                    # Markovs_reduced/max_Markov, Markovs/max_Markov, rtol=rtol,
-                    # atol=atol)
+                            # Compute transfer functions
+                            tf_plant = scipy.signal.StateSpace(
+                                A_plant, B_plant[:, input_idx:input_idx + 1],
+                                C_plant[output_idx:output_idx + 1, :],
+                                0, dt=dt).to_tf()
+                            tf_model = scipy.signal.StateSpace(
+                                A_model,
+                                B_model[:, input_idx:input_idx + 1],
+                                C_model[output_idx:output_idx + 1, :],
+                                0, dt=dt).to_tf()
+                            tf_diff = util.sub_transfer_functions(
+                                tf_plant, tf_model, dt=dt)
+
+                            # Compute transfer function norms
+                            tf_plant_inf_norm = util.compute_inf_norm_discrete(
+                                tf_plant, dt)
+                            tf_diff_inf_norm = util.compute_inf_norm_discrete(
+                                tf_diff, dt)
+
+                            # Test values
+                            print 'tf_diff_inf_norm', tf_diff_inf_norm
+                            self.assertTrue(
+                                tf_diff_inf_norm <
+                                tf_abs_tol + tf_rel_tol * tf_plant_inf_norm)
+
 
                     # Also test that saved reduced model mats are equal to those
                     # returned in memory
                     np.testing.assert_equal(
-                        util.load_array_text(A_path_computed), A_reduced)
+                        util.load_array_text(A_path_computed), A_model)
                     np.testing.assert_equal(
-                        util.load_array_text(B_path_computed), B_reduced)
+                        util.load_array_text(B_path_computed), B_model)
                     np.testing.assert_equal(
-                        util.load_array_text(C_path_computed), C_reduced)
+                        util.load_array_text(C_path_computed), C_model)
 
 
 
