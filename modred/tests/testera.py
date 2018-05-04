@@ -241,14 +241,30 @@ class testERA(unittest.TestCase):
                     max_Markov = np.amax(Markovs)
                     eigs_plant = np.linalg.eig(A_plant)[0]
                     eigs_model = np.linalg.eig(A_model)[0]
+                    print 'markovs shape', Markovs.shape
                     print 'max plant eig', np.abs(eigs_plant).max()
                     print 'max model eig', np.abs(eigs_model).max()
                     print 'max plant markov', max_Markov
                     print 'max model markov', np.amax(Markovs_model)
+                    print 'markov diffs', (
+                        Markovs - Markovs_model).squeeze().max()
+
+                    '''
+                    import matplotlib.pyplot as plt
+                    plt.figure()
+                    plt.semilogy(np.abs(Markovs).squeeze(), 'b')
+                    plt.semilogy(np.abs(Markovs_model).squeeze(), 'r--')
+                    plt.axis(
+                        [0, time_steps[-1], Markovs.min(), Markovs.max()])
+                    '''
+
                     np.testing.assert_allclose(
-                        Markovs_model / max_Markov, Markovs/max_Markov,
+                        Markovs_model.squeeze(),
+                        Markovs.squeeze(),
                         rtol=rtol, atol=atol)
 
+
+                    plt.show()
                     '''
                     # Use Scipy to check that transfer function of ERA model is
                     # close to transfer function of full model.  Do so by
