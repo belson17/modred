@@ -16,7 +16,7 @@ with open(os.path.join(here, 'README.rst')) as f:
 with open(os.path.join(here, 'modred/_version.py')) as f:
     exec(f.read())
 # Get the development status from the version string
-parsed_version = parse_version(__version__)
+parsed_version = str(parse_version(__version__))
 if any(w in ['*a', '*alpha'] for w in parsed_version):
     devstatus = 'Development Status :: 3 - Alpha'
 elif any(w in ['*b', '*beta'] for w in parsed_version):
