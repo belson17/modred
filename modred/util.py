@@ -525,41 +525,6 @@ def impulse(A, B, C, num_time_steps=None):
     Markovs = np.array(Markovs).swapaxes(0, 1).swapaxes(1, 2)[1:]
     return Markovs
 
-
-def sub_transfer_functions(a, b, dt=None):
-    """
-    Returns a - b, where a and b are scipy TransferFunctions.
-
-    https://stackoverflow.com/questions/35304245/multiply-scipy-lti-transfer-functions
-    """
-    numer = polyadd(polymul(a.num, b.den), -polymul(a.den, b.num))
-    denom = polymul(a.den, b.den)
-    if dt is not None:
-        return TransferFunction(numer, denom, dt=dt)
-    else:
-        return TransferFunction(numer, denom)
-
-
-def compute_inf_norm_discrete(transfer_function, dt):
-    """
-    Finds infinity norm of discrete time TF using inefficient method.
-
-    If this function is ever used for more than testing, improve the method.
-    """
-    freq, mag = scipy.signal.freqz(transfer_function.num, a=transfer_function.den)
-    return np.max(np.abs(mag)) / dt
-
-def compute_inf_norm_continuous(transfer_function):
-    """
-    Finds infinity norm of continuous time TF using inefficient method.
-
-    If this function is ever used for more than testing, improve the method.
-    """
-    freq, mag = scipy.signal.freqs(transfer_function.num, a=transfer_function.den)
-    return np.max(np.abs(mag))
-
-
-
 def load_signals(signal_path, delimiter=None):
     """Loads signals from text files with columns [t signal1 signal2 ...].
 
