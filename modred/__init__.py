@@ -56,7 +56,7 @@ from .util import (
     smart_eq,
     InnerProductBlock,
     svd, eigh, eig_biorthog,
-    solve_Lyapunov_direct, solve_Lyapunov_iterative, balanced_truncation,
+    balanced_truncation,
     drss, rss, lsim, impulse, load_signals, load_multiple_signals,
     Hankel, Hankel_chunks
 )
