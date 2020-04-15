@@ -1,5 +1,13 @@
 #### Important ####
 
+Don't use result of random state space (util.drss and util.rss)
+in tests, and instead save SS's needed with correct results.
+This will make the tests pass more consistently instead of
+occasionally falsely failing due to poorly conditioned SS's.
+
+For ERA, create and use saved SS's and results for tests.
+
+
 Clean up docstrings so it's all on the same level.  Either include
 math in docstrings or don't.  Either use matrix or vector space
 notation, maybe depending on arrays or handles implementations.  Maybe

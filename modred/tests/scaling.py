@@ -344,7 +344,7 @@ def ips():
     for s in cases:
         print(
             '  %d    |  %.1f   | %.1f (%.2f) | %.1f (%.2f) | %.1f (%.2f) |'
-            '%.1f (%.2f)') % (
+            '%.1f (%.2f)' % (
                 s.workers, s.total, s.loads, s.loads / s.total, s.ips,
                 s.ips / s.total, s.sendrecvs, s.sendrecvs / s.total, s.barriers,
                 s.barriers / s.total))

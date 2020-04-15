@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 from pkg_resources import parse_version
-import glob
+# import glob
 import os
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -70,5 +70,5 @@ setup(
             'tests/files_OKID/SIMO/*',
             'tests/files_OKID/MISO/*',
             'tests/files_OKID/MIMO/*']},
-    install_requires=['numpy']
+    install_requires=['numpy', 'scipy']
     )

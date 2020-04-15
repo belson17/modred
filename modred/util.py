@@ -3,9 +3,13 @@ import inspect
 import os
 
 import numpy as np
+from numpy import polymul, polyadd
+import scipy
+import scipy.linalg
+import scipy.signal
+from scipy.signal.ltisys import TransferFunction
 
 from .py2to3 import range
-
 
 class UndefinedError(Exception): pass
 
@@ -229,7 +233,7 @@ def svd(array, atol=1e-13, rtol=None):
     obey both ``atol`` and ``rtol``.
     """
     # Compute SVD (force data to be array)
-    U, S, V_conj_T = np.linalg.svd(np.array(array), full_matrices=0)
+    U, S, V_conj_T = np.linalg.svd(np.array(array), full_matrices=False)
     V = V_conj_T.conj().T
 
     # Figure out how many singular values satisfy the tolerances
@@ -364,77 +368,10 @@ def eig_biorthog(array, scale_choice='left'):
     return R_evals, R_evecs, L_evecs
 
 
-def solve_Lyapunov_direct(A, Q):
-    """Solves discrete Lyapunov equation :math:`AXA' - X + Q = 0` for
-    :math:`X`, given :math:`A` and :math:`Q`.
-
-    This function may not be as computationally efficient or stable as
-    Matlab's ``dylap``.
-
-    See also :py:func:`solve_Lyapunov_iterative` and
-    http://en.wikipedia.org/wiki/Lyapunov_equation
-    """
-    A = np.array(A)
-    Q = np.array(Q)
-
-    if A.shape != Q.shape:
-        raise ValueError("A and Q don't have same shape")
-
-    Q_flat = Q.flatten()
-    kron_AA = np.kron(A, A)
-    X_flat = np.linalg.solve(np.identity(kron_AA.shape[0]) - kron_AA, Q_flat)
-    X = X_flat.reshape((A.shape))
-    return X
-
-
-def solve_Lyapunov_iterative(A, Q, max_iters=10000, tol=1e-8):
-    """Solves discrete Lyapunov equation :math:`AXA' - X + Q = 0` for
-    :math:`X`, given :math:`A` and :math:`Q`.
-
-    This method is based on the iterative discrete-time Lyapunov solver
-    described in Davinson and Man, "The Numerical Solution of A'Q+QA=-C,"
-    IEEE Transactions on Automatic Control, volume 13, issue 4, August 1968,
-    p. 448.
-
-    This function may not be as computationally efficient or stable as
-    Matlab's ``dylap``.
-    """
-    A = np.array(A)
-    Q = np.array(Q)
-
-    if A.shape[0] != A.shape[1]:
-        raise ValueError('A must be square.')
-    if A.shape != Q.shape:
-        raise ValueError('A and Q must have the same shape.')
-
-    if np.amax(np.abs(np.linalg.eig(A)[0])) > 1.:
-        raise ValueError(
-            'A must have stable eigenvalues (in the unit circle).')
-
-    X = np.copy(Q)
-    AP = np.copy(A)
-    AT = np.copy(A.transpose())
-    APT = np.copy(A.transpose())
-    error = np.inf
-    iter = 0
-    while error > tol and iter < max_iters:
-        change = AP.dot(Q).dot(APT)
-        X += change
-        AP = AP.dot(A)
-        APT = APT.dot(AT)
-        error = np.abs(change).max()
-        iter += 1
-
-    if iter >= max_iters:
-        print('Warning: did not converge to solution. Error is %f.' % error)
-
-    return X
-
-
 def balanced_truncation(
-    A, B, C, order=None, return_sing_vals=False, iterative_solver=True):
+        A, B, C, order=None, return_sing_vals=False):
     """Balance and truncate discrete-time linear time-invariant (LTI) system
-    defined by A, B, C arrays.
+    defined by A, B, C arrays. It's not very accurate due to numerical issues.
 
     Args:
         ``A``, ``B``, ``C``: LTI discrete-time arrays.
@@ -454,22 +391,15 @@ def balanced_truncation(
     Notes:
 
     - ``D`` is unchanged by balanced truncation.
-    - This function may not be as computationally efficient or stable as
+    - This function is not computationally efficient or accurate relative to
       Matlab's ``balancmr``.
     """
     A = np.array(A)
     B = np.array(B)
     C = np.array(C)
-
-    if iterative_solver:
-        gram_cont = solve_Lyapunov_iterative(A, B.dot(B.transpose().conj()))
-        gram_obsv = solve_Lyapunov_iterative(A.transpose().conj(),
-            C.transpose().conj().dot(C))
-    else:
-        gram_cont = solve_Lyapunov_direct(A, B.dot(B.transpose().conj()))
-        gram_obsv = solve_Lyapunov_direct(A.transpose().conj(),
-            C.transpose().conj().dot(C))
-
+    gram_cont = scipy.linalg.solve_lyapunov(A, B.dot(B.transpose().conj()))
+    gram_obsv = scipy.linalg.solve_lyapunov(A.transpose().conj(),
+        C.transpose().conj().dot(C))
     Uc, Ec, Vc = svd(gram_cont)
     Uo, Eo, Vo = svd(gram_obsv)
     Lc = Uc.dot(np.diag(Ec**0.5))
@@ -477,8 +407,8 @@ def balanced_truncation(
     U, E, V = svd(Lo.transpose().dot(Lc))
     if order is None:
         order = len(E)
-    SL = Lo.dot(U[:,:order]).dot(np.diag(E**-0.5))
-    SR = Lc.dot(V[:,:order]).dot(np.diag(E**-0.5))
+    SL = Lo.dot(U[:, :order]).dot(np.diag(E[:order]**-0.5))
+    SR = Lc.dot(V[:, :order]).dot(np.diag(E[:order]**-0.5))
     A_bal_trunc = SL.transpose().dot(A).dot(SR)
     B_bal_trunc = SL.transpose().dot(B)
     C_bal_trunc = C.dot(SR)
@@ -503,7 +433,9 @@ def drss(num_states, num_inputs, num_outputs):
 
     By construction, all eigenvalues are real and stable.
     """
-    eig_vals = np.linspace(.9, .95, num_states)
+    # eig_vals = np.linspace(.9, .95, num_states)
+    # eig_vecs = np.random.normal(0, 2., (num_states, num_states))
+    eig_vals = np.linspace(.2, .95, num_states)
     eig_vecs = np.random.normal(0, 2., (num_states, num_states))
     A = np.real(
         np.linalg.inv(eig_vecs).dot(np.diag(eig_vals).dot(eig_vecs)))
@@ -560,28 +492,10 @@ def lsim(A, B, C, inputs, initial_condition=None):
     A = np.array(A)
     B = np.array(B)
     C = np.array(C)
-    if inputs.ndim == 1:
-        inputs = inputs.reshape((len(inputs), 1))
-    num_steps, num_inputs = inputs.shape
-    num_outputs = C.shape[0]
-    num_states = A.shape[0]
-    if A.shape != (num_states, num_states):
-        raise ValueError('A has the wrong shape ', A.shape)
-    if B.shape != (num_states, num_inputs):
-        raise ValueError('B has the wrong shape ', B.shape)
-    if C.shape != (num_outputs, num_states):
-        raise ValueError('C has the wrong shape ', C.shape)
-    if initial_condition is not None:
-        if initial_condition.shape[0] != num_states or \
-            initial_condition.ndim != 1:
-            raise ValueError('initial_condition has the wrong shape')
-    else:
-        initial_condition = np.zeros(num_states)
-    state = initial_condition
-    outputs = np.zeros((num_steps, num_outputs))
-    for ti in range(num_steps):
-        outputs[ti] = np.dot(C, state)
-        state = np.dot(A, state) + np.dot(B, inputs[ti])
+    ss = scipy.signal.StateSpace(A, B, C,
+                                 np.zeros((C.shape[0], B.shape[1])), dt=1)
+    tout_dum, outputs, xout_dum = scipy.signal.dlsim(
+        ss, inputs, x0=initial_condition)
     return outputs
 
 
@@ -593,9 +507,6 @@ def impulse(A, B, C, num_time_steps=None):
 
     Kwargs:
         ``num_time_steps``: Number of time steps to simulate.
-        By default, automatically chooses a value between 20 and 2000, stopping
-        either when 2000 timesteps have elapsed, or when the outputs decay to
-        below a magnitude of 1e-6.
 
     Returns:
         ``outputs``: Impulse response outputs, with indices corresponding to
@@ -604,39 +515,15 @@ def impulse(A, B, C, num_time_steps=None):
     No D array is included, but one can simply be prepended to the output if
     it is non-zero.
     """
-    A = np.array(A)
-    B = np.array(B)
-    C = np.array(C)
-
-    num_inputs = B.shape[1]
-    num_outputs = C.shape[0]
-    A_powers = np.identity(A.shape[0])
-    outputs = []
-
-    if num_time_steps is None:
-        tol = 1e-6
-        min_time_steps = 20
-        max_time_steps = 2000
-        ti = 0
-        continue_sim = True
-        while continue_sim and ti < max_time_steps:
-            outputs.append(C.dot(A_powers.dot(B)))
-            A_powers = np.dot(A_powers, A)
-            ti += 1
-            if ti > min_time_steps:
-                # PA: I changed that since it is strange and it gives
-                # TypeError: unorderable types: list() < float()
-                # with python 3
-                # if (np.abs(outputs[-min_time_steps:] < tol)).all():
-                if (np.abs(outputs[-1] < tol)).all():
-                    continue_sim = False
+    ss = scipy.signal.StateSpace(A, B, C, np.zeros((C.shape[0], B.shape[1])), dt=1)
+    if num_time_steps is not None:
+        dum, Markovs = scipy.signal.dimpulse(ss, n=num_time_steps+1)
     else:
-        outputs = np.zeros((num_time_steps, num_outputs, num_inputs))
-        for ti in range(num_time_steps):
-            outputs[ti] = C.dot(A_powers.dot(B))
-            A_powers = A_powers.dot(A)
-    return outputs
-
+        dum, Markovs = scipy.signal.dimpulse(ss)
+    # Remove the first element, which is 0, since we define C*B as first output
+    # of impulse response, i.e., x(0) == B.
+    Markovs = np.array(Markovs).swapaxes(0, 1).swapaxes(1, 2)[1:]
+    return Markovs
 
 def load_signals(signal_path, delimiter=None):
     """Loads signals from text files with columns [t signal1 signal2 ...].
