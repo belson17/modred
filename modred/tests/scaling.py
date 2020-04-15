@@ -178,7 +178,6 @@ def lin():
     # Speedup plot
     plt.figure(figsize=(5.5, 4))
     width = .4
-    plt.hold(True)
     #plt.plot(workers, workers,'k-')
     plt.plot(workers, [cases[0].total*cases[0].workers/c.total for c in cases],
         'ro-')
@@ -202,7 +201,6 @@ def lin():
     # Time spent breakdown
     """
     plt.figure()
-    plt.hold(True)
     plt.plot(workers, cases[0].total/workers,'k-')
     plt.plot(workers, [c.total for c in cases],'bx-')
     for c in cases:
@@ -328,7 +326,6 @@ def ips():
     # Speedup plot
     plt.figure(figsize=(5.5,4))
     width = .4
-    plt.hold(True)
     #plt.plot(workers, workers,'k-')
     plt.plot(
         workers, [cases[0].total*cases[0].workers/c.total for c in cases],'ro-')
@@ -352,7 +349,6 @@ def ips():
     # Time spent breakdown
     """
     plt.figure()
-    plt.hold(True)
     plt.plot(workers, cases[0].total/workers,'k-')
     plt.plot(workers, [c.total for c in cases],'bx-')
     for c in cases:
