@@ -1,7 +1,7 @@
 """Makes plots of parallel scaling.
 
-To use this, must copy in the
-scaling times from profiling benchmark.py with cProfile."""
+To use this, must copy in the scaling times from profiling benchmark.py with
+cProfile."""
 import numpy as np
 import matplotlib.pyplot as plt
 
