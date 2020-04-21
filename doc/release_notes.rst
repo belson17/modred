@@ -7,8 +7,6 @@ Release notes
 modred 2.1.0
 ------------
 
-[IN PROGRESS]
-
 * Now work only with numpy arrays (not matrices)!  Many method names have been
   changed.
 
@@ -17,6 +15,10 @@ modred 2.1.0
   which now check mathematical properties, rather than comparing the results of
   ``modred`` routines to alternate (e.g., brute force) implementations.  The new
   unit tests are more robust and fail much less often.
+
+* Note that a previously unrecorded bug fix has been added to the release notes
+  for version 2.0.2 (regarding correct handling of complex-valued data in
+  computing inner product arrays).
 
 **New features and improvements**
 
@@ -32,11 +34,6 @@ modred 2.1.0
 
 * Correctly handle ``mode_indices=None`` option in
   :py:meth:`VecSpaceHandles.lin_combine`.
-
-* Complex-valued vectors are now correctly handled in
-  :py:meth:`VecSpaceHandles.compute_inner_product_mat` and
-  :py:meth:`VecSpaceHandles.compute_symmetric_inner_product_mat`. [NOTE: is this
-  fixed in the matrix versions???]
 
 **Interface changes**
 
@@ -118,7 +115,13 @@ Minor bug fix to OKID tests.
 modred 2.0.2
 ------------
 
-Minor bug fix.
+Minor bug fixes.
+
+**Bug fixes**
+
+* Complex-valued vectors are now correctly handled in
+  :py:meth:`VecSpaceHandles.compute_inner_product_mat` and
+  :py:meth:`VecSpaceHandles.compute_symmetric_inner_product_mat`.
 
 **Interface changes**
 
