@@ -1,5 +1,6 @@
 """Parallel class and functions for distributed memory"""
 import socket
+import codecs
 
 import numpy as np
 
@@ -16,7 +17,14 @@ except ImportError:
 
 # Determine host name
 _hostname = socket.gethostname()
-_node_ID = hash(_hostname)
+
+# Convert host name (string) to a unique integer.  Do this by first converting
+# the string to a byte string (for Python 3 strings are unicode), then encoding
+# it in hex, then converting it to an int.  Note that the hash() function does
+# not yield reproducible results across systems, and even on the same system (on
+# a Windows machine, two processors were observed to generate different hashes
+# of the host name).
+_node_ID = int(codecs.encode(_hostname.encode(), 'hex'), base=16)
 
 # If MPI is available, gather MPI data
 if _MPI_avail:
