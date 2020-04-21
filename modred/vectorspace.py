@@ -110,11 +110,13 @@ class VectorSpaceHandles(object):
 
         if (
             self.max_vecs_per_node <
-            2 * parallel.get_num_procs() / parallel.get_num_nodes()):
-            self.max_vecs_per_proc = 2
+            3 * parallel.get_num_procs() / parallel.get_num_nodes()):
+            self.max_vecs_per_proc = 3
+            self.max_vecs_per_node = int(np.ceil(
+                3 * parallel.get_num_procs() / parallel.get_num_nodes()))
             self.print_msg(
                 'Warning: max_vecs_per_node too small for given number of '
-                'nodes and procs. Assuming two vecs can be in memory per '
+                'nodes and procs. Assuming three vecs can be in memory per '
                 'processor. If possible, increase max_vecs_per_node for a '
                 'speedup.')
         else:
