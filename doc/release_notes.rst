@@ -9,13 +9,14 @@ modred 2.1.0
 
 [IN PROGRESS]
 
-Now work only with arrays!  Many method names have been changed.
+* Now work only with numpy arrays (not matrices)!  Many method names have been
+  changed.
 
-Implemented the total least-squares variant of DMD, which deals with noise
-better than standard DMD does.  Also did a major rewrite of the unit tests,
-which now check mathematical properties, rather than comparing the results of
-``modred`` routines to alternate (e.g., brute force) implementations.  The new
-unit tests are more robust and fail much less often.
+* Implemented the total least-squares variant of DMD, which deals with noise
+  better than standard DMD does.  Also did a major rewrite of the unit tests,
+  which now check mathematical properties, rather than comparing the results of
+  ``modred`` routines to alternate (e.g., brute force) implementations.  The new
+  unit tests are more robust and fail much less often.
 
 **New features and improvements**
 
@@ -45,15 +46,13 @@ unit tests are more robust and fail much less often.
   :py:meth:`VecSpacehandles.compute_symmetric_inner_product_array` is now
   :py:meth:`VecSpacehandles.compute_symm_inner_product_array`.
 
-* Fixed order of return arguments in DMD matrix routines [which ones were
-  changed??] to be consistent. (Also in TLSqrDMD matrix routines)
+* Changed return values in array methods for all decomps.  Now a single
+  namedtuple is returned, with fields for various internal data, such as
+  ``results.eigvals``.
 
-* Changed return arguments in array methods for all decomps.  Now have a dict
-  containing extra return arguments.
-
-* :py:class:`parallel` is now a module, not a class.  [Also put in interface
-  changes???]  This way users don't have to worry about using the default
-  instance or accidentally creating new instances.
+* :py:class:`parallel` is now a module, not a class.  This way users don't have
+  to worry about using the default instance or accidentally creating new
+  instances.
 
 * The attribute ``summed_correlation_mats`` has been renamed
   ``sum_correlation_mat`` to make it clear that the attribute contains a single
@@ -75,6 +74,8 @@ unit tests are more robust and fail much less often.
 
 **Internal changes**
 
+* Exact DMD modes now scaled by DMD eigenvalues.
+
 * Removed trailing whitespace from files, as is often done automatically when
   using Emacs.
 
@@ -85,6 +86,8 @@ unit tests are more robust and fail much less often.
 * Rewrote BPOD tests.
 
 * Rewrote POD tests.
+
+* Rewrote ERA tests.
 
 
 ------------
