@@ -30,7 +30,7 @@ parallel.barrier()
 
 # Calculate DMD modes and save them to pickle files
 weighted_IP = mr.InnerProductTrapz(x_grid, y_grid)
-my_DMD = mr.DMDHandles(weighted_IP)
+my_DMD = mr.DMDHandles(inner_product=weighted_IP)
 my_DMD.compute_decomp(snapshots)
 my_DMD.put_decomp(
     '%s/eigvals.txt' % out_dir, '%s/R_low_order_eigvecs.txt' % out_dir,

@@ -484,11 +484,10 @@ def compute_DMD_arrays_direct_method(
 class DMDHandles(object):
     """Dynamic Mode Decomposition implemented for large datasets.
 
-    Args:
+    Kwargs:
         ``inner_product``: Function that computes inner product of two vector
         objects.
 
-    Kwargs:
         ``put_array``: Function to put an array out of modred, e.g., write it to
         file.
 
@@ -505,7 +504,7 @@ class DMDHandles(object):
 
     Usage::
 
-      myDMD = DMDHandles(my_inner_product)
+      myDMD = DMDHandles(inner_product=my_inner_product)
       myDMD.compute_decomp(vec_handles)
       myDMD.compute_exact_modes(range(50), mode_handles)
 
@@ -513,7 +512,7 @@ class DMDHandles(object):
     :func:`compute_DMD_arrays_direct_method`, and :mod:`vectors`.
     """
     def __init__(
-        self, inner_product, get_array=util.load_array_text,
+        self, inner_product=None, get_array=util.load_array_text,
         put_array=util.save_array_text, max_vecs_per_node=None, verbosity=1):
         """Constructor"""
         self.get_array = get_array
@@ -1613,15 +1612,14 @@ class TLSqrDMDHandles(DMDHandles):
     """Total Least Squares Dynamic Mode Decomposition implemented for large
     datasets.
 
-    Args:
+    Kwargs:
         ``inner_product``: Function that computes inner product of two vector
         objects.
 
-    Kwargs:
         ``put_array``: Function to put an array out of modred, e.g., write it to
         file.
 
-      	``get_array``: Function to get an array into modred, e.g., load it from
+        ``get_array``: Function to get an array into modred, e.g., load it from
         file.
 
         ``max_vecs_per_node``: Maximum number of vectors that can be stored in
@@ -1634,7 +1632,7 @@ class TLSqrDMDHandles(DMDHandles):
 
     Usage::
 
-      myDMD = TLSqrDMDHandles(my_inner_product)
+      myDMD = TLSqrDMDHandles(inner_product=my_inner_product)
       myDMD.compute_decomp(vec_handles, max_num_eigvals=100)
       myDMD.compute_exact_modes(range(50), mode_handles)
 
@@ -1665,7 +1663,7 @@ class TLSqrDMDHandles(DMDHandles):
     :func:`compute_TLSqrDMD_arrays_direct_method`, and :mod:`vectors`.
     """
     def __init__(
-        self, inner_product, get_array=util.load_array_text,
+        self, inner_product=None, get_array=util.load_array_text,
         put_array=util.save_array_text, max_vecs_per_node=None, verbosity=1):
         """Constructor"""
         self.get_array = get_array

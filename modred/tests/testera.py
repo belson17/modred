@@ -40,15 +40,16 @@ class testERA(unittest.TestCase):
     def setUp(self):
         if not os.access('.', os.W_OK):
             raise RuntimeError('Cannot write to current directory')
-        self.test_dir = 'files_ERA_DELETE_ME'
-        if not os.path.exists(self.test_dir):
-            os.mkdir(self.test_dir)
-        self.impulse_file_path = join(self.test_dir, 'impulse_input%03d.txt')
+        self.data_dir = 'files_ERA'
+        self.out_dir = 'files_ERA_DELETE_ME'
+        if not os.path.exists(self.out_dir):
+            os.mkdir(self.out_dir)
+        self.impulse_file_path = join(self.out_dir, 'impulse_input%03d.txt')
 
 
     def tearDown(self):
         """Deletes all of the arrays created by the tests"""
-        rmtree(self.test_dir, ignore_errors=True)
+        rmtree(self.out_dir, ignore_errors=True)
 
 
     # @unittest.skip('Testing others')
@@ -113,15 +114,15 @@ class testERA(unittest.TestCase):
                     # A, B, C = util.drss(num_states, num_inputs, num_outputs)
                     time_steps = make_time_steps(
                         num_time_steps, sample_interval)
-                    A = util.load_array_text("/Users/brandt/Dropbox/modred/modred/tests/files_ERA/A_in%d_out%d.txt" % (
-                    num_inputs, num_outputs))
-                    B = util.load_array_text("/Users/brandt/Dropbox/modred/modred/tests/files_ERA/B_in%d_out%d.txt" % (
-                        num_inputs, num_outputs))
-                    C = util.load_array_text("/Users/brandt/Dropbox/modred/modred/tests/files_ERA/C_in%d_out%d.txt" % (
-                        num_inputs, num_outputs))
-                    # time_steps = np.array(util.load_array_text(
-                    #     "/Users/brandt/Dropbox/modred/modred/tests/files_ERA/time_in%d_out%d.txt" % (
-                    #         num_inputs, num_outputs)).squeeze(), dtype=int)
+                    A = util.load_array_text(
+                        join(self.data_dir, 'A_in%d_out%d.txt') % (
+                            num_inputs, num_outputs))
+                    B = util.load_array_text(
+                        join(self.data_dir, 'B_in%d_out%d.txt') % (
+                            num_inputs, num_outputs))
+                    C = util.load_array_text(
+                        join(self.data_dir, 'C_in%d_out%d.txt') % (
+                            num_inputs, num_outputs))
                     impulse_response = util.impulse(A, B, C, time_steps[-1] + 1)
                     Markovs = impulse_response[time_steps]
 
@@ -218,12 +219,15 @@ class testERA(unittest.TestCase):
                     # # Create a state space system
                     # A_plant, B_plant, C_plant = util.drss(
                     #     num_states_plant, num_inputs, num_outputs)
-                    A_plant = util.load_array_text("/Users/brandt/Dropbox/modred/modred/tests/files_ERA/A_in%d_out%d.txt" % (
-                        num_inputs, num_outputs))
-                    B_plant = util.load_array_text("/Users/brandt/Dropbox/modred/modred/tests/files_ERA/B_in%d_out%d.txt" % (
-                        num_inputs, num_outputs))
-                    C_plant = util.load_array_text("/Users/brandt/Dropbox/modred/modred/tests/files_ERA/C_in%d_out%d.txt" % (
-                        num_inputs, num_outputs))
+                    A_plant = util.load_array_text(
+                        join(self.data_dir, 'A_in%d_out%d.txt') % (
+                            num_inputs, num_outputs))
+                    B_plant = util.load_array_text(
+                        join(self.data_dir, 'B_in%d_out%d.txt') % (
+                            num_inputs, num_outputs))
+                    C_plant = util.load_array_text(
+                        join(self.data_dir, 'C_in%d_out%d.txt') % (
+                            num_inputs, num_outputs))
 
                     # Simulate an impulse response using the state space system.
                     # This will generate Markov parameters at all timesteps [0,
@@ -240,9 +244,9 @@ class testERA(unittest.TestCase):
                         Markovs, num_states_model)
 
                     # Save ERA model to disk
-                    A_path_computed = join(self.test_dir, 'A_computed.txt')
-                    B_path_computed = join(self.test_dir, 'B_computed.txt')
-                    C_path_computed = join(self.test_dir, 'C_computed.txt')
+                    A_path_computed = join(self.out_dir, 'A_computed.txt')
+                    B_path_computed = join(self.out_dir, 'B_computed.txt')
+                    C_path_computed = join(self.out_dir, 'C_computed.txt')
                     my_ERA.put_model(
                         A_path_computed, B_path_computed, C_path_computed)
 

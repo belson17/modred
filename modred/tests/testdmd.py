@@ -276,27 +276,29 @@ class TestDMDHandles(unittest.TestCase):
             'L_low_order_eigvecs': None, 'R_low_order_eigvecs': None,
             'spectral_coeffs': None, 'proj_coeffs': None, 'adv_proj_coeffs':
             None, 'vec_handles': None, 'adv_vec_handles': None, 'vec_space':
-            VectorSpaceHandles(my_IP, verbosity=0)}
+            VectorSpaceHandles(inner_product=my_IP, verbosity=0)}
 
         # Get default data member values
         for k,v in util.get_data_members(
-            dmd.DMDHandles(my_IP, verbosity=0)).items():
+            dmd.DMDHandles(inner_product=my_IP, verbosity=0)).items():
             self.assertEqual(v, data_members_default[k])
 
-        my_DMD = dmd.DMDHandles(my_IP, verbosity=0)
+        my_DMD = dmd.DMDHandles(inner_product=my_IP, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_space'] = VectorSpaceHandles(
             inner_product=my_IP, verbosity=0)
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
 
-        my_DMD = dmd.DMDHandles(my_IP, get_array=my_load, verbosity=0)
+        my_DMD = dmd.DMDHandles(
+            inner_product=my_IP, get_array=my_load, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['get_array'] = my_load
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
 
-        my_DMD = dmd.DMDHandles(my_IP, put_array=my_save, verbosity=0)
+        my_DMD = dmd.DMDHandles(
+            inner_product=my_IP, put_array=my_save, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['put_array'] = my_save
         for k,v in util.get_data_members(my_DMD).items():
@@ -304,7 +306,8 @@ class TestDMDHandles(unittest.TestCase):
 
         max_vecs_per_node = 500
         my_DMD = dmd.DMDHandles(
-            my_IP, max_vecs_per_node=max_vecs_per_node, verbosity=0)
+            inner_product=my_IP, max_vecs_per_node=max_vecs_per_node,
+            verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_space'].max_vecs_per_node = max_vecs_per_node
         data_members_modified['vec_space'].max_vecs_per_proc = (
@@ -335,7 +338,7 @@ class TestDMDHandles(unittest.TestCase):
         adv_proj_coeffs = parallel.call_and_bcast(np.random.random, (5, 5))
 
         # Create a DMD object and store the data in it
-        DMD_save = dmd.DMDHandles(None, verbosity=0)
+        DMD_save = dmd.DMDHandles(verbosity=0)
         DMD_save.eigvals = eigvals
         DMD_save.R_low_order_eigvecs = R_low_order_eigvecs
         DMD_save.L_low_order_eigvecs = L_low_order_eigvecs
@@ -373,7 +376,7 @@ class TestDMDHandles(unittest.TestCase):
         parallel.barrier()
 
         # Create a new DMD object and use it to load data
-        DMD_load = dmd.DMDHandles(None, verbosity=0)
+        DMD_load = dmd.DMDHandles(verbosity=0)
         DMD_load.get_decomp(
             eigvals_path, R_low_order_eigvecs_path, L_low_order_eigvecs_path,
             correlation_array_eigvals_path, correlation_array_eigvecs_path)
@@ -423,7 +426,7 @@ class TestDMDHandles(unittest.TestCase):
             for max_num_eigvals in [None, self.num_vecs // 2]:
 
                 # Compute DMD using modred
-                DMD = dmd.DMDHandles(np.vdot, verbosity=0)
+                DMD = dmd.DMDHandles(inner_product=np.vdot, verbosity=0)
                 (eigvals, R_low_order_eigvecs, L_low_order_eigvecs,
                 correlation_array_eigvals, correlation_array_eigvecs) =\
                 DMD.compute_decomp(
@@ -492,7 +495,7 @@ class TestDMDHandles(unittest.TestCase):
 
         # Check that if mismatched sets of handles are passed in, an error is
         # raised.
-        DMD = dmd.DMDHandles(np.vdot, verbosity=0)
+        DMD = dmd.DMDHandles(inner_product=np.vdot, verbosity=0)
         self.assertRaises(
             ValueError, DMD.compute_decomp, self.vec_handles,
             self.adv_vec_handles[:-1])
@@ -523,7 +526,7 @@ class TestDMDHandles(unittest.TestCase):
                 # require manipulations involving the correct decomposition, so
                 # we cannot isolate the mode computation from the decomposition
                 # step.
-                DMD = dmd.DMDHandles(np.vdot, verbosity=0)
+                DMD = dmd.DMDHandles(inner_product=np.vdot, verbosity=0)
                 DMD.compute_decomp(
                     vecs_arg, adv_vec_handles=adv_vecs_arg,
                     max_num_eigvals=max_num_eigvals)
@@ -679,7 +682,7 @@ class TestDMDHandles(unittest.TestCase):
                 # requires manipulations involving the correct decomposition and
                 # modes, so we cannot isolate the spectral coefficient
                 # computation from those computations.)
-                DMD = dmd.DMDHandles(np.vdot, verbosity=0)
+                DMD = dmd.DMDHandles(inner_product=np.vdot, verbosity=0)
                 DMD.compute_decomp(
                     vecs_arg, adv_vec_handles=adv_vecs_arg,
                     max_num_eigvals=max_num_eigvals)
@@ -730,7 +733,7 @@ class TestDMDHandles(unittest.TestCase):
                 # coefficients requires the correct DMD decomposition and modes,
                 # so we cannot isolate the projection coefficient computation
                 # from those computations.)
-                DMD = dmd.DMDHandles(np.vdot, verbosity=0)
+                DMD = dmd.DMDHandles(inner_product=np.vdot, verbosity=0)
                 DMD.compute_decomp(
                     vecs_arg, adv_vec_handles=adv_vecs_arg,
                     max_num_eigvals=max_num_eigvals)
@@ -1082,34 +1085,37 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             'L_low_order_eigvecs': None, 'R_low_order_eigvecs': None,
             'spectral_coeffs': None, 'proj_coeffs': None, 'adv_proj_coeffs':
             None, 'vec_handles': None, 'adv_vec_handles': None, 'vec_space':
-            VectorSpaceHandles(my_IP, verbosity=0)}
+            VectorSpaceHandles(inner_product=my_IP, verbosity=0)}
 
         # Get default data member values
         for k,v in util.get_data_members(
-            dmd.TLSqrDMDHandles(my_IP, verbosity=0)).items():
+            dmd.TLSqrDMDHandles(inner_product=my_IP, verbosity=0)).items():
             self.assertEqual(v, data_members_default[k])
 
-        my_DMD = dmd.TLSqrDMDHandles(my_IP, verbosity=0)
+        my_DMD = dmd.TLSqrDMDHandles(inner_product=my_IP, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_space'] = VectorSpaceHandles(
             inner_product=my_IP, verbosity=0)
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
 
-        my_DMD = dmd.TLSqrDMDHandles(my_IP, get_array=my_load, verbosity=0)
+        my_DMD = dmd.TLSqrDMDHandles(
+            inner_product=my_IP, get_array=my_load, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['get_array'] = my_load
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
 
-        my_DMD = dmd.TLSqrDMDHandles(my_IP, put_array=my_save, verbosity=0)
+        my_DMD = dmd.TLSqrDMDHandles(
+            inner_product=my_IP, put_array=my_save, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['put_array'] = my_save
         for k,v in util.get_data_members(my_DMD).items():
             self.assertEqual(v, data_members_modified[k])
 
         max_vecs_per_node = 500
-        my_DMD = dmd.TLSqrDMDHandles(my_IP, max_vecs_per_node=max_vecs_per_node,
+        my_DMD = dmd.TLSqrDMDHandles(
+            inner_product=my_IP, max_vecs_per_node=max_vecs_per_node,
             verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_space'].max_vecs_per_node = max_vecs_per_node
@@ -1151,7 +1157,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         adv_proj_coeffs = parallel.call_and_bcast(np.random.random, (5, 5))
 
         # Create a DMD object and store the data in it
-        TLSqrDMD_save = dmd.TLSqrDMDHandles(None, verbosity=0)
+        TLSqrDMD_save = dmd.TLSqrDMDHandles(verbosity=0)
         TLSqrDMD_save.eigvals = eigvals
         TLSqrDMD_save.R_low_order_eigvecs = R_low_order_eigvecs
         TLSqrDMD_save.L_low_order_eigvecs = L_low_order_eigvecs
@@ -1216,7 +1222,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
         parallel.barrier()
 
         # Create a new TLSqrDMD object and use it to load data
-        TLSqrDMD_load = dmd.TLSqrDMDHandles(None, verbosity=0)
+        TLSqrDMD_load = dmd.TLSqrDMDHandles(verbosity=0)
         TLSqrDMD_load.get_decomp(
             eigvals_path, R_low_order_eigvecs_path, L_low_order_eigvecs_path,
             sum_correlation_array_eigvals_path,
@@ -1289,7 +1295,8 @@ class TestTLSqrDMDHandles(unittest.TestCase):
             for max_num_eigvals in [None, self.num_vecs // 2]:
 
                 # Compute DMD using modred
-                TLSqrDMD = dmd.TLSqrDMDHandles(np.vdot, verbosity=0)
+                TLSqrDMD = dmd.TLSqrDMDHandles(
+                    inner_product=np.vdot, verbosity=0)
                 (eigvals, R_low_order_eigvecs, L_low_order_eigvecs,
                 sum_correlation_array_eigvals,
                 sum_correlation_array_eigvecs,
@@ -1411,7 +1418,7 @@ class TestTLSqrDMDHandles(unittest.TestCase):
 
         # Check that if mismatched sets of handles are passed in, an error is
         # raised.
-        TLSqrDMD = dmd.TLSqrDMDHandles(np.vdot, verbosity=0)
+        TLSqrDMD = dmd.TLSqrDMDHandles(inner_product=np.vdot, verbosity=0)
         self.assertRaises(
             ValueError, TLSqrDMD.compute_decomp, self.vec_handles,
             self.adv_vec_handles[:-1])
@@ -1442,7 +1449,8 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 # TLSqrDMD mode require manipulations involving the correct
                 # decomposition, so we cannot isolate the mode computation from
                 # the decomposition step.)
-                TLSqrDMD = dmd.TLSqrDMDHandles(np.vdot, verbosity=0)
+                TLSqrDMD = dmd.TLSqrDMDHandles(
+                    inner_product=np.vdot, verbosity=0)
                 TLSqrDMD.compute_decomp(
                     vecs_arg, adv_vec_handles=adv_vecs_arg,
                     max_num_eigvals=max_num_eigvals)
@@ -1609,7 +1617,8 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 # As such, testing them requires manipulations involving the
                 # correct decomposition and modes, so we cannot isolate the
                 # spectral coefficient computation from those computations.)
-                TLSqrDMD = dmd.TLSqrDMDHandles(np.vdot, verbosity=0)
+                TLSqrDMD = dmd.TLSqrDMDHandles(
+                    inner_product=np.vdot, verbosity=0)
                 TLSqrDMD.compute_decomp(
                     vecs_arg, adv_vec_handles=adv_vecs_arg,
                     max_num_eigvals=max_num_eigvals)
@@ -1670,7 +1679,8 @@ class TestTLSqrDMDHandles(unittest.TestCase):
                 # projection coefficients requires the correct TLSqrDMD
                 # decomposition and modes, so we cannot isolate the projection
                 # coefficient computation from those computations.)
-                TLSqrDMD = dmd.TLSqrDMDHandles(np.vdot, verbosity=0)
+                TLSqrDMD = dmd.TLSqrDMDHandles(
+                    inner_product=np.vdot, verbosity=0)
                 TLSqrDMD.compute_decomp(
                     vecs_arg, adv_vec_handles=adv_vecs_arg,
                     max_num_eigvals=max_num_eigvals)

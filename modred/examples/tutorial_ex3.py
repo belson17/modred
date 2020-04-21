@@ -27,7 +27,7 @@ for i, snap in enumerate(adjoint_snapshots):
     snap.put(np.cos(0.5 * x * i))
 
 # Calculate and save BPOD modes
-my_BPOD = mr.BPODHandles(np.vdot, max_vecs_per_node=10)
+my_BPOD = mr.BPODHandles(inner_product=np.vdot, max_vecs_per_node=10)
 sing_vals, L_sing_vecs, R_sing_vecs = my_BPOD.compute_decomp(
     direct_snapshots, adjoint_snapshots)
 num_modes = 10

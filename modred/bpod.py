@@ -150,15 +150,14 @@ def compute_BPOD_arrays(
 class BPODHandles(object):
     """Balanced Proper Orthogonal Decomposition implemented for large datasets.
 
-    Args:
+    Kwargs:
         ``inner_product``: Function that computes inner product of two vector
         objects.
 
-    Kwargs:
         ``put_array``: Function to put an array out of modred, e.g., write it to
         file.
 
-      	``get_array``: Function to get an array into modred, e.g., load it from
+        ``get_array``: Function to get an array into modred, e.g., load it from
         file.
 
         ``max_vecs_per_node``: Maximum number of vectors that can be stored in
@@ -172,7 +171,7 @@ class BPODHandles(object):
 
     Usage::
 
-      myBPOD = BPODHandles(my_inner_product, max_vecs_per_node=500)
+      myBPOD = BPODHandles(inner_product=my_inner_product)
       myBPOD.compute_decomp(direct_vec_handles, adjoint_vec_handles)
       myBPOD.compute_direct_modes(range(50), direct_modes)
       myBPOD.compute_adjoint_modes(range(50), adjoint_modes)
@@ -180,7 +179,7 @@ class BPODHandles(object):
     See also :py:func:`compute_BPOD_arrays` and :mod:`vectors`.
     """
     def __init__(
-        self, inner_product, put_array=util.save_array_text,
+        self, inner_product=None, put_array=util.save_array_text,
         get_array=util.load_array_text,max_vecs_per_node=None, verbosity=1):
         """Constructor """
         self.get_array = get_array
