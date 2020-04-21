@@ -173,6 +173,11 @@ class InnerProductTrapz(object):
 
     def inner_product(self, vec1, vec2):
         """Computes inner product."""
+        # TODO: this function doesn't look like it actually works.  Why is IP
+        # computed/assigned independently in each loop iteration?  The function
+        # only returns the value of IP from the last loop iteration, which
+        # doesn't seem right, as that only takes into account the grid from that
+        # singl iteration.
         IP = vec1 * vec2
         for grid in reversed(self.grids):
             if not isinstance(grid, np.ndarray):
