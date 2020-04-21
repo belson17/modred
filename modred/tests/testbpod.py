@@ -279,23 +279,25 @@ class TestBPODHandles(unittest.TestCase):
 
         # Get default data member values
         for k,v in util.get_data_members(
-            bpod.BPODHandles(my_IP, verbosity=0)).items():
+            bpod.BPODHandles(inner_product=my_IP, verbosity=0)).items():
             self.assertEqual(v, data_members_default[k])
 
-        my_BPOD = bpod.BPODHandles(my_IP, verbosity=0)
+        my_BPOD = bpod.BPODHandles(inner_product=my_IP, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_space'] = VectorSpaceHandles(
             inner_product=my_IP, verbosity=0)
         for k,v in util.get_data_members(my_BPOD).items():
             self.assertEqual(v, data_members_modified[k])
 
-        my_BPOD = bpod.BPODHandles(my_IP, get_array=my_load, verbosity=0)
+        my_BPOD = bpod.BPODHandles(
+            inner_product=my_IP, get_array=my_load, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['get_array'] = my_load
         for k,v in util.get_data_members(my_BPOD).items():
             self.assertEqual(v, data_members_modified[k])
 
-        my_BPOD = bpod.BPODHandles(my_IP, put_array=my_save, verbosity=0)
+        my_BPOD = bpod.BPODHandles(
+            inner_product=my_IP, put_array=my_save, verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['put_array'] = my_save
         for k,v in util.get_data_members(my_BPOD).items():
@@ -303,7 +305,8 @@ class TestBPODHandles(unittest.TestCase):
 
         max_vecs_per_node = 500
         my_BPOD = bpod.BPODHandles(
-            my_IP, max_vecs_per_node=max_vecs_per_node, verbosity=0)
+            inner_product=my_IP, max_vecs_per_node=max_vecs_per_node,
+            verbosity=0)
         data_members_modified = copy.deepcopy(data_members_default)
         data_members_modified['vec_space'].max_vecs_per_node = \
             max_vecs_per_node
@@ -328,7 +331,7 @@ class TestBPODHandles(unittest.TestCase):
             np.random.random, ((self.num_steps, self.num_steps)))
 
         # Store the data in a BPOD object
-        BPOD_save = bpod.BPODHandles(None, verbosity=0)
+        BPOD_save = bpod.BPODHandles(verbosity=0)
         BPOD_save.Hankel_array = Hankel_array_true
         BPOD_save.sing_vals = sing_vals_true
         BPOD_save.L_sing_vecs = L_sing_vecs_true
@@ -349,7 +352,7 @@ class TestBPODHandles(unittest.TestCase):
         BPOD_save.put_adjoint_proj_coeffs(adj_proj_coeffs_path)
 
         # Create a BPOD object and use it to load the data from disk
-        BPOD_load = bpod.BPODHandles(None, verbosity=0)
+        BPOD_load = bpod.BPODHandles(verbosity=0)
         BPOD_load.get_decomp(sing_vals_path, L_sing_vecs_path, R_sing_vecs_path)
         BPOD_load.get_Hankel_array(Hankel_array_path)
         BPOD_load.get_direct_proj_coeffs(direct_proj_coeffs_path)
@@ -419,7 +422,7 @@ class TestBPODHandles(unittest.TestCase):
                     num_inputs, num_outputs)
 
                 # Compute BPOD using modred.
-                BPOD = bpod.BPODHandles(np.vdot, verbosity=0)
+                BPOD = bpod.BPODHandles(inner_product=np.vdot, verbosity=0)
                 sing_vals, L_sing_vecs, R_sing_vecs = BPOD.compute_decomp(
                     direct_vec_handles, adjoint_vec_handles,
                     num_inputs=num_inputs, num_outputs=num_outputs)
@@ -490,7 +493,7 @@ class TestBPODHandles(unittest.TestCase):
                 # is likely that in actual use, users would want to ignore
                 # relatively small Hankel singular values anyway, as that is the
                 # point of doing a balancing transformation.
-                BPOD = bpod.BPODHandles(np.vdot, verbosity=0)
+                BPOD = bpod.BPODHandles(inner_product=np.vdot, verbosity=0)
                 BPOD.compute_decomp(
                     direct_vec_handles, adjoint_vec_handles,
                     num_inputs=num_inputs, num_outputs=num_outputs,
@@ -574,7 +577,7 @@ class TestBPODHandles(unittest.TestCase):
                 # users would want to ignore relatively small Hankel
                 # singular values anyway, as that is the point of doing a
                 # balancing transformation.
-                BPOD = bpod.BPODHandles(np.vdot, verbosity=0)
+                BPOD = bpod.BPODHandles(inner_product=np.vdot, verbosity=0)
                 BPOD.compute_decomp(
                     direct_vec_handles, adjoint_vec_handles,
                     num_inputs=num_inputs, num_outputs=num_outputs,

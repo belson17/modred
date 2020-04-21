@@ -76,7 +76,8 @@ def inner_product_array(
     generate_vecs(data_dir, num_states, row_vec_handles+col_vec_handles)
 
     my_VS = mr.VectorSpaceHandles(
-        np.vdot, max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
+        inner_product=np.vdot, max_vecs_per_node=max_vecs_per_node,
+        verbosity=verbosity)
 
     prof = cProfile.Profile()
     start_time = time.time()
@@ -99,7 +100,8 @@ def symm_inner_product_array(
     generate_vecs(data_dir, num_states, vec_handles)
 
     my_VS = mr.VectorSpaceHandles(
-        np.vdot, max_vecs_per_node=max_vecs_per_node, verbosity=verbosity)
+        inner_product=np.vdot, max_vecs_per_node=max_vecs_per_node,
+        verbosity=verbosity)
 
     prof = cProfile.Profile()
     start_time = time.time()
@@ -126,7 +128,8 @@ def lin_combine(
         for product_num in mr.range(num_products)]
 
     generate_vecs(data_dir, num_states, basis_handles)
-    my_VS = mr.VectorSpaceHandles(np.vdot, max_vecs_per_node=max_vecs_per_node,
+    my_VS = mr.VectorSpaceHandles(
+        inner_product=np.vdot, max_vecs_per_node=max_vecs_per_node,
         verbosity=verbosity)
     coeff_array = np.random.random((num_bases, num_products))
     mr.parallel.barrier()

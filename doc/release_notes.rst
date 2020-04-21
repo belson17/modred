@@ -39,11 +39,16 @@ unit tests are more robust and fail much less often.
 
 **Interface changes**
 
+* ``inner_product`` is now a keyword argument in ``PODHandles``,
+  ``BPODHandles``, and ``DMDHandles``, since sometimes instances of these
+  classes are created to compute modes, which does not require computing any
+  inner products.
+
 * Added "direct" to methods for projection coefficients in BPOD.
 
 * Changed symmetric to symm, i.e.,
-  :py:meth:`VecSpacehandles.compute_symmetric_inner_product_array` is now
-  :py:meth:`VecSpacehandles.compute_symm_inner_product_array`.
+  :py:meth:`VecSpaceHandles.compute_symmetric_inner_product_array` is now
+  :py:meth:`VecSpaceHandles.compute_symm_inner_product_array`.
 
 * Fixed order of return arguments in DMD matrix routines [which ones were
   changed??] to be consistent. (Also in TLSqrDMD matrix routines)

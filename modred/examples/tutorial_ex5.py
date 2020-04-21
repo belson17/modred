@@ -29,7 +29,7 @@ if parallel.is_rank_zero():
 parallel.barrier()
 
 # Compute and save POD modes
-my_POD = mr.PODHandles(np.vdot)
+my_POD = mr.PODHandles(inner_product=np.vdot)
 my_POD.compute_decomp(snapshots)
 my_POD.put_decomp('%s/sing_vals.txt' % out_dir, '%s/sing_vecs.txt' % out_dir)
 my_POD.put_correlation_array('%s/correlation_array.txt' % out_dir)

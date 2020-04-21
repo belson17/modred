@@ -33,7 +33,7 @@ if parallel.is_rank_zero():
 parallel.barrier()
 
 # Compute and save balanced POD modes
-my_BPOD = mr.BPODHandles(inner_product)
+my_BPOD = mr.BPODHandles(inner_product=inner_product)
 my_BPOD.sanity_check(direct_snapshots[0])
 sing_vals, L_sing_vecs, R_sing_vecs = my_BPOD.compute_decomp(
     direct_snapshots, adjoint_snapshots)
