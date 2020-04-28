@@ -7,7 +7,6 @@ from numpy import polymul, polyadd
 import scipy
 import scipy.linalg
 import scipy.signal
-from scipy.signal.ltisys import TransferFunction
 
 from .py2to3 import range
 
