@@ -35,6 +35,9 @@ modred 2.1.0
 * Correctly handle ``mode_indices=None`` option in
   :py:meth:`VecSpaceHandles.lin_combine`.
 
+* Complex-valued vectors are now correctly handled in
+  :py:meth:`InnerProductTrapz`.
+
 **Interface changes**
 
 * ``inner_product`` is now a keyword argument in ``PODHandles``,
@@ -90,6 +93,8 @@ modred 2.1.0
 * Rewrote POD tests.
 
 * Rewrote ERA tests.
+
+* Improved error checking in :py:meth:`InnerProductTrapz`.
 
 
 ------------
