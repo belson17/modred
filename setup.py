@@ -17,10 +17,13 @@ with open(os.path.join(here, 'modred/_version.py')) as f:
     exec(f.read())
 # Get the development status from the version string
 parsed_version = str(parse_version(__version__))
-if any(w in ['*a', '*alpha'] for w in parsed_version):
-    devstatus = 'Development Status :: 3 - Alpha'
-elif any(w in ['*b', '*beta'] for w in parsed_version):
+# Parse the version string, looking for the "beta" suffix first, otherwise
+# looking for the letter "a" will find one at the end of "beta" and flag it as
+# an alpha version
+if any(suffix in parsed_version for suffix in ['b', 'beta']):
     devstatus = 'Development Status :: 4 - Beta'
+elif any(suffix in parsed_version for suffix in ['a', 'alpha']):
+    devstatus = 'Development Status :: 3 - Alpha'
 else:
     devstatus = 'Development Status :: 5 - Production/Stable'
 
