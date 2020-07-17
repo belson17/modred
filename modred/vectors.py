@@ -164,6 +164,11 @@ class InnerProductTrapz(object):
     def __init__(self, *grids):
         if len(grids) == 0:
             raise ValueError('Must supply at least one 1D grid array')
+        for gidx, g in enumerate(grids):
+            if not isinstance(g, np.ndarray):
+                raise TypeError(
+                    'Grid {:d} of {:d} is a {}, not a numpy array'.format(
+                        gidx + 1, len(grids), type(g)))
         self.grids = grids
 
 
@@ -182,9 +187,6 @@ class InnerProductTrapz(object):
         # over the grids.
         IP = vec1 * vec2
         for grid in reversed(self.grids):
-            if not isinstance(grid, np.ndarray):
-                raise TypeError(
-                    'Each grid must be a numpy array, not a %s' % type(grid))
             IP = np.trapz(IP, x=grid)
         return IP
 
