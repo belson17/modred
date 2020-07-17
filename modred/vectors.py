@@ -170,6 +170,7 @@ class InnerProductTrapz(object):
                     'Grid {:d} of {:d} is a {}, not a numpy array'.format(
                         gidx + 1, len(grids), type(g)))
         self.grids = grids
+        self.grid_shape = tuple(g.size for g in grids)
 
 
     def __call__(self, vec1, vec2):
@@ -178,9 +179,14 @@ class InnerProductTrapz(object):
 
     def inner_product(self, vec1, vec2):
         """Computes inner product."""
-        if vec1.shape != vec2.shape:
-            raise TypeError("Vectors for inner product are not the same shape, "
-                            "%s != %s" % (vec1.shape, vec2.shape))
+        if vec1.shape != self.grid_shape:
+            raise TypeError(
+                'Vector 1 shape does not match grid shape: '
+                '{} != {}'.format(vec1.shape, self.grid_shape))
+        if vec2.shape != self.grid_shape:
+            raise TypeError(
+                'Vector 2 shape does not match grid shape: '
+                '{} != {}'.format(vec2.shape, self.grid_shape))
         # IP starts as an array of shape vec1 (=vec2) and the subsequent
         # loop over the grids collapses each dimension after integrating
         # over that dimension until IP is a scalar by the end of the loop
