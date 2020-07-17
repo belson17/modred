@@ -184,10 +184,13 @@ def sum_lists(list1, list2):
 def smart_eq(arg1, arg2):
     """Checks for equality, accounting for the fact that numpy's ``==`` doesn't
     return a bool. In that case, returns True only if all elements are equal."""
-    eq = (arg1 == arg2)
-    if isinstance(eq, np.ndarray):
-        return eq.all()
-    return eq
+    if type(arg1) != type(arg2):
+        return False
+    if isinstance(arg1, np.ndarray):
+        if arg1.shape != arg2.shape:
+            return False
+        return (arg1 == arg2).all()
+    return arg1 == arg2
 
 
 class InnerProductBlock(object):

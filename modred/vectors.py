@@ -173,6 +173,13 @@ class InnerProductTrapz(object):
 
     def inner_product(self, vec1, vec2):
         """Computes inner product."""
+        if vec1.shape != vec2.shape:
+            raise TypeError("Vectors for inner product are not the same shape, "
+                            "%s != %s" % (vec1.shape, vec2.shape))
+        # IP starts as an array of shape vec1 (=vec2) and the subsequent
+        # loop over the grids collapses each dimension after integrating
+        # over that dimension until IP is a scalar by the end of the loop
+        # over the grids.
         IP = vec1 * vec2
         for grid in reversed(self.grids):
             if not isinstance(grid, np.ndarray):
