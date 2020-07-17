@@ -191,7 +191,7 @@ class InnerProductTrapz(object):
         # loop over the grids collapses each dimension after integrating
         # over that dimension until IP is a scalar by the end of the loop
         # over the grids.
-        IP = vec1 * vec2
+        IP = vec1.conj() * vec2
         for grid in reversed(self.grids):
             IP = np.trapz(IP, x=grid)
         return IP
