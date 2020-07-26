@@ -9,3 +9,9 @@ doc/build
 modred/examples/*out
 
 modred.egg-info/
+
+modred/tests/logs
+build/
+.idea/
+doc/build.tar
+
