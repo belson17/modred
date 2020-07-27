@@ -31,7 +31,7 @@ class TestVectorSpaceArrays(unittest.TestCase):
         vec_space2 = vspc.VectorSpaceArrays(weights=[1., 1., 1.])
         vec_space3 = vspc.VectorSpaceArrays(weights=[2., 4., 6.])
         vec_space4 = vspc.VectorSpaceArrays(weights=np.diag(np.ones(3) * 2.))
-        self.assertEquals(vec_space1, vec_space2)
+        self.assertEqual(vec_space1, vec_space2)
         self.assertNotEqual(vec_space1, vec_space3)
         self.assertNotEqual(vec_space1, vec_space4)
 
