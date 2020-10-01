@@ -12,25 +12,6 @@ from .py2to3 import range
 
 class UndefinedError(Exception): pass
 
-
-'''
-def make_mat(array):
-    """Makes 1D or 2D arrays into matrices. 1D arrays become matrices with one
-    column."""
-    if array.ndim == 1:
-        array = array.reshape((array.shape[0], 1))
-    return np.mat(array)
-
-
-def make_list(arg):
-    #Returns the argument as a list. If already a list, ``arg`` is returned.
-    #
-    if not isinstance(arg, list):
-        arg = [arg]
-    return arg
-'''
-
-
 def atleast_2d_row(array):
     """Converts 1d arrays to 2d arrays, but always as row vectors"""
     array = np.array(array)
