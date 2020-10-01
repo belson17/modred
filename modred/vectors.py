@@ -164,7 +164,13 @@ class InnerProductTrapz(object):
     def __init__(self, *grids):
         if len(grids) == 0:
             raise ValueError('Must supply at least one 1D grid array')
+        for gidx, g in enumerate(grids):
+            if not isinstance(g, np.ndarray):
+                raise TypeError(
+                    'Grid {:d} of {:d} is a {}, not a numpy array'.format(
+                        gidx + 1, len(grids), type(g)))
         self.grids = grids
+        self.grid_shape = tuple(g.size for g in grids)
 
 
     def __call__(self, vec1, vec2):
@@ -173,16 +179,20 @@ class InnerProductTrapz(object):
 
     def inner_product(self, vec1, vec2):
         """Computes inner product."""
-        # TODO: this function doesn't look like it actually works.  Why is IP
-        # computed/assigned independently in each loop iteration?  The function
-        # only returns the value of IP from the last loop iteration, which
-        # doesn't seem right, as that only takes into account the grid from that
-        # singl iteration.
-        IP = vec1 * vec2
+        if vec1.shape != self.grid_shape:
+            raise TypeError(
+                'Vector 1 shape does not match grid shape: '
+                '{} != {}'.format(vec1.shape, self.grid_shape))
+        if vec2.shape != self.grid_shape:
+            raise TypeError(
+                'Vector 2 shape does not match grid shape: '
+                '{} != {}'.format(vec2.shape, self.grid_shape))
+        # IP starts as an array of shape vec1 (=vec2) and the subsequent
+        # loop over the grids collapses each dimension after integrating
+        # over that dimension until IP is a scalar by the end of the loop
+        # over the grids.
+        IP = vec1.conj() * vec2
         for grid in reversed(self.grids):
-            if not isinstance(grid, np.ndarray):
-                raise TypeError(
-                    'Each grid must be a numpy array, not a %s' % type(grid))
             IP = np.trapz(IP, x=grid)
         return IP
 
