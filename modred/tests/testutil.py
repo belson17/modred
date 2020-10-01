@@ -293,18 +293,18 @@ class TestUtil(unittest.TestCase):
 
             # Test different scale choices
             for scale_choice in ['left', 'right']:
-                R_eigvals, R_eigvecs, L_eigvecs = util.eig_biorthog(
+                eigvals, R_eigvecs, L_eigvecs = util.eig_biorthog(
                     array, scale_choice=scale_choice)
 
                 # Check eigenvector/eigenvalue relationship (use right
                 # eigenvalues only).  Test difference so that all values are
                 # compared to zeros, avoiding need to check relative tolerances.
                 np.testing.assert_allclose(
-                    array.dot(R_eigvecs) - R_eigvecs.dot(np.diag(R_eigvals)),
+                    array.dot(R_eigvecs) - R_eigvecs.dot(np.diag(eigvals)),
                     np.zeros(array.shape),
                     atol=test_atol)
                 np.testing.assert_allclose(
-                    L_eigvecs.conj().T.dot(array) - np.diag(R_eigvals).dot(
+                    L_eigvecs.conj().T.dot(array) - np.diag(eigvals).dot(
                         L_eigvecs.conj().T),
                     np.zeros(array.shape),
                     atol=test_atol)
@@ -326,7 +326,7 @@ class TestUtil(unittest.TestCase):
                 np.testing.assert_allclose(
                     np.sqrt(np.sum(np.multiply(
                         unit_eigvecs, unit_eigvecs.conj()), axis=0)).squeeze(),
-                    np.ones(R_eigvals.size))
+                    np.ones(eigvals.size))
 
         # Check that error is raised for invalid scale choice
         self.assertRaises(
