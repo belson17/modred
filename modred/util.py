@@ -338,25 +338,8 @@ def eig_biorthog(array, scale_choice='left'):
     # Force data to be array
     array = np.array(array)
 
-    # Compute eigendecompositions
-    R_evals, R_evecs= np.linalg.eig(array)
-    L_evals_conj, L_evecs= np.linalg.eig(array.conj().T)
-    L_evals = L_evals_conj.conj()
-
-    # Sort the evals
-    R_sort_indices = np.argsort(R_evals)
-    L_sort_indices = np.argsort(L_evals)
-    R_evals = R_evals[R_sort_indices]
-    L_evals = L_evals[L_sort_indices]
-    L_evals_conj = L_evals.conj()
-
-    # Check that evals are the same
-    if not np.allclose(L_evals, R_evals, rtol=1e-10, atol=1e-12):
-        raise ValueError('Left and right eigenvalues do not match.')
-
-    # Sort the evecs
-    R_evecs = R_evecs[:, R_sort_indices]
-    L_evecs = L_evecs[:, L_sort_indices]
+    # Compute eigendecomposition
+    evals, L_evecs, R_evecs = scipy.linalg.eig(array, left=True, right=True)
 
     # Scale the evecs to get a biorthogonal set
     scale_factors = np.diag(np.dot(L_evecs.conj().T, R_evecs))
@@ -367,11 +350,11 @@ def eig_biorthog(array, scale_choice='left'):
     else:
         raise ValueError('Invalid scale choice.  Must be LEFT or RIGHT.')
 
-    return R_evals, R_evecs, L_evecs
+    return evals, R_evecs, L_evecs
 
 
 def balanced_truncation(
-        A, B, C, order=None, return_sing_vals=False):
+    A, B, C, order=None, return_sing_vals=False):
     """Balance and truncate discrete-time linear time-invariant (LTI) system
     defined by A, B, C arrays. It's not very accurate due to numerical issues.
 

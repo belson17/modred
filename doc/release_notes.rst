@@ -81,6 +81,12 @@ modred 2.1.0
 
 * Exact DMD modes now scaled by DMD eigenvalues.
 
+* Left and right eigenvectors are now computed using `scipy.linalg.eig`, rather
+  than using `numpy.eig` twice, once on the original array and once on its
+  conjugate transpose.  This avoids potential numerical issues that cause
+  disagreement between the eigenvalues of the original array and its conjugate
+  transpose (which should be the same, theoretically).
+
 * Removed trailing whitespace from files, as is often done automatically when
   using Emacs.
 
