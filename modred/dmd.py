@@ -404,7 +404,7 @@ def compute_DMD_arrays_direct_method(
                 correlation_array_eigvecs.conj().T))
         cross_correlation_array = vecs_weighted.conj().T.dot(adv_vecs_weighted)
 
-    # Compute low-order lienar map
+    # Compute low-order linear map
     low_order_linear_map = correlation_array_eigvals_sqrt_inv.dot(
         correlation_array_eigvecs.conj().T.dot(
             cross_correlation_array.dot(
