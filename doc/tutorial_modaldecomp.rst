@@ -30,7 +30,7 @@ A simple way to find POD modes is:
 Let's walk through the important steps.
 First, we create an array of random data.
 Each column is a vector represented as a 1D array.
-Then we call the function ``compute_POD_arrays_direct_method``, which returns
+Then we call the function ``compute_POD_arrays_snaps_method``, which returns
 the first ``num_modes`` modes as columns of the array ``modes``, and all of the
 non-zero eigenvalues, sorted from largest to smallest.
 
