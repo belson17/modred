@@ -36,8 +36,8 @@ non-zero eigenvalues, sorted from largest to smallest.
 
 This function implements the "method of snapshots", as described in Section 3.4
 of [HLBR]_.
-In short, it computes the correlation array :math:`X^* X`, where :math:`X` is `
-`vecs``, then finds its eigenvectors and eigenvalues, which are related to the
+In short, it computes the correlation array :math:`X^* X`, where :math:`X` is
+``vecs``, then finds its eigenvectors and eigenvalues, which are related to the
 modes.
 
 
