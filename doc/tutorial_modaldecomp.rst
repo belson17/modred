@@ -53,7 +53,7 @@ The vectors are again represented as columns of an array.
 
 .. literalinclude:: ../modred/examples/tutorial_ex2.py
 
-This function computes the singular value decomposition (SVD) of :math:`W^(1/2)
+This function computes the singular value decomposition (SVD) of :math:`W^{1/2}
 X`, and we refer to this as the "direct method" to distinguish it from the
 method of snapshots in the previous example.
 The differences between the two are insignificant in most cases.
