@@ -30,14 +30,14 @@ A simple way to find POD modes is:
 Let's walk through the important steps.
 First, we create an array of random data.
 Each column is a vector represented as a 1D array.
-Then we call the function ``compute_POD_arrays_direct_method``, which returns
+Then we call the function ``compute_POD_arrays_snaps_method``, which returns
 the first ``num_modes`` modes as columns of the array ``modes``, and all of the
 non-zero eigenvalues, sorted from largest to smallest.
 
 This function implements the "method of snapshots", as described in Section 3.4
 of [HLBR]_.
-In short, it computes the correlation array :math:`X^* X`, where :math:`X` is `
-`vecs``, then finds its eigenvectors and eigenvalues, which are related to the
+In short, it computes the correlation array :math:`X^* X`, where :math:`X` is
+``vecs``, then finds its eigenvectors and eigenvalues, which are related to the
 modes.
 
 
@@ -53,7 +53,7 @@ The vectors are again represented as columns of an array.
 
 .. literalinclude:: ../modred/examples/tutorial_ex2.py
 
-This function computes the singular value decomposition (SVD) of :math:`W^(1/2)
+This function computes the singular value decomposition (SVD) of :math:`W^{1/2}
 X`, and we refer to this as the "direct method" to distinguish it from the
 method of snapshots in the previous example.
 The differences between the two are insignificant in most cases.
