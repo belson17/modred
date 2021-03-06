@@ -6,9 +6,9 @@ from os.path import join
 from shutil import rmtree
 
 import numpy as np
-import scipy.signal
-import scipy
-import matplotlib.pyplot as plt
+# import scipy.signal
+# import scipy
+# import matplotlib.pyplot as plt
 
 from modred import era, parallel, util
 from modred.py2to3 import range
